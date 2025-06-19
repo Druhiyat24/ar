@@ -1,0 +1,20 @@
+<div class="table-responsive">
+ <table class="table table-bordered"> 
+
+    <div class='row col-md-12'>
+     <div class='col-md-6'>
+           <tr>
+             <td width="30%"><label>Event Title</label></td>  
+             <td width="70%"><?php echo $events["event_title"];?></td>  
+          </tr> 
+        </div>
+  <div class='col-md-6'>       
+          <tr>
+             <td width="30%"><label>Event Start Date</label></td>  
+             <td width="70%"><?php echo $events["start_date"];?></td>  
+          </tr>
+       </div>   
+       </div>
+
+</table>
+</div> 
