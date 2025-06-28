@@ -2580,23 +2580,105 @@ function simpan_invoice_detail_alo($data)
 }
 
     //ubah desember
+// function load_invoice_detail_alo()
+// {
+//     $hasil = $this->db->query("SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, a.total, a.curr, a.eqp_idr, a.amount,b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa
+//      FROM tbl_alokasi_temp a INNER JOIN
+//      tbl_book_invoice b on b.no_invoice = a.ref_number
+//      union                                                                    
+//      SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, a.total, a.curr, a.eqp_idr, a.amount,b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa
+//      FROM tbl_alokasi_temp a INNER JOIN
+//      tbl_invoice_nb b on b.no_inv = a.ref_number
+//      union                                                                    
+//      select ref_number, ref_date, due_date, (total- COALESCE(total_alk,0)) total, curr, (eqp_idr - COALESCE(total_alk,0)) eqv_idr, round(amount / jumlah_baris,2) amount, no_coa, nama_coa, a.coa from (SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, sum(b.amount) total, a.curr, sum(b.amount) eqp_idr, a.amount,b.no_coa,c.nama_coa,concat(c.no_coa,' ',c.nama_coa) as coa, COUNT(*) OVER(PARTITION BY a.ref_number) AS jumlah_baris FROM tbl_alokasi_temp a INNER JOIN tbl_debitnote_det b on b.no_dn = a.ref_number inner join mastercoa_v2 c on c.no_coa = b.no_coa GROUP BY b.no_coa,a.ref_number) a left join (select no_ref, coa, sum(amount) total_alk from tbl_alokasi_detail GROUP BY no_ref, coa) b on b.no_ref = a.ref_number and b.coa = a.no_coa
+//      union
+//      SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, a.total, a.curr, a.eqp_idr, a.amount, b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa FROM tbl_alokasi_temp a INNER JOIN saldoawal_ar b on b.no_invoice = a.ref_number
+//      union                                                                    
+//      SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, b.total, a.curr, b.total eqp_idr, b.total amount,b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa
+//      FROM tbl_alokasi_temp a INNER JOIN
+//      jurnal_invoice_dpcbd b on b.no_inv = a.ref_number
+
+//      ");
+//     return $hasil->result_array();
+// }
+
 function load_invoice_detail_alo()
 {
-    $hasil = $this->db->query("SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, a.total, a.curr, a.eqp_idr, a.amount,b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa
-     FROM tbl_alokasi_temp a INNER JOIN
-     tbl_book_invoice b on b.no_invoice = a.ref_number
-     union                                                                    
-     SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, a.total, a.curr, a.eqp_idr, a.amount,b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa
-     FROM tbl_alokasi_temp a INNER JOIN
-     tbl_invoice_nb b on b.no_inv = a.ref_number
-     union                                                                    
-     select ref_number, ref_date, due_date, (total- COALESCE(total_alk,0)) total, curr, (eqp_idr - COALESCE(total_alk,0)) eqv_idr, round(amount / jumlah_baris,2) amount, no_coa, nama_coa, a.coa from (SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, sum(b.amount) total, a.curr, sum(b.amount) eqp_idr, a.amount,b.no_coa,c.nama_coa,concat(c.no_coa,' ',c.nama_coa) as coa, COUNT(*) OVER(PARTITION BY a.ref_number) AS jumlah_baris FROM tbl_alokasi_temp a INNER JOIN tbl_debitnote_det b on b.no_dn = a.ref_number inner join mastercoa_v2 c on c.no_coa = b.no_coa GROUP BY b.no_coa,a.ref_number) a left join (select no_ref, coa, sum(amount) total_alk from tbl_alokasi_detail GROUP BY no_ref, coa) b on b.no_ref = a.ref_number and b.coa = a.no_coa
-     union
-     SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, a.total, a.curr, a.eqp_idr, a.amount, b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa FROM tbl_alokasi_temp a INNER JOIN saldoawal_ar b on b.no_invoice = a.ref_number
-     union                                                                    
-     SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, b.total, a.curr, b.total eqp_idr, b.total amount,b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa
-     FROM tbl_alokasi_temp a INNER JOIN
-     jurnal_invoice_dpcbd b on b.no_inv = a.ref_number
+    $hasil = $this->db->query("SELECT a.ref_number, 
+     DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, 
+     IF(a.due_date = '0000-00-00', '-', DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, 
+     a.total, a.curr, a.eqp_idr, a.amount,
+     b.no_coa, b.nama_coa, CONCAT(b.no_coa, ' ', b.nama_coa) AS coa, b.profit_center
+     FROM tbl_alokasi_temp a 
+     INNER JOIN tbl_book_invoice b ON b.no_invoice = a.ref_number
+
+     UNION
+
+     SELECT a.ref_number, 
+     DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, 
+     IF(a.due_date = '0000-00-00', '-', DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, 
+     a.total, a.curr, a.eqp_idr, a.amount,
+     b.no_coa, b.nama_coa, CONCAT(b.no_coa, ' ', b.nama_coa) AS coa, 'NAG' profit_center
+     FROM tbl_alokasi_temp a 
+     INNER JOIN tbl_invoice_nb b ON b.no_inv = a.ref_number
+
+     UNION
+
+     SELECT 
+     x.ref_number, x.ref_date, x.due_date,
+     (x.total - COALESCE(y.total_alk, 0)) AS total,
+     x.curr,
+     (x.eqp_idr - COALESCE(y.total_alk, 0)) AS eqv_idr,
+     ROUND(x.amount / x.jumlah_baris, 2) AS amount,
+     x.no_coa, x.nama_coa, x.coa, x.profit_center
+     FROM (
+        SELECT a.ref_number, 
+        DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, 
+        IF(a.due_date = '0000-00-00', '-', DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date,
+        SUM(b.amount) AS total, 
+        a.curr,
+        SUM(b.amount) AS eqp_idr,
+        a.amount,
+        b.no_coa,
+        c.nama_coa,
+        CONCAT(c.no_coa, ' ', c.nama_coa) AS coa,
+        (
+         SELECT COUNT(*) 
+         FROM tbl_debitnote_det z 
+         WHERE z.no_dn = a.ref_number
+         ) AS jumlah_baris, COALESCE(d.profit_center,'NAG') profit_center
+        FROM tbl_alokasi_temp a
+        INNER JOIN tbl_debitnote_det b ON b.no_dn = a.ref_number
+                INNER JOIN tbl_debitnote_h d ON d.no_dn = a.ref_number
+        INNER JOIN mastercoa_v2 c ON c.no_coa = b.no_coa
+        GROUP BY a.ref_number, b.no_coa
+    ) x
+     LEFT JOIN (
+        SELECT no_ref, coa, SUM(amount) AS total_alk 
+        FROM tbl_alokasi_detail 
+        GROUP BY no_ref, coa
+    ) y ON y.no_ref = x.ref_number AND y.coa = x.no_coa
+
+     UNION
+
+     SELECT a.ref_number, 
+     DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, 
+     IF(a.due_date = '0000-00-00', '-', DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, 
+     a.total, a.curr, a.eqp_idr, a.amount,
+     b.no_coa, b.nama_coa, CONCAT(b.no_coa, ' ', b.nama_coa) AS coa, 'NAG' profit_center
+     FROM tbl_alokasi_temp a 
+     INNER JOIN saldoawal_ar b ON b.no_invoice = a.ref_number
+
+     UNION
+
+     SELECT a.ref_number, 
+     DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, 
+     IF(a.due_date = '0000-00-00', '-', DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, 
+     b.total, a.curr, b.total AS eqp_idr, b.total AS amount,
+     b.no_coa, b.nama_coa, CONCAT(b.no_coa, ' ', b.nama_coa) AS coa, 'NAG' profit_center
+     FROM tbl_alokasi_temp a 
+     INNER JOIN jurnal_invoice_dpcbd b ON b.no_inv = a.ref_number;
+
 
      ");
     return $hasil->result_array();

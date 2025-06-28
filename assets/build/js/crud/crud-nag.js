@@ -1496,7 +1496,10 @@ function at_debit_inv() {
 		"approve_by":'',	
 		"approve_date": '',					
 		"cancel_by":'',
-		"cancel_date": '', 									
+		"cancel_date": '',
+		"created_at":'',
+		"updated_at": '', 
+		"profit_center": $('#profit_ctr_h').val(),									
 
 	})		
 
@@ -1581,7 +1584,10 @@ function at_pot_inv() {
 		"approve_by":'',	
 		"approve_date": '',					
 		"cancel_by":'',
-		"cancel_date": '', 									
+		"cancel_date": '', 	
+		"created_at":'',
+		"updated_at": '', 
+		"profit_center": $('#profit_ctr_h').val(),								
 
 	})		
 
@@ -1667,7 +1673,10 @@ function at_dp_inv() {
 		"approve_by":'',	
 		"approve_date": '',					
 		"cancel_by":'',
-		"cancel_date": '', 									
+		"cancel_date": '', 	
+		"created_at":'',
+		"updated_at": '', 
+		"profit_center": $('#profit_ctr_h').val(),								
 
 	})		
 
@@ -1752,7 +1761,10 @@ function at_credit_inv() {
 		"approve_by":'',	
 		"approve_date": '',					
 		"cancel_by":'',
-		"cancel_date": '', 									
+		"cancel_date": '', 	
+		"created_at":'',
+		"updated_at": '', 
+		"profit_center": $('#profit_ctr_h').val(),								
 
 	})		
 
@@ -1838,7 +1850,10 @@ function at_ppn_inv() {
 		"approve_by":'',	
 		"approve_date": '',					
 		"cancel_by":'',
-		"cancel_date": '', 									
+		"cancel_date": '', 	
+		"created_at":'',
+		"updated_at": '', 
+		"profit_center": $('#profit_ctr_h').val(),								
 
 	})		
 
@@ -8793,7 +8808,7 @@ function duplicate_data_alo(){
  				data: fdata,
  				dataType: "JSON",
  				success: function (data) {
-
+ 					console.log(data);
 					if (data.status) //if success close modal and reload ajax table
 					{
 						msg = 'Success Input Detail'
@@ -8844,6 +8859,7 @@ function load_invoice_detail_alo(){
 				trHTML += '<td><input type="text" value="'+ item.eqp_idr +'" class="form-control" id="stylein" name="stylein" style="width: 180px; text-align: center;"  autocomplete="off" readonly></td>';
 				trHTML += '<td><input type="text" value="'+ item.amount +'" class="form-control" id="stylein" name="stylein" style="width: 180px; text-align: center;" oninput="modal_input_amt(value)" autocomplete="off"></td>';										    					
 				trHTML += '<td ><input type="text" class="form-control" style="width: 300px;text-align: center;" id="desc" name="desc"  autocomplete="off"></td>';
+				trHTML += '<td><input type="text" value="'+ item.profit_center +'" class="form-control" id="profit_center" name="profit_center" style="width: 100px; text-align: center;"  autocomplete="off" readonly></td>';										    					
 						// trHTML += '<td><input type="text" value="'+ item.nama_coa +'" class="form-control" id="stylein" name="stylein" style="width: 180px; text-align: center;"  autocomplete="off" readonly></td>';											
 						trHTML += '</tr>';
 
@@ -9011,6 +9027,7 @@ function at_credit_alokasi()
 				var amount = document.getElementById("table-sj").rows[i].cells[7].children[0].value;
 				var amount2 = amount * -1;
 				var keterangan2 = document.getElementById("table-sj").rows[i].cells[8].children[0].value;
+				var profit_center = document.getElementById("table-sj").rows[i].cells[9].children[0].value;
 				var status      = "POST";
 
 				if(amount >= 1){
@@ -9065,7 +9082,10 @@ function at_credit_alokasi()
 						"approve_by":'',	
 						"approve_date": '',					
 						"cancel_by":'',
-						"cancel_date": '', 									
+						"cancel_date": '', 	
+						"created_at":'',
+						"updated_at": '', 
+						"profit_center": profit_center,									
 
 					})	
 				}else{
@@ -9094,7 +9114,10 @@ function at_credit_alokasi()
 						"approve_by":'',	
 						"approve_date": '',					
 						"cancel_by":'',
-						"cancel_date": '', 									
+						"cancel_date": '',
+						"created_at":'',
+						"updated_at": '', 
+						"profit_center": profit_center,									
 
 					})	
 				}	
@@ -9132,7 +9155,7 @@ function at_credit_alokasi()
 			});
 
 		}, 100);
-	});  
+});  
 
 }
 

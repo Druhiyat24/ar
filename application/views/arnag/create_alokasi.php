@@ -172,6 +172,7 @@
                                         <th>Equivalent IDR</th>
                                         <th>Amount</th>
                                         <th>descriptions</th>
+                                        <th>Profit Center</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -424,7 +425,7 @@
                                     <option value="PPh 23">dsb..</option>
                                 </select>
                             </div> -->
-                            <div class="col-md-4">
+                            <div class="col-md-4 mt-2">
 
                             </br>
                                 <button type="button" id="find_so" name="find_so" class="btn btn-info" href="javascript:void(0)" onclick="cari_data_invoic()"><i class="fa fa-search"></i> Search</button>

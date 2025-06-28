@@ -2050,6 +2050,7 @@ public function createinvoice_manual()
         $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
         $data['customer'] = $this->Model_nag->cari_customer();
         $data['cost_center'] = $this->Model_nag->cari_cost();
+        $data['profit_center'] = $this->Model_nag->cari_profit_center();
         $data['coa'] = $this->Model_nag->cari_coa();
         $data['kode_alokasi'] = $this->Model_nag->get_kode_alokasi();
         $data['kode_kwt'] = $this->Model_nag->get_kode_kwt();
