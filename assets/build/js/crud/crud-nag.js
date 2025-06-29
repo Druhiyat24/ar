@@ -8849,6 +8849,12 @@ function load_invoice_detail_alo(){
 		success: function (response) {
 			var trHTML = '';
 			$.each(response, function (i, item) {
+				let displayLabel = '';
+				if (item.profit_center === 'NAG') {
+					displayLabel = 'NIRWANA ALABARE GARMENT';
+				} else if (item.profit_center === 'NAK') {
+					displayLabel = 'NIRWANA ANUGERAH KONVEKSI';
+				}
 				trHTML += '<tr>';		
 				trHTML += '<td width = "300px"><input type="hidden" value="'+ item.no_coa +'" class="form-control" id="stylein" name="stylein" style="width: 300px;" autocomplete="off" readonly>'+item.coa+'</td>';		
 				trHTML += '<td style="width: 300px;"><input type="text" value="-" class="form-control" style="width: 250px;"  autocomplete="off" readonly></td>';
@@ -8859,11 +8865,13 @@ function load_invoice_detail_alo(){
 				trHTML += '<td><input type="text" value="'+ item.eqp_idr +'" class="form-control" id="stylein" name="stylein" style="width: 180px; text-align: center;"  autocomplete="off" readonly></td>';
 				trHTML += '<td><input type="text" value="'+ item.amount +'" class="form-control" id="stylein" name="stylein" style="width: 180px; text-align: center;" oninput="modal_input_amt(value)" autocomplete="off"></td>';										    					
 				trHTML += '<td ><input type="text" class="form-control" style="width: 300px;text-align: center;" id="desc" name="desc"  autocomplete="off"></td>';
-				trHTML += '<td><input type="text" value="'+ item.profit_center +'" class="form-control" id="profit_center" name="profit_center" style="width: 100px; text-align: center;"  autocomplete="off" readonly></td>';										    					
-						// trHTML += '<td><input type="text" value="'+ item.nama_coa +'" class="form-control" id="stylein" name="stylein" style="width: 180px; text-align: center;"  autocomplete="off" readonly></td>';											
-						trHTML += '</tr>';
+				trHTML += '<td>' +
+				'<input type="hidden" value="' + item.profit_center + '" name="profit_center">' +
+				'<input type="text" value="' + displayLabel + '" class="form-control" style="width: 300px; text-align: center;" readonly>' +
+'</td>';						// trHTML += '<td><input type="text" value="'+ item.nama_coa +'" class="form-control" id="stylein" name="stylein" style="width: 180px; text-align: center;"  autocomplete="off" readonly></td>';											
+trHTML += '</tr>';
 
-					});
+});
 			$('#table-sj').append(trHTML);
                         //Grand Total SO Proforma
 						// sum_grandtotal_proforma(); 

@@ -23,15 +23,15 @@
                         </div>
                         <div class="card-body">
                             <!-- Start Input -->
-                             <div class="form-group col-md-12">
-                                            <label>Alokasi Number</label>
-                                            <input type="text" class="form-control" id="alk_number" name="alk_number" value="<?= $kode_alokasi; ?>" required readonly>
-                                        </div>
+                            <div class="form-group col-md-12">
+                                <label>Alokasi Number</label>
+                                <input type="text" class="form-control" id="alk_number" name="alk_number" value="<?= $kode_alokasi; ?>" required readonly>
+                            </div>
                             <div class="form-group col-md-12">
                                 <label>Date</label>
                                 <div class="input-group mb-3">
-                                            <input type="text" name="alo_date" id="alo_date" class="form-control" value="<?php echo date("Y-m-d"); ?>" onchange="ubahnomor_alo(this.value)" autocomplete='off' readonly>
-                                            <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                    <input type="text" name="alo_date" id="alo_date" class="form-control" value="<?php echo date("Y-m-d"); ?>" onchange="ubahnomor_alo(this.value)" autocomplete='off' readonly>
+                                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                 </div>
                             </div>
                             <!-- Hidden Element -->
@@ -49,10 +49,10 @@
                             </div>
                             <!-- /. Hidden Element -->
                             <div class="form-group col-md-12">
-                                            <label>Customer</label>
-                                        <input type="text" class="form-control" id="cust" name="cust" readonly required>
-                                        <input type="hidden" class="form-control" id="customer" name="customer" readonly required>
-                                        </div>
+                                <label>Customer</label>
+                                <input type="text" class="form-control" id="cust" name="cust" readonly required>
+                                <input type="hidden" class="form-control" id="customer" name="customer" readonly required>
+                            </div>
                             <!-- TOP -->
 
                             <!-- END TOP -->
@@ -62,7 +62,7 @@
                                     <input type="text" class="form-control" id="doc_number" name="doc_number" readonly required>
                                     <span class="input-group-append">
                                         <button id="inv_number2" name="inv_number2" type="button" class="btn btn-info btn-flat" data-toggle="modal" data-target="#modal-add-no-bi">Add Incoming Bank</button>
-<!--                                         onclick="clear_component()" -->
+                                        <!--                                         onclick="clear_component()" -->
                                     </span>
                                 </div>
                             </div>
@@ -90,8 +90,8 @@
                         <div class="card-body">
                             <!-- Start Input -->
                             <div class="form-group col-md-12">
-                                 <label>Currency</label>
-                                 <div class="input-group mb-3">
+                               <label>Currency</label>
+                               <div class="input-group mb-3">
                                      <!-- <span class="input-group-append">
                                          <button id="cr_idr" name="cr_idr" type="button" class="btn btn-success btn-flat" ><i class="fa fa-money" aria-hidden="true"></i> Rp</button>
                                          <button id="cr_usd" name="cr_usd" type="button" class="btn btn-info btn-flat" ><i class="fa fa-usd" aria-hidden="true"></i> $ </button>
@@ -101,40 +101,40 @@
                              </div>
 
                              <div class="form-group col-md-12">
-                                            <label>Payment With</label>
-                                           <!--  <select class="form-control select2bs4" id="pay_type" name="pay_type" onchange="gantitype(this.value)"> -->
-                                            <select class="form-control select2bs4" id="pay_type" name="pay_type" >
-                                                <option value="IDR">IDR</option>
-                                                <option value="USD">USD</option>
-                                            </select>
-                                        </div>
-
-                            <div class="form-group col-md-12">
-                                <label>Rate</label>
-                                <div class="input-group mb-3">
-                                <input type="text" class="form-control" id="rate" name="rate" placeholder="0.00" onkeypress="javascript:return isNumber(event)" oninput="input_rate(value)" autocomplete="off" readonly>
-                                <input type="text" class="form-control" id="pl_rate" name="pl_rate" placeholder="0.00" autocomplete='off' readonly>
+                                <label>Payment With</label>
+                                <!--  <select class="form-control select2bs4" id="pay_type" name="pay_type" onchange="gantitype(this.value)"> -->
+                                    <select class="form-control select2bs4" id="pay_type" name="pay_type" >
+                                        <option value="IDR">IDR</option>
+                                        <option value="USD">USD</option>
+                                    </select>
                                 </div>
-                                <input type="hidden" class="form-control" id="rate_h" name="rate_h" placeholder="0.00" autocomplete='off' required>
-                            </div>
-                            <div class="form-group col-md-12">
-                                <label>Amount</label>
-                                <div class="input-group mb-3">
-                                <input type="hidden" class="form-control" id="am_awal" name="am_awal" placeholder="0.00" onkeypress="javascript:return isNumber(event)" oninput="input_awal(value)" autocomplete="off">
-                                <input type="text" class="form-control" id="pl_awal" name="pl_awal" placeholder="0.00" autocomplete='off' readonly>
-                            </div>
-                            </div>
-                            <div class="form-group col-md-12">
-                                <label>Equivalent IDR</label>
-                                <input type="text" class="form-control" id="am_akhir" name="am_akhir" placeholder="0.00" readonly autocomplete='off' required>
-                                 <input type="hidden" class="form-control" id="pl_akhir" name="pl_akhir" placeholder="0.00" autocomplete='off' required>
-                            </div>
-                            <!-- BANK -->
-                            <div class="form-group col-md-12">
-                                <label>Add Data</label>
-                                <div class="input-group mb-3">
-                                  <!--   <input type="text" class="form-control" id="so_number1" name="so_number1" readonly required> -->
-                                    <span class="input-group-append">
+
+                                <div class="form-group col-md-12">
+                                    <label>Rate</label>
+                                    <div class="input-group mb-3">
+                                        <input type="text" class="form-control" id="rate" name="rate" placeholder="0.00" onkeypress="javascript:return isNumber(event)" oninput="input_rate(value)" autocomplete="off" readonly>
+                                        <input type="text" class="form-control" id="pl_rate" name="pl_rate" placeholder="0.00" autocomplete='off' readonly>
+                                    </div>
+                                    <input type="hidden" class="form-control" id="rate_h" name="rate_h" placeholder="0.00" autocomplete='off' required>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <label>Amount</label>
+                                    <div class="input-group mb-3">
+                                        <input type="hidden" class="form-control" id="am_awal" name="am_awal" placeholder="0.00" onkeypress="javascript:return isNumber(event)" oninput="input_awal(value)" autocomplete="off">
+                                        <input type="text" class="form-control" id="pl_awal" name="pl_awal" placeholder="0.00" autocomplete='off' readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <label>Equivalent IDR</label>
+                                    <input type="text" class="form-control" id="am_akhir" name="am_akhir" placeholder="0.00" readonly autocomplete='off' required>
+                                    <input type="hidden" class="form-control" id="pl_akhir" name="pl_akhir" placeholder="0.00" autocomplete='off' required>
+                                </div>
+                                <!-- BANK -->
+                                <div class="form-group col-md-12">
+                                    <label>Add Data</label>
+                                    <div class="input-group mb-3">
+                                      <!--   <input type="text" class="form-control" id="so_number1" name="so_number1" readonly required> -->
+                                      <span class="input-group-append">
                                         <button id="so_number2" name="so_number2" type="button" class="btn btn-info btn-flat" data-toggle="modal" data-target="#modal-add-so" href="javascript:void(0)" onclick="add_id_()">Add Data</button>
                                     </span>
                                 </div>
@@ -154,10 +154,10 @@
                             <h3 class="card-title">Detail</h3>
                         </div>
                         <div class="input-group-append col">
-                        <input  style="margin-right: 15px;border: 0; line-height: 1; padding: 10px 20px; font-size: 1rem; text-align: center; color: #fff; text-shadow: 1px 1px 1px #000; border-radius: 6px; background-color: rgb(30, 144, 255);" id="add" type="button" value="(+) Add"> 
+                            <input  style="margin-right: 15px;border: 0; line-height: 1; padding: 10px 20px; font-size: 1rem; text-align: center; color: #fff; text-shadow: 1px 1px 1px #000; border-radius: 6px; background-color: rgb(30, 144, 255);" id="add" type="button" value="(+) Add"> 
 
-                        <input style="border: 0; line-height: 1; padding: 10px 20px; font-size: 1rem; text-align: center; color: #fff; text-shadow: 1px 1px 1px #000; border-radius: 6px; background-color: rgb(139, 5, 0);" id="delete" type="button" value="(-) Delete">
-                    </div>
+                            <input style="border: 0; line-height: 1; padding: 10px 20px; font-size: 1rem; text-align: center; color: #fff; text-shadow: 1px 1px 1px #000; border-radius: 6px; background-color: rgb(139, 5, 0);" id="delete" type="button" value="(-) Delete">
+                        </div>
                         <!-- /.card-header -->
                         <div class="card-body table-responsive p-0" style="height: 300px;">
                             <table id="table-sj" class="table table-head-fixed text-nowrap table-striped table-bordered">
@@ -187,34 +187,34 @@
                                             <td><input  type="text" class="form-control" id="discount" name="discount" style="text-align:left; width: 150px;" ></td> 
                                             <td><input  type="text" class="form-control" id="discount" name="discount" style="text-align:left; width: 250px;" ></td> 
                                         </tr> -->
-                                </tbody>
-                            </table>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- /.card-body -->
                         </div>
-                        <!-- /.card-body -->
+                        <!-- /.card -->
                     </div>
-                    <!-- /.card -->
                 </div>
-            </div>
-            <!-- End Data Table Create Invoice -->
-            <!--  -->
-            <div class="row" style="display: flex; justify-content: flex-end">
-                <!--/.col (right) -->
-                <div class="col-md-6">
-                    <!-- Form Element sizes -->
-                    <div class="card card-success">
-                        <div class="card-body">
-                            <!-- Start Input -->
-                            <form class="form-horizontal">
-                                <div class="card-body">
-                                    <div class="form-group row">
-                                        <label for="total_h" class="col-sm-4 col-form-label">Outstanding Amount Alokasi</label>
-                                        <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="out_alok" name="out_alok" style="text-align:right;" placeholder="0.00" autocomplete="off" readonly>
-                                            <input type="hidden" class="form-control" id="out_alok_h" name="out_alok_h" style="text-align:right;" placeholder="0.00">
+                <!-- End Data Table Create Invoice -->
+                <!--  -->
+                <div class="row" style="display: flex; justify-content: flex-end">
+                    <!--/.col (right) -->
+                    <div class="col-md-6">
+                        <!-- Form Element sizes -->
+                        <div class="card card-success">
+                            <div class="card-body">
+                                <!-- Start Input -->
+                                <form class="form-horizontal">
+                                    <div class="card-body">
+                                        <div class="form-group row">
+                                            <label for="total_h" class="col-sm-4 col-form-label">Outstanding Amount Alokasi</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control" id="out_alok" name="out_alok" style="text-align:right;" placeholder="0.00" autocomplete="off" readonly>
+                                                <input type="hidden" class="form-control" id="out_alok_h" name="out_alok_h" style="text-align:right;" placeholder="0.00">
 
-                                            <input type="hidden" class="form-control" id="total_alokasi" name="total_alokasi" style="text-align:right;" autocomplete="off" readonly>
+                                                <input type="hidden" class="form-control" id="total_alokasi" name="total_alokasi" style="text-align:right;" autocomplete="off" readonly>
+                                            </div>
                                         </div>
-                                    </div>
                                     <!-- <div class="form-group row">
                                         <label for="discount" class="col-sm-4 col-form-label">Discount</label>
                                         <div class="col-sm-8">
@@ -293,25 +293,25 @@
                     <!-- /.card-header -->
                     <div class="card-body table-responsive p-0" style="height: 400px;">
                         <div class="d-flex justify-content-between">
-                           <div class="ml-auto">
-                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                            </div>
-                                <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Incoming Bank.." onkeyup="cari_noinvoice()">
-                             </div>
-                        <table id="table-add-bi" class="table table-head-fixed text-nowrap">
-                            <thead>
-                                <tr>
-                                    <th style="width: 10px">Action</th>
-                                    <th>No incoming Bank</th>
-                                    <th>Customer</th>
-                                    <th>Date</th>
-                                    <th>id_bank</th>
-                                    <th>Bank</th>
-                                    <th>Account</th>
-                                    <th>Currency</th>
-                                    <th>Amount</th>
-                                    <th>Rate</th>
-                                    <th>Equivalent IDR</th>
+                         <div class="ml-auto">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        </div>
+                        <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Incoming Bank.." onkeyup="cari_noinvoice()">
+                    </div>
+                    <table id="table-add-bi" class="table table-head-fixed text-nowrap">
+                        <thead>
+                            <tr>
+                                <th style="width: 10px">Action</th>
+                                <th>No incoming Bank</th>
+                                <th>Customer</th>
+                                <th>Date</th>
+                                <th>id_bank</th>
+                                <th>Bank</th>
+                                <th>Account</th>
+                                <th>Currency</th>
+                                <th>Amount</th>
+                                <th>Rate</th>
+                                <th>Equivalent IDR</th>
                             </thead>
                             <tbody>
 
@@ -408,7 +408,7 @@
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <!-- <label>Date Range</label> -->
-                                        <label>Date Range</label>
+                                    <label>Date Range</label>
                                     <div class="input-group">
                                         <div class="input-group-prepend">
                                             <span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
@@ -428,16 +428,16 @@
                             <div class="col-md-4 mt-2">
 
                             </br>
-                                <button type="button" id="find_so" name="find_so" class="btn btn-info" href="javascript:void(0)" onclick="cari_data_invoic()"><i class="fa fa-search"></i> Search</button>
-                            </div>
+                            <button type="button" id="find_so" name="find_so" class="btn btn-info" href="javascript:void(0)" onclick="cari_data_invoic()"><i class="fa fa-search"></i> Search</button>
                         </div>
-                        <div class="col-md-2">
-                            <input type="hidden" class="form-control float-right" id="id_custm" name="id_custm" readonly>
-                        </div>
-                        <!-- End Date Range -->
                     </div>
-                    <!-- /.card-header -->
-                    <!-- Detail SO -->
+                    <div class="col-md-2">
+                        <input type="hidden" class="form-control float-right" id="id_custm" name="id_custm" readonly>
+                    </div>
+                    <!-- End Date Range -->
+                </div>
+                <!-- /.card-header -->
+                <!-- Detail SO -->
                        <!--  <div class="d-flex justify-content-between">
                            <div class="ml-auto">
                                         <span class="input-group-text"><i class="fas fa-search"></i></span>
@@ -474,29 +474,29 @@
                             </div>
                             </div>
                         </div> -->
-                <!-- Detail SJ -->
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">Data</h3>
-                            </div>
-                            <!-- /.card-header -->
+                        <!-- Detail SJ -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3 class="card-title">Data</h3>
+                                    </div>
+                                    <!-- /.card-header -->
                            <!--      <div class="d-flex justify-content-between">
                            <div class="ml-auto">
                                         <span class="input-group-text"><i class="fas fa-search"></i></span>
                             </div>
                                 <input type="text"  id="cariinvo" name="cariinvo" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cariinvo()">
-                             </div> -->
+                            </div> -->
 
-                              <div class="d-flex justify-content-between">
-                           <div class="ml-auto">
-                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <div class="d-flex justify-content-between">
+                             <div class="ml-auto">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
                             </div>
-                                <input type="text"  id="carinoinv" name="carinoinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_inv_alok()">
-                             </div>
-                            <div class="card-body table-responsive p-0" style="height: 300px;">
-                                <table id="table-inv-alok" class="table table-head-fixed text-nowrap">
+                            <input type="text"  id="carinoinv" name="carinoinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_inv_alok()">
+                        </div>
+                        <div class="card-body table-responsive p-0" style="height: 300px;">
+                            <table id="table-inv-alok" class="table table-head-fixed text-nowrap">
                                 <thead>
                                     <tr>
                                         <th>Reference Number</th>
@@ -509,48 +509,48 @@
                                         <th>Cek</th>
                                     </tr>
                                 </thead>
-                                    <tbody>
+                                <tbody>
 
-                                    </tbody>
-                                </table>
-                            </div>
-                            <!-- /.card-body -->
+                                </tbody>
+                            </table>
                         </div>
-                        <!-- /.card -->
+                        <!-- /.card-body -->
                     </div>
+                    <!-- /.card -->
                 </div>
-                <!-- Potongan Invoice -->
-                <div class="row" style="display: flex; justify-content: flex-end">
-                    <div class="col-md-6">
-                        <!-- Form Element sizes -->
-                        <div class="card card-success">
-                            <div class="card-body">
-                                <!-- Start Input -->
-                                <form class="form-horizontal">
-                                    <div class="card-body">
-                                        <div class="form-group row">
-                                            <label for="mdl_total" class="col-sm-4 col-form-label">Amount Alokasi</label>
-                                            <div class="col-sm-8">
-                                                <input type="hidden" class="form-control" id="val_alo" name="val_alo" style="text-align:right;" placeholder="0.00">
-                                                <input type="text" class="form-control" id="val_alo1" name="val_alo1" style="text-align:right;" placeholder="0.00" readonly>
-                                            </div>
+            </div>
+            <!-- Potongan Invoice -->
+            <div class="row" style="display: flex; justify-content: flex-end">
+                <div class="col-md-6">
+                    <!-- Form Element sizes -->
+                    <div class="card card-success">
+                        <div class="card-body">
+                            <!-- Start Input -->
+                            <form class="form-horizontal">
+                                <div class="card-body">
+                                    <div class="form-group row">
+                                        <label for="mdl_total" class="col-sm-4 col-form-label">Amount Alokasi</label>
+                                        <div class="col-sm-8">
+                                            <input type="hidden" class="form-control" id="val_alo" name="val_alo" style="text-align:right;" placeholder="0.00">
+                                            <input type="text" class="form-control" id="val_alo1" name="val_alo1" style="text-align:right;" placeholder="0.00" readonly>
                                         </div>
+                                    </div>
 
-                                        <div class="form-group row">
-                                            <label for="mdl_total" class="col-sm-4 col-form-label">Outstanding Amount</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" id="ost_alo" name="ost_alo" style="text-align:right;" placeholder="0.00" readonly>
-                                                <!-- <input type="text" class="form-control" id="val_alo1" name="val_alo1" style="text-align:right;" placeholder="0.00" readonly> -->
-                                            </div>
+                                    <div class="form-group row">
+                                        <label for="mdl_total" class="col-sm-4 col-form-label">Outstanding Amount</label>
+                                        <div class="col-sm-8">
+                                            <input type="text" class="form-control" id="ost_alo" name="ost_alo" style="text-align:right;" placeholder="0.00" readonly>
+                                            <!-- <input type="text" class="form-control" id="val_alo1" name="val_alo1" style="text-align:right;" placeholder="0.00" readonly> -->
                                         </div>
+                                    </div>
 
-                                        <div class="form-group row">
-                                            <label for="mdl_total" class="col-sm-4 col-form-label">Total</label>
-                                            <div class="col-sm-8">
-                                                <input type="hidden" class="form-control" id="val_kwt" name="val_kwt" style="text-align:right;" placeholder="0.00">
-                                                <input type="text" class="form-control" id="val_kwt1" name="val_kwt1" style="text-align:right;" placeholder="0.00" readonly>
-                                            </div>
+                                    <div class="form-group row">
+                                        <label for="mdl_total" class="col-sm-4 col-form-label">Total</label>
+                                        <div class="col-sm-8">
+                                            <input type="hidden" class="form-control" id="val_kwt" name="val_kwt" style="text-align:right;" placeholder="0.00">
+                                            <input type="text" class="form-control" id="val_kwt1" name="val_kwt1" style="text-align:right;" placeholder="0.00" readonly>
                                         </div>
+                                    </div>
                                         <!-- <div class="form-group row">
                                             <label for="mdl_discount" class="col-sm-4 col-form-label">Discount</label>
                                             <div class="col-sm-8">
@@ -747,7 +747,7 @@
     }
 </script>
 
-    <script>
+<script>
     function cari_noinvoice() {
         // Declare variables
         var input, filter, table, tr, td, i, txtValue;
@@ -771,7 +771,7 @@
     }
 </script>
 
-    <script>
+<script>
     function cari_shipp_num() {
         // Declare variables
         var input, filter, table, tr, td, i, txtValue;
