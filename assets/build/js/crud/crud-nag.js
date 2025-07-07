@@ -8853,7 +8853,7 @@ function load_invoice_detail_alo(){
 				if (item.profit_center === 'NAG') {
 					displayLabel = 'NIRWANA ALABARE GARMENT';
 				} else if (item.profit_center === 'NAK') {
-					displayLabel = 'NIRWANA ANUGERAH KONVEKSI';
+					displayLabel = 'NIRWANA ALABARE KNITTING';
 				}
 				trHTML += '<tr>';		
 				trHTML += '<td width = "300px"><input type="hidden" value="'+ item.no_coa +'" class="form-control" id="stylein" name="stylein" style="width: 300px;" autocomplete="off" readonly>'+item.coa+'</td>';		
