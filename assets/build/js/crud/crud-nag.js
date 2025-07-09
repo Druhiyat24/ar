@@ -299,31 +299,6 @@ function getType(id, shipp, status) {
 	});
 }
 
-	//Before Filter Shipp Local
-	//
-	// $('.form-group').removeClass('has-error'); // clear error class
-	// $('.help-block').empty(); // clear error string
-	
-	// //Ajax Load data from ajax
-	// $.ajax({
-	// 	url: "getType/" + id,
-	// 	type: "GET",
-	// 	dataType: "JSON",
-	// 	success: function (data) {
-
-	// 		$('[name="id_book_inv"]').val(data.id);	
-	// 		$('[name="peb_mdl"]').val(data.peb);	
-	// 		$('[name="type_mdl"]').val(data.id_type);
-	// 		$('[name="no_inv"]').val(data.no_invoice);
-	// 		//
-	// 		$('#modal-update').modal('show'); // show bootstrap modal when complete loaded
-
-	// 	},
-	// 	error: function (jqXHR, textStatus, errorThrown) {
-	// 		alert('Error get data from ajax');
-	// 	}
-	// });
-	
 }
 
 function loadbookinvoice(){
@@ -2204,10 +2179,11 @@ function cari_invoice() {
 						trHTML += '<td>' + item.type + "</td>";	
 						trHTML += '<td>' + item.status + "</td>";
 						trHTML += '<td align="right">' + item.amount + "</td>";
-						trHTML += '<td><button id="inv_detail" name="inv_detail" type="button" class="btn btn-info btn-sm" onclick="cari_inv_detail(' + item.id + ')" >Cek Detail</button> ' + '' 
-						+ ' <button id="print_inv" name="print_inv" type="button" class="btn btn-primary btn-sm" onclick="print_invoice(' + item.id + ')"><i class="fa fa-print"></i> Print</button> ' + ''
+						trHTML += '<td><button id="inv_detail" name="inv_detail" type="button" class="btn btn-info btn-sm" onclick="cari_inv_detail(' + item.id + ')" ><i class="fas fa-eye"></i> Detail</button> ' + '' 
+						+ ' <button type="button" class="btn btn-sm btn-warning swalDefaultError" href="javascript:void(0)" onclick="UpdateInvoice(\'' + item.id + '\', \'' + item.status + '\')"><i class="fas fa-edit"></i> Update</button>' + ' '
+						+ '<button id="print_inv" name="print_inv" type="button" class="btn btn-primary btn-sm" onclick="print_invoice(' + item.id + ')"><i class="fa fa-print"></i> Print</button> ' + ''
 						+ '<button id="export_to_excel_invoice" name="export_to_excel_invoice" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_invoice(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button> ' + ''				
-						+ ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="cancel_invoice(\'' + item.id + '\',\'' + item.no_invoice + '\',\'' + item.status + '\')">Cancel</button></td> </td>';
+						+ ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="cancel_invoice(\'' + item.id + '\',\'' + item.no_invoice + '\',\'' + item.status + '\')"><i class="fas fa-trash-alt"></i> Cancel</button></td> </td>';
 
 						trHTML += '</tr>';
 					}else{
@@ -2222,7 +2198,7 @@ function cari_invoice() {
 						trHTML += '<td>' + item.type + "</td>";	
 						trHTML += '<td>' + item.status + "</td>";
 						trHTML += '<td align="right">' + item.amount + "</td>";
-						trHTML += '<td><button id="inv_detail" name="inv_detail" type="button" class="btn btn-info btn-sm" onclick="cari_inv_detail(' + item.id + ')" >Cek Detail</button> ' + '' 
+						trHTML += '<td><button id="inv_detail" name="inv_detail" type="button" class="btn btn-info btn-sm" onclick="cari_inv_detail(' + item.id + ')" ><i class="fas fa-eye"></i> Detail</button> ' + '' 
 						+ ' <button id="print_inv" name="print_inv" type="button" class="btn btn-primary btn-sm" onclick="print_invoice(' + item.id + ')"><i class="fa fa-print"></i> Print</button> ' + ''
 						+ '<button id="export_to_excel_invoice" name="export_to_excel_invoice" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_invoice(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button> </td>';
 
@@ -2240,118 +2216,192 @@ function cari_invoice() {
 
 	}
 
-	function cari_inv_detail(id_inv) { 
+	function UpdateInvoice(id, status) {
 
-		$('#table-inv-detail tbody tr').remove();		
-		$('#modal-inv-detail').modal('show');
-		$.ajax({		
-			url: "cari_inv_detail/" + id_inv + "/",					
-			type: "GET",
-			dataType: "JSON",
-			success: function (response) {
+		console.log(id);
+		if (status != "POST") { 
+			muncul_pesan();
+		} else {
+	//	
+	$('.form-group').removeClass('has-error'); // clear error class
+	$('.help-block').empty(); // clear error string
+	//Ajax Load data from ajax
+	$.ajax({
+		url: "getTopInvoice/" + id,
+		type: "GET",
+		dataType: "JSON",
+		success: function (response) {
+			console.log(response);
 
-				var trHTML = '';
-				$.each(response, function (i, item) { 			
-					trHTML += '<tr>';										
-					trHTML += '<td>' + item.so_number + "</td>";
-					trHTML += '<td>' + item.bppb_Number + "</td>";	
-					trHTML += '<td>' + item.shipp_number + "</td>";
-					trHTML += '<td>' + item.ws + "</td>";
-					trHTML += '<td>' + item.styleno + "</td>";
-					trHTML += '<td>' + item.product_group + "</td>";
-					trHTML += '<td>' + item.product_item + "</td>";
-					trHTML += '<td>' + item.color + "</td>";
-					trHTML += '<td>' + item.size + "</td>";
-					trHTML += '<td>' + item.curr + "</td>";
-					trHTML += '<td>' + item.uom + "</td>";
-					trHTML += '<td>' + item.qty + "</td>";
-					trHTML += '<td>' + item.unit_price + "</td>";	
-					trHTML += '<td>' + item.disc + "</td>";				
-					trHTML += '<td align="right">' + item.total_price + "</td>";				
-					trHTML += '</tr>';
+			var invoice = response.data;
+			var topList = response.top_options;
+
+			$('#id_book_inv').val(invoice.id);	
+    $('#no_inv').val(invoice.no_invoice); // ← pakai ID, bukan name
+
+    var $topSelect = $('#top_inv'); // ← pakai ID, bukan name
+    $topSelect.empty();
+    $topSelect.append('<option value="" disabled selected>Pilih TOP</option>');
+
+    topList.forEach(function (top) {
+    	var selected = (top.id == invoice.id_top) ? 'selected' : '';
+    	$topSelect.append('<option value="' + top.id + '" ' + selected + '>' + top.type + ' - ' + top.top + ' Days</option>');
+    });
+
+    $('#modal-update').modal('show');
+}
+,
+error: function (jqXHR, textStatus, errorThrown) {
+	alert('Error get data from ajax');
+}
+});
+}
+
+}
+
+
+function submitUpdateTOP() {
+	var id = $('#id_book_inv').val();
+	var top_id = $('#top_inv').val();
+
+	$.ajax({
+		url: 'update_top_invoice/',
+		method: 'POST',
+		data: {
+			id_book_inv: id,
+			top_inv: top_id
+		},
+		dataType: 'json',
+		success: function (response) {
+			if (response.status) {
+				$('#modal-update').modal('hide');
+
+                // refresh invoice list setelah update
+                cari_invoice(); // sesuaikan dengan fungsi kamu
+                cari_noinvoice();
+            } else {
+            	alert('Gagal update: ' + response.message);
+            }
+        },
+        error: function () {
+        	alert('Gagal menghubungi server');
+        }
+    });
+}
+
+
+function cari_inv_detail(id_inv) { 
+
+	$('#table-inv-detail tbody tr').remove();		
+	$('#modal-inv-detail').modal('show');
+	$.ajax({		
+		url: "cari_inv_detail/" + id_inv + "/",					
+		type: "GET",
+		dataType: "JSON",
+		success: function (response) {
+
+			var trHTML = '';
+			$.each(response, function (i, item) { 			
+				trHTML += '<tr>';										
+				trHTML += '<td>' + item.so_number + "</td>";
+				trHTML += '<td>' + item.bppb_Number + "</td>";	
+				trHTML += '<td>' + item.shipp_number + "</td>";
+				trHTML += '<td>' + item.ws + "</td>";
+				trHTML += '<td>' + item.styleno + "</td>";
+				trHTML += '<td>' + item.product_group + "</td>";
+				trHTML += '<td>' + item.product_item + "</td>";
+				trHTML += '<td>' + item.color + "</td>";
+				trHTML += '<td>' + item.size + "</td>";
+				trHTML += '<td>' + item.curr + "</td>";
+				trHTML += '<td>' + item.uom + "</td>";
+				trHTML += '<td>' + item.qty + "</td>";
+				trHTML += '<td>' + item.unit_price + "</td>";	
+				trHTML += '<td>' + item.disc + "</td>";				
+				trHTML += '<td align="right">' + item.total_price + "</td>";				
+				trHTML += '</tr>';
                 //
                 $('#inv_number_list').val(item.no_invoice)
 				//				
 			});
 
-				$('#table-inv-detail').append(trHTML);
+			$('#table-inv-detail').append(trHTML);
 
-				cari_inv_pot(id_inv);						
+			cari_inv_pot(id_inv);						
 
-			},
-			error: function (jqXHR, textStatus, errorThrown) {
-				alert('Error get data from ajax');
-			}
-		});	
+		},
+		error: function (jqXHR, textStatus, errorThrown) {
+			alert('Error get data from ajax');
+		}
+	});	
 
-	}
+}
 
-	function cari_inv_pot(id_inv_pot){ 
+function cari_inv_pot(id_inv_pot){ 
 
-		$('#mdl_total_det').val("");
-		$('#mdl_discount_det').val("");
-		$('#mdl_dp_det').val("");
-		$('#mdl_return_det').val("");
-		$('#mdl_twot_det').val("");
-		$('#mdl_vat_det').val("");
-		$('#mdl_grandtotal_det').val("");	
+	$('#mdl_total_det').val("");
+	$('#mdl_discount_det').val("");
+	$('#mdl_dp_det').val("");
+	$('#mdl_return_det').val("");
+	$('#mdl_twot_det').val("");
+	$('#mdl_vat_det').val("");
+	$('#mdl_grandtotal_det').val("");	
 
-		$.ajax({		
-			url: "cari_inv_pot/" + id_inv_pot + "/",					
-			type: "GET",
-			dataType: "JSON",
-			success: function (response) {							
+	$.ajax({		
+		url: "cari_inv_pot/" + id_inv_pot + "/",					
+		type: "GET",
+		dataType: "JSON",
+		success: function (response) {							
 
-				$.each(response, function (i, item) { 
+			$.each(response, function (i, item) { 
 
-					$('#mdl_total_det').val(item.total);
-					$('#mdl_discount_det').val(item.discount);
-					$('#mdl_dp_det').val(item.dp);
-					$('#mdl_return_det').val(item.retur);
-					$('#mdl_twot_det').val(item.twot);
-					$('#mdl_vat_det').val(item.vat);
-					$('#mdl_grandtotal_det').val(item.grand_total);	
+				$('#mdl_total_det').val(item.total);
+				$('#mdl_discount_det').val(item.discount);
+				$('#mdl_dp_det').val(item.dp);
+				$('#mdl_return_det').val(item.retur);
+				$('#mdl_twot_det').val(item.twot);
+				$('#mdl_vat_det').val(item.vat);
+				$('#mdl_grandtotal_det').val(item.grand_total);	
 
-				});
+			});
 
-			},
-			error: function (jqXHR, textStatus, errorThrown) {
-				alert('Error get data from ajax');
-			}
-		});	
+		},
+		error: function (jqXHR, textStatus, errorThrown) {
+			alert('Error get data from ajax');
+		}
+	});	
 
-	}
+}
 
-	function isNumber(evt) {
+function isNumber(evt) {
 
-		var iKeyCode = (evt.which) ? evt.which : evt.keyCode
-		if (iKeyCode != 46 && iKeyCode > 31 && (iKeyCode < 48 || iKeyCode > 57))
-			return false;
-		return true;	
+	var iKeyCode = (evt.which) ? evt.which : evt.keyCode
+	if (iKeyCode != 46 && iKeyCode > 31 && (iKeyCode < 48 || iKeyCode > 57))
+		return false;
+	return true;	
 
-	}
+}
 
-	function tampil_tanggal_1(){		
-		$('[name="date1"]').val("");		
-		$('#modal-show-date1').modal('show');	
-	}
+function tampil_tanggal_1(){		
+	$('[name="date1"]').val("");		
+	$('#modal-show-date1').modal('show');	
+}
 
-	function tampil_tanggal_2(){		
-		$('[name="date2"]').val("");		
-		$('#modal-show-date2').modal('show');	
-	}
+function tampil_tanggal_2(){		
+	$('[name="date2"]').val("");		
+	$('#modal-show-date2').modal('show');	
+}
 
-	function tambah_tanggal_1(){	
-		$date1 = $('[name="reservationdate"]').val()
-		$('[name="date1"]').val($date1);	    	
-		$('#modal-show-date1').modal('hide');
-	}
+function tambah_tanggal_1(){	
+	$date1 = $('[name="reservationdate"]').val()
+	$('[name="date1"]').val($date1);	    	
+	$('#modal-show-date1').modal('hide');
+}
 
-	function tambah_tanggal_2(){	
-		$date2 = $('[name="reservationdate2"]').val()
-		$('[name="date2"]').val($date2);	    	
-		$('#modal-show-date2').modal('hide');
-	}
+function tambah_tanggal_2(){	
+	$date2 = $('[name="reservationdate2"]').val()
+	$('[name="date2"]').val($date2);	    	
+	$('#modal-show-date2').modal('hide');
+}
 
 //ubah desember
 function modal_sum_total_sj(){

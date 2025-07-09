@@ -72,8 +72,8 @@
 <script src="<?= base_url('assets/'); ?>plugins/datepicker/bootstrap-datepicker.js"></script>
 <script src="<?= base_url('assets/'); ?>plugins/tempusdominus-bootstrap-4/js/tempusdominus-bootstrap-4.min.js"></script>
 <!---  crud nag --->
-<script src="<?php echo base_url('assets/build/js/crud/crud-nag.js') ?>"></script>
-<script src="<?php echo base_url('assets/build/js/crud/crud-nag-report.js') ?>"></script>
+<script src="<?= base_url('assets/build/js/crud/crud-nag.js') ?>?v=<?= filemtime(FCPATH . 'assets/build/js/crud/crud-nag.js') ?>"></script>
+<script src="<?= base_url('assets/build/js/crud/crud-nag-report.js') ?>?v=<?= filemtime(FCPATH . 'assets/build/js/crud/crud-nag-report.js') ?>"></script>
 <script src="<?= base_url('assets/'); ?>plugins/apexchart/apexcharts.js"></script>
 <script src="<?= base_url('assets/'); ?>plugins/apexchart/apexcharts.min.js"></script>
 <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
@@ -1132,7 +1132,21 @@ function change_top_5_sales(option) {
       "autoWidth": false,
       "responsive": true,
     });
+
   });
+
+//   $(document).ready(function() {
+//     $('#table-invoice').DataTable({
+//         "paging": true,            // Aktifkan pagination
+//         "lengthChange": false,     // Optional: jangan ubah jumlah baris per halaman
+//         "searching": true,         // Aktifkan search box bawaan
+//         "ordering": true,          // Aktifkan sorting
+//         "info": true,              // Tampilkan info "Showing 1 to 10..."
+//         "autoWidth": false,
+//         "responsive": true
+//     });
+// });
+
 </script>
 
 <!-- DataTable example3  -->

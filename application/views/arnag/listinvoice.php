@@ -78,42 +78,42 @@
                             <h3 class="card-title">DataTable Invoice</h3>
                         </div>
                         <div class="d-flex justify-content-between">
-                           <div class="ml-auto">
-                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                            </div>
-                                <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_noinvoice()">
-                             </div>
-
-                        <!-- /.card-header -->
-                        <div class="card-body table-responsive p-0" style="height: 300px;">
-                            <table id="table-invoice" class="table table-head-fixed text-nowrap">
-                                <thead>
-                                    <tr>
-                                        <th>Inv Number</th>
-                                        <th>Customer</th>
-                                        <th>Shipp</th>
-                                        <th>Doc Type</th>
-                                        <th>Doc Number</th>
-                                        <th>Inv Date</th>
-                                        <th>Create Date</th>
-                                        <th>Type</th>
-                                        <th>Status</th>
-                                        <th>Amount</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-
-                                </tbody>
-                            </table>
+                         <div class="ml-auto">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
                         </div>
-                        <!-- /.card-body -->
+                        <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_noinvoice()">
                     </div>
-                    <!-- /.card -->
+
+                    <!-- /.card-header -->
+                    <div class="card-body table-responsive p-0" style="height: 300px;">
+                        <table id="table-invoice" class="table table-head-fixed text-nowrap">
+                            <thead>
+                                <tr>
+                                    <th>Inv Number</th>
+                                    <th>Customer</th>
+                                    <th>Shipp</th>
+                                    <th>Doc Type</th>
+                                    <th>Doc Number</th>
+                                    <th>Inv Date</th>
+                                    <th>Create Date</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Amount</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- /.card-body -->
                 </div>
+                <!-- /.card -->
             </div>
-        </div><!-- /.container-fluid -->
-    </section>
+        </div>
+    </div><!-- /.container-fluid -->
+</section>
 </div>
 
 <div class="modal fade" id="modal-cancel-inv">
@@ -146,15 +146,44 @@
                     if ($data == 'willy' || $data == 'yulianto' || $data == 'hady' || $data == 'hadi' || $data == 'jefri' || $data == 'ramon' || $data == 'lukman') 
                     {
                         echo '<button type="submit" class="btn btn-primary toastsDefaultDanger">Cancel Invoice</button>';
-                     } else {
-                    echo '<button type="button" disabled class="btn btn-primary toastsDefaultDanger">Cancel Invoice</button>';
-                }
+                    } else {
+                        echo '<button type="button" disabled class="btn btn-primary toastsDefaultDanger">Cancel Invoice</button>';
+                    }
                     ?>
                 </div>
             </div>
         </div>
     </form>
 </div>
+<!-- MODAL UPDATE -->
+<div class="modal fade" id="modal-update">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info">
+                <h4 class="modal-title">Confirm Update</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="id_book_inv" id="id_book_inv" readonly>
+                <div class="form-group col-md-12">
+                    <label>Invoice Number</label>
+                    <input type="text" class="form-control" id="no_inv" readonly>
+                </div>
+                <div class="form-group col-md-12">
+                    <label>TOP</label>
+                    <select id="top_inv" class="form-control select2bs4" required></select>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button type="button" onclick="submitUpdateTOP()" class="btn btn-primary">Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <!-- Modal Invoice Detail -->
 <div class="modal fade" id="modal-inv-detail">
@@ -282,7 +311,7 @@
     </div>
 
     <script>
-    function cari_noinvoice() {
+        function cari_noinvoice() {
         // Declare variables
         var input, filter, table, tr, td, i, txtValue;
         input = document.getElementById("cari_noinv");
