@@ -2887,10 +2887,25 @@ public function update_top_invoice()
 {
     $id     = $this->input->post('id_book_inv');
     $id_top = $this->input->post('top_inv');
+    $top_manual  = $this->input->post('top_manual');
+    $id_customer = $this->input->post('id_customer');
 
     if (!$id || !$id_top) {
         echo json_encode(['status' => false, 'message' => 'Data tidak lengkap']);
         return;
+    }
+
+    if ($top_manual && $id_customer) {
+        $data_top = [
+            'id_customer' => $id_customer,
+            'type'        => 'TOP',
+            'top'         => $top_manual,
+            'status'      => 'Active'
+        ];
+        
+        // Insert dan ambil id TOP baru
+        $this->db->insert('tbl_master_top', $data_top);
+        $id_top = $this->db->insert_id();
     }
 
     $this->Model_nag->update_top_invoice($id, $id_top);

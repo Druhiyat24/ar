@@ -2180,7 +2180,7 @@ function cari_invoice() {
 						trHTML += '<td>' + item.status + "</td>";
 						trHTML += '<td align="right">' + item.amount + "</td>";
 						trHTML += '<td><button id="inv_detail" name="inv_detail" type="button" class="btn btn-info btn-sm" onclick="cari_inv_detail(' + item.id + ')" ><i class="fas fa-eye"></i> Detail</button> ' + '' 
-						+ ' <button type="button" class="btn btn-sm btn-warning swalDefaultError" href="javascript:void(0)" onclick="UpdateInvoice(\'' + item.id + '\', \'' + item.status + '\')"><i class="fas fa-edit"></i> Update</button>' + ' '
+						+ ' <button type="button" class="btn btn-sm btn-warning swalDefaultError" href="javascript:void(0)" onclick="UpdateInvoice(\'' + item.id + '\', \'' + item.status + '\', \'' + item.inv_date + '\')"><i class="fas fa-edit"></i> Update</button>' + ' '
 						+ '<button id="print_inv" name="print_inv" type="button" class="btn btn-primary btn-sm" onclick="print_invoice(' + item.id + ')"><i class="fa fa-print"></i> Print</button> ' + ''
 						+ '<button id="export_to_excel_invoice" name="export_to_excel_invoice" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_invoice(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button> ' + ''				
 						+ ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="cancel_invoice(\'' + item.id + '\',\'' + item.no_invoice + '\',\'' + item.status + '\')"><i class="fas fa-trash-alt"></i> Cancel</button></td> </td>';
@@ -2216,16 +2216,16 @@ function cari_invoice() {
 
 	}
 
-	function UpdateInvoice(id, status) {
+	function UpdateInvoice(id, status, inv_date) {
 
 		console.log(id);
 		if (status != "POST") { 
 			muncul_pesan();
 		} else {
 	//	
-	$('.form-group').removeClass('has-error'); // clear error class
-	$('.help-block').empty(); // clear error string
-	//Ajax Load data from ajax
+	$('.form-group').removeClass('has-error');
+	$('.help-block').empty();
+
 	$.ajax({
 		url: "getTopInvoice/" + id,
 		type: "GET",
@@ -2235,59 +2235,130 @@ function cari_invoice() {
 
 			var invoice = response.data;
 			var topList = response.top_options;
+			let dateObj = new Date(inv_date);
+
+			dateObj.setDate(dateObj.getDate() + parseInt(invoice.top));
+
+			let yyyy = dateObj.getFullYear();
+			let mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+			let dd = String(dateObj.getDate()).padStart(2, '0');
+			let due_date = `${yyyy}-${mm}-${dd}`;
+
+			$('#due_date').val(due_date);
 
 			$('#id_book_inv').val(invoice.id);	
-    $('#no_inv').val(invoice.no_invoice); // ← pakai ID, bukan name
+			$('#no_inv').val(invoice.no_invoice);
+			$('#id_customer').val(invoice.id_customer);
+			$('#inv_date').val(inv_date);
 
-    var $topSelect = $('#top_inv'); // ← pakai ID, bukan name
-    $topSelect.empty();
-    $topSelect.append('<option value="" disabled selected>Pilih TOP</option>');
+			var $topSelect = $('#top_inv');
+			$topSelect.empty();
+			$topSelect.append('<option value="" disabled selected>Pilih TOP</option>');
 
-    topList.forEach(function (top) {
-    	var selected = (top.id == invoice.id_top) ? 'selected' : '';
-    	$topSelect.append('<option value="' + top.id + '" ' + selected + '>' + top.type + ' - ' + top.top + ' Days</option>');
-    });
+			topList.forEach(function (top) {
+				var selected = (top.id == invoice.id_top) ? 'selected' : '';
+				$topSelect.append('<option value="' + top.id + '" data-top="' + top.top + '" ' + selected + '>' + top.type + ' - ' + top.top + ' Days</option>');
+			});
+			$topSelect.append('<option value="lainnya">Lainnya (Input Manual)</option>');
 
-    $('#modal-update').modal('show');
+			$('#modal-update').modal('show');
+		}
+		,
+		error: function (jqXHR, textStatus, errorThrown) {
+			alert('Error get data from ajax');
+		}
+	});
 }
-,
-error: function (jqXHR, textStatus, errorThrown) {
-	alert('Error get data from ajax');
+
 }
+
+$('#top_inv').on('change', function () {
+	var selectedVal = $(this).val();
+
+	if (selectedVal === 'lainnya') {
+		$('#top_manual').show();
+	} else {
+		$('#top_manual').hide();
+
+        // Hitung due date kalau pilih dari dropdown
+        var selectedTop = $(this).find(':selected').data('top');
+        var invDateStr = $('#inv_date').val();
+
+        if (!invDateStr) return;
+
+        let topDays = parseInt(selectedTop);
+        if (isNaN(topDays) || topDays === 0) {
+        	$('#due_date').val(invDateStr);
+        } else {
+        	let dateObj = new Date(invDateStr);
+        	dateObj.setDate(dateObj.getDate() + topDays);
+
+        	let yyyy = dateObj.getFullYear();
+        	let mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        	let dd = String(dateObj.getDate()).padStart(2, '0');
+        	let due_date = `${yyyy}-${mm}-${dd}`;
+        	$('#due_date').val(due_date);
+        }
+    }
 });
-}
 
-}
+$('#top_manual').on('input', function () {
+	const topManual = parseInt($(this).val());
+	const invDateStr = $('#inv_date').val();
+
+	if (!invDateStr || isNaN(topManual)) {
+		$('#due_date').val('');
+		return;
+	}
+
+	const dateObj = new Date(invDateStr);
+	dateObj.setDate(dateObj.getDate() + topManual);
+
+	const yyyy = dateObj.getFullYear();
+	const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+	const dd = String(dateObj.getDate()).padStart(2, '0');
+
+	const dueDate = `${yyyy}-${mm}-${dd}`;
+	$('#due_date').val(dueDate);
+});
+
 
 
 function submitUpdateTOP() {
 	var id = $('#id_book_inv').val();
 	var top_id = $('#top_inv').val();
+	var top_manual = $('#top_manual').val();
+	var id_customer = $('#id_customer').val();
+
+	var isManual = $('#top_manual').is(':visible') && top_manual !== '';
 
 	$.ajax({
 		url: 'update_top_invoice/',
 		method: 'POST',
 		data: {
 			id_book_inv: id,
-			top_inv: top_id
+			top_inv: top_id,
+			top_manual: isManual ? top_manual : '',
+			id_customer: isManual ? id_customer : ''
 		},
 		dataType: 'json',
 		success: function (response) {
 			if (response.status) {
 				$('#modal-update').modal('hide');
-
-                // refresh invoice list setelah update
-                cari_invoice(); // sesuaikan dengan fungsi kamu
-                cari_noinvoice();
-            } else {
-            	alert('Gagal update: ' + response.message);
-            }
-        },
-        error: function () {
-        	alert('Gagal menghubungi server');
-        }
-    });
+				$('#top_manual').hide().val('');
+				$('#top_inv').val('').trigger('change');
+				cari_invoice();
+				cari_noinvoice();
+			} else {
+				alert('Gagal update: ' + response.message);
+			}
+		},
+		error: function () {
+			alert('Gagal menghubungi server');
+		}
+	});
 }
+
 
 
 function cari_inv_detail(id_inv) { 

@@ -174,7 +174,26 @@
                 <div class="form-group col-md-12">
                     <label>TOP</label>
                     <select id="top_inv" class="form-control select2bs4" required></select>
+                    <input type="number" id="top_manual" class="form-control mt-2" placeholder="Masukkan TOP manual (hari)" style="display: none;">
+                    <input type="text" id="id_customer" class="form-control mt-2" value="" style="display: none;">
                 </div>
+                <div class="row">
+                    <div class=" col-md-6">
+                        <label>Inv Date</label>
+                        <div class="input-group mb-3">
+                            <input type="text" name="inv_date" id="inv_date" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                            <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                        </div>
+                    </div>
+                    <div class=" col-md-6">
+                        <label>Due Date</label>
+                        <div class="input-group mb-3">
+                            <input type="text" name="due_date" id="due_date" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                            <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
             <div class="modal-footer justify-content-between">
                 <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
