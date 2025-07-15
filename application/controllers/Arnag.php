@@ -2920,7 +2920,10 @@ public function edit_invoice($id = null) {
         show_404();
     }
 
+    $data['tgl_invoice'] = $this->Model_nag->get_tgl_invoice_by_id($id);
     $data['invoice'] = $this->Model_nag->get_invoice_by_id($id);
+    $id_customer = $data['invoice']['id_customer'];
+    $data['top_options'] =  $this->Model_nag->cari_top($id_customer);
     $data['customer'] = $this->Model_nag->cari_customer();
     $data['title'] = 'Form Edit Invoice';
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));

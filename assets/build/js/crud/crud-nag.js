@@ -2308,7 +2308,7 @@ $('#top_manual').on('input', function () {
 	const invDateStr = $('#inv_date').val();
 
 	if (!invDateStr || isNaN(topManual)) {
-		$('#due_date').val('');
+		$('#due_date').val(invDateStr);
 		return;
 	}
 

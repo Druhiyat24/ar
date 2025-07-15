@@ -1359,7 +1359,64 @@ function updateDN() {
 }
 </script>
 
+<script type="text/javascript">
 
+ function hitungDueDate() {
+    const selectedVal = $('#top_inv').val();
+    const invDateStr = $('#inv_date').val();
+
+    console.log("TOP terpilih:", selectedVal);
+    console.log("Tanggal invoice:", invDateStr);
+
+    if (!invDateStr) {
+        $('#due_date').val('');
+        return;
+    }
+
+    if (selectedVal === 'lainnya') {
+        $('#top_manual').show();
+        return;
+    }
+
+    $('#top_manual').hide();
+    const selectedTop = $('#top_inv').find(':selected').data('top');
+    const topDays = parseInt(selectedTop);
+
+    if (isNaN(topDays) || topDays === 0) {
+        $('#due_date').val(invDateStr);
+    } else {
+        const dateObj = new Date(invDateStr);
+        dateObj.setDate(dateObj.getDate() + topDays);
+
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        $('#due_date').val(`${yyyy}-${mm}-${dd}`);
+    }
+}
+
+function hitungManualTOP() {
+    const topManual = parseInt($('#top_manual').val());
+    const invDateStr = $('#inv_date').val();
+
+    console.log("TOP manual:", topManual);
+    console.log("Tanggal invoice:", invDateStr);
+
+    if (!invDateStr || isNaN(topManual)) {
+        $('#due_date').val('');
+        return;
+    }
+
+    const dateObj = new Date(invDateStr);
+    dateObj.setDate(dateObj.getDate() + topManual);
+
+    const yyyy = dateObj.getFullYear();
+    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(dateObj.getDate()).padStart(2, '0');
+    $('#due_date').val(`${yyyy}-${mm}-${dd}`);
+}
+
+</script>
 
 
   </body>

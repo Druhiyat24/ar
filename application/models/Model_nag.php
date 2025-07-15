@@ -4294,5 +4294,11 @@ public function get_invoice_by_id($id) {
     return $this->db->get_where('tbl_book_invoice', ['id' => $id])->row_array();
 }
 
+function get_tgl_invoice_by_id($id)
+{
+    $hasil = $this->db->query("select DISTINCT DATE_FORMAT(a.sj_date,'%Y-%m-%d') tgl_inv, DATE_FORMAT(DATE_ADD(a.sj_date, INTERVAL c.top DAY), '%Y-%m-%d') due_date from tbl_invoice_detail a INNER JOIN tbl_book_invoice b on b.id = a.id_book_invoice INNER JOIN tbl_master_top c on c.id = b.id_top where id_book_invoice = '$id' GROUP BY id_book_invoice");
+    return $hasil->row_array();
+}
+
 
 }
