@@ -10,6 +10,13 @@ class Model_nag extends CI_Model
         return $hasil->result_array();
     }
 
+    function cari_status()
+    {
+        $hasil = $this->db->query("SELECT DISTINCT status from tbl_book_invoice");
+        return $hasil->result_array();
+    }
+
+
     function cari_profit_center()
     {
         $hasil = $this->db->query("SELECT kode_pc, nama_pc from master_pc GROUP BY id_pc");
@@ -216,7 +223,7 @@ class Model_nag extends CI_Model
     function master_top()
     {
         $hasil = $this->db->query("SELECT a.supplier AS customer, b.type, b.top, b.id, b.status FROM mastersupplier AS a INNER JOIN 
-           tbl_master_top AS b ON a.Id_Supplier = b.id_customer ");
+         tbl_master_top AS b ON a.Id_Supplier = b.id_customer ");
         return $hasil->result_array();
     }
 
@@ -312,12 +319,12 @@ class Model_nag extends CI_Model
         }
         //
         $hasil = $this->db->query("SELECT a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, a.shipp, 
-           DATE_FORMAT(a.tgl_book_inv, '%Y-%m-%d') AS tanggal, c.type,  a.status, a.id, c.id_type, 
-           FORMAT(a.value, 2) AS value, a.doc_type, a.doc_number
-           FROM tbl_book_invoice AS a INNER JOIN 
-           mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
-           tbl_type AS c ON a.id_type = c.id_type
-           $str ");
+         DATE_FORMAT(a.tgl_book_inv, '%Y-%m-%d') AS tanggal, c.type,  a.status, a.id, c.id_type, 
+         FORMAT(a.value, 2) AS value, a.doc_type, a.doc_number
+         FROM tbl_book_invoice AS a INNER JOIN 
+         mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
+         tbl_type AS c ON a.id_type = c.id_type
+         $str ");
         return $hasil->result_array();
     }
 
@@ -423,9 +430,9 @@ class Model_nag extends CI_Model
     function cari_top($id)
     {
         $hasil = $this->db->query("SELECT a.supplier AS customer, b.type, b.top, b.id, b.status, a.Id_Supplier
-           FROM mastersupplier AS a INNER JOIN 
-           tbl_master_top AS b ON a.Id_Supplier = b.id_customer
-           WHERE b.status = 'Active' AND a.Id_Supplier = '$id' ");
+         FROM mastersupplier AS a INNER JOIN 
+         tbl_master_top AS b ON a.Id_Supplier = b.id_customer
+         WHERE b.status = 'Active' AND a.Id_Supplier = '$id' ");
         return $hasil->result_array();
     }
 
@@ -443,12 +450,12 @@ class Model_nag extends CI_Model
 
         if ($profit_center == 'NAG') {
             $hasil = $db_nag->query("SELECT DISTINCT a.so_no, a.so_date, c.supplier, a.buyerno, a.so_type, b.id_so
-             FROM  so_det AS b INNER JOIN so AS a 
-             ON (b.id_so = a.id) INNER JOIN 
-             act_costing AS d ON (a.id_cost = d.id) INNER JOIN 
-             mastersupplier AS c ON (c.Id_Supplier = d.id_buyer) INNER JOIN 
-             bppb AS e ON (e.id_so_det = b.id) 
-             WHERE c.Id_Supplier = '$buyer' AND a.so_date BETWEEN '$dt_dari_so' AND '$dt_sampai_so' AND c.tipe_sup = 'C' ");
+               FROM  so_det AS b INNER JOIN so AS a 
+               ON (b.id_so = a.id) INNER JOIN 
+               act_costing AS d ON (a.id_cost = d.id) INNER JOIN 
+               mastersupplier AS c ON (c.Id_Supplier = d.id_buyer) INNER JOIN 
+               bppb AS e ON (e.id_so_det = b.id) 
+               WHERE c.Id_Supplier = '$buyer' AND a.so_date BETWEEN '$dt_dari_so' AND '$dt_sampai_so' AND c.tipe_sup = 'C' ");
             
         }else{
 
@@ -493,8 +500,8 @@ class Model_nag extends CI_Model
     function cari_dataso($id_so,$tipe)
     {
         if ($tipe == 'CBD') {
-         $db_nag = $this->load->database('db_nag', TRUE);
-         $hasil = $db_nag->query("SELECT so.so_no,so_det.id as id_sodet,supplier, so.so_date, 
+           $db_nag = $this->load->database('db_nag', TRUE);
+           $hasil = $db_nag->query("SELECT so.so_no,so_det.id as id_sodet,supplier, so.so_date, 
             so_det.dest, so_det.color, so_det.size, so_det.qty, so_det.unit, 
             act_costing.deldate, act_costing.curr, masterproduct.product_item, masterproduct.product_group, 
             ROUND(so_det.price,2) AS price, act_costing.styleno ,mastersupplier.Phone,
@@ -505,8 +512,8 @@ class Model_nag extends CI_Model
             INNER JOIN masterproduct ON act_costing.id_product = masterproduct.id
             INNER JOIN mastersupplier on act_costing.id_buyer = mastersupplier.Id_Supplier
             WHERE so_det.cancel='N' and so_det.id_so = '$id_so' and so_det.no_pi_cbd is null ");
-         return $hasil->result_array();
-     }else{
+           return $hasil->result_array();
+       }else{
         $db_nag = $this->load->database('db_nag', TRUE);
         $hasil = $db_nag->query("SELECT so.so_no,so_det.id as id_sodet,supplier, so.so_date, 
             so_det.dest, so_det.color, so_det.size, so_det.qty, so_det.unit, 
@@ -526,15 +533,15 @@ class Model_nag extends CI_Model
 function update_status_invoice($id_inv, $pph, $tanggal_input, $id_top, $id_bank, $type_so, $no_coa, $nama_coa)
 {
     $hasil = $this->db->query("UPDATE tbl_book_invoice 
-       SET status  = 'POST', 
-       pph     = '$pph', 
-       tgl_inv = '$tanggal_input',
-       id_top  = '$id_top', 
-       id_bank =  '$id_bank', 
-       type_so = '$type_so',
-       no_coa =  '$no_coa', 
-       nama_coa = '$nama_coa'
-       WHERE id = '$id_inv' ");
+     SET status  = 'POST', 
+     pph     = '$pph', 
+     tgl_inv = '$tanggal_input',
+     id_top  = '$id_top', 
+     id_bank =  '$id_bank', 
+     type_so = '$type_so',
+     no_coa =  '$no_coa', 
+     nama_coa = '$nama_coa'
+     WHERE id = '$id_inv' ");
     return $hasil;
 }
 
@@ -622,33 +629,21 @@ function delete_invoice_detail_temporary()
     return $hasil;
 }
 
-function cari_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer)
+function cari_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer, $status)
 {
 
-    if ($id_customer == "all_customer") {
-            // $hasil = $this->db->query("SELECT a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, a.shipp, a.doc_type, a.doc_number, 
-            //                               DATE_FORMAT(a.tgl_inv, '%Y-%m-%d') AS inv_date, c.type,  a.status, a.id, c.id_type, b.Id_Supplier AS id_customer,
-            //                               FORMAT((d.grand_total), 2) AS amount
-            //                        FROM  tbl_book_invoice AS a INNER JOIN 
-            //                               mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
-            //                               tbl_type AS c ON a.id_type = c.id_type INNER JOIN
-            //                      		  tbl_invoice_pot AS d ON a.id = d.id_book_invoice       
-            //                        WHERE a.tgl_inv BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
-            //                        ORDER BY a.id ");
+    if ($id_customer != "all_customer") {
+        $where = " AND a.id_customer = '$id_customer'";
+    }else{
+        $where = "";
+    }
 
-     $hasil = $this->db->query("SELECT distinct a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, a.shipp,                                     a.doc_type, a.doc_number, 
-      DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date,DATE_FORMAT(a.tgl_inv, '%Y-%m-%d') AS tgl_inv, c.type,  a.status, a.id, c.id_type, b.Id_Supplier AS id_customer,
-      FORMAT((d.grand_total), 2) AS amount
-      FROM  tbl_book_invoice AS a INNER JOIN 
-      mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
-      tbl_type AS c ON a.id_type = c.id_type INNER JOIN
-      tbl_invoice_pot AS d ON a.id = d.id_book_invoice INNER JOIN
-      tbl_invoice_detail as e on a.id=e.id_book_invoice      
-      WHERE e.sj_date BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
-      ORDER BY a.id ");
+    if ($status != "all_status") {
+        $where2 = " AND a.status = '$status'";
+    }else{
+        $where2 = "";
+    }
 
-     return $hasil->result_array();
- } else {
     $hasil = $this->db->query("SELECT distinct a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, a.shipp, a.doc_type, a.doc_number, 
       DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date,DATE_FORMAT(a.tgl_inv, '%Y-%m-%d') AS tgl_inv, c.type,  a.status, a.id, c.id_type, b.Id_Supplier AS id_customer, 
       FORMAT((d.grand_total), 2) AS amount
@@ -657,25 +652,10 @@ function cari_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer)
       tbl_type AS c ON a.id_type = c.id_type INNER JOIN
       tbl_invoice_pot AS d ON a.id = d.id_book_invoice  INNER JOIN
       tbl_invoice_detail as e on a.id=e.id_book_invoice      
-      WHERE e.sj_date BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' AND a.id_customer = '$id_customer'
+      WHERE e.sj_date BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' $where $where2
       ORDER BY a.id ");
     return $hasil->result_array();
-}
-        //
-        //With Duedate Query
-        //
-        // $hasil = $this->db->query("SELECT a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, a.shipp, a.peb,
-        //                                   DATE_FORMAT(a.tgl_inv, '%Y-%m-%d') AS tanggal, DATE_FORMAT(e.kontrabon_date, '%Y-%m-%d') AS tanggal_kontrabon, 
-        //                                   d.top, CASE WHEN e.status = 'DONE' THEN DATE_ADD(DATE_FORMAT(e.kontrabon_date, '%Y-%m-%d'), INTERVAL d.top DAY) 
-        //                                   ELSE DATE_ADD(DATE_FORMAT(a.tgl_inv, '%Y-%m-%d'), INTERVAL d.top DAY) END AS duedate,
-        //                                   c.type, a.status, a.id AS id_inv, e.id_invoice AS id_inv_dd, e.status AS status_duedate
-        //                            FROM  tbl_book_invoice AS a INNER JOIN 
-        //                                   mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
-        //                                   tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
-        //                                   tbl_master_top AS d ON a.id_top = d.id LEFT JOIN
-        //                                   tbl_duedate AS e ON a.id = e.id_invoice
-        //                            WHERE a.status = 'APPROVED' AND a.tgl_inv BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' AND a.id_customer = '$id_customer' ");
-        // return $hasil->result_array();
+    
 }
 
 function cari_inv_detail($id)
@@ -691,8 +671,8 @@ function cari_inv_detail($id)
 function cari_inv_pot($id)
 {
     $hasil = $this->db->query("SELECT id_book_invoice, FORMAT(total,2) AS total, FORMAT(discount,2) AS discount, FORMAT(dp,2) AS dp, FORMAT(retur,2) AS retur, FORMAT(twot,2) AS twot, FORMAT(vat,2) AS vat, FORMAT(grand_total,2) AS grand_total
-       FROM tbl_invoice_pot
-       WHERE id_book_invoice = '$id' ");
+     FROM tbl_invoice_pot
+     WHERE id_book_invoice = '$id' ");
     return $hasil->result_array();
 }
 
@@ -715,8 +695,8 @@ function report_invoice($id)
 function report_invoice_detail($id)
 {
     $hasil = $this->db->query("SELECT styleno, product_group, product_item, color, size, qty, format(round(unit_price,3),3) unit_price, disc, FORMAT(total_price, 2) AS total_price, uom, curr, id_bppb
-       FROM tbl_invoice_detail
-       WHERE id_book_invoice = '$id' ORDER BY id_bppb asc ");
+     FROM tbl_invoice_detail
+     WHERE id_book_invoice = '$id' ORDER BY id_bppb asc ");
     return $hasil->result_array();
 }
 
@@ -732,24 +712,24 @@ function report_invoice_pot($id)
 function group_bppb_number($id)
 {
     $hasil = $this->db->query("SELECT DISTINCT shipp_number as bppb_number
-       FROM tbl_invoice_detail
-       WHERE id_book_invoice = '$id' ");
+     FROM tbl_invoice_detail
+     WHERE id_book_invoice = '$id' ");
     return $hasil->result_array();
 }
 
 function group_so_number($id)
 {
     $hasil = $this->db->query("SELECT DISTINCT so_number
-       FROM tbl_invoice_detail
-       WHERE id_book_invoice = '$id' ");
+     FROM tbl_invoice_detail
+     WHERE id_book_invoice = '$id' ");
     return $hasil->result_array();
 }
 
 function group_curr($id)
 {
     $hasil = $this->db->query("SELECT DISTINCT curr
-       FROM tbl_invoice_detail
-       WHERE id_book_invoice = '$id' ");
+     FROM tbl_invoice_detail
+     WHERE id_book_invoice = '$id' ");
     return $hasil->row_array();
 }
 
@@ -823,8 +803,8 @@ function cari_proforma_invoice_post($dt_dari_inv, $dt_sampai_inv)
 function cari_debitnote_post($dt_dari_inv, $dt_sampai_inv)
 {
     $hasil = $this->db->query("SELECT a.id,a.no_dn,a.tgl_dn,b.Supplier,a.attn,a.from_curr,a.to_curr,a.amount,a.eqv_curr,a.status from tbl_debitnote_h a INNER JOIN mastersupplier b on b.Id_Supplier = a.customer
-       WHERE a.status = 'POST' AND a.tgl_dn BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
-       GROUP BY a.no_dn");
+     WHERE a.status = 'POST' AND a.tgl_dn BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
+     GROUP BY a.no_dn");
     return $hasil->result_array();
 }
 
@@ -881,8 +861,8 @@ function approve_debitnote($id)
 function get_kode_duedate()
 {
     $q = $this->db->query("SELECT MAX(RIGHT(no_duedate, 4)) AS kd_max 
-       FROM tbl_duedate
-       WHERE YEAR(input_date) = YEAR(CURRENT_DATE()) ");
+     FROM tbl_duedate
+     WHERE YEAR(input_date) = YEAR(CURRENT_DATE()) ");
         //
     $kd = "";
     if ($q->num_rows() > 0) {
@@ -964,8 +944,8 @@ function cancel_duedate($id)
 function get_kode_proforma_invoice($kode_inv)
 {
     $q = $this->db->query("SELECT no_proforma_invoice, MAX(LEFT(no_proforma_invoice, 4)) AS kd_max 
-       FROM tbl_invoice_proforma 
-       WHERE YEAR(tgl_proforma_inv) = YEAR(CURRENT_DATE()) AND MONTH(tgl_proforma_inv) = MONTH(CURRENT_DATE()) AND STATUS <> 'CANCEL' ");
+     FROM tbl_invoice_proforma 
+     WHERE YEAR(tgl_proforma_inv) = YEAR(CURRENT_DATE()) AND MONTH(tgl_proforma_inv) = MONTH(CURRENT_DATE()) AND STATUS <> 'CANCEL' ");
         //
     $kd = "";
     if ($q->num_rows() > 0) {
@@ -984,8 +964,8 @@ function get_kode_proforma_invoice($kode_inv)
 function get_kode_proforma_invoice_cbd($kode_inv,$type)
 {
     $q = $this->db->query("SELECT no_proforma_invoice, MAX(LEFT(no_proforma_invoice, 4)) AS kd_max 
-       FROM tbl_invoice_proforma_dp_cbd 
-       WHERE YEAR(tgl_proforma_inv) = YEAR(CURRENT_DATE()) AND MONTH(tgl_proforma_inv) = MONTH(CURRENT_DATE()) AND STATUS <> 'CANCEL' ");
+     FROM tbl_invoice_proforma_dp_cbd 
+     WHERE YEAR(tgl_proforma_inv) = YEAR(CURRENT_DATE()) AND MONTH(tgl_proforma_inv) = MONTH(CURRENT_DATE()) AND STATUS <> 'CANCEL' ");
         //
     $kd = "";
     if ($q->num_rows() > 0) {
@@ -998,10 +978,10 @@ function get_kode_proforma_invoice_cbd($kode_inv,$type)
     }
     date_default_timezone_set('Asia/Jakarta');
     if($type == 'CBD'){
-       return $kd . "/C/$kode_inv/NAG/" . date('my'); 
-   }elseif($type == 'DP'){
-       return $kd . "/D/$kode_inv/NAG/" . date('my'); 
-   }else{
+     return $kd . "/C/$kode_inv/NAG/" . date('my'); 
+ }elseif($type == 'DP'){
+     return $kd . "/D/$kode_inv/NAG/" . date('my'); 
+ }else{
     return $kd . "//$kode_inv/NAG/" . date('my');
 }
 }
@@ -1010,8 +990,8 @@ function get_kode_proforma_invoice_cbd($kode_inv,$type)
 function get_kode_cbd($kode)
 {
     $q = $this->db->query("SELECT no_proforma_invoice, MAX(LEFT(no_proforma_invoice, 4)) AS kd_max 
-       FROM tbl_invoice_proforma_dp_cbd 
-       WHERE YEAR(tgl_proforma_inv) = YEAR(CURRENT_DATE()) AND MONTH(tgl_proforma_inv) = MONTH(CURRENT_DATE()) AND STATUS <> 'CANCEL' ");
+     FROM tbl_invoice_proforma_dp_cbd 
+     WHERE YEAR(tgl_proforma_inv) = YEAR(CURRENT_DATE()) AND MONTH(tgl_proforma_inv) = MONTH(CURRENT_DATE()) AND STATUS <> 'CANCEL' ");
         //
     $kd = "";
     if ($q->num_rows() > 0) {
@@ -1046,14 +1026,14 @@ function cari_so_proforma($dt_dari_so_prof, $dt_sampai_so_prof, $id_customer)
         //Database SignalBit
     $db_nag = $this->load->database('db_nag', TRUE);
     $hasil = $db_nag->query("SELECT * from (SELECT a.so_no, a.so_date, c.Supplier, a.buyerno, a.curr,
-       FORMAT(sum(b.qty), 2) AS qty, FORMAT(b.price, 2) AS unit_price, FORMAT(sum(b.qty * b.price), 2) AS total_price, b.id_so
-       FROM so_det AS b INNER JOIN so AS a 
-       ON (b.id_so = a.id) INNER JOIN 
-       act_costing AS d ON (a.id_cost = d.id) INNER JOIN 
-       mastersupplier AS c ON (c.Id_Supplier = d.id_buyer)
-       WHERE c.Id_Supplier = '$id_customer' AND a.so_date BETWEEN '$dt_dari_so_prof' AND '$dt_sampai_so_prof' AND c.tipe_sup = 'C'
-       GROUP BY b.id_so
-       ORDER BY b.id_so) so_cbd inner join
+     FORMAT(sum(b.qty), 2) AS qty, FORMAT(b.price, 2) AS unit_price, FORMAT(sum(b.qty * b.price), 2) AS total_price, b.id_so
+     FROM so_det AS b INNER JOIN so AS a 
+     ON (b.id_so = a.id) INNER JOIN 
+     act_costing AS d ON (a.id_cost = d.id) INNER JOIN 
+     mastersupplier AS c ON (c.Id_Supplier = d.id_buyer)
+     WHERE c.Id_Supplier = '$id_customer' AND a.so_date BETWEEN '$dt_dari_so_prof' AND '$dt_sampai_so_prof' AND c.tipe_sup = 'C'
+     GROUP BY b.id_so
+     ORDER BY b.id_so) so_cbd inner join
     (Select so_no as sono,COUNT(so_no) as jml from (SELECT so.so_no,so_det.id as id_sodet,supplier, so.so_date, 
         so_det.dest, so_det.color, so_det.size, so_det.qty, so_det.unit, 
         act_costing.deldate, act_costing.curr, masterproduct.product_item, masterproduct.product_group, 
@@ -1072,14 +1052,14 @@ function cari_so_proforma_cbd($dt_dari_so_prof, $dt_sampai_so_prof, $id_customer
 {
     $db_nag = $this->load->database('db_nag', TRUE);
     $hasil = $db_nag->query("SELECT * from (SELECT a.so_no, a.so_date, c.Supplier, a.buyerno, a.curr,
-       FORMAT(sum(b.qty), 2) AS qty, FORMAT(b.price, 2) AS unit_price, FORMAT(sum(b.qty * b.price), 2) AS total_price, b.id_so
-       FROM so_det AS b INNER JOIN so AS a 
-       ON (b.id_so = a.id) INNER JOIN 
-       act_costing AS d ON (a.id_cost = d.id) INNER JOIN 
-       mastersupplier AS c ON (c.Id_Supplier = d.id_buyer)
-       WHERE c.Id_Supplier = '$id_customer' AND a.so_date BETWEEN '$dt_dari_so_prof' AND '$dt_sampai_so_prof' AND c.tipe_sup = 'C'
-       GROUP BY b.id_so
-       ORDER BY b.id_so) so_cbd inner join
+     FORMAT(sum(b.qty), 2) AS qty, FORMAT(b.price, 2) AS unit_price, FORMAT(sum(b.qty * b.price), 2) AS total_price, b.id_so
+     FROM so_det AS b INNER JOIN so AS a 
+     ON (b.id_so = a.id) INNER JOIN 
+     act_costing AS d ON (a.id_cost = d.id) INNER JOIN 
+     mastersupplier AS c ON (c.Id_Supplier = d.id_buyer)
+     WHERE c.Id_Supplier = '$id_customer' AND a.so_date BETWEEN '$dt_dari_so_prof' AND '$dt_sampai_so_prof' AND c.tipe_sup = 'C'
+     GROUP BY b.id_so
+     ORDER BY b.id_so) so_cbd inner join
     (Select so_no as sono,COUNT(so_no) as jml from (SELECT so.so_no,so_det.id as id_sodet,supplier, so.so_date, 
         so_det.dest, so_det.color, so_det.size, so_det.qty, so_det.unit, 
         act_costing.deldate, act_costing.curr, masterproduct.product_item, masterproduct.product_group, 
@@ -1127,7 +1107,7 @@ function load_so_detail_proforma_temporary()
 function sum_grandtotal_proforma()
 {
     $hasil = $this->db->query("SELECT Round(SUM(total), 2) AS grand_total
-       FROM tbl_so_det_proforma_temp");
+     FROM tbl_so_det_proforma_temp");
     return $hasil->result_array();
 }
 
@@ -1243,14 +1223,14 @@ function cari_debit_note($dt_dari_inv, $dt_sampai_inv, $id_customer)
 
     if ($id_customer == "all_customer") {
         $hasil = $this->db->query("SELECT * FROM (SELECT a.id,a.no_dn,a.tgl_dn,b.Supplier,a.attn,a.from_curr,a.to_curr,a.amount,a.eqv_curr,a.status from tbl_debitnote_h a INNER JOIN mastersupplier b on b.Id_Supplier = a.customer
-           WHERE a.tgl_dn BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
-           GROUP BY a.no_dn) a left join
+         WHERE a.tgl_dn BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
+         GROUP BY a.no_dn) a left join
         (SELECT no_dn nodn,IF(nodn is null,'OTHER','MEMO') type_dn from (select DISTINCT a.no_dn,b.no_dn nodn from tbl_debitnote_det a left join memo_det b on a.no_dn = b.no_dn) a) b on b.nodn = a.no_dn ");
         return $hasil->result_array();
     } else {
         $hasil = $this->db->query("SELECT * FROM (SELECT a.id,a.no_dn,a.tgl_dn,b.Supplier,a.attn,a.from_curr,a.to_curr,a.amount,a.eqv_curr,a.status from tbl_debitnote_h a INNER JOIN mastersupplier b on b.Id_Supplier = a.customer
-           WHERE a.tgl_dn BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' AND a.customer = '$id_customer' 
-           GROUP BY a.no_dn ) a left join
+         WHERE a.tgl_dn BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' AND a.customer = '$id_customer' 
+         GROUP BY a.no_dn ) a left join
         (SELECT no_dn nodn,IF(nodn is null,'OTHER','MEMO') type_dn from (select DISTINCT a.no_dn,b.no_dn nodn from tbl_debitnote_det a left join memo_det b on a.no_dn = b.no_dn) a) b on b.nodn = a.no_dn");
         return $hasil->result_array();
     }
@@ -1298,10 +1278,10 @@ function report_proforma_invoice_cbd($id)
 function report_proforma_invoice_tot_dp($id)
 {
     $hasil = $this->db->query("SELECT IF(a.dp = '0','CBD','DP') as type ,FORMAT(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',(a.total * (a.dp/100)),a.dp)), 2) AS amount
-       FROM tbl_invoice_proforma_dp_cbd AS a INNER JOIN 
-       mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN 
-       tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
-       tbl_invoice_proforma_detail_dp_cbd AS d ON a.no_proforma_invoice = d.no_invoice_proforma where a.id = '$id' GROUP BY a.no_proforma_invoice ");
+     FROM tbl_invoice_proforma_dp_cbd AS a INNER JOIN 
+     mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN 
+     tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
+     tbl_invoice_proforma_detail_dp_cbd AS d ON a.no_proforma_invoice = d.no_invoice_proforma where a.id = '$id' GROUP BY a.no_proforma_invoice ");
     return $hasil->row_array();
 }
 
@@ -1310,10 +1290,10 @@ function report_proforma_invoice_tot_dp($id)
 function report_debit_note($id)
 {
     $hasil = $this->db->query("SELECT a.id, a.no_dn, DATE_FORMAT(a.tgl_dn, '%Y-%m-%d') AS tgl_dn, b.supplier AS customer, a.attn,a.alamat,header1,header2,header3,IF(header1 != '',1,0) as data1, IF(header2 != '',1,0) as data2, IF(header3 != '',1,0) as data3,from_curr,to_curr,FORMAT(a.amount,2) as amount2,FORMAT(a.eqv_curr,2) as eqv_curr, c.beneficiary_name,c.bank_name,c.beneficiary_address,bank_account,c.swift_code, c.bank_address
-       FROM tbl_debitnote_h AS a INNER JOIN 
-       mastersupplier AS b ON a.customer = b.Id_Supplier inner join
-       b_masterbank c on c.bank_account = a.akun  
-       WHERE a.id = '$id'");
+     FROM tbl_debitnote_h AS a INNER JOIN 
+     mastersupplier AS b ON a.customer = b.Id_Supplier inner join
+     b_masterbank c on c.bank_account = a.akun  
+     WHERE a.id = '$id'");
     return $hasil->row_array();
 }
     //ubah september
@@ -1346,12 +1326,12 @@ function report_debit_note_det($id)
             FROM tbl_debitnote_det AS a
             INNER JOIN tbl_debitnote_h AS b ON a.no_dn = b.no_dn
             JOIN (
-               WITH RECURSIVE numbers AS (
+             WITH RECURSIVE numbers AS (
                 SELECT 1 AS n
                 UNION ALL
                 SELECT n + 1 FROM numbers WHERE n < 70
                 )
-               SELECT * FROM numbers) AS n
+             SELECT * FROM numbers) AS n
             WHERE b.id = '$id'
             ) AS hasil
         WHERE hasil.header1 != '' OR hasil.header2 != '' OR hasil.header3 != ''
@@ -1868,69 +1848,69 @@ function save_userrole($data)
 function load_user_access()
 {
     $hasil = $this->db->query("SELECT b.id,b.user, a.menu, b.base_url
-       FROM tbl_user_role AS a INNER JOIN tbl_user_access AS b ON a.id = b.menu_id");
+     FROM tbl_user_role AS a INNER JOIN tbl_user_access AS b ON a.id = b.menu_id");
     return $hasil->result_array();
 }
 
 function load_user_access_1($user)
 {
     $hasil = $this->db->query("SELECT b.user, a.menu, b.base_url, a.menu_status
-       FROM tbl_user_role AS a INNER JOIN 
-       tbl_user_access AS b ON a.id = b.menu_id
-       WHERE b.user = '$user' AND a.menu_status = 'main_menu_1' ");
+     FROM tbl_user_role AS a INNER JOIN 
+     tbl_user_access AS b ON a.id = b.menu_id
+     WHERE b.user = '$user' AND a.menu_status = 'main_menu_1' ");
     return $hasil->result_array();
 }
 
 function load_user_access_2($user)
 {
     $hasil = $this->db->query("SELECT b.user, a.menu, b.base_url, a.menu_status
-       FROM tbl_user_role AS a INNER JOIN 
-       tbl_user_access AS b ON a.id = b.menu_id
-       WHERE b.user = '$user' AND a.menu_status = 'main_menu_2' ");
+     FROM tbl_user_role AS a INNER JOIN 
+     tbl_user_access AS b ON a.id = b.menu_id
+     WHERE b.user = '$user' AND a.menu_status = 'main_menu_2' ");
     return $hasil->result_array();
 }
 
 function load_user_access_3($user)
 {
     $hasil = $this->db->query("SELECT b.user, a.menu, b.base_url, a.menu_status
-       FROM tbl_user_role AS a INNER JOIN 
-       tbl_user_access AS b ON a.id = b.menu_id
-       WHERE b.user = '$user' AND a.menu_status = 'report' ");
+     FROM tbl_user_role AS a INNER JOIN 
+     tbl_user_access AS b ON a.id = b.menu_id
+     WHERE b.user = '$user' AND a.menu_status = 'report' ");
     return $hasil->result_array();
 }
 
 function load_user_access_4($user)
 {
     $hasil = $this->db->query("SELECT b.user, a.menu, b.base_url, a.menu_status
-       FROM tbl_user_role AS a INNER JOIN 
-       tbl_user_access AS b ON a.id = b.menu_id
-       WHERE b.user = '$user' AND a.menu_status = 'main_menu_3' ");
+     FROM tbl_user_role AS a INNER JOIN 
+     tbl_user_access AS b ON a.id = b.menu_id
+     WHERE b.user = '$user' AND a.menu_status = 'main_menu_3' ");
     return $hasil->result_array();
 }
 function load_user_access_5($user)
 {
     $hasil = $this->db->query("SELECT b.user, a.menu, b.base_url, a.menu_status
-       FROM tbl_user_role AS a INNER JOIN 
-       tbl_user_access AS b ON a.id = b.menu_id
-       WHERE b.user = '$user' AND a.menu_status = 'kwitansi' ");
+     FROM tbl_user_role AS a INNER JOIN 
+     tbl_user_access AS b ON a.id = b.menu_id
+     WHERE b.user = '$user' AND a.menu_status = 'kwitansi' ");
     return $hasil->result_array();
 }
 
 function load_user_access_6($user)
 {
     $hasil = $this->db->query("SELECT b.user, a.menu, b.base_url, a.menu_status
-       FROM tbl_user_role AS a INNER JOIN 
-       tbl_user_access AS b ON a.id = b.menu_id
-       WHERE b.user = '$user' AND a.menu_status = 'alokasi' ");
+     FROM tbl_user_role AS a INNER JOIN 
+     tbl_user_access AS b ON a.id = b.menu_id
+     WHERE b.user = '$user' AND a.menu_status = 'alokasi' ");
     return $hasil->result_array();
 }
 
 function load_user_access_7($user)
 {
     $hasil = $this->db->query("SELECT b.user, a.menu, b.base_url, a.menu_status
-       FROM tbl_user_role AS a INNER JOIN 
-       tbl_user_access AS b ON a.id = b.menu_id
-       WHERE b.user = '$user' AND a.menu_status = 'reverse' ");
+     FROM tbl_user_role AS a INNER JOIN 
+     tbl_user_access AS b ON a.id = b.menu_id
+     WHERE b.user = '$user' AND a.menu_status = 'reverse' ");
     return $hasil->result_array();
 }
 
@@ -1943,9 +1923,9 @@ function cari_usercancel($user)
 function block_page($user, $menu_name)
 {
     $hasil = $this->db->query("SELECT b.user, a.menu, b.menu_id
-       FROM tbl_user_role AS a INNER JOIN 
-       tbl_user_access AS b ON a.id = b.menu_id
-       WHERE b.user = '$user' AND a.menu = '$menu_name' ");
+     FROM tbl_user_role AS a INNER JOIN 
+     tbl_user_access AS b ON a.id = b.menu_id
+     WHERE b.user = '$user' AND a.menu = '$menu_name' ");
     return $hasil->row_array();
 }
 
@@ -1953,28 +1933,28 @@ function block_page($user, $menu_name)
 function cari_invoice_kwt($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer)
 {
 
- $hasil = $this->db->query("(SELECT distinct a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, a.shipp, a.doc_type, a.doc_number, e.curr,
-  DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date, c.type,  a.status, a.id, c.id_type, b.Id_Supplier AS id_customer, 
-  FORMAT((d.grand_total), 2) AS amount, round(d.grand_total,0) AS amount1
-  FROM  tbl_book_invoice AS a INNER JOIN 
-  mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
-  tbl_type AS c ON a.id_type = c.id_type INNER JOIN
-  tbl_invoice_pot AS d ON a.id = d.id_book_invoice  INNER JOIN
-  tbl_invoice_detail as e on a.id=e.id_book_invoice      
-  WHERE e.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.id_customer = '$id_customer' and a.status = 'APPROVED' and a.no_kwt is null  and e.curr = 'IDR'
-  ORDER BY a.id) union                                                                      
+   $hasil = $this->db->query("(SELECT distinct a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, a.shipp, a.doc_type, a.doc_number, e.curr,
+      DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date, c.type,  a.status, a.id, c.id_type, b.Id_Supplier AS id_customer, 
+      FORMAT((d.grand_total), 2) AS amount, round(d.grand_total,0) AS amount1
+      FROM  tbl_book_invoice AS a INNER JOIN 
+      mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
+      tbl_type AS c ON a.id_type = c.id_type INNER JOIN
+      tbl_invoice_pot AS d ON a.id = d.id_book_invoice  INNER JOIN
+      tbl_invoice_detail as e on a.id=e.id_book_invoice      
+      WHERE e.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.id_customer = '$id_customer' and a.status = 'APPROVED' and a.no_kwt is null  and e.curr = 'IDR'
+      ORDER BY a.id) union                                                                      
 
-  (SELECT distinct  f.no_inv AS no_invoice, UPPER(g.supplier) AS customer, f.shipp,                                     f.doc_type, f.doc_number,i.curr, 
-  DATE_FORMAT(i.sj_date, '%Y-%m-%d') AS inv_date, f.type, f.status,f.id, f.type_so, g.Id_Supplier AS id_customer,
-  FORMAT((h.grand_total), 2) AS amount,round(h.grand_total,0) AS amount1
-  FROM  tbl_invoice_nb AS f INNER JOIN 
-  mastersupplier AS g ON f.customer = g.id_supplier INNER JOIN 
-  tbl_invoice_nb_pot AS h ON f.no_inv = h.no_inv INNER JOIN
-  tbl_invoice_nb_detail as i on f.no_inv=i.no_inv      
-  WHERE i.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND f.customer = '$id_customer' and f.status = 'APPROVED' and f.no_kwt is null  and i.curr = 'IDR'
-  ORDER BY f.id) ");
+      (SELECT distinct  f.no_inv AS no_invoice, UPPER(g.supplier) AS customer, f.shipp,                                     f.doc_type, f.doc_number,i.curr, 
+      DATE_FORMAT(i.sj_date, '%Y-%m-%d') AS inv_date, f.type, f.status,f.id, f.type_so, g.Id_Supplier AS id_customer,
+      FORMAT((h.grand_total), 2) AS amount,round(h.grand_total,0) AS amount1
+      FROM  tbl_invoice_nb AS f INNER JOIN 
+      mastersupplier AS g ON f.customer = g.id_supplier INNER JOIN 
+      tbl_invoice_nb_pot AS h ON f.no_inv = h.no_inv INNER JOIN
+      tbl_invoice_nb_detail as i on f.no_inv=i.no_inv      
+      WHERE i.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND f.customer = '$id_customer' and f.status = 'APPROVED' and f.no_kwt is null  and i.curr = 'IDR'
+      ORDER BY f.id) ");
 
- return $hasil->result_array();
+   return $hasil->result_array();
 
 }
 
@@ -1983,11 +1963,11 @@ function cari_kwitansi($dt_dari_kwt, $dt_sampai_kwt, $customer)
 
     if ($customer == "all_customer") {
 
-     $hasil = $this->db->query("SELECT * from ((SELECT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%Y-%m-%d') as tgl_kwt, UPPER(b.supplier) AS supp, FORMAT((a.total), 2) as total, a.terbilang as bilang, a.status, c.curr from tbl_kwitansi a inner join mastersupplier AS b ON a.supp = b.id_supplier inner join tbl_kwitansi_detail f on f.no_kwitansi = a.no_kwt inner join tbl_book_invoice d on f.no_invoice = d.no_invoice inner JOIN tbl_invoice_detail c on d.id = c.id_book_invoice  where a.tgl_kwt BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt'  GROUP BY a.id) union
+       $hasil = $this->db->query("SELECT * from ((SELECT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%Y-%m-%d') as tgl_kwt, UPPER(b.supplier) AS supp, FORMAT((a.total), 2) as total, a.terbilang as bilang, a.status, c.curr from tbl_kwitansi a inner join mastersupplier AS b ON a.supp = b.id_supplier inner join tbl_kwitansi_detail f on f.no_kwitansi = a.no_kwt inner join tbl_book_invoice d on f.no_invoice = d.no_invoice inner JOIN tbl_invoice_detail c on d.id = c.id_book_invoice  where a.tgl_kwt BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt'  GROUP BY a.id) union
         (SELECT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%Y-%m-%d') as tgl_kwt, UPPER(b.supplier) AS supp, FORMAT((a.total), 2) as total, a.terbilang as bilang, a.status, c.curr from tbl_kwitansi a inner join mastersupplier AS b ON a.supp = b.id_supplier inner join tbl_kwitansi_detail f on f.no_kwitansi = a.no_kwt inner JOIN tbl_invoice_nb_detail c on f.no_invoice = c.no_inv  where a.tgl_kwt BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' GROUP BY a.id)) a ");
 
-     return $hasil->result_array();
- } else {
+       return $hasil->result_array();
+   } else {
     $hasil = $this->db->query("SELECT * from ((SELECT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%Y-%m-%d') as tgl_kwt, UPPER(b.supplier) AS supp, FORMAT((a.total), 2) as total, a.terbilang as bilang, a.status, c.curr from tbl_kwitansi a inner join mastersupplier AS b ON a.supp = b.id_supplier inner join tbl_kwitansi_detail f on f.no_kwitansi = a.no_kwt inner join tbl_book_invoice d on f.no_invoice = d.no_invoice inner JOIN tbl_invoice_detail c on d.id = c.id_book_invoice  where a.tgl_kwt BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' AND a.supp = '$customer' GROUP BY a.id) union
         (SELECT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%Y-%m-%d') as tgl_kwt, UPPER(b.supplier) AS supp, FORMAT((a.total), 2) as total, a.terbilang as bilang, a.status, c.curr from tbl_kwitansi a inner join mastersupplier AS b ON a.supp = b.id_supplier inner join tbl_kwitansi_detail f on f.no_kwitansi = a.no_kwt inner JOIN tbl_invoice_nb_detail c on f.no_invoice = c.no_inv  where a.tgl_kwt BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' AND a.supp = '$customer' GROUP BY a.id)) a");
     return $hasil->result_array();
@@ -1998,9 +1978,9 @@ function cari_kwitansi($dt_dari_kwt, $dt_sampai_kwt, $customer)
 function cari_view_kwitansi($no_kwt)
 {
 
- $hasil = $this->db->query("SELECT DISTINCT d.id, a.id as id_detail,a.no_invoice, a.invoice_date, a.customer, a.shipp, a.doc_type, a.doc_number, a.type, FORMAT(SUM(c.total_price), 2) as total, c.curr, a.style from tbl_kwitansi_detail a inner join tbl_book_invoice b on b.no_invoice = a.no_invoice inner JOIN tbl_invoice_detail c on b.id = c.id_book_invoice inner join tbl_kwitansi d on d.no_kwt = a.no_kwitansi where d.id = '$no_kwt' GROUP BY a.no_invoice");
+   $hasil = $this->db->query("SELECT DISTINCT d.id, a.id as id_detail,a.no_invoice, a.invoice_date, a.customer, a.shipp, a.doc_type, a.doc_number, a.type, FORMAT(SUM(c.total_price), 2) as total, c.curr, a.style from tbl_kwitansi_detail a inner join tbl_book_invoice b on b.no_invoice = a.no_invoice inner JOIN tbl_invoice_detail c on b.id = c.id_book_invoice inner join tbl_kwitansi d on d.no_kwt = a.no_kwitansi where d.id = '$no_kwt' GROUP BY a.no_invoice");
 
- return $hasil->result_array();
+   return $hasil->result_array();
 
 }
 
@@ -2215,9 +2195,9 @@ function report_invoice_nb($id)
 function report_invoice_detail_nb($id)
 {
     $hasil = $this->db->query("SELECT a.no_style as styleno, a.prod_grup as product_group,a.prod_item as  product_item, a.color, a.size, a.qty, format(round(a.unit_price,2),2) unit_price,a.diskon as disc, FORMAT(a.total, 2) AS total_price, a.uom, a.curr, a.id_bppb
-       FROM tbl_invoice_nb_detail a inner join 
-       tbl_invoice_nb b on b.no_inv = a.no_inv
-       WHERE b.id = '$id' ORDER BY a.id_bppb asc ");
+     FROM tbl_invoice_nb_detail a inner join 
+     tbl_invoice_nb b on b.no_inv = a.no_inv
+     WHERE b.id = '$id' ORDER BY a.id_bppb asc ");
     return $hasil->result_array();
 }
 
@@ -2234,26 +2214,26 @@ function report_invoice_pot_nb($id)
 function group_bppb_number_nb($id)
 {
     $hasil = $this->db->query("SELECT DISTINCT a.no_shipp as bppb_number
-       FROM tbl_invoice_nb_detail a inner join 
-       tbl_invoice_nb b on b.no_inv = a.no_inv
-       WHERE b.id = '$id' ");
+     FROM tbl_invoice_nb_detail a inner join 
+     tbl_invoice_nb b on b.no_inv = a.no_inv
+     WHERE b.id = '$id' ");
     return $hasil->result_array();
 }
 
 function group_so_number_nb($id)
 {
     $hasil = $this->db->query("SELECT DISTINCT a.no_so as so_number
-       FROM tbl_invoice_nb_detail a inner join 
-       tbl_invoice_nb b on b.no_inv = a.no_inv
-       WHERE b.id = '$id' ");
+     FROM tbl_invoice_nb_detail a inner join 
+     tbl_invoice_nb b on b.no_inv = a.no_inv
+     WHERE b.id = '$id' ");
     return $hasil->result_array();
 }
 function group_curr_nb($id)
 {
     $hasil = $this->db->query("SELECT DISTINCT a.curr as curr
-       FROM tbl_invoice_nb_detail a inner join 
-       tbl_invoice_nb b on b.no_inv = a.no_inv
-       WHERE a.id = '$id' ");
+     FROM tbl_invoice_nb_detail a inner join 
+     tbl_invoice_nb b on b.no_inv = a.no_inv
+     WHERE a.id = '$id' ");
     return $hasil->row_array();
 }
 
@@ -2289,18 +2269,18 @@ function cari_invoice_nb($dt_dari_inv, $dt_sampai_inv, $id_customer)
             //                        WHERE a.tgl_inv BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
             //                        ORDER BY a.id ");
 
-     $hasil = $this->db->query("SELECT distinct  f.no_inv AS no_invoice, UPPER(g.supplier) AS customer, f.shipp,                                     f.doc_type, f.doc_number, 
-      DATE_FORMAT(i.sj_date, '%Y-%m-%d') AS inv_date,DATE_FORMAT(f.create_date, '%Y-%m-%d') AS tgl_inv, f.type, f.status,f.id, f.type_so, g.Id_Supplier AS id_customer,
-      FORMAT((h.grand_total), 2) AS amount
-      FROM  tbl_invoice_nb AS f INNER JOIN 
-      mastersupplier AS g ON f.customer = g.id_supplier INNER JOIN 
-      tbl_invoice_nb_pot AS h ON f.no_inv = h.no_inv INNER JOIN
-      tbl_invoice_nb_detail as i on f.no_inv=i.no_inv      
-      WHERE i.sj_date BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
-      ORDER BY f.id ");
+       $hasil = $this->db->query("SELECT distinct  f.no_inv AS no_invoice, UPPER(g.supplier) AS customer, f.shipp,                                     f.doc_type, f.doc_number, 
+          DATE_FORMAT(i.sj_date, '%Y-%m-%d') AS inv_date,DATE_FORMAT(f.create_date, '%Y-%m-%d') AS tgl_inv, f.type, f.status,f.id, f.type_so, g.Id_Supplier AS id_customer,
+          FORMAT((h.grand_total), 2) AS amount
+          FROM  tbl_invoice_nb AS f INNER JOIN 
+          mastersupplier AS g ON f.customer = g.id_supplier INNER JOIN 
+          tbl_invoice_nb_pot AS h ON f.no_inv = h.no_inv INNER JOIN
+          tbl_invoice_nb_detail as i on f.no_inv=i.no_inv      
+          WHERE i.sj_date BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
+          ORDER BY f.id ");
 
-     return $hasil->result_array();
- } else {
+       return $hasil->result_array();
+   } else {
     $hasil = $this->db->query("SELECT distinct  f.no_inv AS no_invoice, UPPER(g.supplier) AS customer, f.shipp,                                     f.doc_type, f.doc_number, 
       DATE_FORMAT(i.sj_date, '%Y-%m-%d') AS inv_date,DATE_FORMAT(f.create_date, '%Y-%m-%d') AS tgl_inv, f.type, f.status,f.id, f.type_so, g.Id_Supplier AS id_customer,
       FORMAT((h.grand_total), 2) AS amount
@@ -2508,57 +2488,57 @@ return $hasil->result_array();
 return $hasil->result_array();
 }else{
 
- $hasil = $this->db->query("(SELECT DISTINCT a.no_proforma_invoice AS no_invoice, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date, f.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL f.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
-  a.status, a.id, if(h.amount is null,format(IF(a.dp = '0',a.total,a.dp), 0), format(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) AS amount, if(h.amount is null,round((IF(a.dp = '0',a.total,a.dp)), 0),round(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) as amountrate, if(h.amount is null,format((IF(a.dp = '0',a.total,a.dp)), 0),format(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) as amountrate1, if(h.amount is null,round(IF(a.dp = '0',a.total,a.dp), 0), round(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) AS amount1
-  FROM  tbl_invoice_proforma_dp_cbd AS a INNER JOIN 
-  mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
-  tbl_type AS c ON a.id_type = c.id_type INNER JOIN
-  tbl_invoice_proforma_detail_dp_cbd as e on a.no_proforma_invoice=e.no_invoice_proforma left JOIN 
-  tbl_master_top AS f ON a.id_top = f.id left JOIN 
-  tbl_duedate AS g ON a.id = g.id_invoice left join
-  tbl_alokasi_detail as h on a.no_proforma_invoice = h.no_ref left join
-  tbl_alokasi as i on h.no_alk = i.no_alk 
-  WHERE a.tgl_proforma_inv BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.id_customer = '$id_customer' and a.status = 'APPROVED' and if(h.amount is null,round(IF(a.dp = '0',a.total,a.dp), 0), round(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) != '0' and e.curr = 'IDR' ORDER BY a.id) union
-  (SELECT DISTINCT a.no_dn AS no_invoice, DATE_FORMAT(a.tgl_dn, '%Y-%m-%d') AS inv_date, DATEDIFF(a.due_date,a.tgl_dn) as top, a.due_date AS duedate, UPPER(b.supplier) AS customer, a.to_curr, a.status, a.id, if(h.amount is null,format(a.eqv_curr, 0), format(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) AS amount, if(h.amount is null,round((a.eqv_curr), 0),round(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) as amountrate, if(h.amount is null,format((a.eqv_curr), 0),format(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) as amountrate1, if(h.amount is null,round(a.eqv_curr, 0), round(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) AS amount1
-  FROM  tbl_debitnote_h AS a INNER JOIN 
-  mastersupplier AS b ON a.customer = b.id_supplier left JOIN 
-  tbl_alokasi_detail as h on a.no_dn = h.no_ref left join
-  tbl_alokasi as i on h.no_alk = i.no_alk 
-  WHERE a.tgl_dn BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.customer = '$id_customer' and a.status = 'APPROVED' and if(h.amount is null,round(a.eqv_curr, 0), round(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) != '0' and a.to_curr = 'IDR' ORDER BY a.id) union
-  (SELECT DISTINCT a.no_invoice AS no_invoice, DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date, f.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(e.sj_date, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL f.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
-  a.status, a.id, if(e.curr = 'IDR',if(h.amount is null,format(d.grand_total, 0), format(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,format(d.grand_total, 2),format((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) AS amount, IF(e.curr = 'IDR',if(h.amount is null,round((d.grand_total), 0),round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round((d.grand_total  * '$rate'), 2),round(((d.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0))) as amountrate, IF(e.curr = 'IDR',if(h.amount is null,format((d.grand_total), 0),format(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,format((d.grand_total  * '$rate'), 2),format(((d.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0))) as amountrate1, if(e.curr = 'IDR',if(h.amount is null,round(d.grand_total, 0), round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round(d.grand_total, 2),round((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) AS amount1
-  FROM  tbl_book_invoice AS a INNER JOIN 
-  mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
-  tbl_type AS c ON a.id_type = c.id_type INNER JOIN
-  tbl_invoice_pot AS d ON a.id = d.id_book_invoice  INNER JOIN
-  tbl_invoice_detail as e on a.id=e.id_book_invoice left JOIN 
-  tbl_master_top AS f ON a.id_top = f.id left JOIN 
-  tbl_duedate AS g ON a.id = g.id_invoice left join
-  tbl_alokasi_detail as h on a.no_invoice = h.no_ref left join
-  tbl_alokasi as i on h.no_alk = i.no_alk left join 
-  saldoawal_ar as o on o.no_invoice = a.no_invoice
-  WHERE o.no_invoice is null and e.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.id_customer = '$id_customer' and e.curr = 'IDR' and a.status = 'APPROVED' and if(e.curr = 'IDR',if(h.amount is null,round(d.grand_total, 0), round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round(d.grand_total, 2),round((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) != '0' ORDER BY a.id) union 
+   $hasil = $this->db->query("(SELECT DISTINCT a.no_proforma_invoice AS no_invoice, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date, f.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL f.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
+      a.status, a.id, if(h.amount is null,format(IF(a.dp = '0',a.total,a.dp), 0), format(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) AS amount, if(h.amount is null,round((IF(a.dp = '0',a.total,a.dp)), 0),round(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) as amountrate, if(h.amount is null,format((IF(a.dp = '0',a.total,a.dp)), 0),format(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) as amountrate1, if(h.amount is null,round(IF(a.dp = '0',a.total,a.dp), 0), round(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) AS amount1
+      FROM  tbl_invoice_proforma_dp_cbd AS a INNER JOIN 
+      mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
+      tbl_type AS c ON a.id_type = c.id_type INNER JOIN
+      tbl_invoice_proforma_detail_dp_cbd as e on a.no_proforma_invoice=e.no_invoice_proforma left JOIN 
+      tbl_master_top AS f ON a.id_top = f.id left JOIN 
+      tbl_duedate AS g ON a.id = g.id_invoice left join
+      tbl_alokasi_detail as h on a.no_proforma_invoice = h.no_ref left join
+      tbl_alokasi as i on h.no_alk = i.no_alk 
+      WHERE a.tgl_proforma_inv BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.id_customer = '$id_customer' and a.status = 'APPROVED' and if(h.amount is null,round(IF(a.dp = '0',a.total,a.dp), 0), round(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) != '0' and e.curr = 'IDR' ORDER BY a.id) union
+      (SELECT DISTINCT a.no_dn AS no_invoice, DATE_FORMAT(a.tgl_dn, '%Y-%m-%d') AS inv_date, DATEDIFF(a.due_date,a.tgl_dn) as top, a.due_date AS duedate, UPPER(b.supplier) AS customer, a.to_curr, a.status, a.id, if(h.amount is null,format(a.eqv_curr, 0), format(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) AS amount, if(h.amount is null,round((a.eqv_curr), 0),round(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) as amountrate, if(h.amount is null,format((a.eqv_curr), 0),format(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) as amountrate1, if(h.amount is null,round(a.eqv_curr, 0), round(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) AS amount1
+      FROM  tbl_debitnote_h AS a INNER JOIN 
+      mastersupplier AS b ON a.customer = b.id_supplier left JOIN 
+      tbl_alokasi_detail as h on a.no_dn = h.no_ref left join
+      tbl_alokasi as i on h.no_alk = i.no_alk 
+      WHERE a.tgl_dn BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.customer = '$id_customer' and a.status = 'APPROVED' and if(h.amount is null,round(a.eqv_curr, 0), round(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) != '0' and a.to_curr = 'IDR' ORDER BY a.id) union
+      (SELECT DISTINCT a.no_invoice AS no_invoice, DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date, f.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(e.sj_date, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL f.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
+      a.status, a.id, if(e.curr = 'IDR',if(h.amount is null,format(d.grand_total, 0), format(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,format(d.grand_total, 2),format((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) AS amount, IF(e.curr = 'IDR',if(h.amount is null,round((d.grand_total), 0),round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round((d.grand_total  * '$rate'), 2),round(((d.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0))) as amountrate, IF(e.curr = 'IDR',if(h.amount is null,format((d.grand_total), 0),format(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,format((d.grand_total  * '$rate'), 2),format(((d.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0))) as amountrate1, if(e.curr = 'IDR',if(h.amount is null,round(d.grand_total, 0), round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round(d.grand_total, 2),round((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) AS amount1
+      FROM  tbl_book_invoice AS a INNER JOIN 
+      mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
+      tbl_type AS c ON a.id_type = c.id_type INNER JOIN
+      tbl_invoice_pot AS d ON a.id = d.id_book_invoice  INNER JOIN
+      tbl_invoice_detail as e on a.id=e.id_book_invoice left JOIN 
+      tbl_master_top AS f ON a.id_top = f.id left JOIN 
+      tbl_duedate AS g ON a.id = g.id_invoice left join
+      tbl_alokasi_detail as h on a.no_invoice = h.no_ref left join
+      tbl_alokasi as i on h.no_alk = i.no_alk left join 
+      saldoawal_ar as o on o.no_invoice = a.no_invoice
+      WHERE o.no_invoice is null and e.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.id_customer = '$id_customer' and e.curr = 'IDR' and a.status = 'APPROVED' and if(e.curr = 'IDR',if(h.amount is null,round(d.grand_total, 0), round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round(d.grand_total, 2),round((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) != '0' ORDER BY a.id) union 
 
-  (SELECT DISTINCT a.no_inv AS no_invoice, DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date, a.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(e.sj_date, '%Y-%m-%d'), INTERVAL a.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL a.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
-  a.status, a.id, if(e.curr = 'IDR',if(h.amount is null,format(d.grand_total, 0), format(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,format(d.grand_total, 2),format((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv)), 2))) AS amount, IF(e.curr = 'IDR',if(h.amount is null,round((d.grand_total), 0),round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,round((d.grand_total  * '$rate'), 2),round(((d.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv))), 0))) as amountrate, IF(e.curr = 'IDR',if(h.amount is null,format((d.grand_total), 0),format(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,format((d.grand_total  * '$rate'), 2),format(((d.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv))), 0))) as amountrate1, if(e.curr = 'IDR',if(h.amount is null,round(d.grand_total, 0), round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,round(d.grand_total, 2),round((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv)), 2))) AS amount1
-  FROM  tbl_invoice_nb AS a INNER JOIN 
-  mastersupplier AS b ON a.customer = b.id_supplier INNER JOIN 
-  tbl_invoice_nb_pot AS d ON a.no_inv = d.no_inv  INNER JOIN
-  tbl_invoice_nb_detail as e on a.no_inv=e.no_inv left JOIN 
-  tbl_duedate AS g ON a.id = g.id_invoice left join
-  tbl_alokasi_detail as h on a.no_inv = h.no_ref left join
-  tbl_alokasi as i on h.no_alk = i.no_alk left join 
-  saldoawal_ar as o on o.no_invoice = a.no_inv
-  WHERE o.no_invoice is null and e.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.customer = '$id_customer' and e.curr = 'IDR' and a.status = 'APPROVED' and if(e.curr = 'IDR',if(h.amount is null,round(d.grand_total, 0), round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,round(d.grand_total, 2),round((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv)), 2))) != '0' ORDER BY a.id)
-  union
-  (select a.no_invoice, a.sj_date, a.top, a.due_date, a.customer, a.curr, a.status, a.id,
+      (SELECT DISTINCT a.no_inv AS no_invoice, DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date, a.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(e.sj_date, '%Y-%m-%d'), INTERVAL a.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL a.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
+      a.status, a.id, if(e.curr = 'IDR',if(h.amount is null,format(d.grand_total, 0), format(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,format(d.grand_total, 2),format((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv)), 2))) AS amount, IF(e.curr = 'IDR',if(h.amount is null,round((d.grand_total), 0),round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,round((d.grand_total  * '$rate'), 2),round(((d.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv))), 0))) as amountrate, IF(e.curr = 'IDR',if(h.amount is null,format((d.grand_total), 0),format(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,format((d.grand_total  * '$rate'), 2),format(((d.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv))), 0))) as amountrate1, if(e.curr = 'IDR',if(h.amount is null,round(d.grand_total, 0), round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,round(d.grand_total, 2),round((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv)), 2))) AS amount1
+      FROM  tbl_invoice_nb AS a INNER JOIN 
+      mastersupplier AS b ON a.customer = b.id_supplier INNER JOIN 
+      tbl_invoice_nb_pot AS d ON a.no_inv = d.no_inv  INNER JOIN
+      tbl_invoice_nb_detail as e on a.no_inv=e.no_inv left JOIN 
+      tbl_duedate AS g ON a.id = g.id_invoice left join
+      tbl_alokasi_detail as h on a.no_inv = h.no_ref left join
+      tbl_alokasi as i on h.no_alk = i.no_alk left join 
+      saldoawal_ar as o on o.no_invoice = a.no_inv
+      WHERE o.no_invoice is null and e.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.customer = '$id_customer' and e.curr = 'IDR' and a.status = 'APPROVED' and if(e.curr = 'IDR',if(h.amount is null,round(d.grand_total, 0), round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,round(d.grand_total, 2),round((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv)), 2))) != '0' ORDER BY a.id)
+      union
+      (select a.no_invoice, a.sj_date, a.top, a.due_date, a.customer, a.curr, a.status, a.id,
 
-  if(a.curr = 'IDR',if(h.amount is null,format(a.grand_total, 0), format(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,format(a.grand_total, 2),format((a.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) AS amount, 
-  IF(a.curr = 'IDR',if(h.amount is null,round((a.grand_total), 0),round(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round((a.grand_total  * '$rate'), 2),round(((a.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0))) as amountrate,
-  IF(a.curr = 'IDR',if(h.amount is null,format((a.grand_total), 0),format(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,format((a.grand_total  * '$rate'), 2),format(((a.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0))) as amountrate1,
-  if(a.curr = 'IDR',if(h.amount is null,round(a.grand_total, 0), round(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round(a.grand_total, 2),round((a.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) AS amount1
-  from saldoawal_ar a left join tbl_alokasi_detail as h on a.no_invoice = h.no_ref left join tbl_alokasi as i on h.no_alk = i.no_alk  
-  WHERE a.id_customer = '$id_customer' and a.curr = 'IDR' and a.status = 'APPROVED' and if(a.curr = 'IDR',if(h.amount is null,round(a.grand_total, 0), round(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round(a.grand_total, 2),round((a.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) != '0' ORDER BY a.id)");
+      if(a.curr = 'IDR',if(h.amount is null,format(a.grand_total, 0), format(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,format(a.grand_total, 2),format((a.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) AS amount, 
+      IF(a.curr = 'IDR',if(h.amount is null,round((a.grand_total), 0),round(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round((a.grand_total  * '$rate'), 2),round(((a.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0))) as amountrate,
+      IF(a.curr = 'IDR',if(h.amount is null,format((a.grand_total), 0),format(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,format((a.grand_total  * '$rate'), 2),format(((a.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0))) as amountrate1,
+      if(a.curr = 'IDR',if(h.amount is null,round(a.grand_total, 0), round(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round(a.grand_total, 2),round((a.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) AS amount1
+      from saldoawal_ar a left join tbl_alokasi_detail as h on a.no_invoice = h.no_ref left join tbl_alokasi as i on h.no_alk = i.no_alk  
+      WHERE a.id_customer = '$id_customer' and a.curr = 'IDR' and a.status = 'APPROVED' and if(a.curr = 'IDR',if(h.amount is null,round(a.grand_total, 0), round(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round(a.grand_total, 2),round((a.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) != '0' ORDER BY a.id)");
 
 return $hasil->result_array();
 
@@ -2583,22 +2563,22 @@ function simpan_invoice_detail_alo($data)
 function load_invoice_detail_alo()
 {
     $hasil = $this->db->query("SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, a.total, a.curr, a.eqp_idr, a.amount,b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa, b.profit_center
-       FROM tbl_alokasi_temp a INNER JOIN
-       tbl_book_invoice b on b.no_invoice = a.ref_number
-       union                                                                    
-       SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, a.total, a.curr, a.eqp_idr, a.amount,b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa, 'NAG' profit_center
-       FROM tbl_alokasi_temp a INNER JOIN
-       tbl_invoice_nb b on b.no_inv = a.ref_number
-       union                                                                    
-       select ref_number, ref_date, due_date, (total- COALESCE(total_alk,0)) total, curr, (eqp_idr - COALESCE(total_alk,0)) eqv_idr, round(amount / jumlah_baris,2) amount, no_coa, nama_coa, a.coa,profit_center from (SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, sum(b.amount) total, a.curr, sum(b.amount) eqp_idr, a.amount,b.no_coa,c.nama_coa,concat(c.no_coa,' ',c.nama_coa) as coa, COUNT(*) OVER(PARTITION BY a.ref_number) AS jumlah_baris, COALESCE(d.profit_center,'NAG') profit_center FROM tbl_alokasi_temp a INNER JOIN tbl_debitnote_det b on b.no_dn = a.ref_number  INNER JOIN tbl_debitnote_h d ON d.no_dn = a.ref_number inner join mastercoa_v2 c on c.no_coa = b.no_coa GROUP BY b.no_coa,a.ref_number) a left join (select no_ref, coa, sum(amount) total_alk from tbl_alokasi_detail GROUP BY no_ref, coa) b on b.no_ref = a.ref_number and b.coa = a.no_coa
-       union
-       SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, a.total, a.curr, a.eqp_idr, a.amount, b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa, 'NAG' profit_center FROM tbl_alokasi_temp a INNER JOIN saldoawal_ar b on b.no_invoice = a.ref_number
-       union                                                                    
-       SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, b.total, a.curr, b.total eqp_idr, b.total amount,b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa, 'NAG' profit_center
-       FROM tbl_alokasi_temp a INNER JOIN
-       jurnal_invoice_dpcbd b on b.no_inv = a.ref_number
+     FROM tbl_alokasi_temp a INNER JOIN
+     tbl_book_invoice b on b.no_invoice = a.ref_number
+     union                                                                    
+     SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, a.total, a.curr, a.eqp_idr, a.amount,b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa, 'NAG' profit_center
+     FROM tbl_alokasi_temp a INNER JOIN
+     tbl_invoice_nb b on b.no_inv = a.ref_number
+     union                                                                    
+     select ref_number, ref_date, due_date, (total- COALESCE(total_alk,0)) total, curr, (eqp_idr - COALESCE(total_alk,0)) eqv_idr, round(amount / jumlah_baris,2) amount, no_coa, nama_coa, a.coa,profit_center from (SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, sum(b.amount) total, a.curr, sum(b.amount) eqp_idr, a.amount,b.no_coa,c.nama_coa,concat(c.no_coa,' ',c.nama_coa) as coa, COUNT(*) OVER(PARTITION BY a.ref_number) AS jumlah_baris, COALESCE(d.profit_center,'NAG') profit_center FROM tbl_alokasi_temp a INNER JOIN tbl_debitnote_det b on b.no_dn = a.ref_number  INNER JOIN tbl_debitnote_h d ON d.no_dn = a.ref_number inner join mastercoa_v2 c on c.no_coa = b.no_coa GROUP BY b.no_coa,a.ref_number) a left join (select no_ref, coa, sum(amount) total_alk from tbl_alokasi_detail GROUP BY no_ref, coa) b on b.no_ref = a.ref_number and b.coa = a.no_coa
+     union
+     SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, a.total, a.curr, a.eqp_idr, a.amount, b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa, 'NAG' profit_center FROM tbl_alokasi_temp a INNER JOIN saldoawal_ar b on b.no_invoice = a.ref_number
+     union                                                                    
+     SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, b.total, a.curr, b.total eqp_idr, b.total amount,b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa, 'NAG' profit_center
+     FROM tbl_alokasi_temp a INNER JOIN
+     jurnal_invoice_dpcbd b on b.no_inv = a.ref_number
 
-       ");
+     ");
     return $hasil->result_array();
 }
 
@@ -2736,10 +2716,10 @@ function cari_alokasi($dt_dari_kwt, $dt_sampai_kwt, $customer)
 
     if ($customer == "all_customer") {
 
-     $hasil = $this->db->query("SELECT a.id, a.no_alk,a.tgl_alk,a.customer,b.supplier,a.doc_number,c.nama_bank as bank,a.account,a.curr,if(rate = '0', '-',format(a.rate,0)) as rate,if(a.curr = 'IDR',format(a.amount, 0), format(a.amount, 2)) as amount,format(a.eqp_idr, 0) as eqp_idr,a.status,DATE_FORMAT(d.tanggal_input, '%Y-%m-%d') as tanggal_input,d.nama from tbl_alokasi AS a INNER JOIN mastersupplier AS b ON a.customer = b.id_supplier inner join masterbank c on c.id = a.bank left join tbl_log d on d.doc_number = a.no_alk where a.tgl_alk BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' GROUP BY a.id ");
+       $hasil = $this->db->query("SELECT a.id, a.no_alk,a.tgl_alk,a.customer,b.supplier,a.doc_number,c.nama_bank as bank,a.account,a.curr,if(rate = '0', '-',format(a.rate,0)) as rate,if(a.curr = 'IDR',format(a.amount, 0), format(a.amount, 2)) as amount,format(a.eqp_idr, 0) as eqp_idr,a.status,DATE_FORMAT(d.tanggal_input, '%Y-%m-%d') as tanggal_input,d.nama from tbl_alokasi AS a INNER JOIN mastersupplier AS b ON a.customer = b.id_supplier inner join masterbank c on c.id = a.bank left join tbl_log d on d.doc_number = a.no_alk where a.tgl_alk BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' GROUP BY a.id ");
 
-     return $hasil->result_array();
- } else {
+       return $hasil->result_array();
+   } else {
     $hasil = $this->db->query("SELECT a.id, a.no_alk,a.tgl_alk,a.customer,b.supplier,a.doc_number,c.nama_bank as bank,a.account,a.curr,if(rate = '0', '-',format(a.rate,0)) as rate,if(a.curr = 'IDR',format(a.amount, 0), format(a.amount, 2)) as amount,format(a.eqp_idr, 0) as eqp_idr,a.status,DATE_FORMAT(d.tanggal_input, '%Y-%m-%d') as tanggal_input,d.nama from tbl_alokasi AS a INNER JOIN mastersupplier AS b ON a.customer = b.id_supplier inner join masterbank c on c.id = a.bank left join tbl_log d on d.doc_number = a.no_alk where a.tgl_alk BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' AND a.customer = '$customer' GROUP BY a.id ");
     return $hasil->result_array();
 }
@@ -2757,10 +2737,10 @@ function cari_alokasi_report($dt_dari_kwt, $dt_sampai_kwt, $id_customer)
 
     if ($id_customer == "all_customer") {
 
-     $hasil = $this->db->query("SELECT a.no_alk, a.tgl_alk, c.Supplier,a.doc_number,d.nama_bank,d.no_rek,a.curr,b.no_ref,b.ref_date,b.total,IF(a.rate = '0','1',a.rate) as rate,b.eqp_idr,b.amount,b.keterangan,b.status,DATE_FORMAT(e.tanggal_input, '%Y-%m-%d') as tanggal_input,e.nama from tbl_alokasi a inner join tbl_alokasi_detail b on b.no_alk = a.no_alk left join masterbank d on d.id = a.bank left join mastersupplier c on c.Id_Supplier = a.customer left join tbl_log e on e.doc_number = a.no_alk where a.tgl_alk BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' ");
+       $hasil = $this->db->query("SELECT a.no_alk, a.tgl_alk, c.Supplier,a.doc_number,d.nama_bank,d.no_rek,a.curr,b.no_ref,b.ref_date,b.total,IF(a.rate = '0','1',a.rate) as rate,b.eqp_idr,b.amount,b.keterangan,b.status,DATE_FORMAT(e.tanggal_input, '%Y-%m-%d') as tanggal_input,e.nama from tbl_alokasi a inner join tbl_alokasi_detail b on b.no_alk = a.no_alk left join masterbank d on d.id = a.bank left join mastersupplier c on c.Id_Supplier = a.customer left join tbl_log e on e.doc_number = a.no_alk where a.tgl_alk BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' ");
 
-     return $hasil->result_array();
- } else {
+       return $hasil->result_array();
+   } else {
     $hasil = $this->db->query("SELECT a.no_alk, a.tgl_alk, c.Supplier,a.doc_number,d.nama_bank,d.no_rek,a.curr,b.no_ref,b.ref_date,b.total,IF(a.rate = '0','1',a.rate) as rate,b.eqp_idr,b.amount,b.keterangan,b.status,DATE_FORMAT(e.tanggal_input, '%Y-%m-%d') as tanggal_input,e.nama from tbl_alokasi a inner join tbl_alokasi_detail b on b.no_alk = a.no_alk left join masterbank d on d.id = a.bank left join mastersupplier c on c.Id_Supplier = a.customer left join tbl_log e on e.doc_number = a.no_alk where a.tgl_alk BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' AND a.customer = '$id_customer' ");
     return $hasil->result_array();
 }
@@ -2770,23 +2750,23 @@ function cari_alokasi_report($dt_dari_kwt, $dt_sampai_kwt, $id_customer)
 function cari_view_alokasi($no_kwt)
 {
 
- $hasil = $this->db->query("SELECT a.no_alk, a.coa,IFNULL(c.nama_coa,'-') as coa_name, a.cost_center, IFNULL(d.cost_name,'-') as cost_name, a.no_ref, a.ref_date, a.due_date, b.curr, if(b.curr = 'IDR',format(a.total, 0), format(a.total, 2)) as total, format(a.eqp_idr,0) as eqp_idr,format(a.amount, 0) as amount,format(round(a.eqp_idr,0) - round(a.amount, 0),0) as ost, a.keterangan,e.supplier from tbl_alokasi_detail a left join 
-     mastercoa_v2 c on a.coa=c.no_coa LEFT JOIN 
-     tbl_alokasi b on a.no_alk = b.no_alk left join
-     mastersupplier AS e ON b.customer = e.id_supplier left join
-     tbl_cost_center d on a.cost_center = d.code_cost where b.id = '$no_kwt' GROUP BY a.id");
+   $hasil = $this->db->query("SELECT a.no_alk, a.coa,IFNULL(c.nama_coa,'-') as coa_name, a.cost_center, IFNULL(d.cost_name,'-') as cost_name, a.no_ref, a.ref_date, a.due_date, b.curr, if(b.curr = 'IDR',format(a.total, 0), format(a.total, 2)) as total, format(a.eqp_idr,0) as eqp_idr,format(a.amount, 0) as amount,format(round(a.eqp_idr,0) - round(a.amount, 0),0) as ost, a.keterangan,e.supplier from tbl_alokasi_detail a left join 
+       mastercoa_v2 c on a.coa=c.no_coa LEFT JOIN 
+       tbl_alokasi b on a.no_alk = b.no_alk left join
+       mastersupplier AS e ON b.customer = e.id_supplier left join
+       tbl_cost_center d on a.cost_center = d.code_cost where b.id = '$no_kwt' GROUP BY a.id");
 
- return $hasil->result_array();
+   return $hasil->result_array();
 
 }
 
 function report_alokasi_detail($id)
 {
     $hasil = $this->db->query("SELECT a.no_alk, a.coa,IFNULL(c.nama_coa,'-') as coa_name, a.cost_center, IFNULL(d.cost_name,'-') as cost_name, a.no_ref, a.ref_date, a.due_date, b.curr, if(b.curr = 'IDR',format(a.total, 2), format(a.total, 2)) as total, format(a.eqp_idr,2) as eqp_idr,format(a.amount, 2) as amount,format(round(a.total,2) - round(a.amount, 2),2) as ost, a.keterangan,e.supplier,if(b.rate = '0','-',b.rate) as rate from tbl_alokasi_detail a left join 
-     mastercoa_v2 c on a.coa=c.no_coa LEFT JOIN 
-     tbl_alokasi b on a.no_alk = b.no_alk left join
-     mastersupplier AS e ON b.customer = e.id_supplier left join
-     tbl_cost_center d on a.cost_center = d.code_cost where b.id = '$id' GROUP BY a.id ");
+       mastercoa_v2 c on a.coa=c.no_coa LEFT JOIN 
+       tbl_alokasi b on a.no_alk = b.no_alk left join
+       mastersupplier AS e ON b.customer = e.id_supplier left join
+       tbl_cost_center d on a.cost_center = d.code_cost where b.id = '$id' GROUP BY a.id ");
     return $hasil->result_array();
 }
 
@@ -2892,7 +2872,7 @@ function cari_kartu_ar($dt_dari_inv, $dt_sampai_inv, $id_customer)
             //                        WHERE a.tgl_inv BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
             //                        ORDER BY a.id ");
 
-     $hasil = $this->db->query("SELECT * from 
+       $hasil = $this->db->query("SELECT * from 
         (select Supplier as namasupplier from mastersupplier where tipe_sup = 'C') ms
         left JOIN
 
@@ -2908,8 +2888,8 @@ function cari_kartu_ar($dt_dari_inv, $dt_sampai_inv, $id_customer)
         (select a.Supplier,b.customer,round(sum(if(b.curr = 'USD',b.amount ,'0')),2) as bayarusd2,round(sum(if(b.curr = 'IDR',b.amount,b.eqp_idr)),2) as bayaridr2 from tbl_alokasi b inner join mastersupplier a on a.Id_Supplier = b.customer where b.status != 'CANCEL' and b.tgl_alk between '2022-05-01' and '$dt_dari_inv' GROUP BY supplier) d on ms.namasupplier = d.Supplier
         ");
 
-     return $hasil->result_array();
- } else {
+       return $hasil->result_array();
+   } else {
     $hasil = $this->db->query("SELECT * from 
         (select Supplier as namasupplier from mastersupplier where tipe_sup = 'C' and Id_Supplier = '$id_customer') ms
         left JOIN
@@ -2948,7 +2928,7 @@ function cari_kartu_ar2($dt_dari_alk, $dt_sampai_alk, $id_cus)
 
     if ($id_cus == "all_customer") {
 
-     $hasil = $this->db->query("SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,coalesce(bayar,0) bayar,no_invoice2,bayar2,rate,shipp, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,'0') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,'0') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,'0') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,'0') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,'0') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,'0') jml_bln6 from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp,DATEDIFF('$dt_sampai_alk',duedate) diff_top, DATE_FORMAT(duedate,'%m') bln_due, DATE_FORMAT(duedate,'%Y') thn_due,DATE_FORMAT('$dt_sampai_alk','%m') fil_bln1,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 5,2,0) fil_bln6, DATE_FORMAT('$dt_sampai_alk','%Y') fil_thn, IF(duedate <= '$dt_sampai_alk',amount1,0) ready_due from 
+       $hasil = $this->db->query("SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,coalesce(bayar,0) bayar,no_invoice2,bayar2,rate,shipp, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,'0') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,'0') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,'0') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,'0') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,'0') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,'0') jml_bln6 from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp,DATEDIFF('$dt_sampai_alk',duedate) diff_top, DATE_FORMAT(duedate,'%m') bln_due, DATE_FORMAT(duedate,'%Y') thn_due,DATE_FORMAT('$dt_sampai_alk','%m') fil_bln1,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 5,2,0) fil_bln6, DATE_FORMAT('$dt_sampai_alk','%Y') fil_thn, IF(duedate <= '$dt_sampai_alk',amount1,0) ready_due from 
         (SELECT distinct a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer,a.sj_date inv_date,a.sj_date tgl_inv, b.Id_Supplier AS id_customer, a.curr,f.top,
           FORMAT((d.grand_total), 2) AS amount, if(a.curr = 'IDR',round((d.grand_total),0),round((d.grand_total), 2)) AS amount1,if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.sj_date, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(h.kontrabon_date, INTERVAL f.top DAY)) AS duedate,a.shipp
           FROM  tbl_book_invoice AS a INNER JOIN 
@@ -3022,7 +3002,7 @@ function cari_mutasi_invoice_dp($dt_dari_alk, $dt_sampai_alk, $id_cus)
 
     if ($id_cus == "all_customer") {
 
-     $hasil = $this->db->query("SELECT * from 
+       $hasil = $this->db->query("SELECT * from 
         (SELECT distinct a.no_proforma_invoice AS no_invoice, UPPER(b.supplier) AS customer,DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date,DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS tgl_inv, b.Id_Supplier AS id_customer, e.curr,f.top,
           FORMAT(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)), 2) AS amount, if(e.curr = 'USD',IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)),round(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)), 0)) AS amount1, if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(DATE_FORMAT(h.kontrabon_date, '%Y-%m-%d'), INTERVAL f.top DAY)) AS duedate
           FROM  tbl_invoice_proforma_dp_cbd AS a INNER JOIN 
@@ -3054,30 +3034,30 @@ function cari_mutasi_invoice_dp($dt_dari_alk, $dt_sampai_alk, $id_cus)
         (select a.no_ref as no_invoice2, sum(a.amount) as bayar2 from tbl_alokasi_detail a inner join tbl_alokasi b on b.no_alk = a.no_alk where a.status != 'CANCEL' and b.tgl_alk between '2022-05-01' and '$dt_dari_alk' and a.total != '0' group by a.no_ref) byr2 on byr2.no_invoice2 = inv.no_invoice
         ");
 
-     return $hasil->result_array();
- } else {
+       return $hasil->result_array();
+   } else {
     $hasil = $this->db->query("SELECT * from 
         (SELECT distinct a.no_proforma_invoice AS no_invoice, UPPER(b.supplier) AS customer,DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date,DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS tgl_inv, b.Id_Supplier AS id_customer, e.curr,a.id_top,
           if(e.curr = 'IDR',FORMAT(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)), 0),round(FORMAT(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)), 2), 2)) AS amount, if(e.curr = 'IDR',FORMAT(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)), 0),round(FORMAT(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)), 2), 2)) AS amount1, if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d'), INTERVAL a.id_top DAY) ,DATE_ADD(DATE_FORMAT(h.kontrabon_date, '%Y-%m-%d'), INTERVAL a.id_top DAY)) AS duedate
-           FROM  tbl_invoice_proforma_dp_cbd AS a INNER JOIN 
-       mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
-       tbl_invoice_proforma_detail_so_dp_cbd as e on a.no_proforma_invoice=e.no_invoice_proforma left JOIN 
-       tbl_duedate AS h ON a.id = h.id_invoice left join
-       saldoawal_ar as g on g.no_invoice = a.no_proforma_invoice
-       where g.no_invoice is null and a.status != 'CANCEL' and a.tgl_proforma_inv between '$dt_dari_alk' and '$dt_sampai_alk' a.id_customer = '$id_cus'
-       union
-       SELECT distinct a.no_proforma_invoice AS no_invoice, UPPER(b.supplier) AS customer,DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date,DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS tgl_inv, b.Id_Supplier AS id_customer, e.curr,a.id_top,
-       if(e.curr = 'IDR',FORMAT(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)), 0),round(FORMAT(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)), 2), 2)) AS amount, if(e.curr = 'IDR',FORMAT(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)), 0),round(FORMAT(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)), 2), 2)) AS amount1, if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d'), INTERVAL a.id_top DAY) ,DATE_ADD(DATE_FORMAT(h.kontrabon_date, '%Y-%m-%d'), INTERVAL a.id_top DAY)) AS duedate
-           FROM  tbl_invoice_proforma_dp_cbd AS a INNER JOIN 
-       mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
-       tbl_invoice_proforma_detail_so_dp_cbd as e on a.no_proforma_invoice=e.no_invoice_proforma left JOIN 
-       tbl_duedate AS h ON a.id = h.id_invoice left join
-       saldoawal_ar as g on g.no_invoice = a.no_proforma_invoice
-       where g.no_invoice is null and a.status != 'CANCEL' and a.tgl_proforma_inv between '2022-05-01' and '$dt_dari_alk' a.id_customer = '$id_cus'                                   
+             FROM  tbl_invoice_proforma_dp_cbd AS a INNER JOIN 
+         mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
+         tbl_invoice_proforma_detail_so_dp_cbd as e on a.no_proforma_invoice=e.no_invoice_proforma left JOIN 
+         tbl_duedate AS h ON a.id = h.id_invoice left join
+         saldoawal_ar as g on g.no_invoice = a.no_proforma_invoice
+         where g.no_invoice is null and a.status != 'CANCEL' and a.tgl_proforma_inv between '$dt_dari_alk' and '$dt_sampai_alk' a.id_customer = '$id_cus'
+         union
+         SELECT distinct a.no_proforma_invoice AS no_invoice, UPPER(b.supplier) AS customer,DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date,DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS tgl_inv, b.Id_Supplier AS id_customer, e.curr,a.id_top,
+         if(e.curr = 'IDR',FORMAT(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)), 0),round(FORMAT(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)), 2), 2)) AS amount, if(e.curr = 'IDR',FORMAT(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)), 0),round(FORMAT(IF(a.dp = '0',a.total,if(a.tipe_dp = '%',a.value_dp,a.dp)), 2), 2)) AS amount1, if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d'), INTERVAL a.id_top DAY) ,DATE_ADD(DATE_FORMAT(h.kontrabon_date, '%Y-%m-%d'), INTERVAL a.id_top DAY)) AS duedate
+             FROM  tbl_invoice_proforma_dp_cbd AS a INNER JOIN 
+         mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
+         tbl_invoice_proforma_detail_so_dp_cbd as e on a.no_proforma_invoice=e.no_invoice_proforma left JOIN 
+         tbl_duedate AS h ON a.id = h.id_invoice left join
+         saldoawal_ar as g on g.no_invoice = a.no_proforma_invoice
+         where g.no_invoice is null and a.status != 'CANCEL' and a.tgl_proforma_inv between '2022-05-01' and '$dt_dari_alk' a.id_customer = '$id_cus'                                   
 
-       union
+         union
 
-       select no_invoice, customer, inv_date, sj_date as tgl_inv,id_customer, curr, top, FORMAT((grand_total), 2) AS amount, if(curr = 'IDR',round((grand_total),0),round((grand_total), 2)) AS amount1,due_date from saldoawal_ar where id_customer = '$id_cus') inv LEFT JOIN
+         select no_invoice, customer, inv_date, sj_date as tgl_inv,id_customer, curr, top, FORMAT((grand_total), 2) AS amount, if(curr = 'IDR',round((grand_total),0),round((grand_total), 2)) AS amount1,due_date from saldoawal_ar where id_customer = '$id_cus') inv LEFT JOIN
         
 
         (select a.no_ref as no_invoice1, sum(a.amount) as bayar from tbl_alokasi_detail a inner join tbl_alokasi b on b.no_alk = a.no_alk where a.status != 'CANCEL' and b.tgl_alk between '$dt_dari_alk' and '$dt_sampai_alk' and a.total != '0' group by a.no_ref) byr on byr.no_invoice1 = inv.no_invoice LEFT JOIN
@@ -3095,7 +3075,7 @@ function cari_mutasi_debit_note($dt_dari_alk, $dt_sampai_alk, $id_cus)
 
     if ($id_cus == "all_customer") {
 
-     $hasil = $this->db->query("SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,amount1, duedate, no_invoice1 , bayar, no_invoice2, bayar2, amount, supplier, rate, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,'0') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,'0') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,'0') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,'0') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,'0') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,'0') jml_bln6 FROM (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,amount1, duedate, no_invoice1 , bayar, no_invoice2, bayar2, amount, supplier, rate, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due FROM (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,COALESCE(amount1,0) amount1, duedate, no_invoice1,COALESCE(bayar,0) bayar, no_invoice2,COALESCE(bayar2,0) bayar2, COALESCE(amount,0) amount,IF(supplier is null,'-',supplier) supplier,IF(from_curr = 'IDR','1',rate) rate,DATEDIFF('$dt_sampai_alk',duedate) diff_top, DATE_FORMAT(duedate,'%m') bln_due, DATE_FORMAT(duedate,'%Y') thn_due,DATE_FORMAT('$dt_sampai_alk','%m') fil_bln1,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 5,2,0) fil_bln6, DATE_FORMAT('$dt_sampai_alk','%Y') fil_thn, IF(duedate <= '$dt_sampai_alk',amount1,0) ready_due  from 
+       $hasil = $this->db->query("SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,amount1, duedate, no_invoice1 , bayar, no_invoice2, bayar2, amount, supplier, rate, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,'0') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,'0') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,'0') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,'0') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,'0') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,'0') jml_bln6 FROM (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,amount1, duedate, no_invoice1 , bayar, no_invoice2, bayar2, amount, supplier, rate, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due FROM (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,COALESCE(amount1,0) amount1, duedate, no_invoice1,COALESCE(bayar,0) bayar, no_invoice2,COALESCE(bayar2,0) bayar2, COALESCE(amount,0) amount,IF(supplier is null,'-',supplier) supplier,IF(from_curr = 'IDR','1',rate) rate,DATEDIFF('$dt_sampai_alk',duedate) diff_top, DATE_FORMAT(duedate,'%m') bln_due, DATE_FORMAT(duedate,'%Y') thn_due,DATE_FORMAT('$dt_sampai_alk','%m') fil_bln1,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 5,2,0) fil_bln6, DATE_FORMAT('$dt_sampai_alk','%Y') fil_thn, IF(duedate <= '$dt_sampai_alk',amount1,0) ready_due  from 
         (
             SELECT distinct a.no_dn AS no_invoice, UPPER(b.supplier) AS customer, a.attn,DATE_FORMAT(a.tgl_dn, '%Y-%m-%d') AS inv_date,DATE_FORMAT(a.tgl_dn, '%Y-%m-%d') AS tgl_inv, b.Id_Supplier AS id_customer, a.to_curr as from_curr,DATEDIFF(a.due_date,a.tgl_dn) top,
             FORMAT(a.eqv_curr, 2) AS amount, if(a.to_curr = 'USD',a.eqv_curr,round(a.eqv_curr, 2)) AS amount1,a.due_date duedate
@@ -3116,7 +3096,7 @@ function cari_mutasi_debit_note($dt_dari_alk, $dt_sampai_alk, $id_cus)
             ) l_supp on l_supp.dnno = inv.no_invoice JOIN
 
         (select IF((select id from tbl_tgl_tb where tgl_akhir = '$dt_sampai_alk') != '',(select rate from masterrate where tanggal = '$dt_sampai_alk' and v_codecurr = 'HARIAN'),(select rate from masterrate where tanggal = '$dt_sampai_alk' and v_codecurr = 'PAJAK')) rate) rate) a) a order by no_invoice asc
-     ");
+       ");
 
 return $hasil->result_array();
 } else {
@@ -3216,8 +3196,8 @@ function excel_debit_note($dt_dari_inv, $dt_sampai_inv, $id_customer)
 function cari_dn_appv($dt_dari_inv, $dt_sampai_inv)
 {
     $hasil = $this->db->query("SELECT a.id,a.no_dn,a.tgl_dn,b.Supplier,a.attn,a.from_curr,a.to_curr,a.amount,a.eqv_curr,a.status from tbl_debitnote_h a INNER JOIN mastersupplier b on b.Id_Supplier = a.customer
-       WHERE a.status = 'APPROVED' AND a.tgl_dn BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
-       GROUP BY a.no_dn");
+     WHERE a.status = 'APPROVED' AND a.tgl_dn BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
+     GROUP BY a.no_dn");
     return $hasil->result_array();
 }
 
@@ -3238,7 +3218,7 @@ function cari_summary_ar($dt_dari_alk, $dt_sampai_alk, $id_cus)
 
     if ($id_cus == "all_customer") {
 
-     $hasil = $this->db->query("SELECT shipp,id_customer,customer, curr, IF(curr = 'USD',sum(total),0) foreign_curr, sum(eqv_idr) eqv_idr, SUM(not_due) not_due, SUM(amt_aging_1) amt_aging_1, SUM(amt_aging_2) amt_aging_2, SUM(amt_aging_3) amt_aging_3, SUM(amt_aging_4) amt_aging_4, SUM(amt_aging_5) amt_aging_5, SUM(amt_aging_6) amt_aging_6, SUM(amt_aging_7) amt_aging_7, SUM(tot_aging) tot_aging, SUM(ready_due) ready_due, SUM(jml_bln1) jml_bln1, SUM(jml_bln2) jml_bln2, SUM(jml_bln3) jml_bln3, SUM(jml_bln4) jml_bln4, SUM(jml_bln5) jml_bln5, SUM(jml_bln6) jml_bln6,SUM(tot_aging2) tot_aging2 from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, rate, sal_awal,tambah,bayar, total, eqv_idr, IF(diff_top <= 0,eqv_idr,0) not_due, IF(diff_top > 0 AND diff_top <= 30,eqv_idr,0) amt_aging_1, IF(diff_top > 30 AND diff_top <= 60,eqv_idr,0) amt_aging_2, IF(diff_top > 60 AND diff_top <= 90,eqv_idr,0) amt_aging_3, IF(diff_top > 90 AND diff_top <= 120,eqv_idr,0) amt_aging_4, IF(diff_top > 120 AND diff_top <= 180,eqv_idr,0) amt_aging_5, IF(diff_top > 180 AND diff_top <= 360,eqv_idr,0) amt_aging_6, IF(diff_top > 360,eqv_idr,0) amt_aging_7,eqv_idr tot_aging,IF(duedate <= '$dt_sampai_alk',eqv_idr,0) ready_due, IF(jml_bln1 > 0 AND duedate > '$dt_sampai_alk',eqv_idr,0) jml_bln1, IF(jml_bln2 > 0,eqv_idr,0) jml_bln2, IF(jml_bln3 > 0,eqv_idr,0) jml_bln3, IF(jml_bln4 > 0,eqv_idr,0) jml_bln4, IF(jml_bln5 > 0,eqv_idr,0) jml_bln5, IF(jml_bln6 > 0,eqv_idr,0) jml_bln6, eqv_idr tot_aging2, id_customer from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, rate, sal_awal,tambah,bayar, ((sal_awal + tambah) - bayar) total, (if(((sal_awal + tambah) - bayar) >= 0.1,((sal_awal + tambah) - bayar),0) * rate) eqv_idr,ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6,diff_top,id_customer  from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, IF(curr = 'USD',rate,'1') rate, IF(inv_date >= '$dt_sampai_alk','0',(COALESCE(amount1,0)) - COALESCE(bayar2,0)) sal_awal, IF(inv_date >= '$dt_sampai_alk',(COALESCE(amount1,0)) - COALESCE(bayar2,0),'0') tambah, bayar,ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6, diff_top,id_customer from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,coalesce(bayar,0) bayar,no_invoice2,bayar2,rate,shipp, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,'0') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,'0') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,'0') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,'0') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,'0') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,'0') jml_bln6 from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp,DATEDIFF('$dt_sampai_alk',duedate) diff_top, DATE_FORMAT(duedate,'%m') bln_due, DATE_FORMAT(duedate,'%Y') thn_due,DATE_FORMAT('$dt_sampai_alk','%m') fil_bln1,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 5,2,0) fil_bln6, DATE_FORMAT('$dt_sampai_alk','%Y') fil_thn, IF(duedate <= '$dt_sampai_alk',amount1,0) ready_due from 
+       $hasil = $this->db->query("SELECT shipp,id_customer,customer, curr, IF(curr = 'USD',sum(total),0) foreign_curr, sum(eqv_idr) eqv_idr, SUM(not_due) not_due, SUM(amt_aging_1) amt_aging_1, SUM(amt_aging_2) amt_aging_2, SUM(amt_aging_3) amt_aging_3, SUM(amt_aging_4) amt_aging_4, SUM(amt_aging_5) amt_aging_5, SUM(amt_aging_6) amt_aging_6, SUM(amt_aging_7) amt_aging_7, SUM(tot_aging) tot_aging, SUM(ready_due) ready_due, SUM(jml_bln1) jml_bln1, SUM(jml_bln2) jml_bln2, SUM(jml_bln3) jml_bln3, SUM(jml_bln4) jml_bln4, SUM(jml_bln5) jml_bln5, SUM(jml_bln6) jml_bln6,SUM(tot_aging2) tot_aging2 from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, rate, sal_awal,tambah,bayar, total, eqv_idr, IF(diff_top <= 0,eqv_idr,0) not_due, IF(diff_top > 0 AND diff_top <= 30,eqv_idr,0) amt_aging_1, IF(diff_top > 30 AND diff_top <= 60,eqv_idr,0) amt_aging_2, IF(diff_top > 60 AND diff_top <= 90,eqv_idr,0) amt_aging_3, IF(diff_top > 90 AND diff_top <= 120,eqv_idr,0) amt_aging_4, IF(diff_top > 120 AND diff_top <= 180,eqv_idr,0) amt_aging_5, IF(diff_top > 180 AND diff_top <= 360,eqv_idr,0) amt_aging_6, IF(diff_top > 360,eqv_idr,0) amt_aging_7,eqv_idr tot_aging,IF(duedate <= '$dt_sampai_alk',eqv_idr,0) ready_due, IF(jml_bln1 > 0 AND duedate > '$dt_sampai_alk',eqv_idr,0) jml_bln1, IF(jml_bln2 > 0,eqv_idr,0) jml_bln2, IF(jml_bln3 > 0,eqv_idr,0) jml_bln3, IF(jml_bln4 > 0,eqv_idr,0) jml_bln4, IF(jml_bln5 > 0,eqv_idr,0) jml_bln5, IF(jml_bln6 > 0,eqv_idr,0) jml_bln6, eqv_idr tot_aging2, id_customer from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, rate, sal_awal,tambah,bayar, ((sal_awal + tambah) - bayar) total, (if(((sal_awal + tambah) - bayar) >= 0.1,((sal_awal + tambah) - bayar),0) * rate) eqv_idr,ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6,diff_top,id_customer  from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, IF(curr = 'USD',rate,'1') rate, IF(inv_date >= '$dt_sampai_alk','0',(COALESCE(amount1,0)) - COALESCE(bayar2,0)) sal_awal, IF(inv_date >= '$dt_sampai_alk',(COALESCE(amount1,0)) - COALESCE(bayar2,0),'0') tambah, bayar,ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6, diff_top,id_customer from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,coalesce(bayar,0) bayar,no_invoice2,bayar2,rate,shipp, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,'0') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,'0') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,'0') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,'0') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,'0') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,'0') jml_bln6 from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp,DATEDIFF('$dt_sampai_alk',duedate) diff_top, DATE_FORMAT(duedate,'%m') bln_due, DATE_FORMAT(duedate,'%Y') thn_due,DATE_FORMAT('$dt_sampai_alk','%m') fil_bln1,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 5,2,0) fil_bln6, DATE_FORMAT('$dt_sampai_alk','%Y') fil_thn, IF(duedate <= '$dt_sampai_alk',amount1,0) ready_due from 
         (SELECT distinct a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer,a.sj_date inv_date,a.sj_date tgl_inv, b.Id_Supplier AS id_customer, a.curr,f.top,
           FORMAT((d.grand_total), 2) AS amount, if(a.curr = 'IDR',round((d.grand_total),0),round((d.grand_total), 2)) AS amount1,if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.sj_date, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(h.kontrabon_date, INTERVAL f.top DAY)) AS duedate,a.shipp
           FROM  tbl_book_invoice AS a INNER JOIN 
@@ -3312,7 +3292,7 @@ function cari_summary_dn($dt_dari_alk, $dt_sampai_alk, $id_cus)
 
     if ($id_cus == "all_customer") {
 
-     $hasil = $this->db->query("SELECT id_customer,customer, from_curr, IF(from_curr = 'USD',sum(total),0) foreign_curr, sum(COALESCE(eqv_idr,0)) eqv_idr, SUM(not_due) not_due, SUM(amt_aging_1) amt_aging_1, SUM(amt_aging_2) amt_aging_2, SUM(amt_aging_3) amt_aging_3, SUM(amt_aging_4) amt_aging_4, SUM(amt_aging_5) amt_aging_5, SUM(amt_aging_6) amt_aging_6, SUM(amt_aging_7) amt_aging_7, SUM(tot_aging) tot_aging, SUM(ready_due) ready_due, SUM(jml_bln1) jml_bln1, SUM(jml_bln2) jml_bln2, SUM(jml_bln3) jml_bln3, SUM(jml_bln4) jml_bln4, SUM(jml_bln5) jml_bln5, SUM(jml_bln6) jml_bln6,SUM(tot_aging2) tot_aging2 from (SELECT customer, no_invoice, inv_date,  duedate, top, from_curr, rate, sal_awal,tambah,bayar, total, eqv_idr, IF(diff_top <= 0,eqv_idr,0) not_due, IF(diff_top > 0 AND diff_top <= 30,eqv_idr,0) amt_aging_1, IF(diff_top > 30 AND diff_top <= 60,eqv_idr,0) amt_aging_2, IF(diff_top > 60 AND diff_top <= 90,eqv_idr,0) amt_aging_3, IF(diff_top > 90 AND diff_top <= 120,eqv_idr,0) amt_aging_4, IF(diff_top > 120 AND diff_top <= 180,eqv_idr,0) amt_aging_5, IF(diff_top > 180 AND diff_top <= 360,eqv_idr,0) amt_aging_6, IF(diff_top > 360,eqv_idr,0) amt_aging_7,eqv_idr tot_aging,IF(duedate <= '$dt_sampai_alk',eqv_idr,0) ready_due, IF(jml_bln1 > 0 AND duedate > '$dt_sampai_alk',eqv_idr,0) jml_bln1, IF(jml_bln2 > 0,eqv_idr,0) jml_bln2, IF(jml_bln3 > 0,eqv_idr,0) jml_bln3, IF(jml_bln4 > 0,eqv_idr,0) jml_bln4, IF(jml_bln5 > 0,eqv_idr,0) jml_bln5, IF(jml_bln6 > 0,eqv_idr,0) jml_bln6, eqv_idr tot_aging2, id_customer from (SELECT customer, no_invoice, inv_date,  duedate, top, from_curr, rate, sal_awal,tambah,bayar, ((sal_awal + tambah) - bayar) total, (if(((sal_awal + tambah) - bayar) >= 0.1,((sal_awal + tambah) - bayar),0) * rate) eqv_idr,ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6,diff_top,id_customer  from (SELECT customer, no_invoice, inv_date,  duedate, top, from_curr, IF(from_curr = 'USD',rate,'1') rate, IF(inv_date >= '$dt_sampai_alk','0',(COALESCE(amount1,0)) - COALESCE(bayar2,0)) sal_awal, IF(inv_date >= '$dt_sampai_alk',(COALESCE(amount1,0)) - COALESCE(bayar2,0),'0') tambah, bayar,ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6, diff_top,id_customer from (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,amount1, duedate, no_invoice1 , bayar, no_invoice2, bayar2, amount, supplier, rate, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,'0') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,'0') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,'0') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,'0') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,'0') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,'0') jml_bln6 FROM (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,amount1, duedate, no_invoice1 , bayar, no_invoice2, bayar2, amount, supplier, rate, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due FROM (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,COALESCE(amount1,0) amount1, duedate, no_invoice1,COALESCE(bayar,0) bayar, no_invoice2,COALESCE(bayar2,0) bayar2, COALESCE(amount,0) amount,IF(supplier is null,'-',supplier) supplier,IF(from_curr = 'IDR','1',rate) rate,DATEDIFF('$dt_sampai_alk',duedate) diff_top, DATE_FORMAT(duedate,'%m') bln_due, DATE_FORMAT(duedate,'%Y') thn_due,DATE_FORMAT('$dt_sampai_alk','%m') fil_bln1,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 5,2,0) fil_bln6, DATE_FORMAT('$dt_sampai_alk','%Y') fil_thn, IF(duedate <= '$dt_sampai_alk',amount1,0) ready_due  from 
+       $hasil = $this->db->query("SELECT id_customer,customer, from_curr, IF(from_curr = 'USD',sum(total),0) foreign_curr, sum(COALESCE(eqv_idr,0)) eqv_idr, SUM(not_due) not_due, SUM(amt_aging_1) amt_aging_1, SUM(amt_aging_2) amt_aging_2, SUM(amt_aging_3) amt_aging_3, SUM(amt_aging_4) amt_aging_4, SUM(amt_aging_5) amt_aging_5, SUM(amt_aging_6) amt_aging_6, SUM(amt_aging_7) amt_aging_7, SUM(tot_aging) tot_aging, SUM(ready_due) ready_due, SUM(jml_bln1) jml_bln1, SUM(jml_bln2) jml_bln2, SUM(jml_bln3) jml_bln3, SUM(jml_bln4) jml_bln4, SUM(jml_bln5) jml_bln5, SUM(jml_bln6) jml_bln6,SUM(tot_aging2) tot_aging2 from (SELECT customer, no_invoice, inv_date,  duedate, top, from_curr, rate, sal_awal,tambah,bayar, total, eqv_idr, IF(diff_top <= 0,eqv_idr,0) not_due, IF(diff_top > 0 AND diff_top <= 30,eqv_idr,0) amt_aging_1, IF(diff_top > 30 AND diff_top <= 60,eqv_idr,0) amt_aging_2, IF(diff_top > 60 AND diff_top <= 90,eqv_idr,0) amt_aging_3, IF(diff_top > 90 AND diff_top <= 120,eqv_idr,0) amt_aging_4, IF(diff_top > 120 AND diff_top <= 180,eqv_idr,0) amt_aging_5, IF(diff_top > 180 AND diff_top <= 360,eqv_idr,0) amt_aging_6, IF(diff_top > 360,eqv_idr,0) amt_aging_7,eqv_idr tot_aging,IF(duedate <= '$dt_sampai_alk',eqv_idr,0) ready_due, IF(jml_bln1 > 0 AND duedate > '$dt_sampai_alk',eqv_idr,0) jml_bln1, IF(jml_bln2 > 0,eqv_idr,0) jml_bln2, IF(jml_bln3 > 0,eqv_idr,0) jml_bln3, IF(jml_bln4 > 0,eqv_idr,0) jml_bln4, IF(jml_bln5 > 0,eqv_idr,0) jml_bln5, IF(jml_bln6 > 0,eqv_idr,0) jml_bln6, eqv_idr tot_aging2, id_customer from (SELECT customer, no_invoice, inv_date,  duedate, top, from_curr, rate, sal_awal,tambah,bayar, ((sal_awal + tambah) - bayar) total, (if(((sal_awal + tambah) - bayar) >= 0.1,((sal_awal + tambah) - bayar),0) * rate) eqv_idr,ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6,diff_top,id_customer  from (SELECT customer, no_invoice, inv_date,  duedate, top, from_curr, IF(from_curr = 'USD',rate,'1') rate, IF(inv_date >= '$dt_sampai_alk','0',(COALESCE(amount1,0)) - COALESCE(bayar2,0)) sal_awal, IF(inv_date >= '$dt_sampai_alk',(COALESCE(amount1,0)) - COALESCE(bayar2,0),'0') tambah, bayar,ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6, diff_top,id_customer from (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,amount1, duedate, no_invoice1 , bayar, no_invoice2, bayar2, amount, supplier, rate, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,'0') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,'0') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,'0') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,'0') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,'0') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,'0') jml_bln6 FROM (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,amount1, duedate, no_invoice1 , bayar, no_invoice2, bayar2, amount, supplier, rate, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due FROM (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,COALESCE(amount1,0) amount1, duedate, no_invoice1,COALESCE(bayar,0) bayar, no_invoice2,COALESCE(bayar2,0) bayar2, COALESCE(amount,0) amount,IF(supplier is null,'-',supplier) supplier,IF(from_curr = 'IDR','1',rate) rate,DATEDIFF('$dt_sampai_alk',duedate) diff_top, DATE_FORMAT(duedate,'%m') bln_due, DATE_FORMAT(duedate,'%Y') thn_due,DATE_FORMAT('$dt_sampai_alk','%m') fil_bln1,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 5,2,0) fil_bln6, DATE_FORMAT('$dt_sampai_alk','%Y') fil_thn, IF(duedate <= '$dt_sampai_alk',amount1,0) ready_due  from 
         (
             SELECT distinct a.no_dn AS no_invoice, UPPER(b.supplier) AS customer, a.attn,DATE_FORMAT(a.tgl_dn, '%Y-%m-%d') AS inv_date,DATE_FORMAT(a.tgl_dn, '%Y-%m-%d') AS tgl_inv, b.Id_Supplier AS id_customer, a.to_curr as from_curr,DATEDIFF(a.due_date,a.tgl_dn) top,
             FORMAT(a.eqv_curr, 2) AS amount, if(a.to_curr = 'USD',a.eqv_curr,round(a.eqv_curr, 0)) AS amount1,a.due_date duedate
@@ -3369,7 +3349,7 @@ function cari_summary_all($dt_dari_alk, $dt_sampai_alk, $id_cus)
 
     if ($id_cus == "all_customer") {
 
-     $hasil = $this->db->query("(SELECT shipp,id_customer,customer, curr, IF(curr = 'USD',sum(total),0) foreign_curr, sum(eqv_idr) eqv_idr, SUM(not_due) not_due, SUM(amt_aging_1) amt_aging_1, SUM(amt_aging_2) amt_aging_2, SUM(amt_aging_3) amt_aging_3, SUM(amt_aging_4) amt_aging_4, SUM(amt_aging_5) amt_aging_5, SUM(amt_aging_6) amt_aging_6, SUM(amt_aging_7) amt_aging_7, SUM(tot_aging) tot_aging, SUM(ready_due) ready_due, SUM(jml_bln1) jml_bln1, SUM(jml_bln2) jml_bln2, SUM(jml_bln3) jml_bln3, SUM(jml_bln4) jml_bln4, SUM(jml_bln5) jml_bln5, SUM(jml_bln6) jml_bln6,SUM(tot_aging2) tot_aging2 from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, rate, sal_awal,tambah,bayar, total, eqv_idr, IF(diff_top <= 0,eqv_idr,0) not_due, IF(diff_top > 0 AND diff_top <= 30,eqv_idr,0) amt_aging_1, IF(diff_top > 30 AND diff_top <= 60,eqv_idr,0) amt_aging_2, IF(diff_top > 60 AND diff_top <= 90,eqv_idr,0) amt_aging_3, IF(diff_top > 90 AND diff_top <= 120,eqv_idr,0) amt_aging_4, IF(diff_top > 120 AND diff_top <= 180,eqv_idr,0) amt_aging_5, IF(diff_top > 180 AND diff_top <= 360,eqv_idr,0) amt_aging_6, IF(diff_top > 360,eqv_idr,0) amt_aging_7,eqv_idr tot_aging,IF(duedate <= '$dt_sampai_alk',eqv_idr,0) ready_due, IF(jml_bln1 > 0 AND duedate > '$dt_sampai_alk',eqv_idr,0) jml_bln1, IF(jml_bln2 > 0,eqv_idr,0) jml_bln2, IF(jml_bln3 > 0,eqv_idr,0) jml_bln3, IF(jml_bln4 > 0,eqv_idr,0) jml_bln4, IF(jml_bln5 > 0,eqv_idr,0) jml_bln5, IF(jml_bln6 > 0,eqv_idr,0) jml_bln6, eqv_idr tot_aging2, id_customer from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, rate, sal_awal,tambah,bayar, ((sal_awal + tambah) - bayar) total, (((sal_awal + tambah) - bayar) * rate) eqv_idr,ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6,diff_top,id_customer  from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, IF(curr = 'USD',rate,'1') rate, IF(inv_date >= '$dt_sampai_alk','0',(COALESCE(amount1,0)) - COALESCE(bayar2,0)) sal_awal, IF(inv_date >= '$dt_sampai_alk',(COALESCE(amount1,0)) - COALESCE(bayar2,0),'0') tambah, bayar,ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6, diff_top,id_customer from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,coalesce(bayar,0) bayar,no_invoice2,bayar2,rate,shipp, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,'0') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,'0') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,'0') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,'0') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,'0') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,'0') jml_bln6 from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp,DATEDIFF('$dt_sampai_alk',duedate) diff_top, DATE_FORMAT(duedate,'%m') bln_due, DATE_FORMAT(duedate,'%Y') thn_due,DATE_FORMAT('$dt_sampai_alk','%m') fil_bln1,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 5,2,0) fil_bln6, DATE_FORMAT('$dt_sampai_alk','%Y') fil_thn, IF(duedate <= '$dt_sampai_alk',amount1,0) ready_due from 
+       $hasil = $this->db->query("(SELECT shipp,id_customer,customer, curr, IF(curr = 'USD',sum(total),0) foreign_curr, sum(eqv_idr) eqv_idr, SUM(not_due) not_due, SUM(amt_aging_1) amt_aging_1, SUM(amt_aging_2) amt_aging_2, SUM(amt_aging_3) amt_aging_3, SUM(amt_aging_4) amt_aging_4, SUM(amt_aging_5) amt_aging_5, SUM(amt_aging_6) amt_aging_6, SUM(amt_aging_7) amt_aging_7, SUM(tot_aging) tot_aging, SUM(ready_due) ready_due, SUM(jml_bln1) jml_bln1, SUM(jml_bln2) jml_bln2, SUM(jml_bln3) jml_bln3, SUM(jml_bln4) jml_bln4, SUM(jml_bln5) jml_bln5, SUM(jml_bln6) jml_bln6,SUM(tot_aging2) tot_aging2 from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, rate, sal_awal,tambah,bayar, total, eqv_idr, IF(diff_top <= 0,eqv_idr,0) not_due, IF(diff_top > 0 AND diff_top <= 30,eqv_idr,0) amt_aging_1, IF(diff_top > 30 AND diff_top <= 60,eqv_idr,0) amt_aging_2, IF(diff_top > 60 AND diff_top <= 90,eqv_idr,0) amt_aging_3, IF(diff_top > 90 AND diff_top <= 120,eqv_idr,0) amt_aging_4, IF(diff_top > 120 AND diff_top <= 180,eqv_idr,0) amt_aging_5, IF(diff_top > 180 AND diff_top <= 360,eqv_idr,0) amt_aging_6, IF(diff_top > 360,eqv_idr,0) amt_aging_7,eqv_idr tot_aging,IF(duedate <= '$dt_sampai_alk',eqv_idr,0) ready_due, IF(jml_bln1 > 0 AND duedate > '$dt_sampai_alk',eqv_idr,0) jml_bln1, IF(jml_bln2 > 0,eqv_idr,0) jml_bln2, IF(jml_bln3 > 0,eqv_idr,0) jml_bln3, IF(jml_bln4 > 0,eqv_idr,0) jml_bln4, IF(jml_bln5 > 0,eqv_idr,0) jml_bln5, IF(jml_bln6 > 0,eqv_idr,0) jml_bln6, eqv_idr tot_aging2, id_customer from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, rate, sal_awal,tambah,bayar, ((sal_awal + tambah) - bayar) total, (((sal_awal + tambah) - bayar) * rate) eqv_idr,ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6,diff_top,id_customer  from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, IF(curr = 'USD',rate,'1') rate, IF(inv_date >= '$dt_sampai_alk','0',(COALESCE(amount1,0)) - COALESCE(bayar2,0)) sal_awal, IF(inv_date >= '$dt_sampai_alk',(COALESCE(amount1,0)) - COALESCE(bayar2,0),'0') tambah, bayar,ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6, diff_top,id_customer from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,coalesce(bayar,0) bayar,no_invoice2,bayar2,rate,shipp, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,'0') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,'0') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,'0') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,'0') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,'0') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,'0') jml_bln6 from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp,DATEDIFF('$dt_sampai_alk',duedate) diff_top, DATE_FORMAT(duedate,'%m') bln_due, DATE_FORMAT(duedate,'%Y') thn_due,DATE_FORMAT('$dt_sampai_alk','%m') fil_bln1,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 5,2,0) fil_bln6, DATE_FORMAT('$dt_sampai_alk','%Y') fil_thn, IF(duedate <= '$dt_sampai_alk',amount1,0) ready_due from 
         (SELECT distinct a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer,a.sj_date inv_date,a.sj_date tgl_inv, b.Id_Supplier AS id_customer, a.curr,f.top,
         FORMAT((d.grand_total), 2) AS amount, if(a.curr = 'IDR',round((d.grand_total),0),round((d.grand_total), 2)) AS amount1,if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.sj_date, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(h.kontrabon_date, INTERVAL f.top DAY)) AS duedate,a.shipp
         FROM  tbl_book_invoice AS a INNER JOIN 
@@ -3484,8 +3464,8 @@ return $hasil->result_array();
 function cari_sls_ytd_inv($filter)
 {
     if ($filter == 'NAG') {
-       $where = "and a.profit_center = 'NAG'";
-   }elseif ($filter == 'NAK') {
+     $where = "and a.profit_center = 'NAG'";
+ }elseif ($filter == 'NAK') {
     $where = "and a.profit_center = 'NAK'";
 }else{
     $where = "";
@@ -3504,11 +3484,11 @@ function cari_sls_cm_inv($filter)
 {
 
     if ($filter == 'NAG') {
-     $where = "and a.profit_center = 'NAG'";
-     $query = $this->db->query("SELECT sum(eqv_idr) sls_cm_inv from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,total from tbl_book_invoice a inner join tbl_invoice_pot b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.id_type = '1' and a.status  IN ('APPROVED','POST') $where and a.sj_date BETWEEN (select min(tanggal) from dim_date where bulan_text = DATE_FORMAT(CURRENT_DATE,'%m') and tahun = DATE_FORMAT(CURRENT_DATE,'%Y')) and (select max(tanggal) from dim_date where bulan_text = DATE_FORMAT(CURRENT_DATE,'%m') and tahun = DATE_FORMAT(CURRENT_DATE,'%Y')) 
+       $where = "and a.profit_center = 'NAG'";
+       $query = $this->db->query("SELECT sum(eqv_idr) sls_cm_inv from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,total from tbl_book_invoice a inner join tbl_invoice_pot b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.id_type = '1' and a.status  IN ('APPROVED','POST') $where and a.sj_date BETWEEN (select min(tanggal) from dim_date where bulan_text = DATE_FORMAT(CURRENT_DATE,'%m') and tahun = DATE_FORMAT(CURRENT_DATE,'%Y')) and (select max(tanggal) from dim_date where bulan_text = DATE_FORMAT(CURRENT_DATE,'%m') and tahun = DATE_FORMAT(CURRENT_DATE,'%Y')) 
         UNION 
         select a.customer id_customer,a.status,a.id,c.Supplier customer,a.no_inv no_invoice,a.inv_date sj_date,a.type id_type,'IDR' curr,total from tbl_invoice_nb a inner join tbl_invoice_nb_pot b on b.no_inv = a.no_inv inner join mastersupplier c on c.Id_Supplier = a.customer where a.type = 'Commercial' and a.status  IN ('APPROVED','POST') and a.inv_date BETWEEN (select min(tanggal) from dim_date where bulan_text = DATE_FORMAT(CURRENT_DATE,'%m') and tahun = DATE_FORMAT(CURRENT_DATE,'%Y')) and (select max(tanggal) from dim_date where bulan_text = DATE_FORMAT(CURRENT_DATE,'%m') and tahun = DATE_FORMAT(CURRENT_DATE,'%Y'))) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date) a");
- }elseif ($filter == 'NAK') {
+   }elseif ($filter == 'NAK') {
     $where = "and a.profit_center = 'NAK'";
     $query = $this->db->query("SELECT sum(eqv_idr) sls_cm_inv from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,total from tbl_book_invoice a inner join tbl_invoice_pot b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.id_type = '1' and a.status  IN ('APPROVED','POST') $where and a.sj_date BETWEEN (select min(tanggal) from dim_date where bulan_text = DATE_FORMAT(CURRENT_DATE,'%m') and tahun = DATE_FORMAT(CURRENT_DATE,'%Y')) and (select max(tanggal) from dim_date where bulan_text = DATE_FORMAT(CURRENT_DATE,'%m') and tahun = DATE_FORMAT(CURRENT_DATE,'%Y'))) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date) a");
 }else{
@@ -3611,8 +3591,8 @@ function cari_ar_lokal($filter)
 {
 
     if ($filter == 'NAG') {
-     $where = "and a.profit_center = 'NAG'";
- }elseif ($filter == 'NAK') {
+       $where = "and a.profit_center = 'NAG'";
+   }elseif ($filter == 'NAK') {
     $where = "and a.profit_center = 'NAK'";
 }else{
     $where = "";
@@ -3648,8 +3628,8 @@ function cari_ar_lokal_ni($filter)
 function cari_ar_ekspor($filter)
 {
     if ($filter == 'NAG') {
-       $where = "and a.profit_center = 'NAG'";
-   }elseif ($filter == 'NAK') {
+     $where = "and a.profit_center = 'NAG'";
+ }elseif ($filter == 'NAK') {
     $where = "and a.profit_center = 'NAK'";
 }else{
     $where = "";
@@ -3698,8 +3678,8 @@ function cari_ar_ekspor_ni($filter)
 function cari_ar_fob($filter)
 {
     if ($filter == 'NAG') {
-     $where = "and a.profit_center = 'NAG'";
- }elseif ($filter == 'NAK') {
+       $where = "and a.profit_center = 'NAG'";
+   }elseif ($filter == 'NAK') {
     $where = "and a.profit_center = 'NAK'";
 }else{
     $where = "";
@@ -3738,8 +3718,8 @@ function cari_ar_cmt($filter)
 {
 
     if ($filter == 'NAG') {
-       $where = "and a.profit_center = 'NAG'";
-   }elseif ($filter == 'NAK') {
+     $where = "and a.profit_center = 'NAG'";
+ }elseif ($filter == 'NAK') {
     $where = "and a.profit_center = 'NAK'";
 }else{
     $where = "";
@@ -4027,8 +4007,8 @@ function cari_sales_ytd_mtm_pertahun($tahun, $filter)
         function cari_overdue_aging($filter)
         {
             if ($filter == 'NAG') {
-               $query = $this->db->query("SELECT CONCAT(ROUND(not_due,2),',',ROUND(amt_aging_1,2),',',ROUND(amt_aging_2,2),',',ROUND(amt_aging_3,2),',',ROUND(amt_aging_4,2),',',ROUND(amt_aging_5,2),',',ROUND(amt_aging_6,2),',',ROUND(amt_aging_7,2)) eqv_idr from tbl_data_sum_ar2");
-           }elseif ($filter == 'NAK') {
+             $query = $this->db->query("SELECT CONCAT(ROUND(not_due,2),',',ROUND(amt_aging_1,2),',',ROUND(amt_aging_2,2),',',ROUND(amt_aging_3,2),',',ROUND(amt_aging_4,2),',',ROUND(amt_aging_5,2),',',ROUND(amt_aging_6,2),',',ROUND(amt_aging_7,2)) eqv_idr from tbl_data_sum_ar2");
+         }elseif ($filter == 'NAK') {
             $query = $this->db->query("SELECT CONCAT(ROUND(not_due,2),',',ROUND(amt_aging_1,2),',',ROUND(amt_aging_2,2),',',ROUND(amt_aging_3,2),',',ROUND(amt_aging_4,2),',',ROUND(amt_aging_5,2),',',ROUND(amt_aging_6,2),',',ROUND(amt_aging_7,2)) eqv_idr from tbl_data_sum_ar_knitting");
         }else{
             $query = $this->db->query("SELECT CONCAT(ROUND(not_due,2),',',ROUND(amt_aging_1,2),',',ROUND(amt_aging_2,2),',',ROUND(amt_aging_3,2),',',ROUND(amt_aging_4,2),',',ROUND(amt_aging_5,2),',',ROUND(amt_aging_6,2),',',ROUND(amt_aging_7,2)) eqv_idr from (select SUM(not_due) not_due, SUM(amt_aging_1) amt_aging_1, SUM(amt_aging_2) amt_aging_2, SUM(amt_aging_3) amt_aging_3, SUM(amt_aging_4) amt_aging_4, SUM(amt_aging_5) amt_aging_5, SUM(amt_aging_6) amt_aging_6, SUM(amt_aging_7) amt_aging_7 from (select * from tbl_data_sum_ar2
@@ -4050,8 +4030,8 @@ function cari_sales_ytd_mtm_pertahun($tahun, $filter)
     function load_prediksi($filter)
     {
         if ($filter == 'NAG') {
-           $hasil = $this->db->query("SELECT periode,week1,week2,week3,week4 from tbl_data_ar_pred ");
-       }elseif ($filter == 'NAK') {
+         $hasil = $this->db->query("SELECT periode,week1,week2,week3,week4 from tbl_data_ar_pred ");
+     }elseif ($filter == 'NAK') {
         $hasil = $this->db->query("SELECT periode,week1,week2,week3,week4 from tbl_data_ar_pred_knitting ");
     }else{
         $hasil = $this->db->query("SELECT periode,SUM(week1) week1,SUM(week2) week2,SUM(week3) week3,SUM(week4) week4 FROM (SELECT id, periode,week1,week2,week3,week4 from tbl_data_ar_pred UNION SELECT id, periode,week1,week2,week3,week4 from tbl_data_ar_pred) a GROUP BY periode ORDER BY id asc");
@@ -4064,8 +4044,8 @@ function load_det_overdue($field, $filter)
 {
 
     if ($filter == 'NAG') {
-       $hasil = $this->db->query("SELECT customer,$field as data from (select * from tbl_data_overdue_ar) a WHERE $field != 0");
-   }elseif ($filter == 'NAK') {
+     $hasil = $this->db->query("SELECT customer,$field as data from (select * from tbl_data_overdue_ar) a WHERE $field != 0");
+ }elseif ($filter == 'NAK') {
     $hasil = $this->db->query("SELECT customer,$field as data from (select * from tbl_data_overdue_ar_knitting) a WHERE $field != 0");
 }else{
     $hasil = $this->db->query("SELECT customer,$field as data from (select id_customer, customer, SUM(not_due) not_due, SUM(amt_aging_1) amt_aging_1, SUM(amt_aging_2) amt_aging_2, SUM(amt_aging_3) amt_aging_3, SUM(amt_aging_4) amt_aging_4, SUM(amt_aging_5) amt_aging_5, SUM(amt_aging_6) amt_aging_6, SUM(amt_aging_7) amt_aging_7 from ( select * from tbl_data_overdue_ar
@@ -4094,15 +4074,15 @@ function cari_nm_memo_temp()
 function modal_caridata_slsytd($filter)
 {
     if ($filter == 'NAG') {
-       $where = "and a.profit_center = 'NAG'";
-   }elseif ($filter == 'NAK') {
+     $where = "and a.profit_center = 'NAG'";
+ }elseif ($filter == 'NAK') {
     $where = "and a.profit_center = 'NAK'";
 }else{
     $where = "";
 }
 
 $hasil = $this->db->query("SELECT customer, qty,CONCAT(if(uom='PCS',format(qty,0),format(qty,2)),' ',uom) qty2, total, CONCAT('IDR ',format(total,2)) total2 from (SELECT customer,sum(qty) qty, sum(eqv_idr) total, uom from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr,qty, uom from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,total,uom from tbl_book_invoice a inner join tbl_invoice_pot b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer
-   INNER JOIN (select id_book_invoice, uom from tbl_invoice_detail where id_book_invoice is not null GROUP BY id_book_invoice) di on di.id_book_invoice = a.id where a.id_type = '1' and a.status IN ('APPROVED','POST') $where and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE() ) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date LEFT JOIN
+ INNER JOIN (select id_book_invoice, uom from tbl_invoice_detail where id_book_invoice is not null GROUP BY id_book_invoice) di on di.id_book_invoice = a.id where a.id_type = '1' and a.status IN ('APPROVED','POST') $where and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE() ) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date LEFT JOIN
 (select id_book_invoice,sum(qty) qty from tbl_invoice_detail where id_book_invoice is not null GROUP BY id_book_invoice) c on c.id_book_invoice = a.id) a GROUP BY customer) a order by qty desc");
 return $hasil->result_array();
 }
@@ -4110,8 +4090,8 @@ return $hasil->result_array();
 function modal_caridata_slscm($filter)
 {
     if ($filter == 'NAG') {
-       $where = "and a.profit_center = 'NAG'";
-   }elseif ($filter == 'NAK') {
+     $where = "and a.profit_center = 'NAG'";
+ }elseif ($filter == 'NAK') {
     $where = "and a.profit_center = 'NAK'";
 }else{
     $where = "";
@@ -4275,9 +4255,9 @@ function cari_list_reqdn($nomor_req)
 
              // $hasil = $this->db->query("SELECT attn,a.id,item itemdesc,nama_supp,no_po,CONCAT(sum(qty),' / ',price) header2, CONCAT(no_reff,' / ',seasons) header3, round(SUM(qty * price),2) total,no_bpb from req_dn a INNER JOIN req_dn_h b on b.no_req = a.no_req where b.id IN ('$nomor_req') and b.status != 'Cancel' GROUP BY item,seasons,no_reff,price");
 
- $hasil = $this->db->query("SELECT attn,a.id,item itemdesc,nama_supp,no_po,CONCAT(sum(qty),' / ',price) header2, CONCAT(no_reff,' / ',seasons) header3, round(SUM(qty * price),2) total,no_bpb from req_dn a INNER JOIN req_dn_h b on b.no_req = a.no_req where b.id IN ('$nomor_req') and b.status != 'Cancel' GROUP BY item,seasons,no_reff,price");
+   $hasil = $this->db->query("SELECT attn,a.id,item itemdesc,nama_supp,no_po,CONCAT(sum(qty),' / ',price) header2, CONCAT(no_reff,' / ',seasons) header3, round(SUM(qty * price),2) total,no_bpb from req_dn a INNER JOIN req_dn_h b on b.no_req = a.no_req where b.id IN ('$nomor_req') and b.status != 'Cancel' GROUP BY item,seasons,no_reff,price");
 
- return $hasil->result_array();
+   return $hasil->result_array();
 
 }
 
@@ -4288,12 +4268,12 @@ function dsb_data_total_ar($filter)
     }elseif ($filter == 'NAK') {
         $hasil = $this->db->query("SELECT shipp, customer, curr, ROUND(total,2 ) total, ROUND(total_idr,2 ) total_idr, ROUND(not_due,2 ) not_due, ROUND(ready_due,2 ) ready_due from tbl_data_ar_knitting order by shipp,customer asc");
     }else{
-     $hasil = $this->db->query("SELECT shipp, customer, curr, ROUND(sum(total),2 ) total, ROUND(sum(total_idr),2 ) total_idr, ROUND(sum(not_due),2 ) not_due, ROUND(sum(ready_due),2 ) ready_due from (SELECT shipp, customer, curr, ROUND(total,2 ) total, ROUND(total_idr,2 ) total_idr, ROUND(not_due,2 ) not_due, ROUND(ready_due,2 ) ready_due from tbl_data_ar
+       $hasil = $this->db->query("SELECT shipp, customer, curr, ROUND(sum(total),2 ) total, ROUND(sum(total_idr),2 ) total_idr, ROUND(sum(not_due),2 ) not_due, ROUND(sum(ready_due),2 ) ready_due from (SELECT shipp, customer, curr, ROUND(total,2 ) total, ROUND(total_idr,2 ) total_idr, ROUND(not_due,2 ) not_due, ROUND(ready_due,2 ) ready_due from tbl_data_ar
         UNION
         SELECT shipp, customer, curr, ROUND(total,2 ) total, ROUND(total_idr,2 ) total_idr, ROUND(not_due,2 ) not_due, ROUND(ready_due,2 ) ready_due from tbl_data_ar_knitting order by shipp,customer asc) a GROUP BY shipp,customer  order by shipp,customer asc"); 
- }
+   }
 
- return $hasil->result_array();
+   return $hasil->result_array();
 }
 
 function getTopInvoice($id)
@@ -4310,6 +4290,9 @@ function update_top_invoice($id, $id_top)
     return $hasil;
 }
 
+public function get_invoice_by_id($id) {
+    return $this->db->get_where('tbl_book_invoice', ['id' => $id])->row_array();
+}
 
 
 }

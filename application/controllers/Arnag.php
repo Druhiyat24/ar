@@ -665,6 +665,7 @@ public function listinvoice()
     $data['title'] = 'List Invoice';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['customer'] = $this->Model_nag->cari_customer();
+    $data['status'] = $this->Model_nag->cari_status();
     $data['user_cancel'] = $this->Model_nag->cari_usercancel($this->session->userdata('username'));
     $data['bank'] = $this->Model_nag->load_bank();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
@@ -682,9 +683,9 @@ public function listinvoice()
     $this->load->view('templates/footer', $data);
 }
 
-public function cari_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer)
+public function cari_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer, $status)
 {
-    $data =  $this->Model_nag->cari_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer);
+    $data =  $this->Model_nag->cari_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer, $status);
     echo json_encode($data);
 }
 
@@ -779,13 +780,13 @@ public function export_excel_invoice($id)
     $this->load->view('arnag/excelinvoice', $data);
 }
 
-public function export_excel_list_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer)
+public function export_excel_list_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer, $status)
 {
     if (!$this->session->userdata('username')) {
         redirect('auth');
     }
         //       
-    $data["data_list_invoice"] = $this->Model_nag->cari_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer);
+    $data["data_list_invoice"] = $this->Model_nag->cari_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer, $status);
     $data["periode_dari"] = $dt_dari_inv;
     $data["periode_sampai"] = $dt_sampai_inv;
     $this->load->view('arnag/export_list_invoice', $data);
@@ -2549,13 +2550,13 @@ public function rvs_invoice()
 
 public function reverse_kwt()
 {
- $id = $this->input->post('id_inv');
- $keter = $this->input->post('keter');
- $tgl_reverse = date('Y-m-d');
- $nama = $this->session->userdata('username');
- $activity = "Reverse Kwitansi";
+   $id = $this->input->post('id_inv');
+   $keter = $this->input->post('keter');
+   $tgl_reverse = date('Y-m-d');
+   $nama = $this->session->userdata('username');
+   $activity = "Reverse Kwitansi";
 
- $data = [
+   $data = [
 
     'nama'          => $nama,
     'activity'      => $activity,
@@ -2707,13 +2708,13 @@ public function reverse_debitnote()
 
 public function reverse_dn()
 {
- $id = $this->input->post('id_inv');
- $keter = $this->input->post('keter');
- $tgl_reverse = date('Y-m-d');
- $nama = $this->session->userdata('username');
- $activity = "Reverse Debitnote";
+   $id = $this->input->post('id_inv');
+   $keter = $this->input->post('keter');
+   $tgl_reverse = date('Y-m-d');
+   $nama = $this->session->userdata('username');
+   $activity = "Reverse Debitnote";
 
- $data = [
+   $data = [
 
     'nama'          => $nama,
     'activity'      => $activity,
@@ -2911,6 +2912,34 @@ public function update_top_invoice()
     $this->Model_nag->update_top_invoice($id, $id_top);
     
     echo json_encode(['status' => true, 'message' => 'Berhasil update']);
+}
+
+
+public function edit_invoice($id = null) {
+    if ($id === null) {
+        show_404();
+    }
+
+    $data['invoice'] = $this->Model_nag->get_invoice_by_id($id);
+    $data['customer'] = $this->Model_nag->cari_customer();
+    $data['title'] = 'Form Edit Invoice';
+    $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+    $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+    $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+    $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+    $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+    $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+    $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+
+
+    if (!$data['invoice']) {
+        show_404();
+    }
+
+    $this->load->view('templates/header', $data);
+    $this->load->view('templates/sidebar', $data);
+    $this->load->view('arnag/edit_invoice', $data);
+    $this->load->view('templates/footer', $data);
 }
 
 

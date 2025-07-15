@@ -2155,12 +2155,12 @@ function cari_invoice() {
 			dt_sampai_inv = "undefined";
 		});
 
-		var id_customer = $('#customer').val();	
-
-		
+		var id_customer = $('#customer').val();
+		var status = $('#status').val();	
+		console.log(id_customer + ' ' + status);
 
 		$.ajax({		
-			url: "cari_invoice/" + dt_dari_inv + "/" + dt_sampai_inv + "/" + id_customer + "/",					
+			url: "cari_invoice/" + dt_dari_inv + "/" + dt_sampai_inv + "/" + id_customer + "/" + status + "/",					
 			type: "GET",
 			dataType: "JSON",
 			success: function (response) {
@@ -2181,6 +2181,7 @@ function cari_invoice() {
 						trHTML += '<td align="right">' + item.amount + "</td>";
 						trHTML += '<td><button id="inv_detail" name="inv_detail" type="button" class="btn btn-info btn-sm" onclick="cari_inv_detail(' + item.id + ')" ><i class="fas fa-eye"></i> Detail</button> ' + '' 
 						+ ' <button type="button" class="btn btn-sm btn-warning swalDefaultError" href="javascript:void(0)" onclick="UpdateInvoice(\'' + item.id + '\', \'' + item.status + '\', \'' + item.inv_date + '\')"><i class="fas fa-edit"></i> Update</button>' + ' '
+						+ '<button class="btn btn-warning btn-sm" onclick="window.open(\'edit_invoice/' + item.id + '\', \'_blank\')"><i class="fas fa-edit"></i> Edit</button> '
 						+ '<button id="print_inv" name="print_inv" type="button" class="btn btn-primary btn-sm" onclick="print_invoice(' + item.id + ')"><i class="fa fa-print"></i> Print</button> ' + ''
 						+ '<button id="export_to_excel_invoice" name="export_to_excel_invoice" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_invoice(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button> ' + ''				
 						+ ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="cancel_invoice(\'' + item.id + '\',\'' + item.no_invoice + '\',\'' + item.status + '\')"><i class="fas fa-trash-alt"></i> Cancel</button></td> </td>';
@@ -3542,7 +3543,8 @@ function export_to_excel_invoice($id) {
 
 function export_list_invoice() { 		
 	var id_customer = $('#customer').val();	
-	window.open(".../../export_excel_list_invoice/" + dt_dari_inv  + "/" + dt_sampai_inv  + "/" + "/" + id_customer + "/" ); 
+	var status = $('#status').val();	
+	window.open(".../../export_excel_list_invoice/" + dt_dari_inv  + "/" + dt_sampai_inv  + "/" + "/" + id_customer + "/" + status + "/" ); 
 }
 
 //ubah september

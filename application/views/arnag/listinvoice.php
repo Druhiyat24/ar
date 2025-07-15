@@ -36,6 +36,17 @@
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
+
+                                    <div class="form-group col-md-2">
+                                        <label>Status</label>
+                                        <select class="form-control select2bs4" id="status" name="status">
+                                            <option value="all_status">ALL</option>
+                                            <?php foreach ($status as $sts) : ?>
+                                                <option value="<?= $sts['status']; ?>"><?= $sts['status']; ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+
                                     <div class="col-md-3">
                                         <div class="form-group">
                                             <!-- <label>Date Range</label> -->
@@ -58,7 +69,7 @@
                                     <div class="col-md-3">
                                         <label>Export Data</label>
                                         <div class="input-group">
-                                            <button type="button" class="btn btn-info" onclick="export_list_invoice()"><i class="fa fa-download"></i> Export To Excel</button>
+                                            <button type="button" class="btn btn-info" onclick="export_list_invoice()"><i class="fa fa-download"></i> Export Excel</button>
                                         </div>
                                     </div>
 
