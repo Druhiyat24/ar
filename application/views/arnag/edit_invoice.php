@@ -108,7 +108,7 @@
                             <!-- Start Input -->
                             <div class="form-group col-md-12">
                                 <label>Profit Center</label>
-                                <select id="type" name="type" class="form-control select2bs4" required>
+                                <select id="pc_invoice" name="pc_invoice" class="form-control select2bs4" required>
                                     <?php foreach ($profit_center as $pc) : ?>
                                         <option value="<?= $pc['kode_pc']; ?>" <?= (isset($invoice['profit_center']) && $invoice['profit_center'] == $pc['kode_pc']) ? 'selected' : ''; ?>><?= $pc['nama_pc']; ?></option>
                                     <?php endforeach; ?>
@@ -155,7 +155,7 @@
                             <div class="form-group col-md-12">
                                 <label>Update Data Header</label>
                                 <div class="input-group mb-3">
-                                    <button type="button" onclick="UpdateHeaderInv()" class="btn btn-primary">Update</button>
+                                    <button type="button" onclick="UpdateHeaderInv()" class="btn btn-primary"><i class="fas fa-save"></i> Update</button>
                                     <!-- <input type="text" class="form-control" id="so_number1" name="so_number1" readonly required>
                                     <span class="input-group-append">
                                         <button id="so_number2" name="so_number2" type="button" class="btn btn-info btn-flat" data-toggle="modal" data-target="#modal-add-so" href="javascript:void(0)" onclick="add_id_for_so()">Add SO</button>
@@ -173,36 +173,70 @@
             <div class="row">
                 <div class="col-12">
                     <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">DataTable Detail SJ</h3>
-                        </div>
-                        <!-- /.card-header -->
-                        <div class="card-body table-responsive p-0" style="height: 300px;">
-                            <table id="table-sj" class="table table-head-fixed text-nowrap">
-                                <thead>
-                                    <tr>
-                                        <th>ID Bppb</th>
-                                        <th>SO Number</th>
-                                        <th>Bppb Number</th>
-                                        <th>Sj_Date</th>
-                                        <th>Shipping Number</th>
-                                        <th>WS#</th>
-                                        <th>Styleno</th>
-                                        <th>Product Group</th>
-                                        <th>Product Item</th>
-                                        <th>Color</th>
-                                        <th>Size</th>
-                                        <th>Curr</th>
-                                        <th>UOM</th>
-                                        <th>Qty</th>
-                                        <th>Unit Price</th>
-                                        <th>Discount (%)</th>
-                                        <th>Total Price</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                        <div class="card-header d-flex align-items-center gap-2">
+                            <h3 class="card-title mb-0 mr-2">Detail Invoice</h3>
+                            <a href="javascript:void(0)" 
+                            id="btn-edit-detail"
+                            class="btn btn-warning btn-sm">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                    </div>
 
+
+                    <!-- /.card-header -->
+                    <div class="card-body table-responsive p-0" style="height: 300px;">
+                        <table id="table-sj-det" class="table table-head-fixed text-nowrap">
+                            <thead>
+                                <tr>
+                                    <th>ID Bppb</th>
+                                    <th>SO Number</th>
+                                    <th>Bppb Number</th>
+                                    <th>Sj_Date</th>
+                                    <th>Shipping Number</th>
+                                    <th>WS#</th>
+                                    <th>Styleno</th>
+                                    <th>Product Group</th>
+                                    <th>Product Item</th>
+                                    <th>Color</th>
+                                    <th>Size</th>
+                                    <th>Curr</th>
+                                    <th>UOM</th>
+                                    <th>Qty</th>
+                                    <th>Unit Price</th>
+                                    <th>Discount (%)</th>
+                                    <th>Total Price</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($invoice_det)) : ?>
+                                    <?php foreach ($invoice_det as $row) : ?>
+                                        <tr>
+                                            <td><?= $row['id_bppb']; ?></td>
+                                            <td><?= $row['so_number']; ?></td>
+                                            <td><?= $row['bppb_number']; ?></td>
+                                            <td><?= $row['sj_date']; ?></td>
+                                            <td><?= $row['shipp_number']; ?></td>
+                                            <td><?= $row['ws']; ?></td>
+                                            <td><?= $row['styleno']; ?></td>
+                                            <td><?= $row['product_group']; ?></td>
+                                            <td><?= $row['product_item']; ?></td>
+                                            <td><?= $row['color']; ?></td>
+                                            <td><?= $row['size']; ?></td>
+                                            <td><?= $row['curr']; ?></td>
+                                            <td><?= $row['uom']; ?></td>
+                                            <td style="text-align: right;"><?= number_format($row['qty'], 2); ?></td>
+                                            <td style="text-align: right;"><?= number_format($row['unit_price'], 2); ?></td>
+                                            <td style="text-align: right;"><?= number_format($row['disc'], 2); ?></td>
+                                            <td style="text-align: right;"><?= number_format($row['total_price'], 2); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    <?php else : ?>
+                                        <tr>
+                                            <td colspan="17" class="text-center">Tidak ada data detail</td>
+                                        </tr>
+                                    <?php endif; ?>
                                 </tbody>
+
                             </table>
                         </div>
                         <!-- /.card-body -->
@@ -225,43 +259,50 @@
                                     <div class="form-group row">
                                         <label for="total" class="col-sm-4 col-form-label">Total</label>
                                         <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="total" name="total" style="text-align:right;" placeholder="0.00" readonly>
+                                            <input type="text" class="form-control" id="total_show" name="total_show" style="text-align:right;" placeholder="0.00" value="<?= number_format($invoice_pot['total'],2); ?>" readonly>
+                                            <input type="hidden" class="form-control" id="total" name="total" style="text-align:right;" placeholder="0.00" value="<?= $invoice_pot['total']; ?>" readonly>
                                         </div>
                                     </div>
                                     <div class="form-group row">
                                         <label for="discount" class="col-sm-4 col-form-label">Discount</label>
                                         <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="discount" name="discount" style="text-align:right;" placeholder="0.00" readonly>
+                                            <input type="text" class="form-control" id="discount_show" name="discount_show" style="text-align:right;" placeholder="0.00" value="<?= number_format($invoice_pot['discount'],2); ?>" readonly>
+                                            <input type="hidden" class="form-control" id="discount" name="discount" style="text-align:right;" placeholder="0.00" value="<?= $invoice_pot['discount']; ?>" readonly>
                                         </div>
                                     </div>
                                     <div class="form-group row">
                                         <label for="dp" class="col-sm-4 col-form-label">Down Payment</label>
                                         <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="dp" name="dp" style="text-align:right;" placeholder="0.00" readonly>
+                                            <input type="text" class="form-control" id="dp_show" name="dp_show" style="text-align:right;" placeholder="0.00" value="<?= number_format($invoice_pot['dp'],2); ?>" readonly>
+                                            <input type="hidden" class="form-control" id="dp" name="dp" style="text-align:right;" placeholder="0.00" value="<?= $invoice_pot['dp']; ?>" readonly>
                                         </div>
                                     </div>
                                     <div class="form-group row">
                                         <label for="return" class="col-sm-4 col-form-label">Return</label>
                                         <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="return" name="return" style="text-align:right;" placeholder="0.00" readonly>
+                                            <input type="text" class="form-control" id="return_show" name="return_show" style="text-align:right;" placeholder="0.00" value="<?= number_format($invoice_pot['retur'],2); ?>" readonly>
+                                            <input type="hidden" class="form-control" id="return" name="return" style="text-align:right;" placeholder="0.00" value="<?= $invoice_pot['retur']; ?>" readonly>
                                         </div>
                                     </div>
                                     <div class="form-group row">
                                         <label for="twot" class="col-sm-4 col-form-label">Total With Out Tax</label>
                                         <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="twot" name="twot" style="text-align:right;" placeholder="0.00" readonly>
+                                            <input type="text" class="form-control" id="twot_show" name="twot_show" style="text-align:right;" placeholder="0.00" value="<?= number_format($invoice_pot['twot'],2); ?>" readonly>
+                                            <input type="hidden" class="form-control" id="twot" name="twot" style="text-align:right;" placeholder="0.00" value="<?= $invoice_pot['twot']; ?>" readonly>
                                         </div>
                                     </div>
                                     <div class="form-group row">
                                         <label for="vat" class="col-sm-4 col-form-label">VAT</label>
                                         <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="vat" name="vat" style="text-align:right;" placeholder="0.00" readonly>
+                                            <input type="text" class="form-control" id="vat_show" name="vat_show" style="text-align:right;" placeholder="0.00" value="<?= number_format($invoice_pot['vat'],2); ?>" readonly>
+                                            <input type="hidden" class="form-control" id="vat" name="vat" style="text-align:right;" placeholder="0.00" value="<?= $invoice_pot['vat']; ?>" readonly>
                                         </div>
                                     </div>
                                     <div class="form-group row">
                                         <label for="grandtotal" class="col-sm-4 col-form-label">Grand Total</label>
                                         <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="grandtotal" name="grandtotal" style="text-align:right;" placeholder="0.00" readonly>
+                                            <input type="text" class="form-control" id="grandtotal_show" name="grandtotal_show" style="text-align:right;" placeholder="0.00" value="<?= number_format($invoice_pot['grand_total'],2); ?>" readonly>
+                                            <input type="hidden" class="form-control" id="grandtotal" name="grandtotal" style="text-align:right;" placeholder="0.00" value="<?= $invoice_pot['grand_total']; ?>" readonly>
                                             <input type="hidden" class="form-control" id="keterangan" name="keterangan" readonly>
                                         </div>
                                     </div>
@@ -829,3 +870,4 @@
         }
     }
 </script>
+

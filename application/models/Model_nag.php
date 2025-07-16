@@ -4294,10 +4294,24 @@ public function get_invoice_by_id($id) {
     return $this->db->get_where('tbl_book_invoice', ['id' => $id])->row_array();
 }
 
+public function get_invoice_pot_by_id($id) {
+    return $this->db->get_where('tbl_invoice_pot', ['id_book_invoice' => $id])->row_array();
+}
+
+public function get_invoice_det_by_id($id) {
+    return $this->db->get_where('tbl_invoice_detail', ['id_book_invoice' => $id])->result_array();
+}
+
 function get_tgl_invoice_by_id($id)
 {
     $hasil = $this->db->query("select DISTINCT DATE_FORMAT(a.sj_date,'%Y-%m-%d') tgl_inv, DATE_FORMAT(DATE_ADD(a.sj_date, INTERVAL c.top DAY), '%Y-%m-%d') due_date from tbl_invoice_detail a INNER JOIN tbl_book_invoice b on b.id = a.id_book_invoice INNER JOIN tbl_master_top c on c.id = b.id_top where id_book_invoice = '$id' GROUP BY id_book_invoice");
     return $hasil->row_array();
+}
+
+function update_invoice_h($id, $id_top, $id_customer, $type, $profit_center, $id_bank, $pph, $type_so)
+{
+    $hasil = $this->db->query("UPDATE tbl_book_invoice SET id_top = '$id_top', id_customer = '$id_customer', id_type = '$type', profit_center = '$profit_center', id_bank = '$id_bank', pph = '$pph', type_so = '$type_so' WHERE id = '$id' ");
+    return $hasil;
 }
 
 

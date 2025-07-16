@@ -2915,6 +2915,43 @@ public function update_top_invoice()
 }
 
 
+public function update_invoice_h()
+{
+    
+    $id             = $this->input->post('id_book_inv');
+    $id_top         = $this->input->post('top_inv');
+    $id_customer    = $this->input->post('id_customer');
+    $type           = $this->input->post('type');
+    $profit_center  = $this->input->post('profit_center');
+    $id_bank        = $this->input->post('id_bank');
+    $pph            = $this->input->post('pph');
+    $type_so        = $this->input->post('type_so');
+    $top_manual     = $this->input->post('top_manual');
+
+    if (!$id || !$id_top) {
+        echo json_encode(['status' => false, 'message' => 'Data tidak lengkap']);
+        return;
+    }
+
+    if ($top_manual) {
+        $data_top = [
+            'id_customer' => $id_customer,
+            'type'        => 'TOP',
+            'top'         => $top_manual,
+            'status'      => 'Active'
+        ];
+        
+        // Insert dan ambil id TOP baru
+        $this->db->insert('tbl_master_top', $data_top);
+        $id_top = $this->db->insert_id();
+    }
+
+    $this->Model_nag->update_invoice_h($id, $id_top, $id_customer, $type, $profit_center, $id_bank, $pph, $type_so);
+    
+    echo json_encode(['status' => true, 'message' => 'Berhasil update']);
+}
+
+
 public function edit_invoice($id = null) {
     if ($id === null) {
         show_404();
@@ -2922,6 +2959,8 @@ public function edit_invoice($id = null) {
 
     $data['tgl_invoice'] = $this->Model_nag->get_tgl_invoice_by_id($id);
     $data['invoice'] = $this->Model_nag->get_invoice_by_id($id);
+    $data['invoice_pot'] = $this->Model_nag->get_invoice_pot_by_id($id);
+    $data['invoice_det'] = $this->Model_nag->get_invoice_det_by_id($id);
     $id_customer = $data['invoice']['id_customer'];
     $data['top_options'] =  $this->Model_nag->cari_top($id_customer);
     $data['customer'] = $this->Model_nag->cari_customer();
@@ -2929,6 +2968,8 @@ public function edit_invoice($id = null) {
     $data['isi_bank'] = $this->Model_nag->load_bank();
     $data['profit_center'] = $this->Model_nag->cari_profit_center();
     $data['title'] = 'Form Edit Invoice';
+    $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+    $data['buyer'] = $this->Model_nag->cari_buyer();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
     $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
     $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));

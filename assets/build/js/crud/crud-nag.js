@@ -786,6 +786,47 @@ function add_id_for_so() {
 
 }
 
+
+function get_data_so_edit() {
+
+	$cust = $('[name="cust"] option:selected').text().trim()
+	$idcust = $('[name="cust"]').val()
+	let inv_number = $('[name="inv_number1"]').val();
+	let parts = inv_number.split('/');
+	let kode_pc = parts[2];
+	console.log(kode_pc);
+	//
+	$('[name="custm"]').val($cust);
+	$('[name="id_custm"]').val($idcust);
+	$('[name="profit_ctr"]').val(kode_pc);
+	//
+	$('#example4 tbody tr').remove();	
+	$('#table-sj tbody tr').remove();
+	//
+	$('#so_number1').val("");
+	//$('#id_sj').val("");
+	//Clear Value : Total, Discount, Down Payment, Return, Total With Out Tax, VAT, Grand Total
+	$('#total').val("");
+	$('#discount').val("");
+	$('#dp').val("");
+	$('#return').val("");
+	$('#twot').val("");
+	$('#vat').val("");
+	$('#grandtotal').val("");
+	$('#total_show').val("");
+	$('#discount_show').val("");
+	$('#dp_show').val("");
+	$('#return_show').val("");
+	$('#twot_show').val("");
+	$('#vat_show').val("");
+	$('#grandtotal_show').val("");	
+	//
+	$('#table-sj-2 tbody tr').remove();	
+	//
+	modal_clear_component();
+
+}
+
 function cari_so() {
 	
 	$('#example4 tbody tr').remove();	
@@ -2360,7 +2401,6 @@ function submitUpdateTOP() {
 	});
 }
 
-
 function UpdateHeaderInv() {
 	var inv_number1 = $('#inv_number1').val();
 	var id = $('#inv_id').val();
@@ -2368,47 +2408,68 @@ function UpdateHeaderInv() {
 	var top_manual = $('#top_manual').val();
 	var cust = $('#cust').val();
 	var type = $('#type').val();
-	var type = $('#type').val();
+	var profit_center = $('#pc_invoice').val();
 	var id_bank = $('#id_bank').val();
 	var pph = $('#pph').val();
 	var type_so = $('#type_so').val();
 
 	console.log("inv_number1:", inv_number1);
-console.log("id:", id);
-console.log("top_id:", top_id);
-console.log("top_manual:", top_manual);
-console.log("cust:", cust);
-console.log("type:", type);
-console.log("id_bank:", id_bank);
-console.log("pph:", pph);
-console.log("type_so:", type_so);
+	console.log("id:", id);
+	console.log("top_id:", top_id);
+	console.log("top_manual:", top_manual);
+	console.log("cust:", cust);
+	console.log("type:", type);
+	console.log("profit_center:", profit_center);
+	console.log("id_bank:", id_bank);
+	console.log("pph:", pph);
+	console.log("type_so:", type_so);
 
 	var isManual = $('#top_manual').is(':visible') && top_manual !== '';
 
 	$.ajax({
-		url: 'update_top_invoice/',
+		url: '/ar_dev/Arnag/update_invoice_h',
 		method: 'POST',
 		data: {
 			id_book_inv: id,
 			top_inv: top_id,
+			type: type,
+			profit_center: profit_center,
+			id_bank: id_bank,
+			pph: pph,
+			type_so: type_so,
 			top_manual: isManual ? top_manual : '',
-			id_customer: isManual ? id_customer : ''
+			id_customer: cust
 		},
 		dataType: 'json',
 		success: function (response) {
 			if (response.status) {
-				$('#modal-update').modal('hide');
-				$('#top_manual').hide().val('');
-				$('#top_inv').val('').trigger('change');
-				cari_invoice();
-				cari_noinvoice();
+				Swal.fire({
+					title: 'Berhasil!',
+					text: 'Data berhasil diupdate.',
+					icon: 'success',
+					confirmButtonText: 'OK'
+				}).then((result) => {
+					if (result.isConfirmed) {
+                location.reload(); // reload halaman setelah klik OK
+            }
+        });
 			} else {
-				alert('Gagal update: ' + response.message);
+				Swal.fire({
+					title: 'Gagal!',
+					text: response.message,
+					icon: 'error',
+					confirmButtonText: 'Tutup'
+				});
 			}
 		},
-		error: function () {
-			alert('Gagal menghubungi server');
+		error: function (xhr, status, error) {
+			Swal.fire({
+				title: 'Error Server!',
+				text: 'Terjadi kesalahan: ' + xhr.responseText,
+				icon: 'error'
+			});
 		}
+
 	});
 }
 

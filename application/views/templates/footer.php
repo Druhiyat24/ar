@@ -1418,6 +1418,32 @@ function hitungManualTOP() {
 
 </script>
 
+<script>
+$(document).ready(function () {
+    $('#btn-edit-detail').click(function () {
+        Swal.fire({
+            title: 'Yakin ingin edit?',
+            text: 'Data detail sebelumnya akan dihapus!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#f39c12',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Ya, Edit',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Jalankan fungsi tambah ID dulu
+                get_data_so_edit();
+
+                // Tampilkan modal setelah itu
+                $('#modal-add-so').modal('show');
+            }
+        });
+    });
+});
+</script>
+
+
 
   </body>
 
