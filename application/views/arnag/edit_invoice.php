@@ -27,21 +27,8 @@
                                 <label>Invoice Number</label>
                                 <div class="input-group mb-3">
                                     <input type="text" class="form-control" id="inv_number1" name="inv_number1" value="<?= $invoice['no_invoice']; ?>" readonly required>
-                                    <input type="hidden" class="form-control float-right" id="profit_ctr_h" name="profit_ctr_h" readonly>
+                                    <input type="hidden" class="form-control" id="inv_id" name="inv_id" value="<?= $invoice['id']; ?>" readonly required>
                                 </div>
-                            </div>
-                            <!-- Hidden Element -->
-                            <div class="form-group col-md-12">
-                                <!-- ID Invoice -->
-                                <input type="hidden" class="form-control" id="id_inv" name="id_inv" readonly required>
-                            </div>
-                            <div class="form-group col-md-12">
-                                <!-- ID Customer -->
-                                <input type="hidden" class="form-control" id="id_cust" name="id_cust" readonly required>
-                            </div>
-                            <div class="form-group col-md-12">
-                                <!-- ID TOP -->
-                                <input type="hidden" class="form-control" id="id_top" name="id_top" readonly required>
                             </div>
 
                             <div class="form-group col-md-12">
@@ -57,37 +44,6 @@
                                 </select>
                             </div>
 
-                            <!-- /. Hidden Element -->
-
-                            <input type="hidden" class="form-control" id="grade" name="grade" readonly><!-- 
-                            <input type="hidden" class="form-control" id="inv_date" name="inv_date" readonly> -->
-                            <input type="hidden" class="form-control" id="inv_curr" name="inv_curr" readonly>
-                            <input type="hidden" class="form-control" id="no_coa_deb" name="no_coa_deb" readonly>
-                            <input type="hidden" class="form-control" id="nama_coa_deb" name="nama_coa_deb" readonly>
-                            <input type="hidden" class="form-control" id="no_coa_cre" name="no_coa_cre" readonly>
-                            <input type="hidden" class="form-control" id="nama_coa_cre" name="nama_coa_cre" readonly>
-                            <input type="hidden" class="form-control" id="no_coa_dp" name="no_coa_dp" readonly>
-                            <input type="hidden" class="form-control" id="nama_coa_dp" name="nama_coa_dp" readonly>
-                            <input type="hidden" class="form-control" id="no_coa_pot" name="no_coa_pot" readonly>
-                            <input type="hidden" class="form-control" id="nama_coa_pot" name="nama_coa_pot" readonly>
-                            <input type="hidden" class="form-control" id="no_coa_ppn" name="no_coa_ppn" readonly>
-                            <input type="hidden" class="form-control" id="nama_coa_ppn" name="nama_coa_ppn" readonly>
-                            <input type="hidden" class="form-control" id="inv_rate" name="inv_rate" readonly>
-                            <!-- TOP -->
-                            <!-- <div class="row col-md-12">
-                                <div class="form-group col-md-4">
-                                    <label>TOP Type</label>
-                                    <input type="text" class="form-control" id="top" name="top" readonly required>
-                                </div>
-                                <div class="form-group col-md-4">
-                                    <label>Time Period</label>
-                                    <input type="text" class="form-control" id="top_time" name="top_time" readonly required>
-                                </div>
-                                <div class="form-group col-md-4">
-                                    <label>Action.</label>
-                                    <button type="button" id="find_top" name="find_top" class="btn btn-info" data-toggle="modal" data-target="#modal-add-top"><i class="fa fa-search"></i> Search Top</button>
-                                </div>
-                            </div> -->
                             <div class="form-group col-md-12">
                                 <label>TOP</label>
                                 <select id="top_inv" class="form-control select2bs4" onchange="hitungDueDate()">
@@ -106,9 +62,9 @@
                                     <div class=" col-md-6">
                                         <label>Inv Date</label>
                                         <div class="input-group mb-3">
-                                            <input type="text" name="inv_date" id="inv_date" class="form-control tanggal"
+                                            <input type="text" name="inv_date" id="inv_date" class="form-control"
                                             value="<?= isset($tgl_invoice['tgl_inv']) && $tgl_invoice['tgl_inv'] != '' ? $tgl_invoice['tgl_inv'] : date('Y-m-d'); ?>"
-                                            autocomplete='off'>
+                                            autocomplete='off' readonly>
 
                                             <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                         </div>
@@ -116,7 +72,7 @@
                                     <div class=" col-md-6">
                                         <label>Due Date</label>
                                         <div class="input-group mb-3">
-                                            <input type="text" name="due_date" id="due_date" class="form-control tanggal" value="<?= $tgl_invoice['due_date'];  ?>" autocomplete='off'>
+                                            <input type="text" name="due_date" id="due_date" class="form-control" value="<?= $tgl_invoice['due_date'];  ?>" autocomplete='off' readonly>
                                             <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                         </div>
                                     </div>
@@ -126,15 +82,15 @@
                             <!-- END TOP -->
                             <div class="form-group col-md-12">
                                 <label>Shipp</label>
-                                <input type="text" class="form-control" id="shipp" name="shipp" readonly required>
+                                <input type="text" class="form-control" id="shipp" name="shipp" value="<?= $invoice['shipp']; ?>" readonly required>
                             </div>
                             <div class="form-group col-md-12">
                                 <label>Document Type</label>
-                                <input type="text" class="form-control" id="doc_type" name="doc_type" readonly required>
+                                <input type="text" class="form-control" id="doc_type" name="doc_type" readonly value="<?= $invoice['doc_type']; ?>" required>
                             </div>
                             <div class="form-group col-md-12">
                                 <label>Document Number</label>
-                                <input type="text" class="form-control" id="doc_number" name="doc_number" readonly required>
+                                <input type="text" class="form-control" id="doc_number" name="doc_number" readonly value="<?= $invoice['doc_number']; ?>" required>
                             </div>
                             <!--  End Start Input -->
                         </div>
@@ -151,175 +107,188 @@
                         <div class="card-body">
                             <!-- Start Input -->
                             <div class="form-group col-md-12">
-                                <label>Type</label>
-                                <input type="text" class="form-control" id="type" name="type" readonly required>
+                                <label>Profit Center</label>
+                                <select id="type" name="type" class="form-control select2bs4" required>
+                                    <?php foreach ($profit_center as $pc) : ?>
+                                        <option value="<?= $pc['kode_pc']; ?>" <?= (isset($invoice['profit_center']) && $invoice['profit_center'] == $pc['kode_pc']) ? 'selected' : ''; ?>><?= $pc['nama_pc']; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
+
                             <div class="form-group col-md-12">
-                                <label>Amount</label>
-                                <input type="text" class="form-control" id="amount" name="amount" readonly required>
+                                <label>Type</label>
+                                <select id="type" name="type" class="form-control select2bs4" required>
+                                    <?php foreach ($type as $tp) : ?>
+                                        <option value="<?= $tp['id_type']; ?>"
+                                            <?= (isset($invoice['id_type']) && $invoice['id_type'] == $tp['id_type']) ? 'selected' : ''; ?>>
+                                            <?= $tp['type']; ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
                             <!-- BANK -->
                             <div class="form-group col-md-12">
                                 <label>Bank</label>
-                                <select class="form-control" id="id_bank" name="id_bank" required>
+                                <select class="form-control select2bs4" id="id_bank" name="id_bank" required>
                                     <?php foreach ($isi_bank as $bk) : ?>
-                                        <option value="<?= $bk['id']; ?>"><?= $bk['nama_bank']; ?> (<?= $bk['no_rek']; ?>)</option>
+                                        <option value="<?= $bk['id']; ?>" <?= (isset($invoice['id_bank']) && $invoice['id_bank'] == $bk['id']) ? 'selected' : ''; ?>><?= $bk['nama_bank']; ?> (<?= $bk['no_rek']; ?>)</option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
                             <!--  -->
                             <div class="form-group col-md-12">
                                 <label>PPh</label>
-                                <select class="form-control" id="pph" name="pph" required>
-                                   <option value="NA">NA</option>
-                                   <option value="PPh 21">PPh 21</option>
-                                   <option value="PPh 23">PPh 23</option>
-                                   <option value="4 Ayat 2">4 Ayat 2</option>								
-                               </select>
-                           </div>
-                           <div class="form-group col-md-12">
-                            <label>Type SO</label>
-                            <select class="form-control" id="type_so" name="type_so" required>
-                                <option value="FOB">FOB</option>
-                                <option value="CMT">CMT</option>
-                            </select>
-                        </div>
-                        <div class="form-group col-md-12">
-                            <label>SO Number</label>
-                            <div class="input-group mb-3">
-                                <input type="text" class="form-control" id="so_number1" name="so_number1" readonly required>
-                                <span class="input-group-append">
-                                    <button id="so_number2" name="so_number2" type="button" class="btn btn-info btn-flat" data-toggle="modal" data-target="#modal-add-so" href="javascript:void(0)" onclick="add_id_for_so()">Add SO</button>
-                                </span>
+                                <select class="form-control select2bs4" id="pph" name="pph" required>
+                                    <option value="NA" <?= ($invoice['pph'] == 'NA') ? 'selected' : '' ?>>NA</option>
+                                    <option value="PPh 21" <?= ($invoice['pph'] == 'PPh 21') ? 'selected' : '' ?>>PPh 21</option>
+                                    <option value="PPh 23" <?= ($invoice['pph'] == 'PPh 23') ? 'selected' : '' ?>>PPh 23</option>
+                                    <option value="4 Ayat 2" <?= ($invoice['pph'] == '4 Ayat 2') ? 'selected' : '' ?>>4 Ayat 2</option>
+                                </select>
                             </div>
+                            <div class="form-group col-md-12">
+                                <label>Type SO</label>
+                                <select class="form-control select2bs4" id="type_so" name="type_so" required>
+                                    <option value="FOB" <?= ($invoice['type_so'] == 'FOB') ? 'selected' : '' ?>>FOB</option>
+                                    <option value="CMT" <?= ($invoice['type_so'] == 'CMT') ? 'selected' : '' ?>>CMT</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-12">
+                                <label>Update Data Header</label>
+                                <div class="input-group mb-3">
+                                    <button type="button" onclick="UpdateHeaderInv()" class="btn btn-primary">Update</button>
+                                    <!-- <input type="text" class="form-control" id="so_number1" name="so_number1" readonly required>
+                                    <span class="input-group-append">
+                                        <button id="so_number2" name="so_number2" type="button" class="btn btn-info btn-flat" data-toggle="modal" data-target="#modal-add-so" href="javascript:void(0)" onclick="add_id_for_so()">Add SO</button>
+                                    </span> -->
+                                </div>
+                            </div>
+                            <!--  End Start Input -->
                         </div>
-                        <!--  End Start Input -->
+                        <!-- /.card-body -->
                     </div>
-                    <!-- /.card-body -->
                 </div>
+                <!--/.col (right) -->
             </div>
-            <!--/.col (right) -->
-        </div>
-        <!-- Data Table Create Invoice -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">DataTable Detail SJ</h3>
-                    </div>
-                    <!-- /.card-header -->
-                    <div class="card-body table-responsive p-0" style="height: 300px;">
-                        <table id="table-sj" class="table table-head-fixed text-nowrap">
-                            <thead>
-                                <tr>
-                                    <th>ID Bppb</th>
-                                    <th>SO Number</th>
-                                    <th>Bppb Number</th>
-                                    <th>Sj_Date</th>
-                                    <th>Shipping Number</th>
-                                    <th>WS#</th>
-                                    <th>Styleno</th>
-                                    <th>Product Group</th>
-                                    <th>Product Item</th>
-                                    <th>Color</th>
-                                    <th>Size</th>
-                                    <th>Curr</th>
-                                    <th>UOM</th>
-                                    <th>Qty</th>
-                                    <th>Unit Price</th>
-                                    <th>Discount (%)</th>
-                                    <th>Total Price</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+            <!-- Data Table Create Invoice -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">DataTable Detail SJ</h3>
+                        </div>
+                        <!-- /.card-header -->
+                        <div class="card-body table-responsive p-0" style="height: 300px;">
+                            <table id="table-sj" class="table table-head-fixed text-nowrap">
+                                <thead>
+                                    <tr>
+                                        <th>ID Bppb</th>
+                                        <th>SO Number</th>
+                                        <th>Bppb Number</th>
+                                        <th>Sj_Date</th>
+                                        <th>Shipping Number</th>
+                                        <th>WS#</th>
+                                        <th>Styleno</th>
+                                        <th>Product Group</th>
+                                        <th>Product Item</th>
+                                        <th>Color</th>
+                                        <th>Size</th>
+                                        <th>Curr</th>
+                                        <th>UOM</th>
+                                        <th>Qty</th>
+                                        <th>Unit Price</th>
+                                        <th>Discount (%)</th>
+                                        <th>Total Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
 
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- /.card-body -->
                     </div>
-                    <!-- /.card-body -->
-                </div>
-                <!-- /.card -->
-            </div>
-        </div>
-        <!-- End Data Table Create Invoice -->
-        <!--  -->
-        <!-- Data Potongan Invoice  -->
-        <div class="row" style="display: flex; justify-content: flex-end">
-            <!--/.col (right) -->
-            <div class="col-md-6">
-                <!-- Form Element sizes -->
-                <div class="card card-success">
-                    <div class="card-body">
-                        <!-- Start Input -->
-                        <form class="form-horizontal">
-                            <div class="card-body">
-                                <div class="form-group row">
-                                    <label for="total" class="col-sm-4 col-form-label">Total</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control" id="total" name="total" style="text-align:right;" placeholder="0.00" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label for="discount" class="col-sm-4 col-form-label">Discount</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control" id="discount" name="discount" style="text-align:right;" placeholder="0.00" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label for="dp" class="col-sm-4 col-form-label">Down Payment</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control" id="dp" name="dp" style="text-align:right;" placeholder="0.00" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label for="return" class="col-sm-4 col-form-label">Return</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control" id="return" name="return" style="text-align:right;" placeholder="0.00" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label for="twot" class="col-sm-4 col-form-label">Total With Out Tax</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control" id="twot" name="twot" style="text-align:right;" placeholder="0.00" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label for="vat" class="col-sm-4 col-form-label">VAT</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control" id="vat" name="vat" style="text-align:right;" placeholder="0.00" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label for="grandtotal" class="col-sm-4 col-form-label">Grand Total</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control" id="grandtotal" name="grandtotal" style="text-align:right;" placeholder="0.00" readonly>
-                                        <input type="hidden" class="form-control" id="keterangan" name="keterangan" readonly>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- /.card-body -->
-                            <!-- /.card-footer -->
-                        </form>
-                        <!--  End Start Input -->
-                    </div>
-                    <!-- /.card-body -->
+                    <!-- /.card -->
                 </div>
             </div>
-            <!--/.col (right) -->
-        </div>
-        <!-- End Data Potongan Invoice  -->
-        <!--  -->
-        <!-- Button Simpan Data Invoice  -->
-        <div class="row col-sm-12">
-            <div class="input-group mb-3">
-                <button type="button" class="btn btn-primary" data-toggle="modal" onclick="asyncCall()"><i class="fa fa-save"></i> Save Change Invoice</button>
+            <!-- End Data Table Create Invoice -->
+            <!--  -->
+            <!-- Data Potongan Invoice  -->
+            <div class="row" style="display: flex; justify-content: flex-end">
+                <!--/.col (right) -->
+                <div class="col-md-6">
+                    <!-- Form Element sizes -->
+                    <div class="card card-success">
+                        <div class="card-body">
+                            <!-- Start Input -->
+                            <form class="form-horizontal">
+                                <div class="card-body">
+                                    <div class="form-group row">
+                                        <label for="total" class="col-sm-4 col-form-label">Total</label>
+                                        <div class="col-sm-8">
+                                            <input type="text" class="form-control" id="total" name="total" style="text-align:right;" placeholder="0.00" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="discount" class="col-sm-4 col-form-label">Discount</label>
+                                        <div class="col-sm-8">
+                                            <input type="text" class="form-control" id="discount" name="discount" style="text-align:right;" placeholder="0.00" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="dp" class="col-sm-4 col-form-label">Down Payment</label>
+                                        <div class="col-sm-8">
+                                            <input type="text" class="form-control" id="dp" name="dp" style="text-align:right;" placeholder="0.00" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="return" class="col-sm-4 col-form-label">Return</label>
+                                        <div class="col-sm-8">
+                                            <input type="text" class="form-control" id="return" name="return" style="text-align:right;" placeholder="0.00" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="twot" class="col-sm-4 col-form-label">Total With Out Tax</label>
+                                        <div class="col-sm-8">
+                                            <input type="text" class="form-control" id="twot" name="twot" style="text-align:right;" placeholder="0.00" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="vat" class="col-sm-4 col-form-label">VAT</label>
+                                        <div class="col-sm-8">
+                                            <input type="text" class="form-control" id="vat" name="vat" style="text-align:right;" placeholder="0.00" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="grandtotal" class="col-sm-4 col-form-label">Grand Total</label>
+                                        <div class="col-sm-8">
+                                            <input type="text" class="form-control" id="grandtotal" name="grandtotal" style="text-align:right;" placeholder="0.00" readonly>
+                                            <input type="hidden" class="form-control" id="keterangan" name="keterangan" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- /.card-body -->
+                                <!-- /.card-footer -->
+                            </form>
+                            <!--  End Start Input -->
+                        </div>
+                        <!-- /.card-body -->
+                    </div>
+                </div>
+                <!--/.col (right) -->
             </div>
-        </div>
-        <!-- End Button Simpan Data Invoice  -->
-        <!-- /.row -->
-    </div><!-- /.container-fluid -->
-</section>
-<!-- /.content -->
+            <!-- End Data Potongan Invoice  -->
+            <!--  -->
+            <!-- Button Simpan Data Invoice  -->
+            <div class="row col-sm-12">
+                <div class="input-group mb-3">
+                    <button type="button" class="btn btn-primary" data-toggle="modal" onclick="asyncCall()"><i class="fa fa-save"></i> Save Change Invoice</button>
+                </div>
+            </div>
+            <!-- End Button Simpan Data Invoice  -->
+            <!-- /.row -->
+        </div><!-- /.container-fluid -->
+    </section>
+    <!-- /.content -->
 </div>
 <!-- /.content-wrapper -->
 
@@ -360,7 +329,7 @@
                     <!-- /.card-header -->
                     <div class="card-body table-responsive p-0" style="height: 400px;">
                         <div class="d-flex justify-content-between">
-                         <div class="ml-auto">
+                           <div class="ml-auto">
                             <span class="input-group-text"><i class="fas fa-search"></i></span>
                         </div>
                         <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_noinvoice()">
@@ -505,7 +474,7 @@
                     <!-- /.card-header -->
                     <!-- Detail SO -->
                     <div class="d-flex justify-content-between">
-                     <div class="ml-auto">
+                       <div class="ml-auto">
                         <span class="input-group-text"><i class="fas fa-search"></i></span>
                     </div>
                     <input type="text"  id="cariso" name="cariso" required autocomplete="off" placeholder="Search SO number.." onkeyup="cariso()">
@@ -541,7 +510,7 @@
                         </div>
                         <!-- /.card-header -->
                         <div class="d-flex justify-content-between">
-                         <div class="ml-auto">
+                           <div class="ml-auto">
                             <span class="input-group-text"><i class="fas fa-search"></i></span>
                         </div>
                         <input type="text"  id="cari_shipp" name="cari_shipp" required autocomplete="off" placeholder="Search shipp number..." onkeyup="cari_shipp_num()">

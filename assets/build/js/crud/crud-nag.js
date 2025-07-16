@@ -2361,6 +2361,58 @@ function submitUpdateTOP() {
 }
 
 
+function UpdateHeaderInv() {
+	var inv_number1 = $('#inv_number1').val();
+	var id = $('#inv_id').val();
+	var top_id = $('#top_inv').val();
+	var top_manual = $('#top_manual').val();
+	var cust = $('#cust').val();
+	var type = $('#type').val();
+	var type = $('#type').val();
+	var id_bank = $('#id_bank').val();
+	var pph = $('#pph').val();
+	var type_so = $('#type_so').val();
+
+	console.log("inv_number1:", inv_number1);
+console.log("id:", id);
+console.log("top_id:", top_id);
+console.log("top_manual:", top_manual);
+console.log("cust:", cust);
+console.log("type:", type);
+console.log("id_bank:", id_bank);
+console.log("pph:", pph);
+console.log("type_so:", type_so);
+
+	var isManual = $('#top_manual').is(':visible') && top_manual !== '';
+
+	$.ajax({
+		url: 'update_top_invoice/',
+		method: 'POST',
+		data: {
+			id_book_inv: id,
+			top_inv: top_id,
+			top_manual: isManual ? top_manual : '',
+			id_customer: isManual ? id_customer : ''
+		},
+		dataType: 'json',
+		success: function (response) {
+			if (response.status) {
+				$('#modal-update').modal('hide');
+				$('#top_manual').hide().val('');
+				$('#top_inv').val('').trigger('change');
+				cari_invoice();
+				cari_noinvoice();
+			} else {
+				alert('Gagal update: ' + response.message);
+			}
+		},
+		error: function () {
+			alert('Gagal menghubungi server');
+		}
+	});
+}
+
+
 
 function cari_inv_detail(id_inv) { 
 
