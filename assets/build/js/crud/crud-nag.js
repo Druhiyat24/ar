@@ -792,20 +792,31 @@ function get_data_so_edit() {
 	$cust = $('[name="cust"] option:selected').text().trim()
 	$idcust = $('[name="cust"]').val()
 	let inv_number = $('[name="inv_number1"]').val();
+	let id_book_invoice = $('[name="inv_id"]').val();
 	let parts = inv_number.split('/');
 	let kode_pc = parts[2];
 	console.log(kode_pc);
+
+	$.ajax({
+		url: BASE_URL + 'Arnag/hapus_detail_invoice_edit', 
+		type: 'POST',
+		data: { id_book_invoice: id_book_invoice },
+		success: function (response) {
+			console.log("Backup & hapus berhasil:", response);
+		},
+		error: function (xhr, status, error) {
+			console.error("Gagal hapus data:", error);
+		}
+	});
 	//
 	$('[name="custm"]').val($cust);
 	$('[name="id_custm"]').val($idcust);
 	$('[name="profit_ctr"]').val(kode_pc);
 	//
 	$('#example4 tbody tr').remove();	
-	$('#table-sj tbody tr').remove();
+	$('#table-sj-det tbody tr').remove();
 	//
 	$('#so_number1').val("");
-	//$('#id_sj').val("");
-	//Clear Value : Total, Discount, Down Payment, Return, Total With Out Tax, VAT, Grand Total
 	$('#total').val("");
 	$('#discount').val("");
 	$('#dp').val("");
@@ -857,12 +868,18 @@ function cari_so() {
 		var id_customer = $('#id_custm').val();
 		var profit_center = $('#profit_ctr').val();
 
+		console.log("dt_dari_so:", dt_dari_so);
+		console.log("dt_sampai_so:", dt_sampai_so);
+		console.log("id_customer:", id_customer);
+		console.log("buyer:", buyer);
+		console.log("profit_center:", profit_center);
+
 		$.ajax({		
 			url: "cari_so/" + dt_dari_so + "/" + dt_sampai_so + "/" + id_customer + "/" + buyer + "/" + profit_center + "/",					
 			type: "GET",
 			dataType: "JSON",
 			success: function (response) {
-
+				console.log(response);
 				var trHTML = '';
 				$.each(response, function (i, item) {
 					trHTML += '<tr>';
@@ -887,35 +904,72 @@ function cari_so() {
 
 	}
 
-// function add_so(){ 
-	
-// 	var table = document.getElementById("example4");
-// 	var rows = table.getElementsByTagName("tr");		
-// 	for (i = 0; i < rows.length; i++) {
-// 	  var currentRow = table.rows[i];
-// 	  var createClickHandler = function(row) {
-// 		return function() {
-// 		  // Var Cell	
-// 		  var so_cell        = row.getElementsByTagName("td")[0];
-// 		  var id_sj_cell     = row.getElementsByTagName("td")[5];
-// 		  // 			
-// 		  var so      = so_cell.innerHTML;	
-// 		  var id_sj   = id_sj_cell.innerHTML;		  	
-// 		  //
-// 		  document.getElementById("so_number1").value = so;	 	 	 
-// 		  document.getElementById("id_sj").value = id_sj;	
+	function cari_so_edit() {
 
-// 		  add_sj(id_sj); //Tambah Detail SO Dari Surat Jalan Atau Bppb
+		$('#example4 tbody tr').remove();	
+		$('#table-sj-2 tbody tr').remove();	
+	// modal_clear_component();
 
-// 		};
+		//Date range picker
+		$('input[name="reservation2"]').daterangepicker({
+			autoUpdateInput: false,
+			locale: {
+				cancelLabel: 'Clear'
+			}
+		});
 
-// 	  };
-// 	  currentRow.onclick = createClickHandler(currentRow);
-// 	}		
+		$('input[name="reservation2"]').on('apply.daterangepicker', function (ev, picker) {
+			dt_dari_so = picker.startDate.format('YYYY-MM-DD');
+			dt_sampai_so = picker.endDate.format('YYYY-MM-DD');
+			$(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+		});
 
-// 	$('#modal-add-so').modal('hide');	
+		$('input[name="reservation2"]').on('cancel.daterangepicker', function (ev, picker) {
+			$(this).val('');
+			dt_dari_so = "undefined";
+			dt_sampai_so = "undefined";
+		});
 
-// }
+		var buyer       = $('#buyer').val();
+		var id_customer = $('#id_custm').val();
+		var profit_center = $('#profit_ctr').val();
+
+		console.log("dt_dari_so:", dt_dari_so);
+		console.log("dt_sampai_so:", dt_sampai_so);
+		console.log("id_customer:", id_customer);
+		console.log("buyer:", buyer);
+		console.log("profit_center:", profit_center);
+
+		$.ajax({		
+			url: BASE_URL + "Arnag/cari_so/" + dt_dari_so + "/" + dt_sampai_so + "/" + id_customer + "/" + buyer + "/" + profit_center + "/",					
+			type: "GET",
+			dataType: "JSON",
+			success: function (response) {
+				console.log(response);
+				var trHTML = '';
+				$.each(response, function (i, item) {
+					trHTML += '<tr>';
+				//trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_sj" id="pilih_sj" class="flat" value = ' + item.id_so + ' onclick="tambah_sj()"></td>';									
+				trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_sj" id="pilih_sj" class="flat" value = ' + item.id_so + ' onclick="tambah_sj_edit(' + item.id_so + ')"></td>';									
+				trHTML += '<td>' + item.so_no + "</td>";
+				trHTML += '<td>' + item.so_date + "</td>";	
+				trHTML += '<td>' + item.supplier + "</td>";
+				trHTML += '<td>' + item.buyerno + "</td>";
+				trHTML += '<td>' + item.so_type + "</td>";	
+				trHTML += '<td>' + item.id_so + "</td>";			
+				trHTML += '</tr>';
+			});
+
+				$('#example4').append(trHTML);				
+
+			},
+			error: function (jqXHR, textStatus, errorThrown) {
+				alert('Error get data from ajax');
+			}
+		});	
+
+	}
+
 
 //ubah desember
 function tambah_sj() { 
@@ -932,6 +986,68 @@ function tambah_sj() {
 				
 				$.ajax({		
 					url: "cari_sj/" + cek_so[i].value + "/" + profit_center + "/",							
+					type: "GET",
+					dataType: "JSON",
+					success: function (response) {
+
+						var trHTML = '';
+						$.each(response, function (i, item) {
+							trHTML += '<tr>';	
+							trHTML += '<td>' + item.id_bppb + "</td>";			
+							trHTML += '<td>' + item.no_so + "</td>";
+							trHTML += '<td>' + item.sj + "</td>";							
+							//trHTML += '<td>' + item.bppbdate + "</td>";
+							trHTML += '<td><input type="text" id="cek_tgl" name="cek_tgl" style="border:none; width:120px;" value = ' + item.bppbdate + ' readonly></td>';									
+							trHTML += '<td>' + item.shipping_number + "</td>";		
+							trHTML += '<td>' + item.ws + "</td>";	
+							trHTML += '<td>' + item.styleno + "</td>";	
+							trHTML += '<td>' + item.product_group + "</td>";
+							trHTML += '<td>' + item.product_item + "</td>";	
+							trHTML += '<td>' + item.color + "</td>";
+							trHTML += '<td>' + item.size + "</td>";
+							trHTML += '<td>' + item.curr + "</td>";	
+							trHTML += '<td>' + item.uom + "</td>";
+							trHTML += '<td>' + item.qty + "</td>";
+							trHTML += '<td>' + item.unit_price + "</td>";				
+							trHTML += '<td><input type="text" class="form-control" id="mdl_disc" name="mdl_disc" style="width: 80%; text-align: center" onkeypress="javascript:return isNumber(event)" oninput="modal_input_discount(value)" readonly autocomplete="off"></td>';		
+							trHTML += '<td class="totalsj" align="right">' + item.total_price + "</td>";	
+							trHTML += '<td><input type="checkbox" name="mdl_cek_sj" id="mdl_cek_sj" class="flat" value = ' + item.total_price + ' onclick="modal_sum_total_sj(value = ' +  item.total_price + ')"></td>';
+							trHTML += '<td hidden> <input type="text" class="form-control" id="mdl_grade" name="mdl_grade" value = ' + item.grade + ' style="width: 80%; text-align: center"  readonly autocomplete="off"></td>';
+							trHTML += '<td hidden> <input type="text" class="form-control" id="mdl_tgl_inv" name="mdl_tgl_inv" value = ' + item.bppbdate + ' style="width: 80%; text-align: center"  readonly autocomplete="off"></td>';
+							trHTML += '<td hidden> <input type="text" class="form-control" id="mdl_curr" name="mdl_curr" value = ' + item.curr + ' style="width: 80%; text-align: center"  readonly autocomplete="off"></td>';									
+							trHTML += '</tr>';
+						});
+
+						$('#table-sj-2').append(trHTML);				
+						
+					},
+					error: function (jqXHR, textStatus, errorThrown) {
+						alert('Error get data from ajax');
+					}
+				});
+
+			} else { 
+				$('#table-sj-2 tbody tr').remove();
+				// modal_clear_component();
+			}					
+		}
+	}
+
+
+	function tambah_sj_edit() { 
+
+		var cek_so = document.getElementsByName("pilih_sj");	
+		for (var i = 0; i < cek_so.length; i++) {
+		    //Ceklist		
+		    if (cek_so[i].checked) {		
+
+		    	$('#table-sj-2 tbody tr').remove();
+				// modal_clear_component();
+
+				var profit_center = $('#profit_ctr').val();
+				
+				$.ajax({		
+					url: BASE_URL + "Arnag/cari_sj/" + cek_so[i].value + "/" + profit_center + "/",							
 					type: "GET",
 					dataType: "JSON",
 					success: function (response) {
@@ -2427,7 +2543,7 @@ function UpdateHeaderInv() {
 	var isManual = $('#top_manual').is(':visible') && top_manual !== '';
 
 	$.ajax({
-		url: '/ar_dev/Arnag/update_invoice_h',
+		url: BASE_URL + 'Arnag/update_invoice_h',
 		method: 'POST',
 		data: {
 			id_book_inv: id,
@@ -2791,6 +2907,147 @@ function duplicate_data_so(){
 	// delete_invoice_detail_temporary()	
 	simpan_invoice_detail_temporary();	
 
+}
+
+function simpan_data_detail_inv(){ 
+	
+	//Tambah Data Potongan Invoice
+	var total       = $('[name="mdl_total"]').val();
+	var discount    = $('[name="mdl_discount"]').val();
+	var dp          = $('[name="mdl_dp"]').val(); 
+	var retur       = $('[name="mdl_return"]').val(); 
+	var twot        = $('[name="mdl_twot"]').val(); 
+	var vat         = $('[name="mdl_vat"]').val(); 
+	var grand_total = $('[name="mdl_grandtotal"]').val(); 
+	var grade_nya 	= $('[name="grade_nya"]').val();
+	var tanggal_nya = $('[name="tanggal_nya"]').val();
+	var curr_nya 	= $('[name="curr_nya"]').val(); 	
+	$('[name="total"]').val(total);
+	$('[name="discount"]').val(discount);
+	$('[name="dp"]').val(dp); 
+	$('[name="return"]').val(retur); 
+	$('[name="twot"]').val(twot); 
+	$('[name="vat"]').val(vat); 
+	$('[name="grandtotal"]').val(grand_total);
+	$('[name="grade"]').val(grade_nya); 
+	$('[name="inv_date"]').val(tanggal_nya); 
+	$('[name="inv_curr"]').val(curr_nya); 	
+	//Hapus Temporary Table Detail SJ
+	//Simpan Table SJ Temp
+	// delete_invoice_detail_temporary()	
+	simpan_invoice_detail_pot_edit();	
+
+}
+
+function simpan_invoice_detail_pot_edit() {
+	return new Promise(resolve => {		
+		setTimeout(() => {
+			var msg
+			var data = [];	
+			var id_book_invoice = $('[name="inv_id"]').val();	
+
+			$("#table-sj-2 input[name='mdl_cek_sj']:checked").each(function () {
+				var rows = $(this).closest("tr")[0];
+
+				$(this).closest('tr').find("input[name='mdl_disc']").each(function() {				
+					var mdl_disc = this.value	
+
+					$(this).closest('tr').find("input[name='cek_tgl']").each(function() {				
+						var tgl_sj = this.value	
+
+						data.push({		
+							"id_book_invoice": id_book_invoice,	
+							"so_number": rows.cells[1].innerHTML,
+							"bppb_number": rows.cells[2].innerHTML,	
+							"sj_date": tgl_sj,						
+							"shipp_number": rows.cells[4].innerHTML,
+							"ws": rows.cells[5].innerHTML,
+							"styleno": rows.cells[6].innerHTML,
+							"product_group": rows.cells[7].innerHTML,
+							"product_item": rows.cells[8].innerHTML,
+							"color": rows.cells[9].innerHTML,
+							"size": rows.cells[10].innerHTML,
+							"curr": rows.cells[11].innerHTML,
+							"uom": rows.cells[12].innerHTML,
+							"qty": rows.cells[13].innerHTML,
+							"unit_price": rows.cells[14].innerHTML,			
+							"disc": mdl_disc,
+							"total_price": rows.cells[16].innerHTML, 				
+							"id_bppb": rows.cells[0].innerHTML,	
+							"stat_cancel": null,				
+						})	
+
+					});
+
+				});
+
+			});
+
+			var total       = $('[name="mdl_total"]').val();
+			var discount    = $('[name="mdl_discount"]').val();
+			var dp          = $('[name="mdl_dp"]').val(); 
+			var retur       = $('[name="mdl_return"]').val(); 
+			var twot        = $('[name="mdl_twot"]').val(); 
+			var vat         = $('[name="mdl_vat"]').val(); 
+			var grand_total = $('[name="mdl_grandtotal"]').val(); 	
+
+			var data2 = {
+				'id_book_invoice': id_book_invoice,	
+				'total': total,
+				'discount': discount,
+				'dp': dp,
+				'retur': retur,
+				'twot': twot,
+				'vat': vat,
+				'grand_total': grand_total
+			};
+
+			// console.log(data);
+			// console.log(data2);
+			var fdata = {
+				'data_detail': data,
+				'data_pot': data2
+			}
+			console.log(fdata);
+			$.ajax({				
+				url: BASE_URL + "Arnag/simpan_invoice_detail_pot_edit/",
+				type: "POST",
+				data: JSON.stringify(fdata),
+				contentType: "application/json", 
+				dataType: "json",
+				success: function (data) {
+					if (data.status) {
+						Swal.fire({
+							title: 'Berhasil!',
+							text: 'Data Detail berhasil diupdate.',
+							icon: 'success',
+							confirmButtonText: 'OK'
+						}).then((result) => {
+							if (result.isConfirmed) {
+								location.reload(); 
+							}
+						});
+					} else {
+						Swal.fire({
+							title: 'Gagal!',
+							text: response.message,
+							icon: 'error',
+							confirmButtonText: 'Tutup'
+						});
+					}
+				},
+				error: function (jqXHR, textStatus, errorThrown) {
+					console.log(jqXHR.responseText); 
+					alert('Error Input Detail: ' + errorThrown);
+				}
+			});
+
+			resolve({
+				msg: msg,
+			});
+
+		}, 100);
+	});
 }
 
 
@@ -13396,6 +13653,37 @@ function reverse_dn(){
 		});	
 	}
 
+
+	function loadTOPOptions() {
+		var id_cust = $('#cust').val();
+		if (!id_cust) return;
+		// alert(idSupplier);
+
+		$.ajax({
+			url: BASE_URL + "arnag/cari_top",
+			type: 'POST',
+			data: { id_cust: id_cust },
+			dataType: 'json',
+			success: function(response) {
+				$('#top_inv').empty();
+				$('#top_inv').append('<option value="" disabled selected>Pilih TOP</option>');
+
+				$.each(response, function(i, item) {
+					$('#top_inv').append(
+						'<option value="' + item.id + '" data-top="' + item.top + '">' +
+						item.type + ' - ' + item.top + ' Days</option>'
+						);
+				});
+
+            // Tambahkan pilihan "lainnya"
+            $('#top_inv').append('<option value="lainnya">Lainnya (Input Manual)</option>');
+            $('#top_manual').hide(); // hide input manual jika sebelumnya tampil
+        },
+        error: function(xhr) {
+        	console.error('Gagal memuat TOP:', xhr.responseText);
+        }
+    });
+	}
 
 
 	function export_sj_noncom2() { 		

@@ -2550,13 +2550,13 @@ public function rvs_invoice()
 
 public function reverse_kwt()
 {
-   $id = $this->input->post('id_inv');
-   $keter = $this->input->post('keter');
-   $tgl_reverse = date('Y-m-d');
-   $nama = $this->session->userdata('username');
-   $activity = "Reverse Kwitansi";
+ $id = $this->input->post('id_inv');
+ $keter = $this->input->post('keter');
+ $tgl_reverse = date('Y-m-d');
+ $nama = $this->session->userdata('username');
+ $activity = "Reverse Kwitansi";
 
-   $data = [
+ $data = [
 
     'nama'          => $nama,
     'activity'      => $activity,
@@ -2708,13 +2708,13 @@ public function reverse_debitnote()
 
 public function reverse_dn()
 {
-   $id = $this->input->post('id_inv');
-   $keter = $this->input->post('keter');
-   $tgl_reverse = date('Y-m-d');
-   $nama = $this->session->userdata('username');
-   $activity = "Reverse Debitnote";
+ $id = $this->input->post('id_inv');
+ $keter = $this->input->post('keter');
+ $tgl_reverse = date('Y-m-d');
+ $nama = $this->session->userdata('username');
+ $activity = "Reverse Debitnote";
 
-   $data = [
+ $data = [
 
     'nama'          => $nama,
     'activity'      => $activity,
@@ -2917,7 +2917,7 @@ public function update_top_invoice()
 
 public function update_invoice_h()
 {
-    
+
     $id             = $this->input->post('id_book_inv');
     $id_top         = $this->input->post('top_inv');
     $id_customer    = $this->input->post('id_customer');
@@ -2988,6 +2988,79 @@ public function edit_invoice($id = null) {
     $this->load->view('arnag/edit_invoice', $data);
     $this->load->view('templates/footer', $data);
 }
+
+public function hapus_detail_invoice_edit() {
+    $id_book_invoice = $this->input->post('id_book_invoice');
+
+    if (empty($id_book_invoice)) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'inv_number tidak boleh kosong'
+        ]);
+        return;
+    }
+
+    $detail_data = $this->db->get_where('tbl_invoice_detail', ['id_book_invoice' => $id_book_invoice])->result_array();
+    if (!empty($detail_data)) {
+        $this->db->insert_batch('tbl_invoice_detail_edit', $detail_data);
+    }
+
+    $pot_data = $this->db->get_where('tbl_invoice_pot', ['id_book_invoice' => $id_book_invoice])->result_array();
+    if (!empty($pot_data)) {
+        $this->db->insert_batch('tbl_invoice_pot_edit', $pot_data);
+    }
+
+    $sql_update_bppb = "
+    UPDATE bppb a
+    INNER JOIN tbl_invoice_detail b ON b.id_bppb = a.id
+    SET a.stat_inv = 0,
+    a.id_invoice_ar = NULL
+    WHERE b.id_book_invoice = ?
+    ";
+    $this->db->query($sql_update_bppb, [$id_book_invoice]);
+
+    $this->db->where('id_book_invoice', $id_book_invoice);
+    $this->db->delete('tbl_invoice_detail');
+
+    $this->db->where('id_book_invoice', $id_book_invoice);
+    $this->db->delete('tbl_invoice_pot');
+
+    echo json_encode([
+        'status' => 'success',
+        'message' => 'Data berhasil diarsipkan dan dihapus'
+    ]);
+}
+
+public function simpan_invoice_detail_pot_edit()
+{
+    $json = file_get_contents('php://input');
+    $data = json_decode($json, true);
+
+    $data_detail = $data['data_detail'];
+    $data_pot    = $data['data_pot'];
+
+    $this->Model_nag->simpan_invoice_detail_edit($data_detail);
+    $this->Model_nag->simpan_invoice_pot_edit($data_pot);
+
+    $id_bppb_list = array_column($data_detail, 'id_bppb');
+    $id_book_invoice_list = array_column($data_detail, 'id_book_invoice');
+
+    $id_book_invoice = $id_book_invoice_list[0] ?? null;
+
+    if (!empty($id_bppb_list) && $id_book_invoice) {
+        $update_data = [
+            'stat_inv' => '1',
+            'id_invoice_ar' => $id_book_invoice
+        ];
+
+        $this->db->where_in('id', $id_bppb_list);
+        $this->db->update('bppb', $update_data);
+    }
+
+
+    echo json_encode(array("status" => TRUE));
+}
+
 
 
 }

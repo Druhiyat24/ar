@@ -33,7 +33,7 @@
 
                             <div class="form-group col-md-12">
                                 <label>Customer</label>
-                                <select class="form-control select2bs4" id="cust" name="cust" required>
+                                <select class="form-control select2bs4" id="cust" name="cust" onchange="loadTOPOptions()" required>
                                     <option value="" disabled selected>Pilih Customer</option>
                                     <?php foreach ($customer as $cs) : ?>
                                         <option value="<?= $cs['Id_Supplier']; ?>"
@@ -72,7 +72,9 @@
                                     <div class=" col-md-6">
                                         <label>Due Date</label>
                                         <div class="input-group mb-3">
-                                            <input type="text" name="due_date" id="due_date" class="form-control" value="<?= $tgl_invoice['due_date'];  ?>" autocomplete='off' readonly>
+                                            <input type="text" name="due_date" id="due_date" class="form-control" 
+                                            value="<?= isset($tgl_invoice['due_date']) ? $tgl_invoice['due_date'] : ''; ?>" 
+                                            autocomplete='off' readonly>
                                             <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                         </div>
                                     </div>
@@ -176,9 +178,9 @@
                         <div class="card-header d-flex align-items-center gap-2">
                             <h3 class="card-title mb-0 mr-2">Detail Invoice</h3>
                             <a href="javascript:void(0)" 
-                            id="btn-edit-detail"
+                            id="btn-edit-detail-inv"
                             class="btn btn-warning btn-sm">
-                            <i class="fas fa-edit"></i> Edit
+                            <i class="fas fa-edit"></i> Update Detail
                         </a>
                     </div>
 
@@ -230,106 +232,129 @@
                                             <td style="text-align: right;"><?= number_format($row['total_price'], 2); ?></td>
                                         </tr>
                                     <?php endforeach; ?>
-                                    <?php else : ?>
-                                        <tr>
-                                            <td colspan="17" class="text-center">Tidak ada data detail</td>
-                                        </tr>
-                                    <?php endif; ?>
-                                </tbody>
+                                <?php else : ?>
+                                    <tr>
+                                        <td colspan="17" class="text-center">Tidak ada data detail</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
 
-                            </table>
-                        </div>
-                        <!-- /.card-body -->
+                        </table>
                     </div>
-                    <!-- /.card -->
+                    <!-- /.card-body -->
                 </div>
+                <!-- /.card -->
             </div>
-            <!-- End Data Table Create Invoice -->
-            <!--  -->
-            <!-- Data Potongan Invoice  -->
-            <div class="row" style="display: flex; justify-content: flex-end">
-                <!--/.col (right) -->
-                <div class="col-md-6">
-                    <!-- Form Element sizes -->
-                    <div class="card card-success">
-                        <div class="card-body">
-                            <!-- Start Input -->
-                            <form class="form-horizontal">
-                                <div class="card-body">
-                                    <div class="form-group row">
-                                        <label for="total" class="col-sm-4 col-form-label">Total</label>
-                                        <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="total_show" name="total_show" style="text-align:right;" placeholder="0.00" value="<?= number_format($invoice_pot['total'],2); ?>" readonly>
-                                            <input type="hidden" class="form-control" id="total" name="total" style="text-align:right;" placeholder="0.00" value="<?= $invoice_pot['total']; ?>" readonly>
-                                        </div>
-                                    </div>
-                                    <div class="form-group row">
-                                        <label for="discount" class="col-sm-4 col-form-label">Discount</label>
-                                        <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="discount_show" name="discount_show" style="text-align:right;" placeholder="0.00" value="<?= number_format($invoice_pot['discount'],2); ?>" readonly>
-                                            <input type="hidden" class="form-control" id="discount" name="discount" style="text-align:right;" placeholder="0.00" value="<?= $invoice_pot['discount']; ?>" readonly>
-                                        </div>
-                                    </div>
-                                    <div class="form-group row">
-                                        <label for="dp" class="col-sm-4 col-form-label">Down Payment</label>
-                                        <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="dp_show" name="dp_show" style="text-align:right;" placeholder="0.00" value="<?= number_format($invoice_pot['dp'],2); ?>" readonly>
-                                            <input type="hidden" class="form-control" id="dp" name="dp" style="text-align:right;" placeholder="0.00" value="<?= $invoice_pot['dp']; ?>" readonly>
-                                        </div>
-                                    </div>
-                                    <div class="form-group row">
-                                        <label for="return" class="col-sm-4 col-form-label">Return</label>
-                                        <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="return_show" name="return_show" style="text-align:right;" placeholder="0.00" value="<?= number_format($invoice_pot['retur'],2); ?>" readonly>
-                                            <input type="hidden" class="form-control" id="return" name="return" style="text-align:right;" placeholder="0.00" value="<?= $invoice_pot['retur']; ?>" readonly>
-                                        </div>
-                                    </div>
-                                    <div class="form-group row">
-                                        <label for="twot" class="col-sm-4 col-form-label">Total With Out Tax</label>
-                                        <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="twot_show" name="twot_show" style="text-align:right;" placeholder="0.00" value="<?= number_format($invoice_pot['twot'],2); ?>" readonly>
-                                            <input type="hidden" class="form-control" id="twot" name="twot" style="text-align:right;" placeholder="0.00" value="<?= $invoice_pot['twot']; ?>" readonly>
-                                        </div>
-                                    </div>
-                                    <div class="form-group row">
-                                        <label for="vat" class="col-sm-4 col-form-label">VAT</label>
-                                        <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="vat_show" name="vat_show" style="text-align:right;" placeholder="0.00" value="<?= number_format($invoice_pot['vat'],2); ?>" readonly>
-                                            <input type="hidden" class="form-control" id="vat" name="vat" style="text-align:right;" placeholder="0.00" value="<?= $invoice_pot['vat']; ?>" readonly>
-                                        </div>
-                                    </div>
-                                    <div class="form-group row">
-                                        <label for="grandtotal" class="col-sm-4 col-form-label">Grand Total</label>
-                                        <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="grandtotal_show" name="grandtotal_show" style="text-align:right;" placeholder="0.00" value="<?= number_format($invoice_pot['grand_total'],2); ?>" readonly>
-                                            <input type="hidden" class="form-control" id="grandtotal" name="grandtotal" style="text-align:right;" placeholder="0.00" value="<?= $invoice_pot['grand_total']; ?>" readonly>
-                                            <input type="hidden" class="form-control" id="keterangan" name="keterangan" readonly>
-                                        </div>
+        </div>
+        <!-- End Data Table Create Invoice -->
+        <!--  -->
+        <!-- Data Potongan Invoice  -->
+        <div class="row" style="display: flex; justify-content: flex-end">
+            <!--/.col (right) -->
+            <div class="col-md-6">
+                <!-- Form Element sizes -->
+                <div class="card card-success">
+                    <div class="card-body">
+                        <!-- Start Input -->
+                        <form class="form-horizontal">
+                            <div class="card-body">
+
+                                <div class="form-group row">
+                                    <label for="total" class="col-sm-4 col-form-label">Total</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="total_show" name="total_show" style="text-align:right;" placeholder="0.00"
+                                        value="<?= isset($invoice_pot['total']) ? number_format($invoice_pot['total'], 2) : '0.00'; ?>" readonly>
+                                        <input type="hidden" class="form-control" id="total" name="total" style="text-align:right;" placeholder="0.00"
+                                        value="<?= isset($invoice_pot['total']) ? $invoice_pot['total'] : '0'; ?>" readonly>
                                     </div>
                                 </div>
-                                <!-- /.card-body -->
-                                <!-- /.card-footer -->
-                            </form>
-                            <!--  End Start Input -->
-                        </div>
-                        <!-- /.card-body -->
+
+                                <div class="form-group row">
+                                    <label for="discount" class="col-sm-4 col-form-label">Discount</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="discount_show" name="discount_show" style="text-align:right;" placeholder="0.00"
+                                        value="<?= isset($invoice_pot['discount']) ? number_format($invoice_pot['discount'], 2) : '0.00'; ?>" readonly>
+                                        <input type="hidden" class="form-control" id="discount" name="discount" style="text-align:right;" placeholder="0.00"
+                                        value="<?= isset($invoice_pot['discount']) ? $invoice_pot['discount'] : '0'; ?>" readonly>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label for="dp" class="col-sm-4 col-form-label">Down Payment</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="dp_show" name="dp_show" style="text-align:right;" placeholder="0.00"
+                                        value="<?= isset($invoice_pot['dp']) ? number_format($invoice_pot['dp'], 2) : '0.00'; ?>" readonly>
+                                        <input type="hidden" class="form-control" id="dp" name="dp" style="text-align:right;" placeholder="0.00"
+                                        value="<?= isset($invoice_pot['dp']) ? $invoice_pot['dp'] : '0'; ?>" readonly>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label for="return" class="col-sm-4 col-form-label">Return</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="return_show" name="return_show" style="text-align:right;" placeholder="0.00"
+                                        value="<?= isset($invoice_pot['retur']) ? number_format($invoice_pot['retur'], 2) : '0.00'; ?>" readonly>
+                                        <input type="hidden" class="form-control" id="return" name="return" style="text-align:right;" placeholder="0.00"
+                                        value="<?= isset($invoice_pot['retur']) ? $invoice_pot['retur'] : '0'; ?>" readonly>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label for="twot" class="col-sm-4 col-form-label">Total With Out Tax</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="twot_show" name="twot_show" style="text-align:right;" placeholder="0.00"
+                                        value="<?= isset($invoice_pot['twot']) ? number_format($invoice_pot['twot'], 2) : '0.00'; ?>" readonly>
+                                        <input type="hidden" class="form-control" id="twot" name="twot" style="text-align:right;" placeholder="0.00"
+                                        value="<?= isset($invoice_pot['twot']) ? $invoice_pot['twot'] : '0'; ?>" readonly>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label for="vat" class="col-sm-4 col-form-label">VAT</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="vat_show" name="vat_show" style="text-align:right;" placeholder="0.00"
+                                        value="<?= isset($invoice_pot['vat']) ? number_format($invoice_pot['vat'], 2) : '0.00'; ?>" readonly>
+                                        <input type="hidden" class="form-control" id="vat" name="vat" style="text-align:right;" placeholder="0.00"
+                                        value="<?= isset($invoice_pot['vat']) ? $invoice_pot['vat'] : '0'; ?>" readonly>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label for="grandtotal" class="col-sm-4 col-form-label">Grand Total</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="grandtotal_show" name="grandtotal_show" style="text-align:right;" placeholder="0.00"
+                                        value="<?= isset($invoice_pot['grand_total']) ? number_format($invoice_pot['grand_total'], 2) : '0.00'; ?>" readonly>
+                                        <input type="hidden" class="form-control" id="grandtotal" name="grandtotal" style="text-align:right;" placeholder="0.00"
+                                        value="<?= isset($invoice_pot['grand_total']) ? $invoice_pot['grand_total'] : '0'; ?>" readonly>
+                                        <input type="hidden" class="form-control" id="keterangan" name="keterangan" readonly>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </form>
+
+                        <!--  End Start Input -->
                     </div>
-                </div>
-                <!--/.col (right) -->
-            </div>
-            <!-- End Data Potongan Invoice  -->
-            <!--  -->
-            <!-- Button Simpan Data Invoice  -->
-            <div class="row col-sm-12">
-                <div class="input-group mb-3">
-                    <button type="button" class="btn btn-primary" data-toggle="modal" onclick="asyncCall()"><i class="fa fa-save"></i> Save Change Invoice</button>
+                    <!-- /.card-body -->
                 </div>
             </div>
-            <!-- End Button Simpan Data Invoice  -->
-            <!-- /.row -->
-        </div><!-- /.container-fluid -->
-    </section>
-    <!-- /.content -->
+            <!--/.col (right) -->
+        </div>
+        <!-- End Data Potongan Invoice  -->
+        <!--  -->
+        <!-- Button Simpan Data Invoice  -->
+        <div class="row col-sm-12">
+            <div class="input-group mb-3">
+             <button type="button" class="btn btn-danger" onclick="confirmBack()">
+                <i class="fas fa-arrow-circle-left"></i> Back
+            </button>
+        </div>
+    </div>
+    <!-- End Button Simpan Data Invoice  -->
+    <!-- /.row -->
+</div><!-- /.container-fluid -->
+</section>
+<!-- /.content -->
 </div>
 <!-- /.content-wrapper -->
 
@@ -370,7 +395,7 @@
                     <!-- /.card-header -->
                     <div class="card-body table-responsive p-0" style="height: 400px;">
                         <div class="d-flex justify-content-between">
-                           <div class="ml-auto">
+                         <div class="ml-auto">
                             <span class="input-group-text"><i class="fas fa-search"></i></span>
                         </div>
                         <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_noinvoice()">
@@ -504,7 +529,7 @@
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <button type="button" id="find_so" name="find_so" class="btn btn-info" href="javascript:void(0)" onclick="cari_so()"><i class="fa fa-search"></i> Search</button>
+                                <button type="button" id="find_so" name="find_so" class="btn btn-info" href="javascript:void(0)" onclick="cari_so_edit()"><i class="fa fa-search"></i> Search</button>
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -515,7 +540,7 @@
                     <!-- /.card-header -->
                     <!-- Detail SO -->
                     <div class="d-flex justify-content-between">
-                       <div class="ml-auto">
+                     <div class="ml-auto">
                         <span class="input-group-text"><i class="fas fa-search"></i></span>
                     </div>
                     <input type="text"  id="cariso" name="cariso" required autocomplete="off" placeholder="Search SO number.." onkeyup="cariso()">
@@ -551,7 +576,7 @@
                         </div>
                         <!-- /.card-header -->
                         <div class="d-flex justify-content-between">
-                           <div class="ml-auto">
+                         <div class="ml-auto">
                             <span class="input-group-text"><i class="fas fa-search"></i></span>
                         </div>
                         <input type="text"  id="cari_shipp" name="cari_shipp" required autocomplete="off" placeholder="Search shipp number..." onkeyup="cari_shipp_num()">
@@ -672,7 +697,7 @@
     </div>
     <div class="modal-footer right-content-between">
         <!-- <button type="button" class="btn btn-primary" data-dismiss="modal">Add</button> -->
-        <button type="button" id="btn_add_data_so" name="btn_add_data_so" class="btn btn-primary" href="javascript:void(0)" onclick="duplicate_data_so()">Add Data</button>
+        <button type="button" id="btn_add_data_so" name="btn_add_data_so" class="btn btn-primary" href="javascript:void(0)" onclick="simpan_data_detail_inv()">Add Data</button>
     </div>
 </div>
 <!-- /.modal-content -->
@@ -868,6 +893,31 @@
                 }
             }
         }
+    }
+
+    function confirmBack() {
+        const id_invoice = document.getElementById('inv_id').value;
+
+        Swal.fire({
+            title: 'Return to the invoice list?',
+            text: 'Please choose an action.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Back & Print',
+            cancelButtonText: 'Back',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+            // Cetak dan kembali
+            window.open('<?= base_url("arnag/report_invoice3/") ?>' + id_invoice, '_blank');
+            window.close(); 
+            // window.location.href = '<?= base_url("arnag/listinvoice") ?>';
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+            // Hanya kembali
+            // window.location.href = '<?= base_url("arnag/listinvoice") ?>';
+            window.close(); 
+        }
+    });
     }
 </script>
 

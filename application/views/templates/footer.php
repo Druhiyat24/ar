@@ -81,6 +81,10 @@
 
 <!-- Toast Informasi -->
 
+<script>
+    const BASE_URL = "<?= base_url(); ?>";
+</script>
+
 <script type="text/javascript">
   function showdata_slsytd(){
     $('#modal_slsytd').modal("show");  
@@ -1420,7 +1424,7 @@ function hitungManualTOP() {
 
 <script>
 $(document).ready(function () {
-    $('#btn-edit-detail').click(function () {
+    $('#btn-edit-detail-inv').click(function () {
         Swal.fire({
             title: 'Yakin ingin edit?',
             text: 'Data detail sebelumnya akan dihapus!',
