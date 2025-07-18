@@ -285,10 +285,14 @@ function getType(id, shipp, status) {
 			
 			$('[name="id_book_inv"]').val(data.id);	
 			$('[name="doc_number_mdl"]').val(data.doc_number);	
-			$('[name="type_mdl"]').val(data.id_type);
 			$('[name="no_inv"]').val(data.no_invoice);
-			$('[name="docum_type"]').val(data.doc_type);
+			$('[name="no_inv_hide"]').val(data.no_invoice);
 			$('[name="amount"]').val(data.value);
+			$('[name="type_mdl"]').val(data.id_type).trigger('change');
+			$('[name="cust_mdl"]').val(data.id_customer).trigger('change');
+			$('[name="docum_type"]').val(data.doc_type).trigger('change');
+			$('[name="pc_mdl"]').val(data.profit_center).trigger('change');
+			$('[name="shipp_mdl"]').val(data.shipp);
 			//
 			$('#modal-update').modal('show'); // show bootstrap modal when complete loaded
 			
@@ -1190,10 +1194,10 @@ function add_data_invoice() {
 	var keter = kata1 +' '+type_so +' '+kata2 +' '+cust;
 
 	getcoa();
-	getcoa_credit();
-	getcoa_dp();
-	getcoa_pot();
-	getcoa_ppn();
+	// getcoa_credit();
+	// getcoa_dp();
+	// getcoa_pot();
+	// getcoa_ppn();
 	getrate();
 
 	//
@@ -1249,7 +1253,7 @@ function resolveAfter5Seconds() {
 			}
 
 			$('#modal-simpan-invoice').modal('show');
-		}, 5000);
+		}, 1000);
 	});
 }
 
@@ -1553,17 +1557,17 @@ function save_invoice() {
 	let profit_ctr	 = $('[name="txt_mdl_pc"]').val();
 	update_invoice_header();
 	update_status_bppb();
-	at_debit_inv();
-	if (diskon >= 1) {		
-		at_pot_inv();
-	}
-	if (dp >= 1) {		
-		at_dp_inv();
-	}
-	at_credit_inv();
-	if (vat >= 1) {		
-		at_ppn_inv();
-	}
+	// at_debit_inv();
+	// if (diskon >= 1) {		
+	// 	at_pot_inv();
+	// }
+	// if (dp >= 1) {		
+	// 	at_dp_inv();
+	// }
+	// at_credit_inv();
+	// if (vat >= 1) {		
+	// 	at_ppn_inv();
+	// }
 	simpan_invoice_detail();
 	simpan_invoice_pot();
 
@@ -2337,7 +2341,7 @@ function cari_invoice() {
 						trHTML += '<td>' + item.status + "</td>";
 						trHTML += '<td align="right">' + item.amount + "</td>";
 						trHTML += '<td><button id="inv_detail" name="inv_detail" type="button" class="btn btn-info btn-sm" onclick="cari_inv_detail(' + item.id + ')" ><i class="fas fa-eye"></i> Detail</button> ' + '' 
-						+ ' <button type="button" class="btn btn-sm btn-warning swalDefaultError" href="javascript:void(0)" onclick="UpdateInvoice(\'' + item.id + '\', \'' + item.status + '\', \'' + item.inv_date + '\')"><i class="fas fa-edit"></i> Update</button>' + ' '
+						// + ' <button type="button" class="btn btn-sm btn-warning swalDefaultError" href="javascript:void(0)" onclick="UpdateInvoice(\'' + item.id + '\', \'' + item.status + '\', \'' + item.inv_date + '\')"><i class="fas fa-edit"></i> Update</button>' + ' '
 						+ '<button class="btn btn-warning btn-sm" onclick="window.open(\'edit_invoice/' + item.id + '\', \'_blank\')"><i class="fas fa-edit"></i> Edit</button> '
 						+ '<button id="print_inv" name="print_inv" type="button" class="btn btn-primary btn-sm" onclick="print_invoice(' + item.id + ')"><i class="fa fa-print"></i> Print</button> ' + ''
 						+ '<button id="export_to_excel_invoice" name="export_to_excel_invoice" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_invoice(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button> ' + ''				
@@ -13686,7 +13690,47 @@ function reverse_dn(){
 	}
 
 
-	function export_sj_noncom2() { 		
-		window.open(".../../export_sj_noncom2/" + dt_dari_sj  + "/" + dt_sampai_sj  + "/"); 
-	}
+	function handleUpdate_BookInvoice() {
+		let no_inv = $('#no_inv').val().trim();
+		let no_inv_hide = $('#no_inv_hide').val().trim();
+
+		if (no_inv !== no_inv_hide) {
+        // Jika ada perubahan nomor invoice
+        Swal.fire({
+        	title: 'Nomor Invoice berubah!',
+        	text: "Apakah Anda yakin ingin menyimpan perubahan ini?",
+        	icon: 'warning',
+        	customClass: 'swal2-red',
+        	showCancelButton: true,
+        	confirmButtonColor: '#3085d6',
+        	cancelButtonColor: '#d33',
+        	confirmButtonText: 'Ya, simpan!',
+        	cancelButtonText: 'Batal'
+        }).then((result) => {
+        	if (result.isConfirmed) {
+                $('#modal-update form').submit(); // submit form manual
+            }
+        });
+    } else {
+    	Swal.fire({
+    		title: 'Update Invoice!',
+    		text: "Apakah Anda yakin ingin menyimpan perubahan ini?",
+    		icon: 'warning',
+    		showCancelButton: true,
+    		confirmButtonColor: '#3085d6',
+    		cancelButtonColor: '#d33',
+    		confirmButtonText: 'Ya, simpan!',
+    		cancelButtonText: 'Batal'
+    	}).then((result) => {
+    		if (result.isConfirmed) {
+                $('#modal-update form').submit(); // submit form manual
+            }
+        });
+    }
+}
+
+
+function export_sj_noncom2() { 		
+	window.open(".../../export_sj_noncom2/" + dt_dari_sj  + "/" + dt_sampai_sj  + "/"); 
+}
 

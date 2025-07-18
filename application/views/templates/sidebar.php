@@ -58,9 +58,9 @@
         <nav class="mt-2">
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                 <!-- Add icons to the links using the .nav-icon class
-               with font-awesome or any other icon font library -->
-                <a href="http://10.10.5.62:8080/erp/" class="nav-link"><li class="nav-header">MAIN MENU</li></a>
-                <li class="nav-item">
+                 with font-awesome or any other icon font library -->
+                 <a href="http://10.10.5.62:8080/erp/" class="nav-link"><li class="nav-header">MAIN MENU</li></a>
+                 <li class="nav-item">
                     <a href="#" class="nav-link">
                         <i class="nav-icon fas fa-user-cog"></i>
                         <p>
@@ -256,6 +256,43 @@
                         </ul>
                     <?php endforeach; ?>
                 </li>
+
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <!-- <i class="nav-icon fas fa-undo"></i> -->
+                        <i class="nav-icon fas fa-history"></i>
+                        <p>
+                            Reverse
+                            <i class="fas fa-angle-left right"></i>
+                        </p>
+                    </a>
+
+                    <ul class="nav nav-treeview" style="padding-left: 5px;">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-plus-circle nav-icon"></i>
+                                <p>
+                                    Create Reverse
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+
+                            <ul class="nav nav-treeview" style="padding-left: 5px;">
+                                <?php foreach ($user_access_7 as $ua_7) : ?>
+                                    <li class="nav-item">
+                                        <a href="<?= base_url($ua_7['base_url']); ?>" class="nav-link">
+                                            <i class="fas fa-chevron-circle-right nav-icon"></i>
+                                            <p><?= $ua_7['menu']; ?></p>
+                                        </a>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+
+                        </li>
+                    </ul>
+                </li>
+
+
                 <!-- <li class="nav-header">REPORT AR</li>
                 <li class="nav-item">
                     <a href="#" class="nav-link">

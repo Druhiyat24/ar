@@ -82,7 +82,7 @@
 <!-- Toast Informasi -->
 
 <script>
-    const BASE_URL = "<?= base_url(); ?>";
+  const BASE_URL = "<?= base_url(); ?>";
 </script>
 
 <script type="text/javascript">
@@ -1317,6 +1317,8 @@ let selectedShipping = '';        // 'L' atau 'E'
 let selectedProfitCenter = '';    // 'NAG', 'NAK', dst
 let rawInvoice = '';              // "0052//NAG/0525" dari server
 
+
+
 function updateInvoiceNumber() {
   if (!rawInvoice) return;
 
@@ -1334,19 +1336,75 @@ function updateInvoiceNumber() {
 
     $('#inv_book_number').val(invoice);
   }
+
+
+  let kode_shipp = '';  
+  let Val_PCmdl = '';   
+  let rawNoInvoice = '';
+  let tampil_shipp = '';
+  let savedSuffix = '';
+
+  $(document).ready(function () {
+    $('#pc_mdl').on('change', function () {
+      Val_PCmdl = $(this).val();
+      rawNoInvoice = $('#no_inv').val();
+      updateInvoiceNumber_Modal();
+    });
+  });
+
+  function changeShipp_Invoice(shipCode) {
+    if (shipCode == 'L') {
+      kode_shipp = shipCode;
+      tampil_shipp = 'Local';
+    } else {
+      kode_shipp = shipCode;
+      tampil_shipp = 'Export';
+    }
+
+    $('#shipp_mdl').val(tampil_shipp);  
+    updateInvoiceNumber_Modal();
+  }
+
+  function updateInvoiceNumber_Modal() {
+  rawNoInvoice = $('#no_inv').val();
+  console.log("raw:", rawNoInvoice);
+
+  if (!rawNoInvoice) return;
+
+  const parts_mdl = rawNoInvoice.split('/');
+  const prefix_mdl = parts_mdl[0];
+  const shipp_fallback = parts_mdl[1] || ''; // ambil dari invoice jika kode_shipp belum ada
+  const profit_mdl = Val_PCmdl || parts_mdl[2];
+  const suffix_mdl = parts_mdl[3] || savedSuffix;
+
+  if (parts_mdl[3]) {
+    savedSuffix = parts_mdl[3];
+  }
+
+  let noinvoice = prefix_mdl;
+  noinvoice += '/' + (kode_shipp || shipp_fallback); // pakai yang dipilih, atau fallback dari invoice awal
+  noinvoice += '/' + profit_mdl;
+  if (suffix_mdl) noinvoice += '/' + suffix_mdl;
+
+  $('#no_inv').val(noinvoice);
+}
+
+
+
+
 </script>
 
 <script>
-function updateDN() {
+  function updateDN() {
     var pc = document.getElementById('profit_center_dn').value;
     var input = document.getElementById('dn_number');
     var current = input.value;
 
     // Jika sudah ada NAG atau NAK di tengah, ganti
     if (current.includes('/NAG/')) {
-        input.value = current.replace('/NAG/', '/' + pc + '/');
+      input.value = current.replace('/NAG/', '/' + pc + '/');
     } else if (current.includes('/NAK/')) {
-        input.value = current.replace('/NAK/', '/' + pc + '/');
+      input.value = current.replace('/NAK/', '/' + pc + '/');
     } else {
         // Kalau tidak ada, selipkan setelah DN
         var parts = current.split('/');
@@ -1354,78 +1412,78 @@ function updateDN() {
             // Pastikan tidak ada PC sebelumnya
             if (parts.length === 4) {
                 parts[1] = pc; // ganti bagian ke-2
-            } else {
+              } else {
                 parts.splice(1, 0, pc); // selipkan
+              }
+              input.value = parts.join('/');
             }
-            input.value = parts.join('/');
+          }
         }
-    }
-}
-</script>
+      </script>
 
-<script type="text/javascript">
+      <script type="text/javascript">
 
- function hitungDueDate() {
-    const selectedVal = $('#top_inv').val();
-    const invDateStr = $('#inv_date').val();
+       function hitungDueDate() {
+        const selectedVal = $('#top_inv').val();
+        const invDateStr = $('#inv_date').val();
 
-    console.log("TOP terpilih:", selectedVal);
-    console.log("Tanggal invoice:", invDateStr);
+        console.log("TOP terpilih:", selectedVal);
+        console.log("Tanggal invoice:", invDateStr);
 
-    if (!invDateStr) {
-        $('#due_date').val('');
-        return;
-    }
+        if (!invDateStr) {
+          $('#due_date').val('');
+          return;
+        }
 
-    if (selectedVal === 'lainnya') {
-        $('#top_manual').show();
-        return;
-    }
+        if (selectedVal === 'lainnya') {
+          $('#top_manual').show();
+          return;
+        }
 
-    $('#top_manual').hide();
-    const selectedTop = $('#top_inv').find(':selected').data('top');
-    const topDays = parseInt(selectedTop);
+        $('#top_manual').hide();
+        const selectedTop = $('#top_inv').find(':selected').data('top');
+        const topDays = parseInt(selectedTop);
 
-    if (isNaN(topDays) || topDays === 0) {
-        $('#due_date').val(invDateStr);
-    } else {
+        if (isNaN(topDays) || topDays === 0) {
+          $('#due_date').val(invDateStr);
+        } else {
+          const dateObj = new Date(invDateStr);
+          dateObj.setDate(dateObj.getDate() + topDays);
+
+          const yyyy = dateObj.getFullYear();
+          const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const dd = String(dateObj.getDate()).padStart(2, '0');
+          $('#due_date').val(`${yyyy}-${mm}-${dd}`);
+        }
+      }
+
+      function hitungManualTOP() {
+        const topManual = parseInt($('#top_manual').val());
+        const invDateStr = $('#inv_date').val();
+
+        console.log("TOP manual:", topManual);
+        console.log("Tanggal invoice:", invDateStr);
+
+        if (!invDateStr || isNaN(topManual)) {
+          $('#due_date').val('');
+          return;
+        }
+
         const dateObj = new Date(invDateStr);
-        dateObj.setDate(dateObj.getDate() + topDays);
+        dateObj.setDate(dateObj.getDate() + topManual);
 
         const yyyy = dateObj.getFullYear();
         const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
         const dd = String(dateObj.getDate()).padStart(2, '0');
         $('#due_date').val(`${yyyy}-${mm}-${dd}`);
-    }
-}
+      }
 
-function hitungManualTOP() {
-    const topManual = parseInt($('#top_manual').val());
-    const invDateStr = $('#inv_date').val();
+    </script>
 
-    console.log("TOP manual:", topManual);
-    console.log("Tanggal invoice:", invDateStr);
-
-    if (!invDateStr || isNaN(topManual)) {
-        $('#due_date').val('');
-        return;
-    }
-
-    const dateObj = new Date(invDateStr);
-    dateObj.setDate(dateObj.getDate() + topManual);
-
-    const yyyy = dateObj.getFullYear();
-    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const dd = String(dateObj.getDate()).padStart(2, '0');
-    $('#due_date').val(`${yyyy}-${mm}-${dd}`);
-}
-
-</script>
-
-<script>
-$(document).ready(function () {
-    $('#btn-edit-detail-inv').click(function () {
-        Swal.fire({
+    <script>
+      $(document).ready(function () {
+        $('#btn-edit-detail-inv').click(function () {
+          Swal.fire({
             title: 'Yakin ingin edit?',
             text: 'Data detail sebelumnya akan dihapus!',
             icon: 'warning',
@@ -1434,18 +1492,18 @@ $(document).ready(function () {
             cancelButtonColor: '#d33',
             confirmButtonText: 'Ya, Edit',
             cancelButtonText: 'Batal'
-        }).then((result) => {
+          }).then((result) => {
             if (result.isConfirmed) {
                 // Jalankan fungsi tambah ID dulu
                 get_data_so_edit();
 
                 // Tampilkan modal setelah itu
                 $('#modal-add-so').modal('show');
-            }
+              }
+            });
         });
-    });
-});
-</script>
+      });
+    </script>
 
 
 

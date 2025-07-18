@@ -148,11 +148,11 @@
                                                 </div>
                                             </div>
                                             <div class="col-md-2">
-                                        <label>Export Data</label>
-                                        <div class="input-group">
-                                            <button type="button" class="btn btn-info" onclick="export_book_invoice()"><i class="fa fa-download"></i> Export To Excel</button>
-                                        </div>
-                                    </div>
+                                                <label>Export Data</label>
+                                                <div class="input-group">
+                                                    <button type="button" class="btn btn-info" onclick="export_book_invoice()"><i class="fa fa-download"></i> Export To Excel</button>
+                                                </div>
+                                            </div>
 
 
                                         </div>
@@ -171,12 +171,12 @@
                                     <h3 class="card-title">DataTable Booking Invoice</h3>
                                 </div>
                                 <div>
-                        <div class="d-flex justify-content-between">
-                           <div class="ml-auto">
+                                    <div class="d-flex justify-content-between">
+                                       <div class="ml-auto">
                                         <span class="input-group-text"><i class="fas fa-search"></i></span>
-                            </div>
-                                <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_noinvoice()">
-                             </div>
+                                    </div>
+                                    <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_noinvoice()">
+                                </div>
 
 
                                 <!-- /.card-header -->
@@ -293,10 +293,10 @@
 <!-- Modal Update Booking Invoice -->
 <div class="modal fade" id="modal-update">
     <form action="<?= base_url('arnag/update_booking_invoice'); ?>" method="POST">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Confirm Update</h4>
+                <div class="modal-header bg-info">
+                    <h4 class="modal-title">Update Booking Invoice</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -304,42 +304,74 @@
                 <div class="modal-body">
                     <!-- Update Document Number dan type -->
                     <input type="hidden" name="id_book_inv" id="id_book_inv" required readonly>
-                    <div class="form-group col-md-12">
-                        <label>Invoice Number</label>
-                        <input type="text" class="form-control" id="no_inv" name="no_inv" readonly>
-                    </div>
+                    <div class="row">
+                        <div class="form-group col-md-6">
+                            <label>Invoice Number</label>
+                            <input type="text" class="form-control" id="no_inv" name="no_inv" readonly>
+                            <input type="hidden" class="form-control" id="no_inv_hide" name="no_inv_hide" readonly>
+                        </div>
 
-                    <div class="form-group col-md-12">
-                    <label>Document Type</label>
-                     <select id="docum_type" name="docum_type" class="form-control" required>
-                    <option value="" disabled selected="true">Choose options</option>  
-                    <option value="PEB">PEB</option>  
-                    <option value="BC 4.1">BC 4.1</option>                      
-                    <option value="BC 25">BC 25</option>  
-                    <option value="BC 27">BC 27</option>
-                        </select>
-                    </div>
-                    <div class="form-group col-md-12">
-                        <label>Document Number</label>
-                        <input type="text" class="form-control" id="doc_number_mdl" name="doc_number_mdl">
-                    </div>
-                    <div class="form-group col-md-12">
-                        <label>Amount</label>
-                        <input type="text" class="form-control" id="amount" name="amount" min="0" autocomplete="off">
-                    </div>
-                    <div class="form-group col-md-12">
-                        <label>Type</label>
-                        <select id="type_mdl" name="type_mdl" class="form-control" required>
-                            <?php foreach ($type as $t) : ?>
-                                <option value="<?= $t['id_type']; ?>"><?= $t['type']; ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <div class="form-group col-md-6">
+                            <label>Customer</label>
+                            <select id="cust_mdl" name="cust_mdl" class="form-control select2bs4" required>
+                                <?php foreach ($customer as $csm) : ?>
+                                    <option value="<?= $csm['Id_Supplier']; ?>"><?= $csm['Supplier']; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-group col-md-6">
+                            <label>Profit Center</label>
+                            <select id="pc_mdl" name="pc_mdl" class="form-control select2bs4" required>
+                                <?php foreach ($profit_center as $pc) : ?>
+                                    <option value="<?= $pc['kode_pc']; ?>"><?= $pc['nama_pc']; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-group col-md-6">
+                            <label>Shipp</label>
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" id="shipp_mdl" name="shipp_mdl" readonly required>
+                                <span class="input-group-append">
+                                    <button type="button" class="btn btn-success btn-flat" onclick="changeShipp_Invoice('L')"><i class="fa fa-car"></i> Local</button>
+                                    <button type="button" class="btn btn-info btn-flat" onclick="changeShipp_Invoice('E')"><i class="fa fa-plane"></i> Export</button>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="form-group col-md-6">
+                            <label>Document Type</label>
+                            <select id="docum_type" name="docum_type" class="form-control select2bs4" required>
+                                <option value="" disabled selected="true">Choose options</option>  
+                                <option value="PEB">PEB</option>  
+                                <option value="BC 4.1">BC 4.1</option>                      
+                                <option value="BC 25">BC 25</option>  
+                                <option value="BC 27">BC 27</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>Document Number</label>
+                            <input type="text" class="form-control" id="doc_number_mdl" name="doc_number_mdl">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>Amount</label>
+                            <input type="text" class="form-control" id="amount" name="amount" min="0" autocomplete="off">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>Type</label>
+                            <select id="type_mdl" name="type_mdl" class="form-control select2bs4" required>
+                                <?php foreach ($type as $t) : ?>
+                                    <option value="<?= $t['id_type']; ?>"><?= $t['type']; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
                     <!--  -->
                 </div>
                 <div class="modal-footer justify-content-between">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary toastrDefaultSuccess">Update</button>
+                    <button type="button" class="btn btn-primary" onclick="handleUpdate_BookInvoice()">Update</button>
                 </div>
             </div>
         </div>

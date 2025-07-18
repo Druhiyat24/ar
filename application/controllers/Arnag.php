@@ -2550,13 +2550,13 @@ public function rvs_invoice()
 
 public function reverse_kwt()
 {
- $id = $this->input->post('id_inv');
- $keter = $this->input->post('keter');
- $tgl_reverse = date('Y-m-d');
- $nama = $this->session->userdata('username');
- $activity = "Reverse Kwitansi";
+   $id = $this->input->post('id_inv');
+   $keter = $this->input->post('keter');
+   $tgl_reverse = date('Y-m-d');
+   $nama = $this->session->userdata('username');
+   $activity = "Reverse Kwitansi";
 
- $data = [
+   $data = [
 
     'nama'          => $nama,
     'activity'      => $activity,
@@ -2708,13 +2708,13 @@ public function reverse_debitnote()
 
 public function reverse_dn()
 {
- $id = $this->input->post('id_inv');
- $keter = $this->input->post('keter');
- $tgl_reverse = date('Y-m-d');
- $nama = $this->session->userdata('username');
- $activity = "Reverse Debitnote";
+   $id = $this->input->post('id_inv');
+   $keter = $this->input->post('keter');
+   $tgl_reverse = date('Y-m-d');
+   $nama = $this->session->userdata('username');
+   $activity = "Reverse Debitnote";
 
- $data = [
+   $data = [
 
     'nama'          => $nama,
     'activity'      => $activity,

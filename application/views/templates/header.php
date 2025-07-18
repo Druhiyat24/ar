@@ -30,15 +30,24 @@
   <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/select2/css/select2.min.css">
   <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/selectpicker/bootstrap-select.min.css">
   <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
-   <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/apexchart/apexcharts.css">
-   <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/animate/animate.min.css">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/apexchart/apexcharts.css">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/animate/animate.min.css">
   <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css" /> -->
 
   <style type="text/css">
     .select2-selection {
-    height: 38px !important;
-    border-color: #ced4da !important;
-}
+      height: 38px !important;
+      border-color: #ced4da !important;
+    }
+
+    .swal2-red .swal2-icon.swal2-warning {
+      border-color: #e3342f !important;
+      color: #e3342f !important;
+    }
+    .swal2-red .swal2-title {
+      color: #e3342f !important;
+    }
+
   </style>
 
 </head>
