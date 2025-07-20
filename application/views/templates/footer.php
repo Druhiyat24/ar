@@ -1366,13 +1366,13 @@ function updateInvoiceNumber() {
   }
 
   function updateInvoiceNumber_Modal() {
-  rawNoInvoice = $('#no_inv').val();
-  console.log("raw:", rawNoInvoice);
+    rawNoInvoice = $('#no_inv').val();
+    console.log("raw:", rawNoInvoice);
 
-  if (!rawNoInvoice) return;
+    if (!rawNoInvoice) return;
 
-  const parts_mdl = rawNoInvoice.split('/');
-  const prefix_mdl = parts_mdl[0];
+    const parts_mdl = rawNoInvoice.split('/');
+    const prefix_mdl = parts_mdl[0];
   const shipp_fallback = parts_mdl[1] || ''; // ambil dari invoice jika kode_shipp belum ada
   const profit_mdl = Val_PCmdl || parts_mdl[2];
   const suffix_mdl = parts_mdl[3] || savedSuffix;
@@ -1505,8 +1505,30 @@ function updateInvoiceNumber() {
       });
     </script>
 
+    <script type="text/javascript">
+      function updateReversePrefix() {
+        const rvsInput = document.getElementById('rvs_number');
+        const docType = document.getElementById('type_doc').value;
 
+        const prefixMap = {
+          "Invoice": "INV",
+          "Invoice Manual": "INM",
+          "Kwitansi": "KWT",
+          "Debit Note": "DBN",
+          "Alokasi": "ALK"
+        };
 
-  </body>
+    const currentCode = rvsInput.value; // misal: RVS/INV/0725/00001
+    const parts = currentCode.split('/');
 
-  </html>
+    if (parts.length === 4) {
+      parts[1] = prefixMap[docType] || "XXX";
+      rvsInput.value = parts.join('/');
+    }
+  }
+
+</script>
+
+</body>
+
+</html>

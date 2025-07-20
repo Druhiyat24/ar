@@ -237,59 +237,25 @@
                     <?php endforeach; ?>
                 </li>
 
+
                 <li class="nav-item">
                     <a href="#" class="nav-link">
-                        <i class="nav-icon fas fa-undo"></i>
+                        <i class="nav-icon fas fa-history"></i>
                         <p>
-                            Reverse
+                            Reverse Document
                             <i class="fas fa-angle-left right"></i>
                         </p>
                     </a>
-                    <?php foreach ($user_access_7 as $ua_7) : ?>
-                        <ul class="nav nav-treeview">
+                    <?php foreach ($user_access_reverse as $ua_rvs) : ?>
+                        <ul class="nav nav-treeview" style="padding-left: 5px;">
                             <li class="nav-item">
-                                <a href="<?= base_url($ua_7['base_url']); ?>" class="nav-link">
+                                <a href="<?= base_url($ua_rvs['base_url']); ?>" class="nav-link">
                                     <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                    <p><?= $ua_7['menu']; ?></p>
+                                    <p><?= $ua_rvs['menu']; ?></p>
                                 </a>
                             </li>
                         </ul>
                     <?php endforeach; ?>
-                </li>
-
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <!-- <i class="nav-icon fas fa-undo"></i> -->
-                        <i class="nav-icon fas fa-history"></i>
-                        <p>
-                            Reverse
-                            <i class="fas fa-angle-left right"></i>
-                        </p>
-                    </a>
-
-                    <ul class="nav nav-treeview" style="padding-left: 5px;">
-                        <li class="nav-item">
-                            <a href="#" class="nav-link">
-                                <i class="fas fa-plus-circle nav-icon"></i>
-                                <p>
-                                    Create Reverse
-                                    <i class="right fas fa-angle-left"></i>
-                                </p>
-                            </a>
-
-                            <ul class="nav nav-treeview" style="padding-left: 5px;">
-                                <?php foreach ($user_access_7 as $ua_7) : ?>
-                                    <li class="nav-item">
-                                        <a href="<?= base_url($ua_7['base_url']); ?>" class="nav-link">
-                                            <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                            <p><?= $ua_7['menu']; ?></p>
-                                        </a>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ul>
-
-                        </li>
-                    </ul>
                 </li>
 
 

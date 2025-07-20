@@ -32,6 +32,8 @@ let dt_dari_memo
 let dt_sampai_memo
 let dt_dari_sj
 let dt_sampai_sj
+let dt_dari_doc
+let dt_sampai_doc
 var Toast
 var base_url = '<?php echo base_url();?>';
 
@@ -92,6 +94,9 @@ $(document).ready(function () {
 
 		dt_dari_invkwt = picker.startDate.format('YYYY-MM-DD');
 		dt_sampai_invkwt = picker.endDate.format('YYYY-MM-DD');
+
+		dt_dari_doc = picker.startDate.format('YYYY-MM-DD');
+		dt_sampai_doc = picker.endDate.format('YYYY-MM-DD');
 		//
 		$(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
 
@@ -350,10 +355,34 @@ function loadbookinvoice(){
 					trHTML += '<td>' + item.doc_type + "</td>";
 					trHTML += '<td>' + item.doc_number + "</td>";
 					trHTML += '<td>' + item.value + "</td>";	
-					trHTML += '<td><button type="button" class="btn btn-sm btn-primary swalDefaultError" href="javascript:void(0)" onclick="getType(\'' + item.id + '\',\'' + item.shipp + '\', \'' + item.status + '\')">Update</button> ' + '' + ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="cancel_booking_invoice(\'' + item.id + '\',\'' + item.no_invoice + '\',\'' + item.status + '\')">Cancel</button></td>';			
+
+					if (item.status === 'DRAFT') {
+						trHTML += '<td>' +
+						'<button type="button" class="btn btn-sm btn-primary" onclick="getType(\'' + item.id + '\', \'' + item.shipp + '\', \'' + item.status + '\')">Update</button> ' +
+						'<button type="button" class="btn btn-sm btn-danger" onclick="cancel_booking_invoice(\'' + item.id + '\', \'' + item.no_invoice + '\', \'' + item.status + '\')">Cancel</button>' +
+						'</td>';
+					} else {
+						trHTML += '<td><b><i>Already Processed</i></b></td>';
+					}
 
 					trHTML += '</tr>';
 				});
+
+				// $.each(response, function (i, item) {
+				// 	trHTML += '<tr>';					
+				// 	trHTML += '<td>' + item.no_invoice + "</td>";
+				// 	trHTML += '<td>' + item.customer + "</td>";			
+				// 	trHTML += '<td>' + item.shipp + "</td>";				
+				// 	trHTML += '<td>' + item.tanggal + "</td>";
+				// 	trHTML += '<td>' + item.type + "</td>";
+				// 	trHTML += '<td>' + item.status + "</td>";
+				// 	trHTML += '<td>' + item.doc_type + "</td>";
+				// 	trHTML += '<td>' + item.doc_number + "</td>";
+				// 	trHTML += '<td>' + item.value + "</td>";	
+				// 	trHTML += '<td><button type="button" class="btn btn-sm btn-primary swalDefaultError" href="javascript:void(0)" onclick="getType(\'' + item.id + '\',\'' + item.shipp + '\', \'' + item.status + '\')">Update</button> ' + '' + ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="cancel_booking_invoice(\'' + item.id + '\',\'' + item.no_invoice + '\',\'' + item.status + '\')">Cancel</button></td>';			
+
+				// 	trHTML += '</tr>';
+				// });
 
 				$('#table-booking-invoice').append(trHTML);				
 
@@ -13690,11 +13719,99 @@ function reverse_dn(){
 	}
 
 
-	function handleUpdate_BookInvoice() {
-		let no_inv = $('#no_inv').val().trim();
-		let no_inv_hide = $('#no_inv_hide').val().trim();
+// 	function handleUpdate_BookInvoice() {
+// 		let no_inv = $('#no_inv').val().trim();
+// 		let no_inv_hide = $('#no_inv_hide').val().trim();
 
-		if (no_inv !== no_inv_hide) {
+// 		if (no_inv !== no_inv_hide) {
+//         // Jika ada perubahan nomor invoice
+//         Swal.fire({
+//         	title: 'Nomor Invoice berubah!',
+//         	text: "Apakah Anda yakin ingin menyimpan perubahan ini?",
+//         	icon: 'warning',
+//         	customClass: 'swal2-red',
+//         	showCancelButton: true,
+//         	confirmButtonColor: '#3085d6',
+//         	cancelButtonColor: '#d33',
+//         	confirmButtonText: 'Ya, simpan!',
+//         	cancelButtonText: 'Batal'
+//         }).then((result) => {
+//         	if (result.isConfirmed) {
+//         		// $('#modal-update form').submit();
+//         		$.post('<?= base_url("arnag/update_booking_invoice") ?>', formData, function(response) {
+//         			$('#modal-update').modal('hide');
+//         			loadbookinvoice(); 
+//         		});
+//         	}
+//         });
+//     } else {
+//     	Swal.fire({
+//     		title: 'Update Invoice!',
+//     		text: "Apakah Anda yakin ingin menyimpan perubahan ini?",
+//     		icon: 'warning',
+//     		showCancelButton: true,
+//     		confirmButtonColor: '#3085d6',
+//     		cancelButtonColor: '#d33',
+//     		confirmButtonText: 'Ya, simpan!',
+//     		cancelButtonText: 'Batal'
+//     	}).then((result) => {
+//     		if (result.isConfirmed) {
+//                 // $('#modal-update form').submit();
+//                 $.post('<?= base_url("arnag/update_booking_invoice") ?>', formData, function(response) {
+//                 	$('#modal-update').modal('hide');
+//                 	loadbookinvoice(); 
+//                 });
+//             }
+//         });
+//     }
+// }
+
+function handleUpdate_BookInvoice() {
+	let no_inv = $('#no_inv').val().trim();
+	let no_inv_hide = $('#no_inv_hide').val().trim();
+
+    // Normalisasi nilai amount sebelum kirim
+    $('#amount').val($('#amount').val().replace(/[^0-9.-]+/g, ''));
+
+    let formData = $('#modal-update form').serialize();
+
+    // let confirmMessage = (no_inv !== no_inv_hide) 
+    // ? 'Nomor Invoice berubah! Apakah Anda yakin ingin menyimpan perubahan ini?' 
+    // : 'Apakah Anda yakin ingin menyimpan perubahan ini?';
+
+    // Swal.fire({
+    // 	title: 'Konfirmasi',
+    // 	text: confirmMessage,
+    // 	icon: 'warning',
+    // 	showCancelButton: true,
+    // 	confirmButtonText: 'Ya, simpan!',
+    // 	cancelButtonText: 'Batal'
+    // }).then((result) => {
+    // 	if (result.isConfirmed) {
+    // 		$.ajax({
+    // 			url: "update_booking_invoice/",
+    // 			type: 'POST',
+    // 			data: formData,
+    // 			dataType: 'json',
+    // 			success: function(response) {
+    // 				console.log(response);
+    // 				if (response.status === 'ok') {
+    // 					$('#modal-update').modal('hide');
+    // 					loadbookinvoice();
+    // 					Swal.fire('Tersimpan!', 'Data berhasil diperbarui.', 'success');
+    // 				} else {
+    // 					Swal.fire('Gagal!', 'Gagal menyimpan data.', 'error');
+    // 				}
+    // 			},
+    // 			error: function(xhr, status, error) {
+    // 				console.error('Error:', error);
+    // 				Swal.fire('Gagal!', 'Terjadi kesalahan saat mengirim data.', 'error');
+    // 			}
+    // 		});
+    // 	}
+    // });
+
+    if (no_inv !== no_inv_hide) {
         // Jika ada perubahan nomor invoice
         Swal.fire({
         	title: 'Nomor Invoice berubah!',
@@ -13708,8 +13825,28 @@ function reverse_dn(){
         	cancelButtonText: 'Batal'
         }).then((result) => {
         	if (result.isConfirmed) {
-                $('#modal-update form').submit(); // submit form manual
-            }
+        		// $('#modal-update form').submit();
+        		$.ajax({
+        			url: "update_booking_invoice/",
+        			type: 'POST',
+        			data: formData,
+        			dataType: 'json',
+        			success: function(response) {
+        				console.log(response);
+        				if (response.status === 'ok') {
+        					$('#modal-update').modal('hide');
+        					loadbookinvoice();
+        					Swal.fire('Tersimpan!', 'Data berhasil diperbarui.', 'success');
+        				} else {
+        					Swal.fire('Gagal!', 'Gagal menyimpan data.', 'error');
+        				}
+        			},
+        			error: function(xhr, status, error) {
+        				console.error('Error:', error);
+        				Swal.fire('Gagal!', 'Terjadi kesalahan saat mengirim data.', 'error');
+        			}
+        		});
+        	}
         });
     } else {
     	Swal.fire({
@@ -13723,14 +13860,632 @@ function reverse_dn(){
     		cancelButtonText: 'Batal'
     	}).then((result) => {
     		if (result.isConfirmed) {
-                $('#modal-update form').submit(); // submit form manual
+                // $('#modal-update form').submit();
+                $.ajax({
+                	url: "update_booking_invoice/",
+                	type: 'POST',
+                	data: formData,
+                	dataType: 'json',
+                	success: function(response) {
+                		console.log(response);
+                		if (response.status === 'ok') {
+                			$('#modal-update').modal('hide');
+                			loadbookinvoice();
+                			Swal.fire('Tersimpan!', 'Data berhasil diperbarui.', 'success');
+                		} else {
+                			Swal.fire('Gagal!', 'Gagal menyimpan data.', 'error');
+                		}
+                	},
+                	error: function(xhr, status, error) {
+                		console.error('Error:', error);
+                		Swal.fire('Gagal!', 'Terjadi kesalahan saat mengirim data.', 'error');
+                	}
+                });
             }
         });
     }
+
 }
 
 
-function export_sj_noncom2() { 		
-	window.open(".../../export_sj_noncom2/" + dt_dari_sj  + "/" + dt_sampai_sj  + "/"); 
+function add_document_reverse() {
+    // Ambil nilai dari select/input di halaman utama
+    let cust_id = $('#rvs_cust').val();
+    let cust_name = $('#rvs_cust option:selected').text().trim();
+    let type_doc = $('#type_doc').val();
+
+    // Validasi jika type_doc belum dipilih
+    if (!type_doc) {
+    	Swal.fire({
+    		icon: 'warning',
+    		title: 'Oops...',
+    		text: 'Silakan pilih Type Document terlebih dahulu!'
+    	});
+    	return;
+    }
+
+    // Set ke input dalam modal
+    $('#mdl_custmr').val(cust_id);
+    $('#mdl_nama_custmr').val(cust_name);
+    $('#mdl_type_doc').val(type_doc);
+
+    // Kosongkan tabel jika perlu
+    delete_data_doc_reverse();
+    $('#table-doc-reverse tbody tr').remove();
+    cari_data_doc_reverse();
+
+    // Tampilkan modal
+    $('#modal-add-docrvs').modal('show');
 }
+
+
+function cari_data_doc_reverse() { 
+
+	$('#table-list-doc tbody tr').remove();	
+		//Date range picker
+		$('input[name="cobacoba"]').daterangepicker({
+			autoUpdateInput: false,
+			locale: {
+				cancelLabel: 'Clear'
+			}
+		});
+
+		$('input[name="cobacoba"]').on('apply.daterangepicker', function (ev, picker) {
+			dt_dari_doc = picker.startDate.format('YYYY-MM-DD');
+			dt_sampai_doc = picker.endDate.format('YYYY-MM-DD');
+			$(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+		});
+
+
+		var id_customer = $('#mdl_custmr').val();
+		var doc_type = $('#mdl_type_doc').val();
+
+		console.log(dt_dari_doc + ' ' + dt_sampai_doc + ' ' + id_customer + ' ' + doc_type);
+
+		$.ajax({		
+			url: "cari_data_doc_reverse/" + dt_dari_doc + "/" + dt_sampai_doc + "/" + id_customer + "/" + doc_type + "/",					
+			type: "GET",
+			dataType: "JSON",
+			success: function (response) {
+				console.log(response);
+				var trHTML = '';
+				$.each(response, function (i, item) { 								
+					trHTML += '<tr>';					
+					trHTML += '<td style="width: 15%;">' + item.no_document + "</td>";
+					trHTML += '<td style="width: 10%;">' + item.tgl_document + "</td>";
+					trHTML += '<td style="width: 20%;">' + item.customer + "</td>";	
+					trHTML += '<td style="width: 10%;">' + item.curr + "</td>";
+					trHTML += '<td style="width: 15%;">' + item.total + "</td>";		
+					trHTML += '<td style="width: 24%;">' +
+					'<textarea class="form-control ket_reverse" id="ket_reverse" name="ket_reverse" rows="2" style="width: 200px; text-align: left" readonly></textarea>' +
+					'</td>';
+
+					trHTML += '<td style="width: 6%;">' +
+					'<input type="checkbox" class="cb_reverse" id="cb_reverse" name="cb_reverse" data-idcustomer="' + item.id_customer + '" onclick="toggleKetReverse(this)">' +
+					'</td>';
+
+					trHTML += '</tr>';
+				});
+
+				$('#table-list-doc').append(trHTML);				
+
+			},
+			error: function (jqXHR, textStatus, errorThrown) {
+				console.error('Error:', jqXHR.responseText);
+			}
+		});	
+
+	}
+
+	function toggleKetReverse(checkbox) {
+		var textarea = $(checkbox).closest('tr').find('.ket_reverse');
+		if (checkbox.checked) {
+			textarea.prop('readonly', false);
+		} else {
+			textarea.prop('readonly', true).val('');
+		}
+	}
+
+
+	function simpan_reverse_temp() {
+		return new Promise(resolve => {
+			setTimeout(() => {
+				var msg;
+				var data = [];
+
+				$("#table-list-doc input[name='cb_reverse']:checked").each(function () {
+					var rows = $(this).closest("tr")[0];
+					let id_customer = $(this).data('idcustomer');
+
+					$(this).closest('tr').find("textarea[name='ket_reverse']").each(function () {
+						var deskripsi = this.value;
+
+						data.push({
+							"no_dokumen": rows.cells[0].innerHTML,
+							"tgl_dokumen": rows.cells[1].innerHTML,
+							"id_customer": id_customer,
+							"curr": rows.cells[3].innerHTML,
+							"total": rows.cells[4].innerHTML,
+							"deskripsi": deskripsi,
+						});
+					});
+				});
+
+				var fdata = {
+					'data_table': data
+				};
+
+				console.log(fdata);
+
+				$.ajax({
+					url: "simpan_reverse_temp/",
+					type: "POST",
+					data: fdata,
+					dataType: "JSON",
+					success: function (data) {
+						console.log(data);
+						if (data.status) {
+							msg = 'Success Input Detail';
+							Swal.fire({
+								icon: 'success',
+								title: 'Success',
+								text: msg
+							}).then(() => {
+								load_doc_reverse_temp();
+								$('#modal-add-docrvs').modal('hide');
+							});
+						} else {
+							msg = 'Error Input Detail';
+							Swal.fire({
+								icon: 'error',
+								title: 'Failed',
+								text: msg
+							});
+						}
+
+						resolve({ msg: msg });
+					},
+					error: function (jqXHR, textStatus, errorThrown) {
+						// msg = 'Error Input Detail: ' + jqXHR.responseText;
+						msg = 'Error Input Detail';
+						Swal.fire({
+							icon: 'error',
+							title: 'Ajax Error',
+							text: msg
+						});
+
+						resolve({ msg: msg });
+					}
+				});
+
+			}, 100);
+		});
+	}
+
+	function delete_data_doc_reverse(){ 
+
+		$.ajax({						
+			url: "delete_data_doc_reverse/",
+			type: "GET",				
+			dataType: "JSON",
+			success: function (data) {
+
+			if (data.status) //if success close modal and reload ajax table
+			{
+				msg = 'Success Delete Table Temporary'			     
+			} else {
+				msg = 'Error Delete Table Temporary'				
+			}
+		},
+		error: function (jqXHR, textStatus, errorThrown) {
+			msg = 'Error Delete Table Temporary' + jqXHR.text			
+		}
+	});
+
+	}
+
+
+	function load_doc_reverse_temp(){ 
+
+		$.ajax({		
+			url: "load_doc_reverse_temp/",							
+			type: "GET",
+			dataType: "JSON",
+			success: function (response) {
+				var trHTML = '';
+				$.each(response, function (i, item) {
+					trHTML += '<tr>';		
+					trHTML += '<td style="width: 15%;">' + item.no_dokumen + "</td>";
+					trHTML += '<td style="width: 10%;">' + item.tgl_dokumen + "</td>";
+					trHTML += '<td style="width: 20%;">' + item.customer + "</td>";
+					trHTML += '<td style="width: 10%;">' + item.curr + "</td>";
+					trHTML += '<td style="width: 15%;">' + item.total + "</td>";
+					trHTML += '<td style="width: 30%;">' + item.deskripsi + "</td>";
+					trHTML += '<td hidden>' + item.id_customer + "</td>";
+					trHTML += '</tr>';
+
+				});
+				$('#table-doc-reverse').append(trHTML);
+			},
+			error: function (jqXHR, textStatus, errorThrown) {
+				alert('Error get data from ajax');
+			}
+		});  	  	
+
+	}
+
+
+	function simpan_data_reverse() {
+		let header = {
+			rvs_number: $('#rvs_number').val(),
+			rvs_date: $('#rvs_date').val(),
+			type_doc: $('#type_doc').val(),
+			rvs_cust: $('#rvs_cust').val(),
+			rvs_deskripsi: $('#rvs_deskripsi').val()
+		};
+
+		let detail = [];
+		$('#table-doc-reverse tbody tr').each(function () {
+			let row = $(this).find('td');
+			detail.push({
+				doc_number: row.eq(0).text(),
+				doc_date: row.eq(1).text(),
+				customer: row.eq(6).text(),
+				currency: row.eq(3).text(),
+				total: row.eq(4).text(),
+				descriptions: row.eq(5).text()
+			});
+		});
+
+		if (detail.length === 0) {
+			Swal.fire('Oops', 'Silakan tambahkan minimal 1 data detail!', 'warning');
+			return;
+		}
+
+		Swal.fire({
+			title: 'Simpan Data?',
+			text: "Pastikan semua data sudah benar.",
+			icon: 'question',
+			showCancelButton: true,
+			confirmButtonText: 'Ya, Simpan!',
+			cancelButtonText: 'Batal'
+		}).then((result) => {
+			if (result.isConfirmed) {
+				$.ajax({
+					url: "simpan_data_reverse/",
+					method: 'POST',
+					data: {
+						header: header,
+						detail: detail
+					},
+					dataType: 'json',
+					success: function (response) {
+						if (response.status === true) {
+							Swal.fire('Sukses', response.message, 'success').then(() => {
+								window.location.href = BASE_URL + 'arnag/reverse_document';
+							});
+						} else {
+							Swal.fire('Gagal', response.message, 'error');
+						}
+					},
+					error: function (xhr, status, error) {
+						Swal.fire('Error', 'Terjadi kesalahan saat mengirim data.', 'error');
+						console.error('Error:', xhr.responseText);
+					}
+				});
+			}
+		});
+	}
+
+
+	function cari_list_reverse() { 
+
+		$('#table-reverse tbody tr').remove();	
+		//Date range picker
+		$('input[name="reservation2"]').daterangepicker({
+			autoUpdateInput: false,
+			locale: {
+				cancelLabel: 'Clear'
+			}
+		});
+
+		$('input[name="reservation2"]').on('apply.daterangepicker', function (ev, picker) {
+			dt_dari_inv = picker.startDate.format('YYYY-MM-DD');
+			dt_sampai_inv = picker.endDate.format('YYYY-MM-DD');
+			$(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+		});
+
+		$('input[name="reservation2"]').on('cancel.daterangepicker', function (ev, picker) {
+			$(this).val('');
+			dt_dari_inv   = "undefined";
+			dt_sampai_inv = "undefined";
+		});
+
+		var doc_type = $('#doc_type').val();
+		// var status = $('#status').val();	
+		// console.log(id_customer + ' ' + status);
+
+		$.ajax({		
+			url: "cari_list_reverse/" + dt_dari_inv + "/" + dt_sampai_inv + "/" + doc_type + "/",					
+			type: "GET",
+			dataType: "JSON",
+			success: function (response) {
+
+				var trHTML = '';
+				$.each(response, function (i, item) { 					
+					if(item.status == 'DRAFT' ){				
+						trHTML += '<tr>';					
+						trHTML += '<td>' + item.rvs_number + "</td>";
+						trHTML += '<td>' + item.rvs_date + "</td>";	
+						trHTML += '<td>' + item.type_doc + "</td>";
+						trHTML += '<td>' + item.status + "</td>";
+						trHTML += '<td>' + item.deskripsi + "</td>";
+						trHTML += '<td>' + item.created_by + "</td>";
+						trHTML += '<td>' + item.created_date + "</td>";	
+						trHTML += '<td><button id="inv_detail" name="inv_detail" type="button" class="btn btn-info btn-sm" onclick="cari_detail_reverse(' + item.id + ')" ><i class="fas fa-eye"></i> Detail</button> ' + '' 
+						+ '<button id="print_inv" name="print_inv" type="button" class="btn btn-primary btn-sm" onclick="pdf_reverse(' + item.id + ')"><i class="fa fa-print"></i> Print</button> ' + ''			
+						+ ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="cancel_invoice(\'' + item.id + '\',\'' + item.rvs_number + '\',\'' + item.status + '\')"><i class="fas fa-trash-alt"></i> Cancel</button> </td>';
+
+						trHTML += '</tr>';
+					}else{
+						trHTML += '<tr>';					
+						trHTML += '<td>' + item.rvs_number + "</td>";
+						trHTML += '<td>' + item.rvs_date + "</td>";	
+						trHTML += '<td>' + item.type_doc + "</td>";
+						trHTML += '<td>' + item.status + "</td>";
+						trHTML += '<td>' + item.deskripsi + "</td>";
+						trHTML += '<td>' + item.created_by + "</td>";
+						trHTML += '<td>' + item.created_date + "</td>";	
+						trHTML += '<td><button id="inv_detail" name="inv_detail" type="button" class="btn btn-info btn-sm" onclick="cari_detail_reverse(' + item.id + ')" ><i class="fas fa-eye"></i> Detail</button> ' + '' 
+						+ ' <button id="print_inv" name="print_inv" type="button" class="btn btn-primary btn-sm" onclick="pdf_reverse(' + item.id + ')"><i class="fa fa-print"></i> Print</button></td>';
+
+						trHTML += '</tr>';
+					}
+				});
+
+				$('#table-reverse').append(trHTML);				
+
+			},
+			error: function (jqXHR, textStatus, errorThrown) {
+				alert('Error get data from ajax');
+			}
+		});	
+
+	}
+
+
+	function cari_detail_reverse(id) { 
+
+		$('#table-inv-detail tbody tr').remove();		
+		$('#modal-inv-detail').modal('show');
+		console.log(id)
+		$.ajax({		
+			url: "cari_detail_reverse/" + id + "/",					
+			type: "GET",
+			dataType: "JSON",
+			success: function (response) {
+				console.log(response);
+				var trHTML = '';
+				$.each(response, function (i, item) { 			
+					trHTML += '<tr>';										
+					trHTML += '<td>' + item.doc_number + "</td>";
+					trHTML += '<td>' + item.doc_date + "</td>";	
+					trHTML += '<td>' + item.customer + "</td>";
+					trHTML += '<td>' + item.curr + "</td>";		
+					trHTML += '<td align="right">' + item.total + "</td>";	
+					trHTML += '<td>' + item.deskripsi + "</td>";				
+					trHTML += '</tr>';
+                //
+                $('#inv_number_list').val(item.rvs_number)
+				//				
+			});
+
+				$('#table-inv-detail').append(trHTML);
+
+			// cari_inv_pot(id_inv);						
+
+		},
+		error: function (jqXHR, textStatus, errorThrown) {
+			alert('Error get data from ajax');
+		}
+	});	
+
+	}
+
+	function pdf_reverse(id) {
+
+		window.open(".../../pdf_reverse/" + id + "/" );  	
+
+	}
+
+	function cari_reverse_draft(){ 
+
+		$('#table-approval-reverse tbody tr').remove();	
+		//Date range picker
+		$('input[name="reservation2"]').daterangepicker({
+			autoUpdateInput: false,
+			locale: {
+				cancelLabel: 'Clear'
+			}
+		});
+
+		$('input[name="reservation2"]').on('apply.daterangepicker', function (ev, picker) {
+			dt_dari_approv = picker.startDate.format('YYYY-MM-DD');
+			dt_sampai_approv = picker.endDate.format('YYYY-MM-DD');
+			$(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+		});
+
+		$('input[name="reservation2"]').on('cancel.daterangepicker', function (ev, picker) {
+			$(this).val('');
+			dt_dari_approv   = "undefined";
+			dt_sampai_approv = "undefined";
+		});
+
+		$.ajax({		
+			url: "cari_reverse_draft/" + dt_dari_approv + "/" + dt_sampai_approv + "/",					
+			type: "GET",
+			dataType: "JSON",
+			success: function (response) {
+
+				var trHTML = '';
+				$.each(response, function (i, item) { 					
+					trHTML += '<tr>';					
+					trHTML += '<td>' + item.rvs_number + "</td>";
+					trHTML += '<td>' + item.rvs_date + "</td>";	
+					trHTML += '<td>' + item.type_doc + "</td>";
+					trHTML += '<td>' + item.status + "</td>";
+					trHTML += '<td>' + item.deskripsi + "</td>";
+					trHTML += '<td>' + item.created_by + "</td>";
+					trHTML += '<td>' + item.created_date + "</td>";	
+					trHTML += '<td><button id="inv_detail" name="inv_detail" type="button" class="btn btn-info btn-sm" onclick="cari_detail_reverse(' + item.id + ')" ><i class="fas fa-eye"></i> Detail</button>';
+					trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_rvs_approv" id="pilih_rvs_approv" class="flat" value = ' + item.id + '></td>';										
+				//trHTML += '<td><button id="approv_inv" name="approv_inv" type="button" class="btn btn-warning btn-sm" onclick="approve_invoice(\'' + item.no_invoice + '\' , \'' + item.id + '\')"><i class="fa fa-stamp"></i> Approved</td>';
+				trHTML += '</tr>';
+
+			});
+
+				$('#table-approval-reverse').append(trHTML);				
+
+			},
+			error: function (jqXHR, textStatus, errorThrown) {
+				alert('Error get data from ajax');
+			}
+		});	
+	}
+
+	function check_approve_reverse(ele) { 
+
+		var checkboxes = document.getElementsByTagName('input');
+		if (ele.checked) {
+			for (var i = 0; i < checkboxes.length; i++) {
+				if (checkboxes[i].type == 'checkbox'  && !(checkboxes[i].disabled) ) {
+					checkboxes[i].checked = true;
+				}
+			}
+		} else {
+			for (var i = 0; i < checkboxes.length; i++) {
+				if (checkboxes[i].type == 'checkbox') {
+					checkboxes[i].checked = false;
+				}
+			}
+		}
+	}
+
+
+	// function modal_show_approve_reverse() { 
+
+	// 	var cek_inv = document.getElementsByName("pilih_rvs_approv");	
+	// 	for (var i = 0; i < cek_inv.length; i++) {
+	// 	    //Ceklist Invoice		
+	// 	    if (cek_inv[i].checked) {				   
+	// 	    	$('#modal-approve-reverse').modal('show');  
+	// 	    } 
+	// 	}	
+	// }
+
+	function modal_show_approve_reverse() {
+		let cek_inv = document.getElementsByName("pilih_rvs_approv");	
+		let selected = [];
+
+		for (let i = 0; i < cek_inv.length; i++) {
+			if (cek_inv[i].checked) {
+				selected.push(cek_inv[i].value);
+			}
+		}
+
+		if (selected.length === 0) {
+			Swal.fire({
+				icon: 'warning',
+				title: 'Pilih data terlebih dahulu!',
+				text: 'Silakan centang minimal satu data yang akan di-approve.',
+			});
+			return;
+		}
+
+		Swal.fire({
+			title: 'Yakin ingin Approve Reverse?',
+			icon: 'question',
+			showCancelButton: true,
+			confirmButtonText: 'Ya, Approve!',
+			cancelButtonText: 'Batal',
+			reverseButtons: true
+		}).then((result) => {
+			if (result.isConfirmed) {
+				refresh_reverse();
+			}
+		});
+	}
+
+
+
+	async function refresh_reverse() {
+		var result = await approve_doc_reverse();
+		console.log(result);
+
+		var cek_inv = document.getElementsByName("pilih_rvs_approv");	
+		for (var i = 0; i < cek_inv.length; i++) {
+			if (cek_inv[i].checked) {
+				var coba = parseInt(i + 1);
+			}
+		}
+
+		Swal.fire({
+			icon: 'success',
+			title: 'Berhasil!',
+			text: 'Reverse Successfully Approved',
+			confirmButtonText: 'OK'
+		}).then(() => {
+        cari_reverse_draft(); // Hanya dijalankan setelah klik OK
+    });
+	}
+
+
+
+	function approve_doc_reverse(){
+	//
+	var cek_inv = document.getElementsByName("pilih_rvs_approv");	
+	for (var i = 0; i < cek_inv.length; i++) {
+
+		    //Ceklist Invoice		
+		    if (cek_inv[i].checked) {	
+				//   
+				var id_inv = cek_inv[i].value
+                //
+                var formData = {
+                	"id_inv": id_inv,			
+                };
+				//
+				$.ajax({						
+					url: "approve_doc_reverse/",		
+					type: "POST",	
+					data: formData,			
+					dataType: "JSON",
+					success: function (data) {		
+
+						if (data.status) //if success close modal and reload ajax table
+						{
+							msg = 'Success Update Invoice Approve'
+						} else {
+							msg = 'Error Update Invoice Approve'
+						}
+					},
+					error: function (jqXHR, textStatus, errorThrown) {
+						msg = 'Error Update Invoice Header' + jqXHR.text
+					}
+				});   	
+				//
+				// $('#modal-approve-reverse').modal('hide');
+				console.log(id_inv);  
+				// window.location.reload();
+				// cari_invoice_post();
+
+				//
+			} 
+		}
+
+	}
+
+	function export_sj_noncom2() { 		
+		window.open(".../../export_sj_noncom2/" + dt_dari_sj  + "/" + dt_sampai_sj  + "/"); 
+	}
 

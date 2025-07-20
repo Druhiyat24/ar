@@ -48,6 +48,20 @@
       color: #e3342f !important;
     }
 
+/*    input.form-control,
+    .select2-container--bootstrap4 .select2-selection {
+      border: 2px solid #808080 !important; 
+      box-shadow: none;
+    }
+
+    input.form-control:focus,
+    .select2-container--bootstrap4 .select2-container--focus .select2-selection {
+      border-color: #8B008B !important;
+      outline: none;
+    }*/
+
+
+
   </style>
 
 </head>
