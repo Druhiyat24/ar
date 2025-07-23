@@ -13893,6 +13893,8 @@ function add_document_reverse() {
     let cust_id = $('#rvs_cust').val();
     let cust_name = $('#rvs_cust option:selected').text().trim();
     let type_doc = $('#type_doc').val();
+    let kode_type_doc = $('#type_doc option:selected').data('kode');
+
 
     // Validasi jika type_doc belum dipilih
     if (!type_doc) {
@@ -13907,7 +13909,8 @@ function add_document_reverse() {
     // Set ke input dalam modal
     $('#mdl_custmr').val(cust_id);
     $('#mdl_nama_custmr').val(cust_name);
-    $('#mdl_type_doc').val(type_doc);
+    $('#mdl_type_doc').val(kode_type_doc);
+    $('#mdl_type_doc_show').val(type_doc);
 
     // Kosongkan tabel jika perlu
     delete_data_doc_reverse();

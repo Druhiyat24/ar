@@ -40,89 +40,92 @@
                                 <label>Type Document</label>
                                 <select class="form-control select2bs4" id="type_doc" name="type_doc" onchange="updateReversePrefix()" required>
                                   <!--   <option value="" disabled selected>Pilih Type Document</option> -->
-                                    <?php foreach ($pilihan as $pil) : ?>
-                                        <option value="<?= $pil['nama_pilihan']; ?>"><?= $pil['nama_pilihan']; ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="form-group col-md-3"></div>
+                                  <?php foreach ($pilihan as $pil) : ?>
+                                    <option value="<?= $pil['nama_pilihan']; ?>" data-kode="<?= $pil['kode_pilihan']; ?>"><?= $pil['nama_pilihan']; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-3"></div>
 
-                            <div class="form-group col-md-3">
-                                <label>Customer</label>
-                                <select class="form-control select2bs4" id="rvs_cust" name="rvs_cust" required>
-                                    <option value="ALL" selected>ALL</option>
-                                    <?php foreach ($customer as $cs) : ?>
-                                        <option value="<?= $cs['Id_Supplier']; ?>"
-                                            <?= (isset($invoice['id_customer']) && $invoice['id_customer'] == $cs['Id_Supplier']) ? 'selected' : ''; ?>>
-                                            <?= $cs['Supplier']; ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <div class="form-group col-md-2">
-                                <label>Add Data</label>
-                                <div class="input-group mb-3">
-                                  <span class="input-group-append">
-                                    <button id="so_number2" name="so_number2" type="button" class="btn btn-info btn-flat" style="border-radius: 5px;" onclick="add_document_reverse()"><i class="far fa-plus-square"></i> Add Data</button>
-                                </span>
-                            </div>
+                        <div class="form-group col-md-3">
+                            <label>Customer</label>
+                            <select class="form-control select2bs4" id="rvs_cust" name="rvs_cust" required>
+                                <option value="ALL" selected>ALL</option>
+                                <?php foreach ($customer as $cs) : ?>
+                                    <option value="<?= $cs['Id_Supplier']; ?>"
+                                        <?= (isset($invoice['id_customer']) && $invoice['id_customer'] == $cs['Id_Supplier']) ? 'selected' : ''; ?>>
+                                        <?= $cs['Supplier']; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
 
-                        <div class="form-group col-md-7"></div>
-
-                        <div class="form-group col-md-9">
-                            <label>Descriptions</label>
-                            <textarea class="form-control" id="rvs_deskripsi" name="rvs_deskripsi" rows="2" required autocomplete="off"></textarea>
+                        <div class="form-group col-md-2">
+                            <label>Add Data</label>
+                            <div class="input-group mb-3">
+                              <span class="input-group-append">
+                                <button id="so_number2" name="so_number2" type="button" class="btn btn-info btn-flat" style="border-radius: 5px;" onclick="add_document_reverse()"><i class="far fa-plus-square"></i> Add Data</button>
+                            </span>
                         </div>
-
-
                     </div>
+
+                    <div class="form-group col-md-7"></div>
+
+                    <div class="form-group col-md-9">
+                        <label>Descriptions</label>
+                        <textarea class="form-control" id="rvs_deskripsi" name="rvs_deskripsi" rows="2" required autocomplete="off"></textarea>
+                    </div>
+
+
                 </div>
             </div>
-
         </div>
-        <!-- Data Table Create Invoice -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Detail</h3>
-                    </div>
-                    <!-- /.card-header -->
-                    <div class="card-body table-responsive p-0" style="height: 300px;">
-                        <table id="table-doc-reverse" class="table table-head-fixed text-nowrap table-striped table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Document Number</th>
-                                    <th>Date</th>
-                                    <th>Customer</th>
-                                    <th>Currency</th>
-                                    <th>Total</th>
-                                    <th>descriptions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
 
-                            </tbody>
-                        </table>
-                    </div>
-                    <!-- /.card-body -->
+    </div>
+    <!-- Data Table Create Invoice -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Detail</h3>
                 </div>
-                <!-- /.card -->
-            </div>
-        </div>
-        <!-- End Data Table Create Invoice -->
+                <!-- /.card-header -->
+                <div class="card-body table-responsive p-0" style="height: 300px;">
+                    <table id="table-doc-reverse" class="table table-head-fixed text-nowrap table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Document Number</th>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Currency</th>
+                                <th>Total</th>
+                                <th>descriptions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
 
-        <!-- Button Simpan Data Invoice  -->
-        <div class="row col-sm-12">
-            <div class="input-group mb-3">
-                <button type="button" class="btn btn-primary" data-toggle="modal" onclick="simpan_data_reverse()"><i class="fa fa-save"></i> Save </button>
+                        </tbody>
+                    </table>
+                </div>
+                <!-- /.card-body -->
             </div>
+            <!-- /.card -->
         </div>
-        <!-- End Button Simpan Data Invoice  -->
-        <!-- /.row -->
-    </div><!-- /.container-fluid -->
+    </div>
+    <!-- End Data Table Create Invoice -->
+
+    <!-- Button Simpan Data Invoice  -->
+    <div class="row col-sm-12">
+        <div class="input-group mb-3">
+            <button type="button" class="btn btn-primary mr-2" data-toggle="modal" onclick="simpan_data_reverse()"><i class="fa fa-save"></i> Save </button>
+            <button type="button" class="btn btn-danger" onclick="<?= base_url("arnag/reverse_document") ?>">
+                <i class="fas fa-arrow-circle-left"></i> Back
+            </button>
+        </div>
+    </div>
+    <!-- End Button Simpan Data Invoice  -->
+    <!-- /.row -->
+</div><!-- /.container-fluid -->
 </section>
 <!-- /.content -->
 </div>
@@ -153,7 +156,8 @@
                             </div>
                             <div class="col-md-2">
                                 <label>Type Document</label>
-                                <input type="text" class="form-control float-left" id="mdl_type_doc" name="nama_custmr" readonly>
+                                <input type="hidden" class="form-control float-left" id="mdl_type_doc" name="nama_custmr" readonly>
+                                <input type="text" class="form-control float-left" id="mdl_type_doc_show" name="nama_custmr" readonly>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group">
@@ -185,7 +189,7 @@
                         </div>
 
                         <div class="d-flex justify-content-between">
-                           <div class="ml-auto">
+                         <div class="ml-auto">
                             <span class="input-group-text"><i class="fas fa-search"></i></span>
                         </div>
                         <input type="text"  id="carinoinv" name="carinoinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_inv_alok()">
