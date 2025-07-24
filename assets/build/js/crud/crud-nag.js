@@ -14480,42 +14480,60 @@ $('.form-group').removeClass('has-error'); // clear error class
 }
 
 
-function handleUpdate_Debitnote() {
-	let dn_number = $('#dn_number').val().trim();
-	let dn_number_old = $('#dn_number_old').val().trim();
+async function handleUpdate_Debitnote() {
+    let dn_number = $('#dn_number').val().trim();
+    let dn_number_old = $('#dn_number_old').val().trim();
+    let dn_duedate = $('#dn_duedate').val();
+    let dn_date = $('#dn_date').val();
+    let txt_attn = $('#txt_attn').val();
 
-
-    if (dn_number !== dn_number_old) {
-        // Jika ada perubahan nomor invoice
-        Swal.fire({
-        	title: 'Nomor DebitNote berubah!',
-        	text: "Apakah Anda yakin ingin menyimpan perubahan ini?",
-        	icon: 'warning',
-        	customClass: 'swal2-red',
-        	showCancelButton: true,
-        	confirmButtonColor: '#3085d6',
-        	cancelButtonColor: '#d33',
-        	confirmButtonText: 'Ya, simpan!',
-        	cancelButtonText: 'Batal'
-        }).then((result) => {
-      		UpdateHeader_Debitnote();
+    if (dn_duedate < dn_date) {
+        await Swal.fire({
+            icon: 'error',
+            title: "Invalid Date",
+            text: "Due Date can't be smaller than Debit Note Date"
         });
-    } else {
-    	Swal.fire({
-    		title: 'Update DebitNote!',
-    		text: "Apakah Anda yakin ingin menyimpan perubahan ini?",
-    		icon: 'warning',
-    		showCancelButton: true,
-    		confirmButtonColor: '#3085d6',
-    		cancelButtonColor: '#d33',
-    		confirmButtonText: 'Ya, simpan!',
-    		cancelButtonText: 'Batal'
-    	}).then((result) => {
-    		UpdateHeader_Debitnote();
-        });
+        $("#dn_duedate").focus();
+        return false;
     }
 
+    if (txt_attn.trim() == "") {
+        await Swal.fire({
+            icon: 'warning',
+            title: "Input Required",
+            text: "Attn is required"
+        });
+        $("#txt_attn").focus();
+        return false;
+    }
+
+    let swalOptions = {
+        title: '',
+        text: '',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Ya, simpan!',
+        cancelButtonText: 'Batal'
+    };
+
+    if (dn_number !== dn_number_old) {
+        swalOptions.title = 'Nomor DebitNote berubah!';
+        swalOptions.text = 'Apakah Anda yakin ingin menyimpan perubahan ini?';
+    } else {
+        swalOptions.title = 'Update DebitNote!';
+        swalOptions.text = 'Apakah Anda yakin ingin menyimpan perubahan ini?';
+    }
+
+    const result = await Swal.fire(swalOptions);
+
+    if (result.isConfirmed) {
+        UpdateHeader_Debitnote();
+    }
 }
+
+
 
 
 
