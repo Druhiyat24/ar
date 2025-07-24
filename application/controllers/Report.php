@@ -36,6 +36,7 @@ class Report extends CI_Controller
         $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
         $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
         $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+        $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
 
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
@@ -90,6 +91,7 @@ class Report extends CI_Controller
         $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
         $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
         $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+        $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
 
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
@@ -144,6 +146,7 @@ class Report extends CI_Controller
         $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
         $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
         $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+        $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
 
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);

@@ -4537,4 +4537,30 @@ function approve_doc_reverse($id)
     return $hasil;
 }
 
+
+public function get_debitnote_by_id($id) {
+    return $this->db->get_where('tbl_debitnote_h', ['id' => $id])->row_array();
+}
+
+function get_reffDN_by_id($id)
+{
+    $hasil = $this->db->query("SELECT * from (select a.no_dn, GROUP_CONCAT( DISTINCT mh.nm_memo) reff_doc, 'No Memo' text_reff_doc from (select no_dn from tbl_debitnote_h where id = '$id') a INNER JOIN memo_det md on md.no_dn = a.no_dn INNER JOIN memo_h mh on mh.id_h = md.id_h GROUP BY a.no_dn
+        UNION
+        select a.no_dn, GROUP_CONCAT( DISTINCT b.no_req) reff_doc, 'No Request' text_reff_doc from (select no_dn from tbl_debitnote_h where id = '$id') a INNER JOIN req_dn_h b on b.no_dn = a.no_dn GROUP BY a.no_dn) a GROUP BY no_dn");
+    return $hasil->row_array();
+}
+
+function update_debitnote_h($id_dn, $dn_number, $dn_date, $dn_duedate, $customer, $txt_attn, $alamat, $profit_center_dn, $akun, $curr1, $curr2, $txt_header1, $txt_header2, $txt_header3)
+{
+    $hasil = $this->db->query("UPDATE tbl_debitnote_h SET no_dn = '$dn_number', tgl_dn = '$dn_date', due_date = '$dn_duedate', customer = '$customer', attn = '$txt_attn', alamat = '$alamat', profit_center = '$profit_center_dn', akun = '$akun', from_curr = '$curr1', to_curr = '$curr2', header1 = '$txt_header1', header2 = '$txt_header2', header3 = '$txt_header3' WHERE id = '$id_dn' ");
+    return $hasil;
+}
+
+public function get_debitnoteDet_by_id($id) {
+    $query = $this->db->query("SELECT no_dn FROM tbl_debitnote_h WHERE id = '$id'");
+    $row = $query->row();
+    $no_dn = $row->no_dn;
+    return $this->db->get_where('tbl_debitnote_det', ['no_dn' => $no_dn])->result_array();
+}
+
 }

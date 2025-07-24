@@ -5858,7 +5858,8 @@ function cari_debit_note(){
 						trHTML += '<td>' + item.amount + "</td>";	
 						trHTML += '<td align="right">' + item.eqv_curr + "</td>";	
 						trHTML += '<td align="right">' + item.status + "</td>";	
-						trHTML += '<td><button id="print_inv_pi" name="print_inv_pi" type="button" class="btn btn-primary btn-sm" onclick="print_debit_note(\'' + item.id + '\',\'' + item.type_dn + '\')"><i class="fa fa-print"></i> Print</button>' + ''
+						trHTML += '<td><button id="print_inv_pi" name="print_inv_pi" type="button" class="btn btn-primary btn-sm mr-1" onclick="print_debit_note(\'' + item.id + '\',\'' + item.type_dn + '\')"><i class="fa fa-print"></i> Print</button>' + ''
+						+ '<button class="btn btn-warning btn-sm" onclick="window.open(\'edit_debitnote/' + item.id + '\', \'_blank\')"><i class="fas fa-edit"></i> Edit</button> '
 						+ ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="cancel_dn(\'' + item.no_dn + '\',\'' + item.id + '\', \'' + item.status + '\')">Cancel</button></td>';					
 				// trHTML += '<td><button id="export_to_excel" name="export_to_excel" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_pi(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button></td>';					
 
@@ -7288,7 +7289,6 @@ $('.form-group').removeClass('has-error'); // clear error class
 		type: "GET",
 		dataType: "JSON",
 		success: function (data) {
-			
 			$('[name="alamat"]').val(data.alamat);
 			$('[name="nama_supp"]').val(data.Supplier);
 			// $('[name="terbilang"]').val(bilang);
@@ -7297,6 +7297,7 @@ $('.form-group').removeClass('has-error'); // clear error class
 			
 		},
 		error: function (jqXHR, textStatus, errorThrown) {
+			console.log(jqXHR);
 			alert('Error get data from ajax');
 		}
 	});
@@ -13775,42 +13776,6 @@ function handleUpdate_BookInvoice() {
 
     let formData = $('#modal-update form').serialize();
 
-    // let confirmMessage = (no_inv !== no_inv_hide) 
-    // ? 'Nomor Invoice berubah! Apakah Anda yakin ingin menyimpan perubahan ini?' 
-    // : 'Apakah Anda yakin ingin menyimpan perubahan ini?';
-
-    // Swal.fire({
-    // 	title: 'Konfirmasi',
-    // 	text: confirmMessage,
-    // 	icon: 'warning',
-    // 	showCancelButton: true,
-    // 	confirmButtonText: 'Ya, simpan!',
-    // 	cancelButtonText: 'Batal'
-    // }).then((result) => {
-    // 	if (result.isConfirmed) {
-    // 		$.ajax({
-    // 			url: "update_booking_invoice/",
-    // 			type: 'POST',
-    // 			data: formData,
-    // 			dataType: 'json',
-    // 			success: function(response) {
-    // 				console.log(response);
-    // 				if (response.status === 'ok') {
-    // 					$('#modal-update').modal('hide');
-    // 					loadbookinvoice();
-    // 					Swal.fire('Tersimpan!', 'Data berhasil diperbarui.', 'success');
-    // 				} else {
-    // 					Swal.fire('Gagal!', 'Gagal menyimpan data.', 'error');
-    // 				}
-    // 			},
-    // 			error: function(xhr, status, error) {
-    // 				console.error('Error:', error);
-    // 				Swal.fire('Gagal!', 'Terjadi kesalahan saat mengirim data.', 'error');
-    // 			}
-    // 		});
-    // 	}
-    // });
-
     if (no_inv !== no_inv_hide) {
         // Jika ada perubahan nomor invoice
         Swal.fire({
@@ -14491,4 +14456,150 @@ function cari_data_doc_reverse() {
 	function export_sj_noncom2() { 		
 		window.open(".../../export_sj_noncom2/" + dt_dari_sj  + "/" + dt_sampai_sj  + "/"); 
 	}
+
+	function get_alamat_edit(kode){
+$('.form-group').removeClass('has-error'); // clear error class
+	$('.help-block').empty(); // clear error string
+	//Ajax Load data from ajax
+	$.ajax({
+		url: BASE_URL + 'Arnag/get_alamat/' + kode, 
+		type: "GET",
+		dataType: "JSON",
+		success: function (data) {
+			$('[name="alamat"]').val(data.alamat);
+			$('[name="nama_supp"]').val(data.Supplier);
+			// $('[name="terbilang"]').val(bilang);
+			// $('#update-kwt').modal('show'); // show bootstrap modal when complete loaded
+			//
+			
+		},
+		error: function (jqXHR, textStatus, errorThrown) {
+			alert('Error get data from ajax');
+		}
+	});
+}
+
+
+function handleUpdate_Debitnote() {
+	let dn_number = $('#dn_number').val().trim();
+	let dn_number_old = $('#dn_number_old').val().trim();
+
+
+    if (dn_number !== dn_number_old) {
+        // Jika ada perubahan nomor invoice
+        Swal.fire({
+        	title: 'Nomor DebitNote berubah!',
+        	text: "Apakah Anda yakin ingin menyimpan perubahan ini?",
+        	icon: 'warning',
+        	customClass: 'swal2-red',
+        	showCancelButton: true,
+        	confirmButtonColor: '#3085d6',
+        	cancelButtonColor: '#d33',
+        	confirmButtonText: 'Ya, simpan!',
+        	cancelButtonText: 'Batal'
+        }).then((result) => {
+      		UpdateHeader_Debitnote();
+        });
+    } else {
+    	Swal.fire({
+    		title: 'Update DebitNote!',
+    		text: "Apakah Anda yakin ingin menyimpan perubahan ini?",
+    		icon: 'warning',
+    		showCancelButton: true,
+    		confirmButtonColor: '#3085d6',
+    		cancelButtonColor: '#d33',
+    		confirmButtonText: 'Ya, simpan!',
+    		cancelButtonText: 'Batal'
+    	}).then((result) => {
+    		UpdateHeader_Debitnote();
+        });
+    }
+
+}
+
+
+
+function UpdateHeader_Debitnote() {
+	var id_dn = $('#id_dn').val();
+	var dn_number = $('#dn_number').val();
+	var dn_date = $('#dn_date').val();
+	var dn_duedate = $('#dn_duedate').val();
+	var customer = $('#customer').val();
+	var txt_attn = $('#txt_attn').val();
+	var alamat = $('#alamat').val();
+	var profit_center_dn = $('#profit_center_dn').val();
+	var akun = $('#akun').val();
+	var curr1 = $('#curr1').val();
+	var curr2 = $('#curr2').val();
+	var txt_header1 = $('#txt_header1').val();
+	var txt_header2 = $('#txt_header2').val();
+	var txt_header3 = $('#txt_header3').val();
+
+	console.log("id_dn:", id_dn);
+	console.log("dn_number:", dn_number);
+	console.log("dn_date:", dn_date);
+	console.log("dn_duedate:", dn_duedate);
+	console.log("customer:", customer);
+	console.log("txt_attn:", txt_attn);
+	console.log("alamat:", alamat);
+	console.log("profit_center_dn:", profit_center_dn);
+	console.log("akun:", akun);
+	console.log("curr1:", curr1);
+	console.log("curr2:", curr1);
+	console.log("txt_header1:", txt_header1);
+	console.log("txt_header2:", txt_header2);
+	console.log("txt_header3:", txt_header3);
+
+
+	$.ajax({
+		url: BASE_URL + 'Arnag/update_debitnote_h',
+		method: 'POST',
+		data: {
+			id_dn: id_dn,
+			dn_number: dn_number,
+			dn_date: dn_date,
+			dn_duedate: dn_duedate,
+			customer: customer,
+			txt_attn: txt_attn,
+			alamat: alamat,
+			profit_center_dn: profit_center_dn,
+			akun: akun,
+			curr1: curr1,
+			curr2: curr2,
+			txt_header1: txt_header1,
+			txt_header2: txt_header2,
+			txt_header3: txt_header3
+		},
+		dataType: 'json',
+		success: function (response) {
+			if (response.status) {
+				Swal.fire({
+					title: 'Berhasil!',
+					text: 'Data berhasil diupdate.',
+					icon: 'success',
+					confirmButtonText: 'OK'
+				}).then((result) => {
+					if (result.isConfirmed) {
+                location.reload(); // reload halaman setelah klik OK
+            }
+        });
+			} else {
+				Swal.fire({
+					title: 'Gagal!',
+					text: response.message,
+					icon: 'error',
+					confirmButtonText: 'Tutup'
+				});
+			}
+		},
+		error: function (xhr, status, error) {
+			Swal.fire({
+				title: 'Error Server!',
+				text: 'Terjadi kesalahan: ' + xhr.responseText,
+				icon: 'error'
+			});
+		}
+
+	});
+}
 
