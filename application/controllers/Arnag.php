@@ -3372,6 +3372,7 @@ public function update_debitnote_h()
 
     $id_dn             = $this->input->post('id_dn');
     $dn_number         = $this->input->post('dn_number');
+    $dn_number_old     = $this->input->post('dn_number_old');
     $dn_date           = $this->input->post('dn_date');
     $dn_duedate        = $this->input->post('dn_duedate');
     $customer          = $this->input->post('customer');
@@ -3391,7 +3392,7 @@ public function update_debitnote_h()
     }
 
 
-    $this->Model_nag->update_debitnote_h($id_dn, $dn_number, $dn_date, $dn_duedate, $customer, $txt_attn, $alamat, $profit_center_dn, $akun, $curr1, $curr2, $txt_header1, $txt_header2, $txt_header3);
+    $this->Model_nag->update_debitnote_h($id_dn, $dn_number, $dn_number_old, $dn_date, $dn_duedate, $customer, $txt_attn, $alamat, $profit_center_dn, $akun, $curr1, $curr2, $txt_header1, $txt_header2, $txt_header3);
     
     echo json_encode(['status' => true, 'message' => 'Berhasil update']);
 }

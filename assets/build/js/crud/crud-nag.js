@@ -14522,6 +14522,7 @@ function handleUpdate_Debitnote() {
 function UpdateHeader_Debitnote() {
 	var id_dn = $('#id_dn').val();
 	var dn_number = $('#dn_number').val();
+	var dn_number_old = $('#dn_number_old').val();
 	var dn_date = $('#dn_date').val();
 	var dn_duedate = $('#dn_duedate').val();
 	var customer = $('#customer').val();
@@ -14537,6 +14538,7 @@ function UpdateHeader_Debitnote() {
 
 	console.log("id_dn:", id_dn);
 	console.log("dn_number:", dn_number);
+	console.log("dn_number_old:", dn_number_old);
 	console.log("dn_date:", dn_date);
 	console.log("dn_duedate:", dn_duedate);
 	console.log("customer:", customer);
@@ -14557,6 +14559,7 @@ function UpdateHeader_Debitnote() {
 		data: {
 			id_dn: id_dn,
 			dn_number: dn_number,
+			dn_number_old: dn_number_old,
 			dn_date: dn_date,
 			dn_duedate: dn_duedate,
 			customer: customer,
