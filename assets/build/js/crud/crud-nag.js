@@ -14468,6 +14468,7 @@ $('.form-group').removeClass('has-error'); // clear error class
 		success: function (data) {
 			$('[name="alamat"]').val(data.alamat);
 			$('[name="nama_supp"]').val(data.Supplier);
+			// getcoa_dn_edit();
 			// $('[name="terbilang"]').val(bilang);
 			// $('#update-kwt').modal('show'); // show bootstrap modal when complete loaded
 			//
@@ -14481,56 +14482,57 @@ $('.form-group').removeClass('has-error'); // clear error class
 
 
 async function handleUpdate_Debitnote() {
-    let dn_number = $('#dn_number').val().trim();
-    let dn_number_old = $('#dn_number_old').val().trim();
-    let dn_duedate = $('#dn_duedate').val();
-    let dn_date = $('#dn_date').val();
-    let txt_attn = $('#txt_attn').val();
+	let dn_number = $('#dn_number').val().trim();
+	let dn_number_old = $('#dn_number_old').val().trim();
+	let dn_duedate = $('#dn_duedate').val();
+	let dn_date = $('#dn_date').val();
+	let txt_attn = $('#txt_attn').val();
 
-    if (dn_duedate < dn_date) {
-        await Swal.fire({
-            icon: 'error',
-            title: "Invalid Date",
-            text: "Due Date can't be smaller than Debit Note Date"
-        });
-        $("#dn_duedate").focus();
-        return false;
-    }
+	if (dn_duedate < dn_date) {
+		await Swal.fire({
+			icon: 'error',
+			title: "Tanggal Tidak Valid",
+			text: "Tanggal Jatuh Tempo tidak boleh lebih kecil dari Tanggal Debit Note"
+		});
+		$("#dn_duedate").focus();
+		return false;
+	}
 
-    if (txt_attn.trim() == "") {
-        await Swal.fire({
-            icon: 'warning',
-            title: "Input Required",
-            text: "Attn is required"
-        });
-        $("#txt_attn").focus();
-        return false;
-    }
+	if (txt_attn.trim() == "") {
+		await Swal.fire({
+			icon: 'warning',
+			title: "Input Diperlukan",
+			text: "Kolom Attn harus diisi"
+		});
+		$("#txt_attn").focus();
+		return false;
+	}
 
-    let swalOptions = {
-        title: '',
-        text: '',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Ya, simpan!',
-        cancelButtonText: 'Batal'
-    };
 
-    if (dn_number !== dn_number_old) {
-        swalOptions.title = 'Nomor DebitNote berubah!';
-        swalOptions.text = 'Apakah Anda yakin ingin menyimpan perubahan ini?';
-    } else {
-        swalOptions.title = 'Update DebitNote!';
-        swalOptions.text = 'Apakah Anda yakin ingin menyimpan perubahan ini?';
-    }
+	let swalOptions = {
+		title: '',
+		text: '',
+		icon: 'warning',
+		showCancelButton: true,
+		confirmButtonColor: '#3085d6',
+		cancelButtonColor: '#d33',
+		confirmButtonText: 'Ya, simpan!',
+		cancelButtonText: 'Batal'
+	};
 
-    const result = await Swal.fire(swalOptions);
+	if (dn_number !== dn_number_old) {
+		swalOptions.title = 'Nomor DebitNote berubah!';
+		swalOptions.text = 'Apakah Anda yakin ingin menyimpan perubahan ini?';
+	} else {
+		swalOptions.title = 'Update DebitNote!';
+		swalOptions.text = 'Apakah Anda yakin ingin menyimpan perubahan ini?';
+	}
 
-    if (result.isConfirmed) {
-        UpdateHeader_Debitnote();
-    }
+	const result = await Swal.fire(swalOptions);
+
+	if (result.isConfirmed) {
+		UpdateHeader_Debitnote();
+	}
 }
 
 
@@ -14623,4 +14625,172 @@ function UpdateHeader_Debitnote() {
 
 	});
 }
+
+async function simpan_data_dn_detail() {
+	let total = $('[name="total_value_h"]').val();
+	let no_invoice = $('[name="dn_number"]').val();
+
+	$('[name="no_debinote"]').val(no_invoice);
+
+	if (total == 0 || total == '') {
+		await Swal.fire({
+			icon: 'warning',
+			title: 'Total Tidak Valid',
+			text: 'Jumlah tidak boleh kosong atau nol'
+		});
+	} else {
+		let result = await Swal.fire({
+			title: 'Simpan Detail?',
+			text: "Apakah Anda yakin ingin menyimpan detail Debit Note?",
+			icon: 'question',
+			showCancelButton: true,
+			confirmButtonText: 'Ya, simpan',
+			cancelButtonText: 'Batal'
+		});
+
+		if (result.isConfirmed) {
+			simpandn_det_edit();
+		}
+	}
+}
+
+
+
+async function simpandn_det_edit() {
+	const no_dn = $('#dn_number').val();
+
+	// Hapus detail lama dulu
+	const hapusRes = await $.ajax({
+		url: BASE_URL + "Arnag/hapus_dn_det/",
+		type: "POST",
+		data: { no_dn: no_dn },
+		dataType: "JSON"
+	});
+
+	if (!hapusRes.status) {
+		await Swal.fire({
+			icon: 'error',
+			title: 'Gagal Hapus',
+			text: 'Gagal menghapus data detail sebelumnya.'
+		});
+		return false;
+	}
+
+	simpandn_det_total();
+	// Kumpulkan data detail baru
+	let data = [];
+	const table = document.getElementById("table-dn");
+
+	for (let i = 2; i < table.rows.length; i++) {
+		const row = table.rows[i].cells;
+
+		data.push({
+			"no_dn": no_dn,
+			"deskripsi": row[0].children[0].value,
+			"supplier": row[1].children[0].value,
+			"supplier_invoice": row[2].children[0].value,
+			"header1": row[3].children[0].value,
+			"header2": row[4].children[0].value,
+			"header3": row[5].children[0].value,
+			"value": row[6].children[0].value,
+			"rate": row[7].children[0].value,
+			"amount": row[8].children[0].value,
+			"no_coa": row[9].children[0].value,
+			"nm_memo": row[12].children[0].value || '',
+			"id_memo_det": row[13].children[0].value || ''
+		});
+	}
+
+	if (data.length === 0) {
+		await Swal.fire({
+			icon: 'warning',
+			title: 'Data Kosong',
+			text: 'Tidak ada data detail yang disimpan.'
+		});
+		return false;
+	}
+
+	// Simpan data baru
+	const simpanRes = await $.ajax({
+		url: BASE_URL + "Arnag/simpandn_det/",
+		type: "POST",
+		data: { data_table: data },
+		dataType: "JSON"
+	});
+
+	if (simpanRes.status) {
+		await Swal.fire({
+			icon: 'success',
+			title: 'Berhasil',
+			text: 'Data detail berhasil disimpan.'
+		}).then((result) => {
+			location.reload();
+		});
+	} else {
+		await Swal.fire({
+			icon: 'error',
+			title: 'Gagal Simpan',
+			text: 'Data detail gagal disimpan.'
+		});
+	}
+}
+
+
+function simpandn_det_total() {
+	var id_dn = $('#id_dn').val();
+	var dn_total = $('#total_value_h').val();
+	var dn_total_eqv = $('#total_value_idr_h').val();
+
+	console.log("id_dn:", id_dn);
+	console.log("dn_total:", dn_total);
+	console.log("dn_total_eqv:", dn_total_eqv);
+
+	$.ajax({
+		url: BASE_URL + 'Arnag/simpandn_det_total',
+		method: 'POST',
+		data: {
+			id_dn: id_dn,
+			dn_total: dn_total,
+			dn_total_eqv: dn_total_eqv
+		},
+		dataType: 'json',
+		success: function (response) {
+		},
+		error: function (xhr, status, error) {
+		}
+
+	});
+}
+
+
+
+// function getcoa_dn_edit() 
+// {	
+
+// 	let id_cust 	 = $('[name="customer"]').val();
+
+// 	if (id_cust == '524' || id_cust == '804' || id_cust == '366') {
+// 		cust_ctg = 'Related';
+// 	}else{
+// 		cust_ctg = 'Third';
+// 	}
+
+// 	console.log(cust_ctg);
+
+// 	$.ajax({
+// 		url: BASE_URL + "Arnag/getcoa3/" + cust_ctg + "/",		
+// 		type: "GET",
+// 		dataType: "JSON",
+// 		success: function (data) {
+
+// 			$('[name="no_coa_deb3"]').val(data.no_coa);
+// 			$('[name="nama_coa_deb3"]').val(data.nama_coa);
+// 			console.log( data.no_coa );
+
+// 		},
+// 		error: function (jqXHR, textStatus, errorThrown) {
+// 			alert('Error get data from ajax');
+// 		}
+// 	});
+// }
 

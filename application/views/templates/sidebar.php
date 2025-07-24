@@ -58,9 +58,9 @@
         <nav class="mt-2">
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                 <!-- Add icons to the links using the .nav-icon class
-                 with font-awesome or any other icon font library -->
-                 <a href="http://10.10.5.62:8080/erp/" class="nav-link"><li class="nav-header">MAIN MENU</li></a>
-                 <li class="nav-item">
+                   with font-awesome or any other icon font library -->
+                   <a href="http://10.10.5.62:8080/erp/" class="nav-link"><li class="nav-header">MAIN MENU</li></a>
+                   <li class="nav-item">
                     <a href="#" class="nav-link">
                         <i class="nav-icon fas fa-user-cog"></i>
                         <p>
@@ -68,14 +68,7 @@
                             <i class="fas fa-angle-left right"></i>
                         </p>
                     </a>
-                    <!-- <ul class="nav nav-treeview">
-                        <li class="nav-item">
-                            <a href="<?= base_url('arnag/userrole'); ?>" class="nav-link">
-                                <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                <p>User Role</p>
-                            </a>
-                        </li>                      
-                    </ul> -->
+
                     <?php foreach ($user_access_1 as $ua_1) : ?>
                         <ul class="nav nav-treeview">
                             <li class="nav-item">
@@ -86,7 +79,28 @@
                             </li>
                         </ul>
                     <?php endforeach; ?>
+
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item has-treeview">
+                            <a href="#" class="nav-link">
+                                <i class="far fa-folder nav-icon"></i>
+                                <p>
+                                    Master
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="<?= base_url('arnag/master_other_charges'); ?>" class="nav-link">
+                                        <i class="far fa-dot-circle nav-icon"></i>
+                                        <p>Master Other Charges</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
                 </li>
+
                 <!-- <li class="nav-item">
                     <a href="#" class="nav-link">
                         <i class="nav-icon fas fa-edit"></i>

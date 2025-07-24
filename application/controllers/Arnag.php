@@ -2593,13 +2593,13 @@ public function rvs_invoice()
 
 public function reverse_kwt()
 {
-   $id = $this->input->post('id_inv');
-   $keter = $this->input->post('keter');
-   $tgl_reverse = date('Y-m-d');
-   $nama = $this->session->userdata('username');
-   $activity = "Reverse Kwitansi";
+ $id = $this->input->post('id_inv');
+ $keter = $this->input->post('keter');
+ $tgl_reverse = date('Y-m-d');
+ $nama = $this->session->userdata('username');
+ $activity = "Reverse Kwitansi";
 
-   $data = [
+ $data = [
 
     'nama'          => $nama,
     'activity'      => $activity,
@@ -2752,13 +2752,13 @@ public function reverse_debitnote()
 
 public function reverse_dn()
 {
-   $id = $this->input->post('id_inv');
-   $keter = $this->input->post('keter');
-   $tgl_reverse = date('Y-m-d');
-   $nama = $this->session->userdata('username');
-   $activity = "Reverse Debitnote";
+ $id = $this->input->post('id_inv');
+ $keter = $this->input->post('keter');
+ $tgl_reverse = date('Y-m-d');
+ $nama = $this->session->userdata('username');
+ $activity = "Reverse Debitnote";
 
-   $data = [
+ $data = [
 
     'nama'          => $nama,
     'activity'      => $activity,
@@ -3324,37 +3324,37 @@ public function edit_debitnote($id = null) {
     }
 
     if (!$this->session->userdata('username')) {
-            redirect('auth');
-        }
+        redirect('auth');
+    }
 
-        $data['title'] = 'Form Edit Debit Note';
-        $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
-        $data['data_dn'] = $this->Model_nag->get_debitnote_by_id($id);
-        $data['data_dn_det'] = $this->Model_nag->get_debitnoteDet_by_id($id);
-        $data['reff_dn'] = $this->Model_nag->get_reffDN_by_id($id);
+    $data['title'] = 'Form Edit Debit Note';
+    $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+    $data['data_dn'] = $this->Model_nag->get_debitnote_by_id($id);
+    $data['data_dn_det'] = $this->Model_nag->get_debitnoteDet_by_id($id);
+    $data['reff_dn'] = $this->Model_nag->get_reffDN_by_id($id);
 
-        $data['profit_center'] = $this->Model_nag->cari_profit_center();
-        $data['customer'] = $this->Model_nag->cari_customer();
-        $data['data_req'] = $this->Model_nag->cari_no_req();
-        $data['nm_memo'] = $this->Model_nag->cari_nm_memo();
-        $data['supplier'] = $this->Model_nag->cari_supplier();
-        $data['bank'] = $this->Model_nag->get_bank();
-        $data['cost_center'] = $this->Model_nag->cari_cost();
-        $data['coa'] = $this->Model_nag->cari_coa();
-        $data['kode_alokasi'] = $this->Model_nag->get_kode_debitnote();
-        $data['rate'] = $this->Model_nag->get_rate();
-        $data['kode_kwt'] = $this->Model_nag->get_kode_kwt();
-        $data['type'] = $this->db->get('tbl_type')->result_array();
-        $data['isi_bank'] = $this->Model_nag->load_bank();
+    $data['profit_center'] = $this->Model_nag->cari_profit_center();
+    $data['customer'] = $this->Model_nag->cari_customer();
+    $data['data_req'] = $this->Model_nag->cari_no_req();
+    $data['nm_memo'] = $this->Model_nag->cari_nm_memo();
+    $data['supplier'] = $this->Model_nag->cari_supplier();
+    $data['bank'] = $this->Model_nag->get_bank();
+    $data['cost_center'] = $this->Model_nag->cari_cost();
+    $data['coa'] = $this->Model_nag->cari_coa();
+    $data['kode_alokasi'] = $this->Model_nag->get_kode_debitnote();
+    $data['rate'] = $this->Model_nag->get_rate();
+    $data['kode_kwt'] = $this->Model_nag->get_kode_kwt();
+    $data['type'] = $this->db->get('tbl_type')->result_array();
+    $data['isi_bank'] = $this->Model_nag->load_bank();
         // $data['nm_memo'] = $this->Model_nag->cari_nm_memo_temp();
-        $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
-        $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
-        $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
-        $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
-        $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
-        $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
-        $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
-        $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+    $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+    $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+    $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+    $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+    $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+    $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+    $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
 
 
     // if (!$data['invoice']) {
@@ -3396,5 +3396,77 @@ public function update_debitnote_h()
     
     echo json_encode(['status' => true, 'message' => 'Berhasil update']);
 }
+
+public function hapus_dn_det()
+{
+    $no_dn = $this->input->post('no_dn');
+
+    if (!$no_dn) {
+        echo json_encode(['status' => false, 'message' => 'No DN tidak valid']);
+        return;
+    }
+
+    $sql_copy = "INSERT INTO tbl_debitnote_det_edit SELECT * FROM tbl_debitnote_det WHERE no_dn = ?";
+    $this->db->query($sql_copy, [$no_dn]);
+
+    $this->db->where('no_dn', $no_dn);
+    $delete = $this->db->delete('tbl_debitnote_det');
+
+    if ($delete) {
+        echo json_encode(['status' => true, 'message' => 'Data berhasil disalin dan dihapus']);
+    } else {
+        echo json_encode(['status' => false, 'message' => 'Gagal menghapus data']);
+    }
+}
+
+
+public function simpandn_det_total()
+{
+
+    $id_dn            = $this->input->post('id_dn');
+    $dn_total         = $this->input->post('dn_total');
+    $dn_total_eqv     = $this->input->post('dn_total_eqv');
+
+    if (!$id_dn) {
+        echo json_encode(['status' => false, 'message' => 'Data tidak lengkap']);
+        return;
+    }
+
+
+    $this->Model_nag->simpandn_det_total($id_dn, $dn_total, $dn_total_eqv);
+    
+    echo json_encode(['status' => true, 'message' => 'Berhasil update']);
+}
+
+public function master_other_charges()
+    {
+        if (!$this->session->userdata('username')) {
+            redirect('auth');
+        }
+        //
+        $kode_inv = "";
+        $data['kode_book_invoice'] = $this->Model_nag->get_kode_book_invoice($kode_inv);
+        $data['title'] = 'Master Other Charges';
+        $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+        $data['customer'] = $this->Model_nag->cari_customer();
+        $data['profit_center'] = $this->Model_nag->cari_profit_center();
+        $data['book_customer'] = $this->Model_nag->cari_customer();
+        $data['type'] = $this->db->get('tbl_type')->result_array();
+        $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+        $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+        $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+        $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+        $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+        $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+        $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+        $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+
+
+        $this->load->view('templates/header', $data);
+        $this->load->view('templates/sidebar', $data);
+        $this->load->view('arnag/master_other_charges', $data);
+        $this->load->view('templates/footer', $data);
+    }
+
 
 }

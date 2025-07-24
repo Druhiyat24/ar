@@ -4568,4 +4568,12 @@ public function get_debitnoteDet_by_id($id) {
     return $this->db->get_where('tbl_debitnote_det', ['no_dn' => $no_dn])->result_array();
 }
 
+function simpandn_det_total($id_dn, $dn_total, $dn_total_eqv)
+{
+
+   $hasil = $this->db->query("UPDATE tbl_debitnote_h SET amount = '$dn_total', eqv_curr = '$dn_total_eqv' WHERE id = '$id_dn' ");
+
+   return $hasil;
+}
+
 }

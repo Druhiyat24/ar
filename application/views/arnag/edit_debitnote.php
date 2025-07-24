@@ -69,8 +69,8 @@
                         <div class="form-group col-md-12">
                             <label>Attn</label>
                             <input type="text" class="form-control" id="txt_attn" name="txt_attn" value="<?= $data_dn['attn']; ?>" autocomplete='off' required>
-                            <input type="hidden" class="form-control" id="no_coa_deb3" name="no_coa_deb3" readonly>
-                            <input type="hidden" class="form-control" id="nama_coa_deb3" name="nama_coa_deb3" readonly>
+                            <input type="hidden" class="form-control" id="no_coa_deb3" name="no_coa_deb3" value="<?= $data_dn['no_coa']; ?>" readonly>
+                            <input type="hidden" class="form-control" id="nama_coa_deb3" name="nama_coa_deb3" value="<?= $data_dn['nama_coa']; ?>" readonly>
                         </div>
 
                         <div class="form-group col-md-12">
@@ -304,13 +304,13 @@
                                                     <input style="width: 200px" type="text" class="form-control" name="inputan2" placeholder="" value="<?= $row['supplier_invoice']; ?>" autocomplete='off'> 
                                                 </td>
                                                 <td>
-                                                    <input style="width: 200px" type="text" class="form-control" id="inputan3" name="inputan3" placeholder="" value="<?= $row['header1']; ?>" autocomplete='off'>
+                                                    <input style="width: 200px" type="text" class="form-control" id="inputan3" name="inputan3" placeholder="" value="<?= $row['header1']; ?>" autocomplete='off' <?= ($data_dn['header1'] != '') ? '' : 'readonly' ?>>
                                                 </td>
                                                 <td>
-                                                    <input style="width: 200px" type="text" class="form-control" id="inputan4" name="inputan4" placeholder="" value="<?= $row['header2']; ?>" autocomplete='off' readonly> 
+                                                    <input style="width: 200px" type="text" class="form-control" id="inputan4" name="inputan4" placeholder="" value="<?= $row['header2']; ?>" autocomplete='off' <?= ($data_dn['header2'] != '') ? '' : 'readonly' ?>> 
                                                 </td>
                                                 <td>
-                                                    <input style="width: 200px" type="text" class="form-control" id="inputan5" name="inputan5" placeholder="" value="<?= $row['header3']; ?>" autocomplete='off'> 
+                                                    <input style="width: 200px" type="text" class="form-control" id="inputan5" name="inputan5" placeholder="" value="<?= $row['header3']; ?>" autocomplete='off' <?= ($data_dn['header3'] != '') ? '' : 'readonly' ?>> 
                                                 </td>
                                                 <td>
                                                     <input  type="text" class="form-control" id="amt" name="amt" style="text-align:right; width: 150px;" value="<?= $row['value']; ?>" oninput="modal_input_amt_dn(value)" autocomplete="off">
@@ -382,7 +382,7 @@
 
                                         <div class="form-group row">
                                             <div class="col-sm-12 text-right">
-                                                <button type="button" class="btn btn-success" data-toggle="modal" onclick="simpan_data_dn()">
+                                                <button type="button" class="btn btn-success" data-toggle="modal" onclick="simpan_data_dn_detail()">
                                                     <i class="fa fa-save"></i> Update Detail
                                                 </button>
                                             </div>
@@ -405,7 +405,7 @@
                 <!-- Button Simpan Data Invoice  -->
                 <div class="row col-sm-12">
                     <div class="input-group mb-3">
-                       <button type="button" class="btn btn-danger" onclick="confirmBack()">
+                       <button type="button" class="btn btn-danger" onclick="window.close();">
                         <i class="fas fa-arrow-circle-left"></i> Back
                     </button>
                     <!-- <button type="button" class="btn btn-primary" data-toggle="modal" onclick="simpan_data_dn()"><i class="fa fa-save"></i> Save </button> -->
@@ -1300,5 +1300,31 @@ $('.form-group').removeClass('has-error'); // clear error class
         }
     }
 });
+</script>
+
+<script type="text/javascript">
+    function confirmBack() {
+    const id_debitnote = document.getElementById('id_dn').value;
+
+    Swal.fire({
+        title: 'Kembali ke daftar Debit Note?',
+        text: 'Silakan pilih tindakan.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Kembali & Cetak',
+        cancelButtonText: 'Hanya Kembali',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Cetak dan kembali
+            window.open('<?= base_url("arnag/report_invoice3/") ?>' + id_debitnote, '_blank');
+            window.close();
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+            // Hanya kembali
+            window.close();
+        }
+    });
+}
+
 </script>
 
