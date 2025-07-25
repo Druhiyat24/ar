@@ -932,6 +932,7 @@ function cari_so() {
 			},
 			error: function (jqXHR, textStatus, errorThrown) {
 				alert('Error get data from ajax');
+				console.log(jqXHR.text);
 			}
 		});	
 
@@ -14761,6 +14762,521 @@ function simpandn_det_total() {
 
 	});
 }
+
+
+function simpanOtherCharges() {
+	const nama_biaya = $('#nama_biaya').val().trim();
+
+	if (nama_biaya === '') {
+		Swal.fire('Peringatan', 'Nama biaya tidak boleh kosong!', 'warning');
+		return;
+	}
+
+	$.ajax({
+		url: "simpan_other_charges/",
+		type: "POST",
+		data: { nama_biaya: nama_biaya },
+		dataType: "json",
+		success: function(response) {
+			if (response.status === 'exists') {
+				Swal.fire('Gagal', 'Nama biaya sudah ada!', 'error');
+			} else if (response.status === 'success') {
+				Swal.fire({
+					icon: 'success',
+					title: 'Berhasil',
+					text: 'Other charge berhasil ditambahkan!'
+				}).then(() => {
+					$('#modalOtherCharges').modal('hide');
+					cari_list_other_charges(); 
+				});
+			} else {
+				Swal.fire('Error', 'Terjadi kesalahan server.', 'error');
+			}
+		},
+		error: function (xhr, status, error) {
+			Swal.fire({
+				title: 'Error Server!',
+				text: 'Terjadi kesalahan: ' + xhr.responseText,
+				icon: 'error'
+			});
+		}
+	});
+}
+
+function cari_list_other_charges() { 
+
+	$('#table-other-charges tbody tr').remove();	
+
+	var status = $('#status').val();
+	console.log("Status: " + status);
+
+	$.ajax({		
+		url: "cari_list_other_charges/" + status + "/",					
+		type: "GET",
+		dataType: "JSON",
+		success: function (response) {
+
+			var trHTML = '';
+			$.each(response, function (i, item) { 					
+				if(item.status == 'Y' ){				
+					trHTML += '<tr>';					
+					trHTML += '<td>' + item.id + "</td>";
+					trHTML += '<td>' + item.nama_pilihan + "</td>";	
+					trHTML += '<td>' + item.status_show + "</td>";
+					trHTML += '<td><button id="change_status" name="change_status" type="button" class="btn btn-warning btn-sm" onclick="Chage_status_Other_charge(' + item.id + ')" ><i class="fas fa-eye-slash"></i> Non-Active</button>' + ''			
+					+ ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="Delete_other_charge(' + item.id + ')"><i class="fas fa-trash-alt"></i> Delete</button></td>';
+
+					trHTML += '</tr>';
+				}else{
+					trHTML += '<tr>';					
+					trHTML += '<td>' + item.id + "</td>";
+					trHTML += '<td>' + item.nama_pilihan + "</td>";	
+					trHTML += '<td>' + item.status_show + "</td>";
+					trHTML += '<td><button id="change_status" name="change_status" type="button" class="btn btn-info btn-sm" onclick="Chage_status_Other_charge(' + item.id + ')" ><i class="fas fa-eye"></i> Active</button>' + ''			
+					+ ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="Delete_other_charge(' + item.id + ')"><i class="fas fa-trash-alt"></i> Delete</button></td>';
+
+					trHTML += '</tr>';
+				}
+			});
+
+			$('#table-other-charges').append(trHTML);				
+
+		},
+		error: function (jqXHR, textStatus, errorThrown) {
+			alert('Error get data from ajax');
+		}
+	});	
+
+}
+
+
+function Chage_status_Other_charge(id) {
+	Swal.fire({
+		title: "Ubah Status?",
+		text: "Status akan diubah. Lanjutkan?",
+		icon: "warning",
+		showCancelButton: true,
+		confirmButtonText: "Ya, ubah!",
+		cancelButtonText: "Batal"
+	}).then((result) => {
+		if (result.isConfirmed) {
+			$.ajax({
+				url: "ubah_status_other_charges/" + id,
+				type: "POST",
+				dataType: "JSON",
+				success: function(response) {
+					if (response.status === true) {
+						Swal.fire("Berhasil!", response.message, "success");
+                        // Refresh list
+                        cari_list_other_charges(); 
+                    } else {
+                    	Swal.fire("Gagal!", response.message, "error");
+                    }
+                },
+                error: function() {
+                	Swal.fire("Error!", "Terjadi kesalahan saat mengubah status.", "error");
+                }
+            });
+		}
+	});
+}
+
+function Delete_other_charge(id) {
+	Swal.fire({
+		title: "Hapus Data?",
+		text: "Data yang dihapus tidak dapat dikembalikan!",
+		icon: "warning",
+		showCancelButton: true,
+		confirmButtonText: "Ya, hapus!",
+		cancelButtonText: "Batal"
+	}).then((result) => {
+		if (result.isConfirmed) {
+			$.ajax({
+				url: "hapus_other_charge/" + id,
+				type: "POST",
+				dataType: "JSON",
+				success: function(response) {
+					if (response.status === true) {
+						Swal.fire("Terhapus!", response.message, "success");
+                        // Refresh list
+                        cari_list_other_charges($('#filter_status').val()); 
+                    } else {
+                    	Swal.fire("Gagal!", response.message, "error");
+                    }
+                },
+                error: function() {
+                	Swal.fire("Error!", "Terjadi kesalahan saat menghapus data.", "error");
+                }
+            });
+		}
+	});
+}
+
+function export_list_other_charge() { 		
+	var status = $('#status').val();	
+	window.open(".../../export_list_other_charge/" + status + "/" ); 
+}
+
+
+function cari_book_inv_knitting() {
+
+	$('#table-add-bookinvoice tbody tr').remove();	
+
+		//Date range picker
+		$('input[name="reservation"]').daterangepicker({
+			autoUpdateInput: false,
+			locale: {
+				cancelLabel: 'Clear'
+			}
+		});
+
+		$('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
+			dt_dari = picker.startDate.format('YYYY-MM-DD');
+			dt_sampai = picker.endDate.format('YYYY-MM-DD');
+			$(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+		});
+
+		$('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
+			$(this).val('');
+			dt_dari = "undefined";
+			dt_sampai = "undefined";
+		});
+
+		$.ajax({		
+			url: "cari_book_inv_knitting/" + dt_dari + "/" + dt_sampai + "/",		
+			type: "GET",
+			dataType: "JSON",
+			success: function (response) {
+				
+				var trHTML = '';
+				$.each(response, function (i, item) {
+					trHTML += '<tr>';	
+					trHTML += '<td><button id="add_book_inv" name="add_book_inv" type="button" class="btn btn-success btn-sm" onclick="add_no_book_inv()">Add</td>';
+					trHTML += '<td>' + item.no_invoice + "</td>";
+					trHTML += '<td>' + item.customer + "</td>";			
+					trHTML += '<td>' + item.shipp + "</td>";
+					trHTML += '<td>' + item.doc_type + "</td>";
+					trHTML += '<td>' + item.doc_number + "</td>";
+					trHTML += '<td>' + item.tanggal + "</td>";
+					trHTML += '<td>' + item.type + "</td>";
+					trHTML += '<td>' + item.status + "</td>";
+					trHTML += '<td>' + item.id_customer + "</td>";
+					trHTML += '<td>' + item.id + "</td>";
+					trHTML += '<td align="right">' + item.amount + "</td>";
+					trHTML += '<td align="right">' + item.profit_center + "</td>";
+					trHTML += '</tr>';
+				});
+
+				$('#table-add-bookinvoice').append(trHTML);				
+
+			},
+			error: function (jqXHR, textStatus, errorThrown) {
+				alert('Error get data from ajax');
+			}
+		});	
+	}
+
+
+	function cari_so_knitting() {
+
+		$('#example4 tbody tr').remove();	
+		$('#table-sj-2 tbody tr').remove();	
+	// modal_clear_component();
+
+		//Date range picker
+		$('input[name="reservation2"]').daterangepicker({
+			autoUpdateInput: false,
+			locale: {
+				cancelLabel: 'Clear'
+			}
+		});
+
+		$('input[name="reservation2"]').on('apply.daterangepicker', function (ev, picker) {
+			dt_dari_so = picker.startDate.format('YYYY-MM-DD');
+			dt_sampai_so = picker.endDate.format('YYYY-MM-DD');
+			$(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+		});
+
+		$('input[name="reservation2"]').on('cancel.daterangepicker', function (ev, picker) {
+			$(this).val('');
+			dt_dari_so = "undefined";
+			dt_sampai_so = "undefined";
+		});
+
+		var buyer       = $('#buyer').val();
+		var id_customer = $('#id_custm').val();
+		var profit_center = $('#profit_ctr').val();
+
+		console.log("dt_dari_so:", dt_dari_so);
+		console.log("dt_sampai_so:", dt_sampai_so);
+		console.log("id_customer:", id_customer);
+		console.log("buyer:", buyer);
+		console.log("profit_center:", profit_center);
+
+		$.ajax({		
+			url: "cari_so_knitting/" + dt_dari_so + "/" + dt_sampai_so + "/" + id_customer + "/" + buyer + "/" + profit_center + "/",					
+			type: "GET",
+			dataType: "JSON",
+			success: function (response) {
+				console.log(response);
+				var trHTML = '';
+				$.each(response, function (i, item) {
+					trHTML += '<tr>';
+				//trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_sj" id="pilih_sj" class="flat" value = ' + item.id_so + ' onclick="tambah_sj()"></td>';									
+				trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_sj" id="pilih_sj" class="flat" value = ' + item.id_so + ' onclick="tambah_sj_knitting(' + item.id_so + ')"></td>';									
+				trHTML += '<td>' + item.so_no + "</td>";
+				trHTML += '<td>' + item.so_date + "</td>";	
+				trHTML += '<td>' + item.supplier + "</td>";
+				trHTML += '<td>' + item.buyerno + "</td>";
+				trHTML += '<td>' + item.so_type + "</td>";	
+				trHTML += '<td>' + item.id_so + "</td>";			
+				trHTML += '</tr>';
+			});
+
+				$('#example4').append(trHTML);				
+
+			},
+			error: function (jqXHR, textStatus, errorThrown) {
+				alert('Error get data from ajax');
+				console.log(jqXHR.text);
+			}
+		});	
+
+	}
+
+
+	function tambah_sj_knitting() { 
+
+		var cek_so = document.getElementsByName("pilih_sj");	
+		for (var i = 0; i < cek_so.length; i++) {
+		    //Ceklist		
+		    if (cek_so[i].checked) {		
+
+		    	$('#table-sj-2 tbody tr').remove();
+				// modal_clear_component();
+
+				var profit_center = $('#profit_ctr').val();
+				
+				$.ajax({		
+					url: "cari_sj_knitting/" + cek_so[i].value + "/" + profit_center + "/",							
+					type: "GET",
+					dataType: "JSON",
+					success: function (response) {
+
+						var trHTML = '';
+						$.each(response, function (i, item) {
+							trHTML += '<tr>';	
+							trHTML += '<td>' + item.id_bppb + "</td>";			
+							trHTML += '<td>' + item.no_so + "</td>";
+							trHTML += '<td>' + item.sj + "</td>";							
+							//trHTML += '<td>' + item.bppbdate + "</td>";
+							trHTML += '<td><input type="text" id="cek_tgl" name="cek_tgl" style="border:none; width:120px;" value = ' + item.bppbdate + ' readonly></td>';									
+							trHTML += '<td>' + item.shipping_number + "</td>";		
+							trHTML += '<td>' + item.ws + "</td>";	
+							trHTML += '<td>' + item.styleno + "</td>";	
+							trHTML += '<td>' + item.product_group + "</td>";
+							trHTML += '<td>' + item.product_item + "</td>";	
+							trHTML += '<td>' + item.color + "</td>";
+							trHTML += '<td>' + item.size + "</td>";
+							trHTML += '<td>' + item.curr + "</td>";	
+							trHTML += '<td>' + item.uom_so + "</td>";
+							trHTML += '<td>' + item.qty_so + "</td>";
+							trHTML += '<td>' + item.unit_price_so + "</td>";				
+							trHTML += '<td class="totalsj_so" align="right">' + item.total_price_so + "</td>";
+							trHTML += '<td>' + item.uom + "</td>";
+							trHTML += '<td>' + item.qty + "</td>";
+							trHTML += '<td>' + item.unit_price + "</td>";				
+							trHTML += '<td class="totalsj" align="right">' + item.total_price + "</td>";	
+							trHTML += '<td><input type="text" class="form-control" id="mdl_disc" name="mdl_disc" style="width: 80%; text-align: center" onkeypress="javascript:return isNumber(event)" oninput="modal_input_discount_knitting(value)" readonly autocomplete="off"></td>';		
+							trHTML += '<td><input type="checkbox" name="mdl_cek_sj" id="mdl_cek_sj" class="flat" value = ' + item.total_price + ' onclick="modal_sum_total_sj(' + item.total_price + ');modal_sum_total_sj_so(' + item.total_price + ')"> <input type="hidden" class="form-control" id="mdl_cek_sj_so" name="mdl_cek_sj_so" value = ' + item.total_price_so + ' style="width: 80%; text-align: center"  readonly autocomplete="off"></td>';
+							trHTML += '<td hidden> <input type="text" class="form-control" id="mdl_grade" name="mdl_grade" value = ' + item.grade + ' style="width: 80%; text-align: center"  readonly autocomplete="off"></td>';
+							trHTML += '<td hidden> <input type="text" class="form-control" id="mdl_tgl_inv" name="mdl_tgl_inv" value = ' + item.bppbdate + ' style="width: 80%; text-align: center"  readonly autocomplete="off"></td>';
+							trHTML += '<td hidden> <input type="text" class="form-control" id="mdl_curr" name="mdl_curr" value = ' + item.curr + ' style="width: 80%; text-align: center"  readonly autocomplete="off"></td>';									
+							trHTML += '</tr>';
+						});
+
+						$('#table-sj-2').append(trHTML);				
+						
+					},
+					error: function (jqXHR, textStatus, errorThrown) {
+						alert('Error get data from ajax');
+					}
+				});
+
+			} else { 
+				$('#table-sj-2 tbody tr').remove();
+				// modal_clear_component();
+			}					
+		}
+	}
+
+
+	function modal_input_discount_knitting(value) {
+		var input = document.getElementsByName("mdl_cek_sj");
+		var input_so = document.getElementsByName("mdl_cek_sj_so");
+		var arr = document.getElementsByName('mdl_disc');
+
+		var tot = 0;
+		var tot_so = 0;
+
+		for (var i = 0; i < arr.length; i++) {
+        // SJ biasa
+        if (input[i] && input[i].checked) {
+        	var total = parseFloat(input[i].value) || 0;
+        	var disc = parseFloat(arr[i].value) || 0;
+        	tot += disc / 100 * total;
+        }
+
+        // SJ SO
+        if (input_so[i]) {
+        	var total_so = parseFloat(input_so[i].value) || 0;
+        	var disc_so = parseFloat(arr[i].value) || 0;
+        	tot_so += disc_so / 100 * total_so;
+        }
+    }
+
+    document.getElementById('mdl_discount').value = tot.toFixed(2);
+    document.getElementById('mdl_discount_so').value = tot_so.toFixed(2);
+
+    // Grand Total SJ Biasa
+    var total_sj = parseFloat($('[name="mdl_total"]').val()) || 0;
+    var discount = parseFloat($('[name="mdl_discount"]').val()) || 0;
+    var dp = parseFloat($('[name="mdl_dp"]').val()) || 0;
+    var retur = parseFloat($('[name="mdl_return"]').val()) || 0;
+    var grand_total = total_sj - discount - dp - retur;
+
+    document.getElementsByName("mdl_grandtotal")[0].value = grand_total.toFixed(2);
+    document.getElementsByName("mdl_twot")[0].value = grand_total.toFixed(2);
+
+    // Grand Total SJ SO
+    var total_sj_so = parseFloat($('[name="mdl_tota_sol"]').val()) || 0;
+    var discount_so = parseFloat($('[name="mdl_discount_so"]').val()) || 0;
+    var dp_so = parseFloat($('[name="mdl_dp_so"]').val()) || 0;
+    var retur_so = parseFloat($('[name="mdl_return_so"]').val()) || 0;
+    var grand_total_so = total_sj_so - discount_so - dp_so - retur_so;
+
+    document.getElementsByName("mdl_grandtotal_so")[0].value = grand_total_so.toFixed(2);
+    document.getElementsByName("mdl_twot_so")[0].value = grand_total_so.toFixed(2);
+}
+
+
+function modal_input_dp_so(){ 
+	var total_sj = $('[name="mdl_total_so"]').val();
+	var discount = $('[name="mdl_discount_so"]').val();
+	var dp = $('[name="mdl_dp_so"]').val(); 
+	document.getElementsByName("mdl_grandtotal_so")[0].value = (total_sj- discount-dp).toFixed(2);
+	document.getElementsByName("mdl_twot_so")[0].value = (total_sj- discount-dp).toFixed(2);
+}
+
+function modal_input_retur_so() { 
+	var total_sj = $('[name="mdl_total_so"]').val();
+	var discount = $('[name="mdl_discount_so"]').val();
+	var dp = $('[name="mdl_dp_so"]').val(); 
+	var retur = $('[name="mdl_return_so"]').val(); 
+	document.getElementsByName("mdl_grandtotal_so")[0].value = (total_sj- discount-dp-retur).toFixed(2);
+	document.getElementsByName("mdl_twot_so")[0].value = (total_sj- discount-dp-retur).toFixed(2);
+}
+
+//ubah september
+function modal_input_dpcbd_so() { 
+	var total_sj = $('[name="mdl_total_so"]').val();
+	var discount = $('[name="mdl_discount_so"]').val();
+	var dp = $('[name="mdl_dp_so"]').val() || 0; 
+	var retur = $('[name="mdl_return_so"]').val() || 0; 
+	var dp_cbd = $('[name="mdl_dpcbd_so"]').val(); 
+	document.getElementsByName("mdl_grandtotal_so")[0].value = (total_sj- discount-dp-retur-dp_cbd).toFixed(2);
+	document.getElementsByName("mdl_twot_so")[0].value = (total_sj- discount-dp-retur-dp_cbd).toFixed(2);
+	// alert(dp_cbd);
+}
+
+function modal_input_vat_so(){ 
+
+	var vat = 0.12; 
+    //
+    if ($('[name="check_vat_so"]').is(':checked')) {			
+    	var total_sj = $('[name="mdl_total_so"]').val();
+    	var discount = $('[name="mdl_discount_so"]').val();
+    	var dp = $('[name="mdl_dp_so"]').val(); 
+    	var retur = $('[name="mdl_return_so"]').val(); 	
+    	var twot = (total_sj- discount-dp-retur).toFixed(2) * vat;
+    	document.getElementsByName("mdl_vat_so")[0].value = (twot).toFixed(2);
+			//document.getElementsByName("mdl_grandtotal")[0].value = (total_sj- discount-dp-retur-twot).toFixed(2);	
+			document.getElementsByName("mdl_grandtotal_so")[0].value = (total_sj- discount-dp-retur+twot).toFixed(2);	
+		} else { 		
+			var total_sj = $('[name="mdl_total_so"]').val();
+			var discount = $('[name="mdl_discount_so"]').val();
+			var dp = $('[name="mdl_dp_so"]').val(); 
+			var retur = $('[name="mdl_return_so"]').val(); 
+			document.getElementsByName("mdl_vat_so")[0].value = "0.00";
+			document.getElementsByName("mdl_grandtotal_so")[0].value = (total_sj- discount-dp-retur).toFixed(2);
+		}
+	}
+
+	function modal_input_vat_baru_so(){ 
+		var vat = 0.11; 
+    //
+    if ($('[name="check_vat_baru_so"]').is(':checked')) {			
+    	var total_sj = $('[name="mdl_total_so"]').val();
+    	var discount = $('[name="mdl_discount_so"]').val();
+    	var dp = $('[name="mdl_dp_so"]').val(); 
+    	var retur = $('[name="mdl_return_so"]').val(); 	
+    	var twot = (total_sj- discount-dp-retur).toFixed(2) * vat;
+    	document.getElementsByName("mdl_vat_so")[0].value = (twot).toFixed(2);
+			//document.getElementsByName("mdl_grandtotal")[0].value = (total_sj- discount-dp-retur-twot).toFixed(2);	
+			document.getElementsByName("mdl_grandtotal_so")[0].value = (total_sj- discount-dp-retur+twot).toFixed(2);	
+		} else { 		
+			var total_sj = $('[name="mdl_total_so"]').val();
+			var discount = $('[name="mdl_discount_so"]').val();
+			var dp = $('[name="mdl_dp_so"]').val(); 
+			var retur = $('[name="mdl_return_so"]').val(); 
+			document.getElementsByName("mdl_vat_so")[0].value = "0.00";
+			document.getElementsByName("mdl_grandtotal_so")[0].value = (total_sj- discount-dp-retur).toFixed(2);
+		}
+	}
+
+
+	function modal_sum_total_sj_so() {
+		var hanya_baca = document.getElementsByName("mdl_disc");
+		var mdl_grade = document.getElementsByName("mdl_grade");
+		var mdl_tgl_inv = document.getElementsByName("mdl_tgl_inv");
+		var mdl_curr = document.getElementsByName("mdl_curr");
+		var input = document.getElementsByName("mdl_cek_sj");
+		var input_so = document.getElementsByName("mdl_cek_sj_so");
+
+		var total = 0;
+		var grade = '';
+		var tgl_inv = '';
+		var curr = '';
+
+		for (let i = 0; i < input.length; i++) {
+			if (input[i].checked) {
+				if (input_so[i]) {
+					total += parseFloat(input_so[i].value || 0);
+
+					if (mdl_grade[i]) grade = mdl_grade[i].value;
+					if (mdl_tgl_inv[i]) tgl_inv = mdl_tgl_inv[i].value;
+					if (mdl_curr[i]) curr = mdl_curr[i].value;
+				}
+
+			} else {
+				if (hanya_baca[i]) {
+					modal_input_discount_knitting();
+				}
+			}
+		}
+
+		var discount = parseFloat($('[name="mdl_discount_so"]').val() || 0);
+		var dp = parseFloat($('[name="mdl_dp_so"]').val() || 0);
+		var retur = parseFloat($('[name="mdl_return_so"]').val() || 0);
+		var grand_total = total - discount - dp - retur;
+
+		document.getElementsByName("grade_nya_so")[0].value = grade;
+		document.getElementsByName("tanggal_nya_so")[0].value = tgl_inv;
+		document.getElementsByName("curr_nya_so")[0].value = curr;
+		document.getElementsByName("mdl_total_so")[0].value = total.toFixed(2);
+		document.getElementsByName("mdl_grandtotal_so")[0].value = grand_total.toFixed(2);
+		document.getElementsByName("mdl_twot_so")[0].value = grand_total.toFixed(2);
+	}
 
 
 

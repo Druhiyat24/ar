@@ -73,7 +73,8 @@
                             <h3 class="card-title">Table TOP</h3>
                         </div>
                         <div class="card-body">
-                            <table class="table table-bordered">
+                            <div class="card-body table-responsive p-0" style="height: 320px;">
+                            <table class="table table-head-fixed">
                                 <thead>
                                     <tr>
                                         <th style="width: 10px">No</th>
@@ -101,6 +102,7 @@
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
+                        </div>
                         </div>
                         <!-- /.card-body -->
                     </div>

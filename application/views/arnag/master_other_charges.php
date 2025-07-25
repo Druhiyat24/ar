@@ -21,52 +21,34 @@
                 <div class="container-fluid">
                     <div class="row">
                         <div class="col-md-12">
-                            <div class="card card-info">
+                            <div class="card card-success">
                                 <div class="card-header">
-                                    <h3 class="card-title">Cek Data Booking Invoice</h3>
+                                    <h3 class="card-title">Data Master</h3>
                                 </div>
                                 <form>
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="form-group col-md-3">
-                                                <label>Customer</label>
-                                                <select class="form-control select2bs4" id="book_customer" name="book_customer">
-                                                    <option value="all_customer">All Customer</option>
-                                                    <?php foreach ($book_customer as $bcs) : ?>
-                                                        <option value="<?= $bcs['Id_Supplier']; ?>"><?= $bcs['Supplier']; ?></option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <div class="form-group">
-                                                    <label>Date Range</label>
-                                                    <div class="input-group">
-                                                        <div class="input-group-prepend">
-                                                            <span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
-                                                        </div>
-                                                        <input type="text" class="form-control float-right" id="reservation2" name="reservation2">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="form-group col-md-3">
                                                 <label>Status</label>
-                                                <select class="form-control select2bs4" id="book_status" name="book_status">
-                                                    <option value="All">All</option>
-                                                    <option value="DRAFT">DRAFT</option>
-                                                    <option value="POST">POST</option>
-                                                    <option value="APPROVED">APPROVED</option>
+                                                <select class="form-control select2bs4" id="status" name="status">
+                                                    <option value="ALL">ALL</option>
+                                                    <option value="Y">ACTIVE</option>
+                                                    <option value="N">NON-ACTIVE</option>
                                                 </select>
                                             </div>                                          
                                             <div class="form-group">
                                                 <label>Action</label>
-                                                <div class="input-group">
-                                                    <button type="button" id="find_book_invoice" name="find_book_invoice" class="btn btn-primary" href="javascript:void(0)" onclick="loadbookinvoice()"><i class="fa fa-search"></i> Search</button>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <label>Export Data</label>
-                                                <div class="input-group">
-                                                    <button type="button" class="btn btn-info" onclick="export_book_invoice()"><i class="fa fa-download"></i> Export To Excel</button>
+                                                <div class="input-group d-flex gap-2">
+                                                    <button type="button" id="find_invoice" name="find_invoice" class="btn btn-info mr-2" onclick="cari_list_other_charges()">
+                                                        <i class="fa fa-search"></i> Search
+                                                    </button>
+                                                    <button type="button" class="btn btn-success mr-2" data-toggle="modal" data-target="#modalOtherCharges">
+                                                        <i class="fa fa-plus"></i> Create
+                                                    </button>
+
+                                                    <button type="button" class="btn btn-primary mr-2" onclick="export_list_other_charge()">
+                                                        <i class="fas fa-file-excel"></i> Export Excel
+                                                    </button>
                                                 </div>
                                             </div>
 
@@ -84,31 +66,25 @@
                         <div class="col-12">
                             <div class="card">
                                 <div class="card-header">
-                                    <h3 class="card-title">DataTable Booking Invoice</h3>
+                                    <h3 class="card-title">DataTable Master</h3>
                                 </div>
                                 <div>
                                     <div class="d-flex justify-content-between">
                                      <div class="ml-auto">
                                         <span class="input-group-text"><i class="fas fa-search"></i></span>
                                     </div>
-                                    <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_noinvoice()">
+                                    <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search Data.." onkeyup="cari_noinvoice()">
                                 </div>
 
 
                                 <!-- /.card-header -->
                                 <div class="card-body table-responsive p-0" style="height: 300px;">
-                                    <table id="table-booking-invoice" class="table table-head-fixed text-nowrap">
+                                    <table id="table-other-charges" class="table table-head-fixed text-nowrap">
                                         <thead>
                                             <tr>
-                                                <th>Inv Number</th>
-                                                <th>Customer</th>
-                                                <th>Shipp</th>
-                                                <th>Tanggal</th>
-                                                <th>Type</th>
+                                                <th>ID</th>
+                                                <th>Name</th>
                                                 <th>Status</th>
-                                                <th>Doc Type</th>
-                                                <th>Doc Number</th>
-                                                <th>Value</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -127,6 +103,29 @@
 
         </div><!-- /.container-fluid -->
     </section>
+</div>
+
+<div class="modal fade" id="modalOtherCharges" tabindex="-1" role="dialog" aria-labelledby="modalOtherChargesLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="modalOtherChargesLabel">Tambah Other Charges</h5>
+        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+      </button>
+  </div>
+  <div class="modal-body">
+      <div class="form-group">
+        <label for="nama_biaya">Nama Biaya</label>
+        <input type="text" class="form-control" id="nama_biaya" name="nama_biaya" required>
+    </div>
+</div>
+<div class="modal-footer">
+    <button type="submit" class="btn btn-primary" onclick="simpanOtherCharges()">Simpan</button>
+    <button type="button" class="btn btn-danger" data-dismiss="modal">Batal</button>
+</div>
+</div>
+</div>
 </div>
 
 <!-- Modal Add -->
@@ -310,12 +309,12 @@
         var input, filter, table, tr, td, i, txtValue;
         input = document.getElementById("cari_noinv");
         filter = input.value.toUpperCase();
-        table = document.getElementById("table-booking-invoice");
+        table = document.getElementById("table-other-charges");
         tr = table.getElementsByTagName("tr");
 
         // Loop through all table rows, and hide those who don't match the search query
         for (i = 0; i < tr.length; i++) {
-            td = tr[i].getElementsByTagName("td")[0]; //kolom ke berapa.. ini kolom ke 1,, harusnya kolom ke 0
+            td = tr[i].getElementsByTagName("td")[1]; //kolom ke berapa.. ini kolom ke 1,, harusnya kolom ke 0
             if (td) {
                 txtValue = td.textContent || td.innerText;
                 if (txtValue.toUpperCase().indexOf(filter) > -1) {

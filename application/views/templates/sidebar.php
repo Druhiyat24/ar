@@ -58,9 +58,9 @@
         <nav class="mt-2">
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                 <!-- Add icons to the links using the .nav-icon class
-                   with font-awesome or any other icon font library -->
-                   <a href="http://10.10.5.62:8080/erp/" class="nav-link"><li class="nav-header">MAIN MENU</li></a>
-                   <li class="nav-item">
+                 with font-awesome or any other icon font library -->
+                 <a href="http://10.10.5.62:8080/erp/" class="nav-link"><li class="nav-header">MAIN MENU</li></a>
+                 <li class="nav-item">
                     <a href="#" class="nav-link">
                         <i class="nav-icon fas fa-user-cog"></i>
                         <p>
@@ -70,7 +70,7 @@
                     </a>
 
                     <?php foreach ($user_access_1 as $ua_1) : ?>
-                        <ul class="nav nav-treeview">
+                        <ul class="nav nav-treeview" style="margin-left: 8px;">
                             <li class="nav-item">
                                 <a href="<?= base_url($ua_1['base_url']); ?>" class="nav-link">
                                     <i class="fas fa-chevron-circle-right nav-icon"></i>
@@ -80,108 +80,39 @@
                         </ul>
                     <?php endforeach; ?>
 
-                   <!--  <ul class="nav nav-treeview">
+                    <ul class="nav nav-treeview" style="margin-left: 8px;">
                         <li class="nav-item has-treeview">
                             <a href="#" class="nav-link">
-                                <i class="far fa-folder nav-icon"></i>
+                                <i class="fas fa-folder-open nav-icon"></i>
                                 <p>
                                     Master
                                     <i class="right fas fa-angle-left"></i>
                                 </p>
                             </a>
-                            <ul class="nav nav-treeview">
-                                <li class="nav-item">
-                                    <a href="<?= base_url('arnag/master_other_charges'); ?>" class="nav-link">
-                                        <i class="far fa-dot-circle nav-icon"></i>
-                                        <p>Master Other Charges</p>
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
-                    </ul> -->
-                </li>
-
-                <!-- <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="nav-icon fas fa-edit"></i>
-                        <p>
-                            Invoice
-                            <i class="fas fa-angle-left right"></i>
-                        </p>
-                    </a>
-                    <ul class="nav nav-treeview">
-                        <li class="nav-item">
-                            <a href="<?= base_url('arnag'); ?>" class="nav-link">
-                                <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                <p>Master TOP</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="<?= base_url('arnag/bookinvoice'); ?>" class="nav-link">
-                                <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                <p>Book Invoice</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="<?= base_url('arnag/createinvoice'); ?>" class="nav-link">
-                                <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                <p>Create Invoice</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="<?= base_url('arnag/listinvoice'); ?>" class="nav-link">
-                                <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                <p>List Invoice</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="<?= base_url('arnag/duedateupdate'); ?>" class="nav-link">
-                                <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                <p>Due Date Update</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="<?= base_url('arnag/proformainvoice'); ?>" class="nav-link">
-                                <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                <p>Proforma Invoice</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="<?= base_url('arnag/listproformainvoice'); ?>" class="nav-link">
-                                <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                <p>List Proforma Invoice</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="<?= base_url('arnag/returninvoice'); ?>" class="nav-link">
-                                <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                <p>Return Invoice</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="<?= base_url('arnag/listreturninvoice'); ?>" class="nav-link">
-                                <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                <p>List Return Invoice</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="<?= base_url('arnag/debitnote'); ?>" class="nav-link">
-                                <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                <p>Debit Note</p>
-                            </a>
+                            <?php foreach ($user_access_7 as $ua_7) : ?>
+                                <ul class="nav nav-treeview" style="margin-left: 8px;">
+                                    <li class="nav-item">
+                                        <a href="<?= base_url($ua_7['base_url']); ?>" class="nav-link">
+                                            <i class="fas fa-chevron-circle-right nav-icon"></i>
+                                            <p><?= $ua_7['menu']; ?></p>
+                                        </a>
+                                    </li>
+                                </ul>
+                            <?php endforeach; ?>
                         </li>
                     </ul>
-                </li> -->
+                </li>
+
                 <li class="nav-item">
                     <a href="#" class="nav-link">
-                        <i class="nav-icon fas fa-edit"></i>
+                        <i class="fas fa-file-invoice nav-icon"></i>
                         <p>
                             Invoice
                             <i class="fas fa-angle-left right"></i>
                         </p>
                     </a>
                     <?php foreach ($user_access_2 as $ua_2) : ?>
-                        <ul class="nav nav-treeview">
+                        <ul class="nav nav-treeview" style="margin-left: 8px;">
                             <li class="nav-item">
                                 <a href="<?= base_url($ua_2['base_url']); ?>" class="nav-link">
                                     <i class="fas fa-chevron-circle-right nav-icon"></i>
@@ -191,36 +122,17 @@
                         </ul>
                     <?php endforeach; ?>
                 </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="nav-icon fas fa-stamp"></i>
-                        <p>
-                            Approval
-                            <i class="fas fa-angle-left right"></i>
-                        </p>
-                    </a>
-                    <?php foreach ($user_access_4 as $ua_4) : ?>
-                        <ul class="nav nav-treeview">
-                            <li class="nav-item">
-                                <a href="<?= base_url($ua_4['base_url']); ?>" class="nav-link">
-                                    <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                    <p><?= $ua_4['menu']; ?></p>
-                                </a>
-                            </li>
-                        </ul>
-                    <?php endforeach; ?>
-                </li>
 
                 <li class="nav-item">
                     <a href="#" class="nav-link">
-                        <i class="nav-icon fas fa-money-check-alt"></i>
+                        <i class="fas fa-receipt nav-icon"></i>
                         <p>
                             Kwitansi
                             <i class="fas fa-angle-left right"></i>
                         </p>
                     </a>
                     <?php foreach ($user_access_5 as $ua_5) : ?>
-                        <ul class="nav nav-treeview">
+                        <ul class="nav nav-treeview" style="margin-left: 8px;">
                             <li class="nav-item">
                                 <a href="<?= base_url($ua_5['base_url']); ?>" class="nav-link">
                                     <i class="fas fa-chevron-circle-right nav-icon"></i>
@@ -240,7 +152,7 @@
                         </p>
                     </a>
                     <?php foreach ($user_access_6 as $ua_6) : ?>
-                        <ul class="nav nav-treeview">
+                        <ul class="nav nav-treeview" style="margin-left: 8px;">
                             <li class="nav-item">
                                 <a href="<?= base_url($ua_6['base_url']); ?>" class="nav-link">
                                     <i class="fas fa-chevron-circle-right nav-icon"></i>
@@ -251,6 +163,25 @@
                     <?php endforeach; ?>
                 </li>
 
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-stamp"></i>
+                        <p>
+                            Approval
+                            <i class="fas fa-angle-left right"></i>
+                        </p>
+                    </a>
+                    <?php foreach ($user_access_4 as $ua_4) : ?>
+                        <ul class="nav nav-treeview" style="margin-left: 8px;">
+                            <li class="nav-item">
+                                <a href="<?= base_url($ua_4['base_url']); ?>" class="nav-link">
+                                    <i class="fas fa-chevron-circle-right nav-icon"></i>
+                                    <p><?= $ua_4['menu']; ?></p>
+                                </a>
+                            </li>
+                        </ul>
+                    <?php endforeach; ?>
+                </li>
 
                 <li class="nav-item">
                     <a href="#" class="nav-link">
@@ -261,7 +192,7 @@
                         </p>
                     </a>
                     <?php foreach ($user_access_reverse as $ua_rvs) : ?>
-                        <ul class="nav nav-treeview" style="padding-left: 5px;">
+                        <ul class="nav nav-treeview" style="margin-left: 8px;">
                             <li class="nav-item">
                                 <a href="<?= base_url($ua_rvs['base_url']); ?>" class="nav-link">
                                     <i class="fas fa-chevron-circle-right nav-icon"></i>
@@ -273,36 +204,7 @@
                 </li>
 
 
-                <!-- <li class="nav-header">REPORT AR</li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="nav-icon fas fa-book"></i>
-                        <p>
-                            Report
-                            <i class="fas fa-angle-left right"></i>
-                        </p>
-                    </a>
-                    <ul class="nav nav-treeview">
-                        <li class="nav-item">
-                            <a href="<?= base_url('report/frm_sales_report'); ?>" class="nav-link">
-                                <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                <p>Sales Report</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="<?= base_url('report/frm_sales_report_material'); ?>" class="nav-link">
-                                <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                <p>Sales Report / Material</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="<?= base_url('report/frm_report_outstanding_pi'); ?>" class="nav-link">
-                                <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                <p>Report Outstanding PI</p>
-                            </a>
-                        </li>
-                    </ul>
-                </li> -->
+            
                 <li class="nav-header">REPORT AR</li>
                 <li class="nav-item">
                     <a href="#" class="nav-link">
@@ -313,7 +215,7 @@
                         </p>
                     </a>
                     <?php foreach ($user_access_3 as $ua_3) : ?>
-                        <ul class="nav nav-treeview">
+                        <ul class="nav nav-treeview" style="margin-left: 8px;">
                             <li class="nav-item">
                                 <a href="<?= base_url($ua_3['base_url']); ?>" class="nav-link">
                                     <i class="fas fa-chevron-circle-right nav-icon"></i>

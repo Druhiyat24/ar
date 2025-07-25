@@ -1932,7 +1932,7 @@ function load_user_access_7($user)
     $hasil = $this->db->query("SELECT b.user, a.menu, b.base_url, a.menu_status
        FROM tbl_user_role AS a INNER JOIN 
        tbl_user_access AS b ON a.id = b.menu_id
-       WHERE b.user = '$user' AND a.menu_status = 'reverse' ");
+       WHERE b.user = '$user' AND a.menu_status = 'master' ");
     return $hasil->result_array();
 }
 
@@ -4575,5 +4575,72 @@ function simpandn_det_total($id_dn, $dn_total, $dn_total_eqv)
 
    return $hasil;
 }
+
+function cari_list_other_charges($status)
+{
+
+    if ($status != "ALL") {
+        $where = " AND status = '$status'";
+    }else{
+        $where = "";
+    }
+
+    $hasil = $this->db->query("SELECT id, nama_pilihan, status, IF(status = 'Y','ACTIVE','NON-ACTIVE') status_show from tbl_pilihan_ar WHERE ctg_pilihan = 'other charge invoice' $where");
+    return $hasil->result_array();
+    
+}
+
+function cari_book_inv_knitting($dt_dari, $dt_sampai)
+{
+    $hasil = $this->db->query("SELECT a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, a.shipp, a.doc_type, a.doc_number,
+      DATE_FORMAT(a.tgl_book_inv, '%Y-%m-%d') AS tanggal, c.type,  a.status, a.id, c.id_type, b.Id_Supplier AS id_customer, 
+      FORMAT(VALUE, 2) AS amount, profit_center
+      FROM  tbl_book_invoice AS a INNER JOIN 
+      mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
+      tbl_type AS c ON a.id_type = c.id_type WHERE a.status = 'DRAFT' 
+      AND a.tgl_book_inv BETWEEN '$dt_dari' AND '$dt_sampai' and profit_center = 'NAK'");
+    return $hasil->result_array();
+}
+
+function cari_so_knitting($dt_dari_so, $dt_sampai_so, $id_customer, $buyer, $profit_center)
+{
+        //Database SignalBit
+    $db_nag = $this->load->database('db_nag', TRUE);
+    $db_pgsql = $this->load->database('db_pgsql', TRUE);
+    $hasil  = [];
+    $supplier = $db_nag->query("
+        SELECT knitting_code from mastersupplier where tipe_sup = 'C' and Id_Supplier = '$buyer'
+        ")->row();
+
+    $knitting_code = $supplier ? $supplier->knitting_code : '';
+
+
+    if (!empty($knitting_code)) {
+        $hasil = $db_pgsql->query("SELECT kode_so so_no, so_date, nama_konsumen supplier, '-' buyerno, '-' so_type, a.id id_so from sales_orders a inner join master_konsumen b on b.id = a.konsumen_id where status_so != 'cancel' and kode_konsumen = '$knitting_code' AND a.so_date BETWEEN '$dt_dari_so' AND '$dt_sampai_so' order by a.id asc");
+    }
+
+    return $hasil->result_array();
+}
+
+function cari_sj_knitting($id_sj, $profit_center)
+{
+        //Database SignalBit
+    $db_nag = $this->load->database('db_nag', TRUE);
+    $db_pgsql = $this->load->database('db_pgsql', TRUE);
+    $hasil  = [];
+
+    $hasil = $db_pgsql->query("SELECT kode_so no_so, kode_out sj, tgl_pengeluaran bppbdate, kode_out shipping_number, '-' ws, lab_dip styleno, '-' product_group, nama_kain product_item, warna color, '-' size,  currency curr, g.nama_unit uom, qty_meter qty, Round(coalesce(harga_shipment,0),4) AS unit_price, ROUND(qty_meter * Round(coalesce(harga_shipment,0),4), 4) AS total_price,  a.no_so id_so, a.id AS id_bppb, 'GRADE A' grade,'A' grade, h.nama_unit uom_so, qty_netto qty_so, Round(coalesce(harga,0),4) AS unit_price_so, ROUND(qty_netto * Round(coalesce(harga,0),4), 4) AS total_price_so from official_out_h a 
+        inner join official_out_barcode b on b.id_official = a.id 
+        inner join master_kain c on c.id = b.kain_id 
+        LEFT JOIN master_kain_detail d on d.id = b.detail_kain_id 
+        INNER JOIN detail_so e on e.id = b.detail_so_id 
+        INNER JOIN sales_orders f on f.id = e.sales_order_id 
+        left join master_unit g on g.id = e.id_unit_sales_order_shipment 
+        left join master_unit h on h.id = e.id_unit_sales_order
+        where a.status_inv is null and a.tipe_pengeluaran = 'Penjualan' and a.no_so = '$id_sj' ORDER BY kode_out asc ");
+
+    return $hasil->result_array();
+}
+
 
 }

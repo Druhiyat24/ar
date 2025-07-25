@@ -3439,34 +3439,172 @@ public function simpandn_det_total()
 }
 
 public function master_other_charges()
-    {
-        if (!$this->session->userdata('username')) {
-            redirect('auth');
-        }
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
         //
-        $kode_inv = "";
-        $data['kode_book_invoice'] = $this->Model_nag->get_kode_book_invoice($kode_inv);
-        $data['title'] = 'Master Other Charges';
-        $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
-        $data['customer'] = $this->Model_nag->cari_customer();
-        $data['profit_center'] = $this->Model_nag->cari_profit_center();
-        $data['book_customer'] = $this->Model_nag->cari_customer();
-        $data['type'] = $this->db->get('tbl_type')->result_array();
-        $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
-        $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
-        $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
-        $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
-        $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
-        $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
-        $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
-        $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $kode_inv = "";
+    $data['kode_book_invoice'] = $this->Model_nag->get_kode_book_invoice($kode_inv);
+    $data['title'] = 'Master Other Charges';
+    $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+    $data['customer'] = $this->Model_nag->cari_customer();
+    $data['profit_center'] = $this->Model_nag->cari_profit_center();
+    $data['book_customer'] = $this->Model_nag->cari_customer();
+    $data['type'] = $this->db->get('tbl_type')->result_array();
+    $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+    $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+    $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+    $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+    $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+    $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+    $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+    $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
 
 
-        $this->load->view('templates/header', $data);
-        $this->load->view('templates/sidebar', $data);
-        $this->load->view('arnag/master_other_charges', $data);
-        $this->load->view('templates/footer', $data);
+    $this->load->view('templates/header', $data);
+    $this->load->view('templates/sidebar', $data);
+    $this->load->view('arnag/master_other_charges', $data);
+    $this->load->view('templates/footer', $data);
+}
+
+
+public function simpan_other_charges()
+{
+    $nama_biaya = trim($this->input->post('nama_biaya'));
+
+    $cek = $this->db->get_where('tbl_pilihan_ar', [
+        'nama_pilihan' => $nama_biaya,
+        'ctg_pilihan' => 'other charge invoice'
+    ])->num_rows();
+
+    if ($cek > 0) {
+        echo json_encode(['status' => 'exists']);
+    } else {
+        $this->db->insert('tbl_pilihan_ar', [
+            'kode_pilihan' => $nama_biaya,
+            'nama_pilihan' => $nama_biaya,
+            'ctg_pilihan' => 'other charge invoice',
+            'status' => 'Y'
+        ]);
+        echo json_encode(['status' => 'success']);
+    }
+}
+
+public function cari_list_other_charges($status)
+{
+    $data =  $this->Model_nag->cari_list_other_charges($status);
+    echo json_encode($data);
+}
+
+public function ubah_status_other_charges($id)
+{
+    $cek = $this->db->get_where('tbl_pilihan_ar', ['id' => $id])->row();
+    if ($cek) {
+        $status_baru = ($cek->status == 'Y') ? 'N' : 'Y';
+
+        $this->db->where('id', $id);
+        $update = $this->db->update('tbl_pilihan_ar', ['status' => $status_baru]);
+
+        if ($update) {
+            echo json_encode([
+                'status' => true,
+                'message' => 'Status berhasil diubah ke ' . (($status_baru == 'Y') ? 'Aktif' : 'Nonaktif')
+            ]);
+        } else {
+            echo json_encode([
+                'status' => false,
+                'message' => 'Gagal mengubah status.'
+            ]);
+        }
+    } else {
+        echo json_encode([
+            'status' => false,
+            'message' => 'Data tidak ditemukan.'
+        ]);
+    }
+}
+
+public function hapus_other_charge($id)
+{
+    $cek = $this->db->get_where('tbl_pilihan_ar', ['id' => $id])->row();
+    if ($cek) {
+        $this->db->where('id', $id);
+        $delete = $this->db->delete('tbl_pilihan_ar');
+
+        if ($delete) {
+            echo json_encode([
+                'status' => true,
+                'message' => 'Data berhasil dihapus.'
+            ]);
+        } else {
+            echo json_encode([
+                'status' => false,
+                'message' => 'Gagal menghapus data.'
+            ]);
+        }
+    } else {
+        echo json_encode([
+            'status' => false,
+            'message' => 'Data tidak ditemukan.'
+        ]);
+    }
+}
+
+public function export_list_other_charge($status)
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+        //       
+    $data["data_other_charge"] = $this->Model_nag->cari_list_other_charges($status);
+    $this->load->view('arnag/export_master_other_charge', $data);
+}
+
+public function createinvoice_knitting()
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
     }
 
+    $data['title'] = 'Create Invoice Knitting';
+    $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+    $data['isi_bank'] = $this->Model_nag->load_bank();
+    $data['buyer'] = $this->Model_nag->cari_buyer();
+    $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+    $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+    $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+    $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+    $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+    $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+    $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+    $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+
+
+    $this->load->view('templates/header', $data);
+    $this->load->view('templates/sidebar', $data);
+    $this->load->view('arnag/createinvoice_knitting', $data);
+    $this->load->view('templates/footer', $data);
+        //
+    $this->delete_invoice_detail_temporary();
+}
+
+public function cari_book_inv_knitting($dt_dari, $dt_sampai)
+{
+    $data =  $this->Model_nag->cari_book_inv_knitting($dt_dari, $dt_sampai);
+    echo json_encode($data);
+}
+
+public function cari_so_knitting($dt_dari_so, $dt_sampai_so, $id_customer, $buyer, $profit_center)
+{
+    $data =  $this->Model_nag->cari_so_knitting($dt_dari_so, $dt_sampai_so, $id_customer, $buyer, $profit_center);
+    echo json_encode($data);
+}
+
+public function cari_sj_knitting($id_sj, $profit_center)
+{
+    $data =  $this->Model_nag->cari_sj_knitting($id_sj, $profit_center);
+    echo json_encode($data);
+}
 
 }

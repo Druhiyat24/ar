@@ -83,7 +83,7 @@
                             <h3 class="card-title">Table Menu</h3>
                         </div>
                         <!-- /.card-header -->
-                        <div class="card-body table-responsive p-0" style="height: 428px;">
+                        <div class="card-body table-responsive p-0" style="height: 500px;">
                             <table id="table-menu" class="table table-head-fixed text-nowrap">
                                 <thead>
                                     <tr>
