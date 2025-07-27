@@ -626,6 +626,7 @@ function load_invoice_detail_temporary()
 function delete_invoice_detail_temporary()
 {
     $hasil = $this->db->query("DELETE FROM tbl_invoice_detail_temp");
+    $hasil2 = $this->db->query("DELETE FROM tbl_invoice_detail_knitting_temp");
     return $hasil;
 }
 
@@ -4640,6 +4641,63 @@ function cari_sj_knitting($id_sj, $profit_center)
         where a.status_inv is null and a.tipe_pengeluaran = 'Penjualan' and a.no_so = '$id_sj' ORDER BY kode_out asc ");
 
     return $hasil->result_array();
+}
+
+function simpan_invoice_detail_knitting_temporary($data)
+{
+    $this->db->insert_batch('tbl_invoice_detail_knitting_temp', $data);
+    return $this->db->insert_id();
+}
+
+function load_invoice_detail_knitting_temporary()
+{
+    $hasil = $this->db->query("SELECT id_bppb, so_number, bppb_number, sj_date, shipp_number, ws, styleno, product_group, product_item, color, size, curr, uom, qty, unit_price, disc, total_price, uom_ship, qty_ship, unit_price_ship, total_price_ship FROM tbl_invoice_detail_knitting_temp");
+    return $hasil->result_array();
+}
+
+function cari_other_charges()
+{
+
+    $hasil = $this->db->query("select id, nama_pilihan from tbl_pilihan_ar where ctg_pilihan = 'other charge invoice' and status = 'Y'");
+    return $hasil->result_array();
+    
+}
+
+function simpan_invoice_detail_knitting($data)
+{
+    $this->db->insert_batch('tbl_invoice_detail_knitting', $data);
+    return $this->db->insert_id();
+}
+
+function simpan_invoice_pot_knitting($data)
+{
+    $this->db->insert_batch('tbl_invoice_pot_knitting', $data);
+    return $this->db->insert_id();
+}
+
+function simpan_other_charge_invoice($data)
+{
+    $this->db->insert_batch('tbl_invoice_other_charge', $data);
+    return $this->db->insert_id();
+}
+
+function report_invoice_detail_knitting($id)
+{
+    $hasil = $this->db->query("(SELECT styleno, product_group, product_item, color, size, qty, format(round(unit_price,3),3) unit_price, disc, FORMAT(total_price, 2) AS total_price, uom, curr, id_bppb
+       FROM tbl_invoice_detail_knitting
+       WHERE id_book_invoice = '$id' ORDER BY id_bppb asc)
+       UNION
+       (select c.styleno, c.product_group, nama_pilihan product_item, c.color, '' size, a.qty, format(round(a.price,3),3) unit_price, 0 disc, FORMAT(a.total, 2) AS total_price, c.uom, c.curr, c.id_bppb from tbl_invoice_other_charge a INNER JOIN tbl_pilihan_ar b on b.id = a.id_ctg INNER JOIN tbl_invoice_detail_knitting c on c.id_book_invoice = a.id_book_invoice WHERE a.id_book_invoice = '$id' order by a.id) ");
+    return $hasil->result_array();
+}
+
+function report_invoice_pot_knitting($id)
+{
+    $hasil = $this->db->query("SELECT id, id_book_invoice, FORMAT(total, 2) AS total, FORMAT(discount, 2) AS discount, FORMAT(dp, 2) AS dp, 
+      FORMAT(retur, 2) AS retur, FORMAT(twot, 2) AS twot, FORMAT(vat, 2) AS vat, FORMAT(grand_total, 2) AS grand_total 
+      FROM tbl_invoice_pot_knitting 
+      WHERE id_book_invoice = '$id' ");
+    return $hasil->row_array();
 }
 
 

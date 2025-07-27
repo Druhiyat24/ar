@@ -6,7 +6,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta http-equiv="X-UA-Compatible" content="ie=11">
-	<title>Report Invoice</title>
+	<title>Invoice</title>
 	<style>
 		/* @page {
 			margin-top: 1.54cm;

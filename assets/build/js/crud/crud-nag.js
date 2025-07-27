@@ -2135,108 +2135,48 @@ function update_status_bppb() {
 
 		function simpan_invoice_detail() 
 		{ 	
-	// return new Promise(resolve => {		
-	// 	setTimeout(() => {
-	// 		var msg
-	// 		var data = [];		
 
-	// 		$("#table-sj input[name='cek_pilih_sj']:checked").each(function () {			
-	// 			var rows = $(this).closest("tr")[0];	
+			return new Promise(resolve => {		
+				setTimeout(() => {
+					var msg
+					var data = [];		
 
-	// 			data.push({		
-	// 				"id_book_invoice": $('#id_inv').val(),
-	// 				"so_number": rows.cells[0].innerHTML,
-	// 				"bppb_number": rows.cells[1].innerHTML,	
-	// 				"sj_date": rows.cells[2].innerHTML,					
-	// 				"shipp_number": rows.cells[3].innerHTML,
-	// 				"ws": rows.cells[4].innerHTML,
-	// 				"style_name": rows.cells[5].innerHTML,
-	// 				"prd_grp": rows.cells[6].innerHTML,
-	// 				"curr": rows.cells[7].innerHTML,
-	// 				"uom": rows.cells[8].innerHTML,
-	// 				"qty": rows.cells[9].innerHTML,
-	// 				"unit_price": rows.cells[10].innerHTML,			
-	// 				"disc": rows.cells[11].innerHTML,	
-	// 				"total_price": rows.cells[12].innerHTML, 									
+					var table = document.getElementById("table-sj");
+					for (var i = 1; i < (table.rows.length); i++) {
 
-	// 			})		
+						data.push({		
+							"id_book_invoice": $('#id_inv').val(),
+							"id_bppb": table.rows[i].cells[0].innerHTML,
+							"so_number": table.rows[i].cells[1].innerHTML,
+							"bppb_number": table.rows[i].cells[2].innerHTML,	
+							"sj_date": table.rows[i].cells[3].innerHTML,					
+							"shipp_number":table.rows[i].cells[4].innerHTML,
+							"ws": table.rows[i].cells[5].innerHTML,
+							"styleno": table.rows[i].cells[6].innerHTML,
+							"product_group": table.rows[i].cells[7].innerHTML,
+							"product_item": table.rows[i].cells[8].innerHTML,
+							"color": table.rows[i].cells[9].innerHTML,
+							"size": table.rows[i].cells[10].innerHTML,
+							"curr": table.rows[i].cells[11].innerHTML,
+							"uom": table.rows[i].cells[12].innerHTML,
+							"qty": table.rows[i].cells[13].innerHTML,
+							"unit_price": table.rows[i].cells[14].innerHTML,			
+							"disc": table.rows[i].cells[15].innerHTML,	
+							"total_price": table.rows[i].cells[16].innerHTML, 									
 
-	// 		})
+						})		
+					}
 
-	// 		var fdata = {
-	// 			'data_table': data
-	// 		}
-	// 		$.ajax({				
-	// 			url: "simpan_invoice_detail/",
-	// 			type: "POST",
-	// 			data: fdata,
-	// 			dataType: "JSON",
-	// 			success: function (data) {
+					var fdata = {
+						'data_table': data
+					}
+					$.ajax({				
+						url: "simpan_invoice_detail/",
+						type: "POST",
+						data: fdata,
+						dataType: "JSON",
+						success: function (data) {
 
-	// 				if (data.status) //if success close modal and reload ajax table
-	// 				{
-	// 					msg = 'Success Input Detail'
-	// 				} else {
-	// 					msg = 'Error Input Detail'
-	// 				}
-	// 				// Delete Table Invoice Detail Temporary
-	// 				delete_invoice_detail_temporary();
-    //                 // Reload Page
-	// 				window.location.href = window.location.href;
-
-	// 			},
-	// 			error: function (jqXHR, textStatus, errorThrown) {
-	// 				msg = 'Error Input Detail' + jqXHR.text
-	// 			}
-	// 		});
-	// 		resolve({
-	// 			msg: msg,
-	// 		});
-
-	// 	}, 100);
-	// });
-	//
-	return new Promise(resolve => {		
-		setTimeout(() => {
-			var msg
-			var data = [];		
-
-			var table = document.getElementById("table-sj");
-			for (var i = 1; i < (table.rows.length); i++) {
-				
-				data.push({		
-					"id_book_invoice": $('#id_inv').val(),
-					"id_bppb": table.rows[i].cells[0].innerHTML,
-					"so_number": table.rows[i].cells[1].innerHTML,
-					"bppb_number": table.rows[i].cells[2].innerHTML,	
-					"sj_date": table.rows[i].cells[3].innerHTML,					
-					"shipp_number":table.rows[i].cells[4].innerHTML,
-					"ws": table.rows[i].cells[5].innerHTML,
-					"styleno": table.rows[i].cells[6].innerHTML,
-					"product_group": table.rows[i].cells[7].innerHTML,
-					"product_item": table.rows[i].cells[8].innerHTML,
-					"color": table.rows[i].cells[9].innerHTML,
-					"size": table.rows[i].cells[10].innerHTML,
-					"curr": table.rows[i].cells[11].innerHTML,
-					"uom": table.rows[i].cells[12].innerHTML,
-					"qty": table.rows[i].cells[13].innerHTML,
-					"unit_price": table.rows[i].cells[14].innerHTML,			
-					"disc": table.rows[i].cells[15].innerHTML,	
-					"total_price": table.rows[i].cells[16].innerHTML, 									
-
-				})		
-			}
-
-			var fdata = {
-				'data_table': data
-			}
-			$.ajax({				
-				url: "simpan_invoice_detail/",
-				type: "POST",
-				data: fdata,
-				dataType: "JSON",
-				success: function (data) {
-					
 					if (data.status) //if success close modal and reload ajax table
 					{
 						msg = 'Success Input Detail'
@@ -2249,21 +2189,21 @@ function update_status_bppb() {
 					msg = 'Error Input Detail' + jqXHR.text
 				}
 			});
-			resolve({
-				msg: msg,
-			});
+					resolve({
+						msg: msg,
+					});
 
-		}, 100);
-	});  
+				}, 100);
+			});  
 
-}
+		}
 
-function simpan_invoice_pot() { 
+		function simpan_invoice_pot() { 
 
-	return new Promise(resolve => {		
-		setTimeout(() => {
-			var msg
-			var data = [];		
+			return new Promise(resolve => {		
+				setTimeout(() => {
+					var msg
+					var data = [];		
             //
             var id_book_invoice = $('#id_inv').val();
             var total           = $('#total').val();
@@ -2319,13 +2259,13 @@ function simpan_invoice_pot() {
 			});
 
 		}, 100);
-	});
+			});
 
-}
+		}
 
-function cari_invoice() { 
+		function cari_invoice() { 
 
-	$('#table-invoice tbody tr').remove();	
+			$('#table-invoice tbody tr').remove();	
 		//Date range picker
 		$('input[name="reservation2"]').daterangepicker({
 			autoUpdateInput: false,
@@ -2373,7 +2313,20 @@ function cari_invoice() {
 						trHTML += '<td><button id="inv_detail" name="inv_detail" type="button" class="btn btn-info btn-sm" onclick="cari_inv_detail(' + item.id + ')" ><i class="fas fa-eye"></i> Detail</button> ' + '' 
 						// + ' <button type="button" class="btn btn-sm btn-warning swalDefaultError" href="javascript:void(0)" onclick="UpdateInvoice(\'' + item.id + '\', \'' + item.status + '\', \'' + item.inv_date + '\')"><i class="fas fa-edit"></i> Update</button>' + ' '
 						+ '<button class="btn btn-warning btn-sm" onclick="window.open(\'edit_invoice/' + item.id + '\', \'_blank\')"><i class="fas fa-edit"></i> Edit</button> '
-						+ '<button id="print_inv" name="print_inv" type="button" class="btn btn-primary btn-sm" onclick="print_invoice(' + item.id + ')"><i class="fa fa-print"></i> Print</button> ' + ''
+						+ `<div class="btn-group">
+						<button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+						<i class="fa fa-print"></i> Print
+						</button>
+						<div class="dropdown-menu">
+						<a class="dropdown-item" href="#" onclick="print_invoice(` + item.id + `)">
+						<i class="fa fa-print"></i> Print Invoice
+						</a>
+						<a class="dropdown-item" href="#" onclick="print_invoice_knitting(` + item.id + `)">
+						<i class="fa fa-print"></i> Print Invoice Knitting
+						</a>
+						</div>
+						</div>
+						` + ''
 						+ '<button id="export_to_excel_invoice" name="export_to_excel_invoice" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_invoice(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button> ' + ''				
 						+ ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="cancel_invoice(\'' + item.id + '\',\'' + item.no_invoice + '\',\'' + item.status + '\')"><i class="fas fa-trash-alt"></i> Cancel</button></td> </td>';
 
@@ -2391,7 +2344,20 @@ function cari_invoice() {
 						trHTML += '<td>' + item.status + "</td>";
 						trHTML += '<td align="right">' + item.amount + "</td>";
 						trHTML += '<td><button id="inv_detail" name="inv_detail" type="button" class="btn btn-info btn-sm" onclick="cari_inv_detail(' + item.id + ')" ><i class="fas fa-eye"></i> Detail</button> ' + '' 
-						+ ' <button id="print_inv" name="print_inv" type="button" class="btn btn-primary btn-sm" onclick="print_invoice(' + item.id + ')"><i class="fa fa-print"></i> Print</button> ' + ''
+						+ `<div class="btn-group">
+						<button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+						<i class="fa fa-print"></i> Print
+						</button>
+						<div class="dropdown-menu">
+						<a class="dropdown-item" href="#" onclick="print_invoice(` + item.id + `)">
+						<i class="fa fa-print"></i> Print Invoice
+						</a>
+						<a class="dropdown-item" href="#" onclick="print_invoice_knitting(` + item.id + `)">
+						<i class="fa fa-print"></i> Print Invoice Knitting
+						</a>
+						</div>
+						</div>
+						` + ''
 						+ '<button id="export_to_excel_invoice" name="export_to_excel_invoice" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_invoice(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button> </td>';
 
 						trHTML += '</tr>';
@@ -15149,7 +15115,7 @@ function cari_book_inv_knitting() {
     document.getElementsByName("mdl_twot")[0].value = grand_total.toFixed(2);
 
     // Grand Total SJ SO
-    var total_sj_so = parseFloat($('[name="mdl_tota_sol"]').val()) || 0;
+    var total_sj_so = parseFloat($('[name="mdl_total_so"]').val()) || 0;
     var discount_so = parseFloat($('[name="mdl_discount_so"]').val()) || 0;
     var dp_so = parseFloat($('[name="mdl_dp_so"]').val()) || 0;
     var retur_so = parseFloat($('[name="mdl_return_so"]').val()) || 0;
@@ -15278,35 +15244,575 @@ function modal_input_vat_so(){
 		document.getElementsByName("mdl_twot_so")[0].value = grand_total.toFixed(2);
 	}
 
+	function duplicate_data_so_knitting(){ 
+
+	//Tambah Data Potongan Invoice
+	var total       = $('[name="mdl_total"]').val();
+	var discount    = $('[name="mdl_discount"]').val();
+	var dp          = $('[name="mdl_dp"]').val(); 
+	var retur       = $('[name="mdl_return"]').val(); 
+	var twot        = $('[name="mdl_twot"]').val(); 
+	var vat         = $('[name="mdl_vat"]').val(); 
+	var grand_total = $('[name="mdl_grandtotal"]').val(); 
+	var grade_nya 	= $('[name="grade_nya"]').val();
+	var tanggal_nya = $('[name="tanggal_nya"]').val();
+	var curr_nya 	= $('[name="curr_nya"]').val(); 
+
+	var total_so       = $('[name="mdl_total_so"]').val();
+	var discount_so    = $('[name="mdl_discount_so"]').val();
+	var dp_so          = $('[name="mdl_dp_so"]').val(); 
+	var retur_so       = $('[name="mdl_return_so"]').val(); 
+	var twot_so        = $('[name="mdl_twot_so"]').val(); 
+	var vat_so         = $('[name="mdl_vat_so"]').val(); 
+	var grand_total_so = $('[name="mdl_grandtotal_so"]').val(); 
+	var grade_nya_so 	= $('[name="grade_nya_so"]').val();
+	var tanggal_nya_so = $('[name="tanggal_nya_so"]').val();
+	var curr_nya_so 	= $('[name="curr_nya_so"]').val(); 	
+
+	$('[name="total"]').val(total);
+	$('[name="discount"]').val(discount);
+	$('[name="dp"]').val(dp); 
+	$('[name="return"]').val(retur); 
+	$('[name="twot"]').val(twot); 
+	$('[name="vat"]').val(vat); 
+	$('[name="grandtotal"]').val(grand_total);
+	$('[name="grade"]').val(grade_nya); 
+	$('[name="inv_date"]').val(tanggal_nya); 
+	$('[name="inv_curr"]').val(curr_nya); 
+
+	$('[name="total_so"]').val(total_so);
+	$('[name="discount_so"]').val(discount_so);
+	$('[name="dp_so"]').val(dp_so); 
+	$('[name="return_so"]').val(retur_so); 
+	$('[name="twot_so"]').val(twot_so); 
+	$('[name="vat_so"]').val(vat_so); 
+	$('[name="grandtotal_so"]').val(grand_total_so);
+	//Simpan Table SJ Temp
+	// delete_invoice_detail_temporary()	
+	simpan_invoice_detail_knitting_temporary();	
+
+}
 
 
-// function getcoa_dn_edit() 
-// {	
+function simpan_invoice_detail_knitting_temporary() {
+	return new Promise(resolve => {		
+		setTimeout(() => {
+			var msg
+			var data = [];		
 
-// 	let id_cust 	 = $('[name="customer"]').val();
+			$("#table-sj-2 input[name='mdl_cek_sj']:checked").each(function () {
+				var rows = $(this).closest("tr")[0];
 
-// 	if (id_cust == '524' || id_cust == '804' || id_cust == '366') {
-// 		cust_ctg = 'Related';
-// 	}else{
-// 		cust_ctg = 'Third';
-// 	}
+				$(this).closest('tr').find("input[name='mdl_disc']").each(function() {				
+					var mdl_disc = this.value	
 
-// 	console.log(cust_ctg);
+					$(this).closest('tr').find("input[name='cek_tgl']").each(function() {				
+						var tgl_sj = this.value	
 
-// 	$.ajax({
-// 		url: BASE_URL + "Arnag/getcoa3/" + cust_ctg + "/",		
-// 		type: "GET",
-// 		dataType: "JSON",
-// 		success: function (data) {
+						data.push({			
+							"id_bppb": rows.cells[0].innerHTML,				
+							"so_number": rows.cells[1].innerHTML,
+							"bppb_number": rows.cells[2].innerHTML,	
+							"sj_date": tgl_sj,						
+							"shipp_number": rows.cells[4].innerHTML,
+							"ws": rows.cells[5].innerHTML,
+							"styleno": rows.cells[6].innerHTML,
+							"product_group": rows.cells[7].innerHTML,
+							"product_item": rows.cells[8].innerHTML,
+							"color": rows.cells[9].innerHTML,
+							"size": rows.cells[10].innerHTML,
+							"curr": rows.cells[11].innerHTML,
+							"uom": rows.cells[12].innerHTML,
+							"qty": rows.cells[13].innerHTML,
+							"unit_price": rows.cells[14].innerHTML,			
+							"total_price": rows.cells[15].innerHTML, 
+							"uom_ship": rows.cells[16].innerHTML,
+							"qty_ship": rows.cells[17].innerHTML,
+							"unit_price_ship": rows.cells[18].innerHTML,			
+							"total_price_ship": rows.cells[19].innerHTML, 				
+							"disc": mdl_disc,
+						})	
 
-// 			$('[name="no_coa_deb3"]').val(data.no_coa);
-// 			$('[name="nama_coa_deb3"]').val(data.nama_coa);
-// 			console.log( data.no_coa );
+					});
 
-// 		},
-// 		error: function (jqXHR, textStatus, errorThrown) {
-// 			alert('Error get data from ajax');
-// 		}
-// 	});
-// }
+				});
+
+			});
+
+			console.log(data);
+			var fdata = {
+				'data_table': data
+			}
+			$.ajax({				
+				url: "simpan_invoice_detail_knitting_temporary/",
+				type: "POST",
+				data: fdata,
+				dataType: "JSON",
+				success: function (data) {
+					
+					if (data.status) //if success close modal and reload ajax table
+					{
+						msg = 'Success Input Detail'
+					} else {
+						msg = 'Error Input Detail'
+					}
+
+					//Load Data SJ Temporary
+					load_invoice_detail_knitting_temporary();                   		
+					$('#modal-add-so').modal('hide');
+
+				},
+				error: function (jqXHR, textStatus, errorThrown) {
+					console.log(jqXHR.text);
+					msg = 'Error Input Detail' + jqXHR.text
+				}
+			});
+			resolve({
+				msg: msg,
+			});
+
+		}, 100);
+	});
+}
+
+
+function load_invoice_detail_knitting_temporary() { 	
+
+	$('#table-sj tbody tr').remove();
+	$.ajax({		
+		url: "load_invoice_detail_knitting_temporary/",							
+		type: "GET",
+		dataType: "JSON",
+		success: function (response) {
+			var trHTML = '';
+			$.each(response, function (i, item) {
+				trHTML += '<tr>';
+				trHTML += '<td>' + item.id_bppb + "</td>";				
+				trHTML += '<td>' + item.so_number + "</td>";
+				trHTML += '<td>' + item.bppb_number + "</td>";							
+				trHTML += '<td>' + item.sj_date + "</td>";						
+				trHTML += '<td>' + item.shipp_number + "</td>";		
+				trHTML += '<td>' + item.ws + "</td>";	
+				trHTML += '<td>' + item.styleno + "</td>";	
+				trHTML += '<td>' + item.product_group + "</td>";	
+				trHTML += '<td>' + item.product_item + "</td>";
+				trHTML += '<td>' + item.color + "</td>";
+				trHTML += '<td>' + item.size + "</td>";
+				trHTML += '<td>' + item.curr + "</td>";	
+				trHTML += '<td>' + item.uom + "</td>";
+				trHTML += '<td>' + item.qty + "</td>";
+				trHTML += '<td>' + item.unit_price + "</td>";
+				trHTML += '<td align="right">' + item.total_price + "</td>";	
+				trHTML += '<td>' + item.uom_ship + "</td>";
+				trHTML += '<td>' + item.qty_ship + "</td>";
+				trHTML += '<td>' + item.unit_price_ship + "</td>";
+				trHTML += '<td align="right">' + item.total_price_ship + "</td>";	
+				trHTML += '<td>' + item.disc + "</td>";	
+						// trHTML += '<td><input type="checkbox" name="cek_pilih_sj" id="cek_pilih_sj" class="flat" checked></td>';												
+						trHTML += '</tr>';
+					});
+			$('#table-sj').append(trHTML);						
+		},
+		error: function (jqXHR, textStatus, errorThrown) {
+			alert('Error get data from ajax');
+		}
+	});  	  
+
+}
+
+async function asyncCall_knitting() {
+	add_data_invoice_knitting();
+	const result = await ShowModal_SaveInvoice();
+	console.log(result);
+
+}
+
+
+function add_data_invoice_knitting() { 
+
+	let no_invoice   = $('[name="inv_number1"]').val();
+	let profit_ctr   = $('[name="profit_ctr_h"]').val();
+	let type_so   	 = $('[name="type_so"]').val();
+	let top          = $('[name="top"]').val();
+	let shipp 		 = $('[name="shipp"]').val();
+	let type 		 = $('[name="type"]').val();
+	let id_cust 	 = $('[name="id_cust"]').val();
+	let cust 	 	 = $('[name="cust"]').val();
+	let grade 	 	 = $('[name="grade"]').val();
+	let inv_date 	 = $('[name="inv_date"]').val();
+	let vat 		 = $('[name="vat"]').val();
+	let diskon 		 = $('[name="discount"]').val();
+	let curr		 = $('[name="inv_curr"]').val();
+	var kata1		 = "PENJUALAN";
+	var kata2		 = "KE";
+	let parts 		 = no_invoice.split('/');
+	let kode_pc 	 = parts[2];
+
+	if (id_cust == '524' || id_cust == '804' || id_cust == '366') {
+		cust_ctg = 'Related Party';
+	}else{
+		cust_ctg = 'Third Party';
+	}
+
+	if (no_invoice == "") {
+		alert("Invoice Number is required");
+		$("#inv_number1").focus();	
+		return false;
+	}
+
+	if (top == "") {
+		alert("Top is required");
+		$("#top").focus();	
+		return false;
+	}  
+	
+	$no_invoice = $('[name="inv_number1"]').val()	
+	$id_inv     = $('[name="id_inv"]').val()	
+	$pph     = $('[name="pph"]').val()
+	var keter = kata1 +' '+type_so +' '+kata2 +' '+cust;
+
+	getcoa();
+	// getcoa_credit();
+	// getcoa_dp();
+	// getcoa_pot();
+	// getcoa_ppn();
+	getrate();
+
+	//
+	$('[name="no_inv_post"]').val($no_invoice);
+	$('[name="id_inv_post"]').val($id_inv);
+	$('[name="pph_post"]').val($pph);
+	$('[name="keterangan"]').val(keter);
+
+	$('[name="txt_shipp"]').val(shipp);
+	$('[name="txt_type_so"]').val(type_so);
+	$('[name="txt_type"]').val(type);
+	$('[name="txt_cust_ctg"]').val(cust_ctg);
+	$('[name="txt_grade"]').val(grade);
+	$('[name="txt_inv_date"]').val(inv_date);
+	$('[name="txt_vat"]').val(vat);
+	$('[name="txt_pot"]').val(diskon);
+	$('[name="txt_curr"]').val(curr);
+	$('[name="txt_mdl_pc"]').val(profit_ctr);
+	console.log(keter);
+
+	// $('#modal-simpan-invoice').modal('show')	
+
+}
+
+
+function ShowModal_SaveInvoice() {
+	return new Promise(resolve => {
+		setTimeout(() => {
+			let no_invoice   = $('[name="inv_number1"]').val();
+			let profit_ctr   = $('[name="profit_ctr_h"]').val();
+			let type_so   	 = $('[name="type_so"]').val();
+			let top          = $('[name="top"]').val();
+			let shipp 		 = $('[name="shipp"]').val();
+			let type 		 = $('[name="type"]').val();
+			let id_cust 	 = $('[name="id_cust"]').val();
+			let grade 	 	 = $('[name="grade"]').val();
+			let inv_date 	 = $('[name="inv_date"]').val();
+			let vat 		 = $('[name="vat"]').val();
+			let diskon 		 = $('[name="discount"]').val();
+			let curr		 = $('[name="inv_curr"]').val();
+
+			if (id_cust == '524' || id_cust == '804' || id_cust == '366') {
+				cust_ctg = 'Related Party';
+			}else{
+				cust_ctg = 'Third Party';
+			}
+
+			if (no_invoice == "") {
+				return false;
+			}
+
+			if (top == "") {
+				return false;
+			}
+
+			$('#modal-simpan-invoice').modal('show');
+		}, 1000);
+	});
+}
+
+
+function save_invoice_knitting() {
+	
+	let vat 		 = $('[name="vat"]').val();
+	let diskon 		 = $('[name="discount"]').val();
+	let dp		 	 = $('[name="dp"]').val();
+	let profit_ctr	 = $('[name="txt_mdl_pc"]').val();
+	update_invoice_header();
+	update_status_bppb();
+	simpan_invoice_detail_new();
+	simpan_invoice_detail_knitting();
+	simpan_invoice_pot();
+	simpan_invoice_pot_knitting();
+	simpan_other_charge_invoice();
+	
+	$('#modal-simpan-invoice').modal('hide');
+	
+}
+
+function simpan_invoice_detail_new() 
+{ 	
+	
+	return new Promise(resolve => {		
+		setTimeout(() => {
+			var msg
+			var data = [];		
+
+			var table = document.getElementById("table-sj");
+			for (var i = 1; i < (table.rows.length); i++) {
+				
+				data.push({		
+					"id_book_invoice": $('#id_inv').val(),
+					"id_bppb": table.rows[i].cells[0].innerHTML,
+					"so_number": table.rows[i].cells[1].innerHTML,
+					"bppb_number": table.rows[i].cells[2].innerHTML,	
+					"sj_date": table.rows[i].cells[3].innerHTML,					
+					"shipp_number":table.rows[i].cells[4].innerHTML,
+					"ws": table.rows[i].cells[5].innerHTML,
+					"styleno": table.rows[i].cells[6].innerHTML,
+					"product_group": table.rows[i].cells[7].innerHTML,
+					"product_item": table.rows[i].cells[8].innerHTML,
+					"color": table.rows[i].cells[9].innerHTML,
+					"size": table.rows[i].cells[10].innerHTML,
+					"curr": table.rows[i].cells[11].innerHTML,
+					"uom": table.rows[i].cells[16].innerHTML,
+					"qty": table.rows[i].cells[17].innerHTML,
+					"unit_price": table.rows[i].cells[18].innerHTML,			
+					"disc": table.rows[i].cells[20].innerHTML,	
+					"total_price": table.rows[i].cells[19].innerHTML, 									
+
+				})		
+			}
+
+			var fdata = {
+				'data_table': data
+			}
+			$.ajax({				
+				url: "simpan_invoice_detail/",
+				type: "POST",
+				data: fdata,
+				dataType: "JSON",
+				success: function (data) {
+					
+					if (data.status) //if success close modal and reload ajax table
+					{
+						msg = 'Success Input Detail'
+					} else {
+						msg = 'Error Input Detail'
+					}
+					
+				},
+				error: function (jqXHR, textStatus, errorThrown) {
+					msg = 'Error Input Detail' + jqXHR.text
+				}
+			});
+			resolve({
+				msg: msg,
+			});
+
+		}, 100);
+	});  
+
+}
+
+
+function simpan_invoice_detail_knitting() 
+{ 	
+	
+	return new Promise(resolve => {		
+		setTimeout(() => {
+			var msg
+			var data = [];		
+
+			var table = document.getElementById("table-sj");
+			for (var i = 1; i < (table.rows.length); i++) {
+				
+				data.push({		
+					"id_book_invoice": $('#id_inv').val(),
+					"id_bppb": table.rows[i].cells[0].innerHTML,
+					"so_number": table.rows[i].cells[1].innerHTML,
+					"bppb_number": table.rows[i].cells[2].innerHTML,	
+					"sj_date": table.rows[i].cells[3].innerHTML,					
+					"shipp_number":table.rows[i].cells[4].innerHTML,
+					"ws": table.rows[i].cells[5].innerHTML,
+					"styleno": table.rows[i].cells[6].innerHTML,
+					"product_group": table.rows[i].cells[7].innerHTML,
+					"product_item": table.rows[i].cells[8].innerHTML,
+					"color": table.rows[i].cells[9].innerHTML,
+					"size": table.rows[i].cells[10].innerHTML,
+					"curr": table.rows[i].cells[11].innerHTML,
+					"uom": table.rows[i].cells[12].innerHTML,
+					"qty": table.rows[i].cells[13].innerHTML,
+					"unit_price": table.rows[i].cells[14].innerHTML,			
+					"total_price": table.rows[i].cells[15].innerHTML,
+					"uom_ship": table.rows[i].cells[16].innerHTML,
+					"qty_ship": table.rows[i].cells[17].innerHTML,
+					"unit_price_ship": table.rows[i].cells[18].innerHTML,			
+					"total_price_ship": table.rows[i].cells[19].innerHTML, 									
+					"disc": table.rows[i].cells[20].innerHTML,	
+
+				})		
+			}
+
+			var fdata = {
+				'data_table': data
+			}
+			$.ajax({				
+				url: "simpan_invoice_detail_knitting/",
+				type: "POST",
+				data: fdata,
+				dataType: "JSON",
+				success: function (data) {
+					
+					if (data.status) //if success close modal and reload ajax table
+					{
+						msg = 'Success Input Detail'
+					} else {
+						msg = 'Error Input Detail'
+					}
+					
+				},
+				error: function (jqXHR, textStatus, errorThrown) {
+					msg = 'Error Input Detail' + jqXHR.text
+				}
+			});
+			resolve({
+				msg: msg,
+			});
+
+		}, 100);
+	});  
+
+}
+
+function simpan_invoice_pot_knitting() { 
+
+	return new Promise(resolve => {		
+		setTimeout(() => {
+			var msg
+			var data = [];		
+            //
+            var id_book_invoice = $('#id_inv').val();
+            var total           = $('#total_so').val();
+            var discount        = $('#discount_so').val();
+            var dp              = $('#dp_so').val();
+            var retur           = $('#return_so').val();
+            var twot            = $('#twot_so').val();
+            var vat             = $('#vat_so').val();
+            var other_charge_so = $('#other_charge_so').val();
+            var grand_total     = $('#grandtotal_so').val();
+			//			
+			data.push({		
+				"id_book_invoice": id_book_invoice,
+				"total": total,
+				"discount": discount,	
+				"dp": dp,					
+				"retur": retur,
+				"twot": twot,
+				"vat": vat,	
+				"total_other": other_charge_so,
+				"grand_total": grand_total,																
+			})	
+			
+			var fdata = {
+				'data_table': data
+			}
+			$.ajax({				
+				url: "simpan_invoice_pot_knitting/",
+				type: "POST",
+				data: fdata,
+				dataType: "JSON",
+				success: function (data) {
+					
+					if (data.status) //if success close modal and reload ajax table
+					{
+						msg = 'Success Input Detail'
+					} else {
+						msg = 'Error Input Detail'
+					}
+					// Delete Table Invoice Detail Temporary
+					delete_invoice_detail_temporary();
+					// Print Preview Invoice
+					let id_invoice = $('[name="id_inv"]').val();
+					print_invoice(id_invoice);
+                    // Reload Page
+                    window.location.href = window.location.href;
+
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                	msg = 'Error Input Detail' + jqXHR.text
+                }
+            });
+			resolve({
+				msg: msg,
+			});
+
+		}, 100);
+	});
+
+}
+
+function simpan_other_charge_invoice() 
+{ 	
+	return new Promise(resolve => {		
+		setTimeout(() => {
+			let msg;
+			let data = [];		
+
+			let table = document.getElementById("table-add-charger");
+
+			for (let i = 1; i < table.rows.length; i++) {
+				let row = $(table.rows[i]);
+
+				let id_ctg = row.find('select[name="category_oc[]"]').val(); // ambil value dari <select>
+				let qty = row.find('input[name="qty_oc[]"]').val();          // ambil value dari input qty
+				let price = row.find('input[name="price_oc[]"]').val();      // ambil value dari input price
+				let total = row.find('input[name="total_oc[]"]').val();      // ambil value dari input total
+
+				// pastikan konversi ke angka untuk menghindari null/NaN
+				data.push({		
+					"id_book_invoice": $('#id_inv').val(),
+					"id_ctg": id_ctg || '',
+					"qty": parseFloat(qty) || 0,
+					"price": parseFloat(price) || 0,
+					"total": parseFloat(total) || 0,
+					"status": 'Y',
+				})		
+			}
+
+			let fdata = {
+				'data_table': data
+			};
+
+			$.ajax({				
+				url: "simpan_other_charge_invoice/",
+				type: "POST",
+				data: fdata,
+				dataType: "JSON",
+				success: function (data) {
+					msg = data.status ? 'Success Input Detail' : 'Error Input Detail';
+				},
+				error: function (jqXHR, textStatus, errorThrown) {
+					msg = 'Error Input Detail: ' + errorThrown;
+				}
+			});
+
+			resolve({ msg: msg });
+
+		}, 100);
+	});  
+}
+
+
+function print_invoice_knitting(id) {
+ 	
+	window.open(".../../print_invoice_knitting/" + id + "/" );  	
+
+}
+
 

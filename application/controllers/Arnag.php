@@ -3571,6 +3571,7 @@ public function createinvoice_knitting()
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['isi_bank'] = $this->Model_nag->load_bank();
     $data['buyer'] = $this->Model_nag->cari_buyer();
+    $data['other_charge'] = $this->Model_nag->cari_other_charges();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
     $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
     $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
@@ -3605,6 +3606,62 @@ public function cari_sj_knitting($id_sj, $profit_center)
 {
     $data =  $this->Model_nag->cari_sj_knitting($id_sj, $profit_center);
     echo json_encode($data);
+}
+
+public function simpan_invoice_detail_knitting_temporary()
+{
+    $data = $this->input->post('data_table');
+    $this->Model_nag->simpan_invoice_detail_knitting_temporary($data);
+    echo json_encode(array("status" => TRUE));
+}
+
+public function load_invoice_detail_knitting_temporary()
+{
+    $data =  $this->Model_nag->load_invoice_detail_knitting_temporary();
+    echo json_encode($data);
+}
+
+public function simpan_invoice_detail_knitting()
+{
+    $data = $this->input->post('data_table');
+    $this->Model_nag->simpan_invoice_detail_knitting($data);
+    echo json_encode(array("status" => TRUE));
+}
+
+public function simpan_invoice_pot_knitting()
+{
+    $data = $this->input->post('data_table');
+    $this->Model_nag->simpan_invoice_pot_knitting($data);
+    echo json_encode(array("status" => TRUE));
+}
+
+public function simpan_other_charge_invoice()
+{
+    $data = $this->input->post('data_table');
+    $this->Model_nag->simpan_other_charge_invoice($data);
+    echo json_encode(array("status" => TRUE));
+}
+
+public function print_invoice_knitting($id)
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+        //   
+    $mpdf = new \Mpdf\Mpdf();
+    $data['data_invoice'] = $this->Model_nag->report_invoice($id);
+    $data['data_invoice_detail'] = $this->Model_nag->report_invoice_detail_knitting($id);
+    $data['data_invoice_pot'] = $this->Model_nag->report_invoice_pot_knitting($id);
+    $data['group_bppb_number'] = $this->Model_nag->group_bppb_number($id);
+    $data['group_so_number'] = $this->Model_nag->group_so_number($id);
+    $data['group_curr'] = $this->Model_nag->group_curr($id);
+    $data['group_user'] = $this->Model_nag->group_user($id);
+
+        //
+    $html = $this->load->view('arnag/pdf_invoice_knitting', $data, true);
+    $mpdf->setFooter('{PAGENO} / {nbpg}');
+    $mpdf->WriteHTML($html);
+    $mpdf->Output();
 }
 
 }

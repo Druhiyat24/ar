@@ -118,7 +118,7 @@
                             <!-- BANK -->
                             <div class="form-group col-md-12">
                                 <label>Bank</label>
-                                <select class="form-control" id="id_bank" name="id_bank" required>
+                                <select class="form-control select2" id="id_bank" name="id_bank" required>
                                     <?php foreach ($isi_bank as $bk) : ?>
                                         <option value="<?= $bk['id']; ?>"><?= $bk['nama_bank']; ?> (<?= $bk['no_rek']; ?>)</option>
                                     <?php endforeach; ?>
@@ -127,16 +127,16 @@
                             <!--  -->
                             <div class="form-group col-md-12">
                                 <label>PPh</label>
-                                <select class="form-control" id="pph" name="pph" required>
-                                   <option value="NA">NA</option>
-                                   <option value="PPh 21">PPh 21</option>
-                                   <option value="PPh 23">PPh 23</option>
-                                   <option value="4 Ayat 2">4 Ayat 2</option>								
-                               </select>
-                           </div>
-                           <div class="form-group col-md-12">
+                                <select class="form-control select2" id="pph" name="pph" required>
+                                 <option value="NA">NA</option>
+                                 <option value="PPh 21">PPh 21</option>
+                                 <option value="PPh 23">PPh 23</option>
+                                 <option value="4 Ayat 2">4 Ayat 2</option>								
+                             </select>
+                         </div>
+                         <div class="form-group col-md-12">
                             <label>Type SO</label>
-                            <select class="form-control" id="type_so" name="type_so" required>
+                            <select class="form-control select2" id="type_so" name="type_so" required>
                                 <option value="FOB">FOB</option>
                                 <option value="CMT">CMT</option>
                             </select>
@@ -160,7 +160,7 @@
         <!-- Data Table Create Invoice -->
         <div class="row">
             <div class="col-12">
-                <div class="card">
+                <div class="card card-info">
                     <div class="card-header">
                         <h3 class="card-title">DataTable Detail SJ</h3>
                     </div>
@@ -184,8 +184,12 @@
                                     <th>UOM</th>
                                     <th>Qty</th>
                                     <th>Unit Price</th>
-                                    <th>Discount (%)</th>
                                     <th>Total Price</th>
+                                    <th>UOM Shipment</th>
+                                    <th>Qty Shipment</th>
+                                    <th>Unit Price Shipment</th>
+                                    <th>Total Price Shipment</th>
+                                    <th>Discount (%)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -198,14 +202,120 @@
                 <!-- /.card -->
             </div>
         </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card card-warning">
+                    <div class="card-header d-flex">
+                        <h3 class="card-title">Add Other Charges</h3>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-success" onclick="addRow_knitting()">
+                                <i class="fas fa-plus"></i> Add Row
+                            </button>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="deleteRow_knitting()">
+                                <i class="fas fa-trash"></i> Delete Row
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body table-responsive p-0" style="height: 300px;">
+                        <table id="table-add-charger" class="table table-head-fixed text-nowrap">
+                            <thead>
+                                <tr>
+                                    <th>Category Name</th>
+                                    <th>Qty</th>
+                                    <th>Ptrice</th>
+                                    <th>Total</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="body-add-charger"></tbody>
+                        </table>
+                    </div>
+                    <!-- /.card-body -->
+                </div>
+                <!-- /.card -->
+            </div>
+        </div>
         <!-- End Data Table Create Invoice -->
         <!--  -->
         <!-- Data Potongan Invoice  -->
-        <div class="row" style="display: flex; justify-content: flex-end">
+        <div class="row">
             <!--/.col (right) -->
             <div class="col-md-6">
                 <!-- Form Element sizes -->
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">Total</h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Start Input -->
+                        <form class="form-horizontal">
+                            <div class="card-body">
+                                <div class="form-group row">
+                                    <label for="total_so" class="col-sm-4 col-form-label">Total</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="total_so" name="total_so" style="text-align:right;" placeholder="0.00" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="discount_so" class="col-sm-4 col-form-label">Discount</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="discount_so" name="discount_so" style="text-align:right;" placeholder="0.00" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="dp_so" class="col-sm-4 col-form-label">Down Payment</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="dp_so" name="dp_so" style="text-align:right;" placeholder="0.00" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="return_so" class="col-sm-4 col-form-label">Return</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="return_so" name="return_so" style="text-align:right;" placeholder="0.00" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="twot_so" class="col-sm-4 col-form-label">Total With Out Tax</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="twot_so" name="twot_so" style="text-align:right;" placeholder="0.00" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="vat_so" class="col-sm-4 col-form-label">VAT</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="vat_so" name="vat_so" style="text-align:right;" placeholder="0.00" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="other_charge_so" class="col-sm-4 col-form-label">Other Charge</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="other_charge_so" name="other_charge_so" style="text-align:right;" placeholder="0.00" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="grandtotal_so" class="col-sm-4 col-form-label">Grand Total</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="grandtotal_so" name="grandtotal_so" style="text-align:right;" placeholder="0.00" readonly>
+                                        <input type="hidden" class="form-control" id="keterangan_so" name="keterangan_so" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- /.card-body -->
+                            <!-- /.card-footer -->
+                        </form>
+                        <!--  End Start Input -->
+                    </div>
+                    <!-- /.card-body -->
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <!-- Form Element sizes -->
                 <div class="card card-success">
+                    <div class="card-header">
+                        <h3 class="card-title">Total Shipment</h3>
+                    </div>
                     <div class="card-body">
                         <!-- Start Input -->
                         <form class="form-horizontal">
@@ -262,6 +372,7 @@
                     <!-- /.card-body -->
                 </div>
             </div>
+
             <!--/.col (right) -->
         </div>
         <!-- End Data Potongan Invoice  -->
@@ -317,7 +428,7 @@
                     <!-- /.card-header -->
                     <div class="card-body table-responsive p-0" style="height: 400px;">
                         <div class="d-flex justify-content-between">
-                         <div class="ml-auto">
+                           <div class="ml-auto">
                             <span class="input-group-text"><i class="fas fa-search"></i></span>
                         </div>
                         <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_noinvoice()">
@@ -462,7 +573,7 @@
                     <!-- /.card-header -->
                     <!-- Detail SO -->
                     <div class="d-flex justify-content-between">
-                     <div class="ml-auto">
+                       <div class="ml-auto">
                         <span class="input-group-text"><i class="fas fa-search"></i></span>
                     </div>
                     <input type="text"  id="cariso" name="cariso" required autocomplete="off" placeholder="Search SO number.." onkeyup="cariso()">
@@ -498,7 +609,7 @@
                         </div>
                         <!-- /.card-header -->
                         <div class="d-flex justify-content-between">
-                         <div class="ml-auto">
+                           <div class="ml-auto">
                             <span class="input-group-text"><i class="fas fa-search"></i></span>
                         </div>
                         <input type="text"  id="cari_shipp" name="cari_shipp" required autocomplete="off" placeholder="Search shipp number..." onkeyup="cari_shipp_num()">
@@ -547,8 +658,8 @@
                 <!-- Form Element sizes -->
                 <div class="card card-primary">
                     <div class="card-header">
-                            <h3 class="card-title">Total</h3>
-                        </div>
+                        <h3 class="card-title">Total</h3>
+                    </div>
                     <div class="card-body">
                         <!-- Start Input -->
                         <form class="form-horizontal">
@@ -595,11 +706,11 @@
                                 <div class="form-group row">
                                     <div class="custom-control custom-checkbox col-sm-2">
                                         <input class="custom-control-input" type="checkbox" id="check_vat_baru_so" name="check_vat_baru_so" onclick="modal_input_vat_baru_so()">
-                                        <label for="check_vat_baru" class="custom-control-label">Vat 11%</label>
+                                        <label for="check_vat_baru_so" class="custom-control-label">Vat 11%</label>
                                     </div>
                                     <div class="custom-control custom-checkbox col-sm-2">
                                         <input class="custom-control-input" type="checkbox" id="check_vat_so" name="check_vat_so" onclick="modal_input_vat_so()">
-                                        <label for="check_vat" class="custom-control-label">Vat 12%</label>
+                                        <label for="check_vat_so" class="custom-control-label">Vat 12%</label>
                                     </div>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control" id="mdl_vat_so" name="mdl_vat_so" style="text-align:right;" placeholder="0.00" readonly>
@@ -626,8 +737,8 @@
                 <!-- Form Element sizes -->
                 <div class="card card-success">
                     <div class="card-header">
-                            <h3 class="card-title">Total Shipment</h3>
-                        </div>
+                        <h3 class="card-title">Total Shipment</h3>
+                    </div>
                     <div class="card-body">
                         <!-- Start Input -->
                         <form class="form-horizontal">
@@ -705,7 +816,7 @@
     </div>
     <div class="modal-footer right-content-between">
         <!-- <button type="button" class="btn btn-primary" data-dismiss="modal">Add</button> -->
-        <button type="button" id="btn_add_data_so" name="btn_add_data_so" class="btn btn-primary" href="javascript:void(0)" onclick="duplicate_data_so()">Add Data</button>
+        <button type="button" id="btn_add_data_so" name="btn_add_data_so" class="btn btn-primary" href="javascript:void(0)" onclick="duplicate_data_so_knitting()">Add Data</button>
     </div>
 </div>
 <!-- /.modal-content -->
@@ -750,7 +861,7 @@
             </div>
             <div class="modal-footer justify-content-between">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary toastrDefaultSuccess" onclick="save_invoice()">Save Change</button>
+                <button type="button" class="btn btn-primary toastrDefaultSuccess" onclick="save_invoice_knitting()">Save Change</button>
             </div>
         </div>
     </div>
@@ -901,5 +1012,66 @@
                 }
             }
         }
+    }
+</script>
+
+<script>
+    let rowIndex = 0;
+
+    function addRow_knitting() {
+        rowIndex++;
+        const row = `
+        <tr>
+        <td>
+        <select name="category_oc[]" class="form-control select2" style="width: 500px">
+        <option value="">- Choose -</option>
+        <?php foreach($other_charge as $cat): ?>
+            <option value="<?= $cat['id'] ?>"><?= $cat['nama_pilihan'] ?></option>
+        <?php endforeach; ?>
+        </select>
+        </td>
+        <td><input type="text" name="qty_oc[]" class="form-control qty_oc" style="text-align:right;" value="" oninput="calculateTotal_knitting(this)" placeholder="0.00"></td>
+        <td><input type="text" name="price_oc[]" class="form-control price_oc" style="text-align:right;" value="" oninput="calculateTotal_knitting(this)" placeholder="0.00"></td>
+        <td><input type="text" name="total_oc[]" class="form-control total_oc" style="text-align:right;" oninput="updateGrandTotal_knitting()" value="" placeholder="0.00"></td>
+        <td style="display: flex; justify-content: center; align-items: center; height: 100%;">
+        <input type="checkbox" class="form-check-input checkbox_oc" style="margin-top: 40px;;">
+        </td>
+        </tr>
+        `;
+        $('#body-add-charger').append(row);
+        $('.select2').select2();
+        updateGrandTotal_knitting();
+    }
+
+    function calculateTotal_knitting(element) {
+        const tr = $(element).closest('tr');
+        const qty = parseFloat(tr.find('.qty_oc').val()) || 0;
+        const price = parseFloat(tr.find('.price_oc').val()) || 0;
+        const total = qty * price;
+        tr.find('.total_oc').val(total.toFixed(2));
+        updateGrandTotal_knitting();
+    }
+
+    function updateGrandTotal_knitting() {
+        let total = 0;
+        let grand_total = 0;
+
+        $('.total_oc').each(function () {
+            total += parseFloat($(this).val()) || 0;
+        });
+
+        let twot_so = parseFloat($('[name="twot_so"]').val()) || 0;
+        let vat_so  = parseFloat($('[name="vat_so"]').val()) || 0;
+
+        grand_total = twot_so + vat_so + total;
+
+        $('#other_charge_so').val(total.toFixed(2));
+        $('#grandtotal_so').val(grand_total.toFixed(2));
+    }
+
+
+    function deleteRow_knitting() {
+        $('.checkbox_oc:checked').closest('tr').remove();
+        updateGrandTotal_knitting();
     }
 </script>
