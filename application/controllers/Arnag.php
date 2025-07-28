@@ -3649,12 +3649,13 @@ public function print_invoice_knitting($id)
     }
         //   
     $mpdf = new \Mpdf\Mpdf();
+    $data['data_konsumen'] = $this->Model_nag->get_konsumen_invoice($id);
     $data['data_invoice'] = $this->Model_nag->report_invoice($id);
     $data['data_invoice_detail'] = $this->Model_nag->report_invoice_detail_knitting($id);
     $data['data_invoice_pot'] = $this->Model_nag->report_invoice_pot_knitting($id);
     $data['group_bppb_number'] = $this->Model_nag->group_bppb_number($id);
     $data['group_so_number'] = $this->Model_nag->group_so_number($id);
-    $data['group_curr'] = $this->Model_nag->group_curr($id);
+    $data['group_curr'] = $this->Model_nag->group_curr_knitting($id);
     $data['group_user'] = $this->Model_nag->group_user($id);
 
         //

@@ -117,15 +117,13 @@ table {
 			<td><b>TO:</b></td>
 		</tr>
 		<tr>
-			<td><?= ucwords(strtolower("TEEJAY MAURITIUS PRIVATE LIMITED")) ?></td>
+			<td><?= ucwords(strtolower($data_konsumen['supplier'])) ?></td>
 		</tr>
 		<tr>
 
 			<td style="white-space: pre-line;">
-				<?= nl2br(preg_replace('/\. ?/', ".\n", ucwords(strtolower("ROGERS CAPITAL CORPORATE. SERVICES LIMITED, 3RD FLOOR, ROGERS HOUSE. NO.5 PRESIDENT JOHN,
-				KENNEDY STREET. PORT LOUIS, MAURITIUS")))) ?>
+				<?= nl2br(preg_replace('/\. ?/', ".\n", ucwords(strtolower($data_konsumen['alamat'])))) ?>
 			</td>
-
 			<!--  -->
 			<!-- <td>JL.ASIA AFRIKA NO.122-124, PALEDANG,KEC.LENGKONG,KOTA BANDUNG,JAWA
 			BARAT 40261</td> -->
@@ -138,26 +136,26 @@ table {
 	
 	<table style="width:100%;font-size:10px;" border="1">
 		<tr align="center">
-			<th>
+			<th style="width: 13%">
 				Invoice Date
 			</th>
-			<th>
+			<th style="width: 25%">
 				Product Item
 			</th>
-			<th>
+			<th style="width: 15%">
 				Style/Color
 			</th>
-			<th>
+			<th style="width: 15%">
 				PO
 			</th>
-			<th style="width: 100px">
-				Qty
+			<th style="width: 12%">
+				Qty (<?= $group_curr['uom']; ?>)
 			</th>
-			<th>
-				Price
+			<th style="width: 10%">
+				Price (<?= $group_curr['curr']; ?>)
 			</th>
-			<th style="width: 100px">
-				Total
+			<th style="width: 10%">
+				Total (<?= $group_curr['curr']; ?>)
 			</th>
 		</tr>
 
@@ -170,15 +168,15 @@ table {
 				<td><?= $data_invoice['tgl_inv']; ?></td>
 				<td><?= $inv_det['product_item']; ?></td>
 				<td><?= $inv_det['color']; ?></td>
-				<td>-</td>
+				<td><?= $inv_det['po_konsumen']; ?></td>
 				<td align='right'><?= $inv_det['qty']; ?></td>
 				<td align='right' style="width: 100px"><?= $inv_det['unit_price']; ?></td>
 				<td align='right'><?= $inv_det['total_price']; ?></td>
 			</tr>
 		<?php endforeach; ?>
 		<tr>
-			<th style="text-align: center" colspan='6'>Grand Total</th>
-			<th align='right'><?= $mata_uang ?> <?= $data_invoice_pot['grand_total']; ?></th>
+			<td style="text-align: center" colspan='6'><b>Grand Total</b></td>
+			<td align='right'><b><?= $data_invoice_pot['grand_total']; ?></b></td>
 		</tr>
 
 	</table>
@@ -187,72 +185,68 @@ table {
 
 	<table style="font-size:10px;" border="0">
 		<tr>
-			<td style="text-align:right">Bank</td>
-			<td>:</td>
-			<td>No Rek : <?= $data_invoice['no_rek']; ?></td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
+			<td>Shipping On Behalf Of</td>
 		</tr>
 		<tr>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td><?= $data_invoice['nama_bank']; ?></td>
+			<td><b>PT Nirwana Alabare Garment</b></td>
 		</tr>
 		<tr>
-			<td>&nbsp;</td>
-			<td>&nbsp;</td>
-			<td><?= $data_invoice['v_bankaddress']; ?></td>
-			<!--  -->
-			<!-- <td>JL.ASIA AFRIKA NO.122-124, PALEDANG,KEC.LENGKONG,KOTA BANDUNG,JAWA
-			BARAT 40261</td> -->
+			<td>Payment Terms : <b>Within <?= $data_invoice['top']; ?> days of Invoice date</b></td>
+		</tr>
+		<tr>
+			<td>Name Of The Bank : <b><?= ucwords(strtolower($data_invoice['nama_bank'])) ?></b></td>
+		</tr>
+		<tr>
+			<td>Bank Account Number : <b><?= $data_invoice['no_rek']; ?></b></td>
+		</tr>
+		<tr>
+			<td>SWIFT Code : <b><?= $data_invoice['v_swiftcode']; ?></b></td>
+		</tr>
+		<tr>
+			<td>Bank Account Currency : <b><?= $data_invoice['curr']; ?></b></td>
 		</tr>
 	</table>
 
 	<br />
+
+	<div style="margin-bottom: 2.54cm; page-break-inside: avoid;">
+		<table style="page-break-inside: avoid;" cellpadding="0" cellspacing="0" border="0" width="600px">
+			<tr>
+				<th style="font-size: 11px; width: 25%;"></th>
+				<th style="font-size: 11px; width: 25%;"></th>
+				<th style="font-size: 11px; width: 25%;"></th>
+				<th style="font-size: 11px; width: 25%;">Approved By, </th>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp; </td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp; </td>
+			</tr>
+			<tr style="border-collapse: collapse; border-top: none;">
+				<td style="font-size:12px;text-align:center;text-decoration:underline"></td>
+				<td style="font-size:12px;text-align:center;text-decoration:underline"></td>
+				<td style="font-size:12px;text-align:center;text-decoration:underline"></td>
+				<td style="font-size:12px;text-align:center;text-decoration:underline"><u><?= "Willy Fernandez" ?></u></td>
+			</tr>
+			<tr>
+				<td style="text-align:center;font-size:12px"></td>
+				<td style="text-align:center;font-size:12px"></td>
+				<td style="text-align:center;font-size:12px"></td>
+				<td style="text-align:center;font-size:12px">Finance Manager</td>
+			</tr>
+		</table>
 
 </div>

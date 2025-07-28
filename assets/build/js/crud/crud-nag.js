@@ -15057,7 +15057,9 @@ function cari_book_inv_knitting() {
 							trHTML += '<td><input type="checkbox" name="mdl_cek_sj" id="mdl_cek_sj" class="flat" value = ' + item.total_price + ' onclick="modal_sum_total_sj(' + item.total_price + ');modal_sum_total_sj_so(' + item.total_price + ')"> <input type="hidden" class="form-control" id="mdl_cek_sj_so" name="mdl_cek_sj_so" value = ' + item.total_price_so + ' style="width: 80%; text-align: center"  readonly autocomplete="off"></td>';
 							trHTML += '<td hidden> <input type="text" class="form-control" id="mdl_grade" name="mdl_grade" value = ' + item.grade + ' style="width: 80%; text-align: center"  readonly autocomplete="off"></td>';
 							trHTML += '<td hidden> <input type="text" class="form-control" id="mdl_tgl_inv" name="mdl_tgl_inv" value = ' + item.bppbdate + ' style="width: 80%; text-align: center"  readonly autocomplete="off"></td>';
-							trHTML += '<td hidden> <input type="text" class="form-control" id="mdl_curr" name="mdl_curr" value = ' + item.curr + ' style="width: 80%; text-align: center"  readonly autocomplete="off"></td>';									
+							trHTML += '<td hidden> <input type="text" class="form-control" id="mdl_curr" name="mdl_curr" value = ' + item.curr + ' style="width: 80%; text-align: center"  readonly autocomplete="off"></td>';
+							trHTML += '<td hidden>' + item.po_konsumen + "</td>";
+							trHTML += '<td hidden>' + item.kode_konsumen + "</td>";									
 							trHTML += '</tr>';
 						});
 
@@ -15331,6 +15333,8 @@ function simpan_invoice_detail_knitting_temporary() {
 							"unit_price_ship": rows.cells[18].innerHTML,			
 							"total_price_ship": rows.cells[19].innerHTML, 				
 							"disc": mdl_disc,
+							"po_konsumen": rows.cells[25].innerHTML,			
+							"id_konsumen": rows.cells[26].innerHTML,
 						})	
 
 					});
@@ -15408,6 +15412,8 @@ function load_invoice_detail_knitting_temporary() {
 				trHTML += '<td>' + item.unit_price_ship + "</td>";
 				trHTML += '<td align="right">' + item.total_price_ship + "</td>";	
 				trHTML += '<td>' + item.disc + "</td>";	
+				trHTML += '<td hidden>' + item.po_konsumen + "</td>";
+				trHTML += '<td hidden>' + item.id_konsumen + "</td>";
 						// trHTML += '<td><input type="checkbox" name="cek_pilih_sj" id="cek_pilih_sj" class="flat" checked></td>';												
 						trHTML += '</tr>';
 					});
@@ -15655,6 +15661,8 @@ function simpan_invoice_detail_knitting()
 					"unit_price_ship": table.rows[i].cells[18].innerHTML,			
 					"total_price_ship": table.rows[i].cells[19].innerHTML, 									
 					"disc": table.rows[i].cells[20].innerHTML,	
+					"po_konsumen": table.rows[i].cells[21].innerHTML,			
+					"id_konsumen": table.rows[i].cells[22].innerHTML,
 
 				})		
 			}

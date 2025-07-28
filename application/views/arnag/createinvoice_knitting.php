@@ -208,7 +208,7 @@
                 <div class="card card-warning">
                     <div class="card-header d-flex">
                         <h3 class="card-title">Add Other Charges</h3>
-                        <div>
+                        <div style="margin-left: 10px;">
                             <button type="button" class="btn btn-sm btn-success" onclick="addRow_knitting()">
                                 <i class="fas fa-plus"></i> Add Row
                             </button>
