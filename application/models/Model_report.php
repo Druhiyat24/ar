@@ -8,100 +8,100 @@ class Model_report extends CI_Model
     {
 
         if($id_customer == 'All' and $shipp == 'All' and $type == 'All' and $curr == 'All' and $type_so == 'All' ){
-            $str = " WHERE b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice ";
+            $str = " AND b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice ";
             $str2 = " WHERE b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv ";
         }elseif($id_customer != 'All' and $shipp == 'All' and $type == 'All' and $curr == 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
              $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp != 'All' and $type == 'All' and $curr == 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp == 'All' and $type != 'All' and $curr == 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND d.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp == 'All' and $type == 'All' and $curr != 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
              $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp == 'All' and $type == 'All' and $curr == 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer != 'All' and $shipp != 'All' and $type == 'All' and $curr == 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
              $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND a.shipp = '$shipp' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer != 'All' and $shipp == 'All' and $type != 'All' and $curr == 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
              $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND d.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer != 'All' and $shipp == 'All' and $type == 'All' and $curr != 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
         }elseif($id_customer != 'All' and $shipp == 'All' and $type == 'All' and $curr == 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
              $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp != 'All' and $type != 'All' and $curr == 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND a.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND a.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
              $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND d.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp != 'All' and $type == 'All' and $curr != 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
              $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp != 'All' and $type == 'All' and $curr == 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
              $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp == 'All' and $type != 'All' and $curr != 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_type = '$type' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_type = '$type' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
              $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND d.id_type = '$type' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp == 'All' and $type != 'All' and $curr == 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_type = '$type' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_type = '$type' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
              $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_type = '$type' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp == 'All' and $type == 'All' and $curr != 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
              $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer != 'All' and $shipp != 'All' and $type != 'All' and $curr == 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND a.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND a.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND a.shipp = '$shipp' AND d.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer != 'All' and $shipp != 'All' and $type == 'All' and $curr != 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
              $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND a.shipp = '$shipp' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer != 'All' and $shipp != 'All' and $type == 'All' and $curr == 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND a.shipp = '$shipp' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer != 'All' and $shipp == 'All' and $type != 'All' and $curr != 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.id_type = '$type' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.id_type = '$type' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND d.id_type = '$type' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer != 'All' and $shipp == 'All' and $type != 'All' and $curr == 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.id_type = '$type' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.id_type = '$type' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND d.id_type = '$type' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer != 'All' and $shipp == 'All' and $type == 'All' and $curr != 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
              $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp != 'All' and $type != 'All' and $curr != 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND b.curr = '$curr' AND a.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND b.curr = '$curr' AND a.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
              $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND b.curr = '$curr' AND d.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp != 'All' and $type != 'All' and $curr == 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND a.type_so = '$type_so' AND a.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND a.type_so = '$type_so' AND a.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND a.type_so = '$type_so' AND d.id_type = '$type' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp != 'All' and $type == 'All' and $curr != 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp == 'All' and $type != 'All' and $curr != 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_type = '$type' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_type = '$type' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND d.id_type = '$type' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer != 'All' and $shipp != 'All' and $type != 'All' and $curr != 'All' and $type_so == 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND a.id_type = '$type' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND a.id_type = '$type' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND a.shipp = '$shipp' AND d.id_type = '$type' AND b.curr = '$curr' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer != 'All' and $shipp != 'All' and $type != 'All' and $curr == 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND a.id_type = '$type' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND a.id_type = '$type' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND a.shipp = '$shipp' AND d.id_type = '$type' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer != 'All' and $shipp != 'All' and $type == 'All' and $curr != 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND a.shipp = '$shipp' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer != 'All' and $shipp == 'All' and $type != 'All' and $curr != 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.id_type = '$type' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.id_type = '$type' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND d.id_type = '$type' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }elseif($id_customer == 'All' and $shipp != 'All' and $type != 'All' and $curr != 'All' and $type_so != 'All'){
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND a.id_type = '$type' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND a.id_type = '$type' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.shipp = '$shipp' AND d.id_type = '$type' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }else{
-            $str = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND a.id_type = '$type' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
+            $str = " AND  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.id_customer = '$id_customer' AND a.shipp = '$shipp' AND a.id_type = '$type' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_invoice";
             $str2 = " WHERE  b.sj_date BETWEEN '$periode_dari' AND '$periode_sampai' AND a.customer = '$id_customer' AND a.shipp = '$shipp' AND d.id_type = '$type' AND b.curr = '$curr' AND a.type_so = '$type_so' AND (a.status = 'POST' OR a.status = 'APPROVED') GROUP BY a.id, a.no_inv";
         }
 
@@ -109,31 +109,59 @@ class Model_report extends CI_Model
         $hasil = $this->db->query("(SELECT a.no_invoice, c.Supplier AS customer, a.shipp, a.doc_type, a.doc_number,  
                                           d.type, a.type_so, a.pph, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, b.curr,
                                           FORMAT(SUM(b.qty), 2) AS qty,
+                                                                                    FORMAT(SUM(b.qty), 2) AS qty_ship,
                                           FORMAT(SUM(b.unit_price), 2) AS unit_price, 
                                           FORMAT(e.total, 2) AS total, 
+                                                                                    FORMAT(e.total, 2) AS total_ship, 
                                           FORMAT(e.discount, 2) AS discount, 
                                           FORMAT(e.dp, 2) AS dp, 
                                           FORMAT(e.retur, 2) AS retur, 
                                           FORMAT(e.twot, 2) AS twot, 
                                           FORMAT(e.vat, 2) AS vat, 
-                                          FORMAT(e.grand_total, 2) AS grand_total, f.top,if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1) as rate, FORMAT(e.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur
+                                          FORMAT(e.grand_total, 2) AS grand_total, f.top,if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1) as rate, FORMAT(e.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2,  FORMAT(e.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2_ship, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur
                                   FROM tbl_book_invoice AS a INNER JOIN 
                                           tbl_invoice_detail AS b ON a.id = b.id_book_invoice INNER JOIN      
                                           mastersupplier AS c ON a.id_customer = c.Id_Supplier INNER JOIN 
                                           tbl_type AS d ON a.id_type = d.id_type INNER JOIN 
                                           tbl_invoice_pot AS e ON a.id = e.id_book_invoice INNER JOIN 
                                           tbl_master_top AS f ON a.id_top = f.id 
-                                          $str) union(SELECT a.no_inv as no_invoice, c.Supplier AS customer, a.shipp, a.doc_type, a.doc_number,  
+                                          WHERE a.no_invoice like '%NAG%' $str) 
+                                                                                    UNION
+                                                                                    (SELECT a.no_invoice, c.Supplier AS customer, a.shipp, a.doc_type, a.doc_number,  
+                                          d.type, a.type_so, a.pph, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, b.curr,
+                                          FORMAT(SUM(b.qty), 2) AS qty,
+                                                                                    FORMAT(SUM(b.qty_ship), 2) AS qty_ship,
+                                          FORMAT(SUM(b.unit_price), 2) AS unit_price, 
+                                          FORMAT(g.total, 2) AS total, 
+                                                                                    FORMAT(e.total, 2) AS total_ship, 
+                                          FORMAT(e.discount, 2) AS discount, 
+                                          FORMAT(e.dp, 2) AS dp, 
+                                          FORMAT(e.retur, 2) AS retur, 
+                                          FORMAT(e.twot, 2) AS twot, 
+                                          FORMAT(e.vat, 2) AS vat, 
+                                          FORMAT(e.grand_total, 2) AS grand_total, f.top,if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1) as rate, FORMAT(g.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2,  FORMAT(e.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2_ship, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur
+                                  FROM tbl_book_invoice AS a INNER JOIN 
+                                          tbl_invoice_detail_knitting AS b ON a.id = b.id_book_invoice INNER JOIN      
+                                          mastersupplier AS c ON a.id_customer = c.Id_Supplier INNER JOIN 
+                                          tbl_type AS d ON a.id_type = d.id_type INNER JOIN 
+                                          tbl_invoice_pot AS e ON a.id = e.id_book_invoice INNER JOIN 
+                                          tbl_master_top AS f ON a.id_top = f.id INNER JOIN
+                                                                                    tbl_invoice_pot_knitting AS g ON a.id = g.id_book_invoice 
+                                          WHERE a.no_invoice like '%NAK%' $str) 
+                                                                                    UNION
+                                                                                    (SELECT a.no_inv as no_invoice, c.Supplier AS customer, a.shipp, a.doc_type, a.doc_number,  
                                           a.type, a.type_so, a.pph, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, b.curr,
                                           FORMAT(SUM(b.qty), 2) AS qty,
+                                                                                    FORMAT(SUM(b.qty), 2) AS qty_ship,
                                           FORMAT(SUM(b.unit_price), 2) AS unit_price, 
-                                          FORMAT(e.total, 2) AS total, 
+                                          FORMAT(e.total, 2) AS total,
+                                                                                    FORMAT(e.total, 2) AS total_ship, 
                                           FORMAT(e.diskon, 2) AS discount, 
                                           FORMAT(e.dp, 2) AS dp, 
                                           FORMAT(e.retur, 2) AS retur, 
                                           FORMAT(e.twot, 2) AS twot, 
                                           FORMAT(e.vat, 2) AS vat, 
-                                          FORMAT(e.grand_total, 2) AS grand_total, a.top,if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date),1) as rate, FORMAT(e.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date),1), 2) AS total2, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur
+                                          FORMAT(e.grand_total, 2) AS grand_total, a.top,if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date),1) as rate, FORMAT(e.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date),1), 2) AS total2, FORMAT(e.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date),1), 2) AS total2_ship, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur
                                   FROM tbl_invoice_nb AS a INNER JOIN 
                                           tbl_invoice_nb_detail AS b ON a.no_inv = b.no_inv INNER JOIN      
                                           mastersupplier AS c ON a.customer = c.Id_Supplier INNER JOIN 

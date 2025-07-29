@@ -259,6 +259,25 @@
                         </ul>
                     <?php endforeach; ?>
                 </li>
+
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-book"></i>
+                        <p>
+                            Report 2
+                            <i class="fas fa-angle-left right"></i>
+                        </p>
+                    </a>
+                        <ul class="nav nav-treeview" style="margin-left: 8px;">
+                            <li class="nav-item">
+                                <a href="<?= base_url('report/aging_ar_jatem'); ?>" class="nav-link">
+                                    <i class="fas fa-chevron-circle-right nav-icon"></i>
+                                    <p>Aging AR & Jatem</p>
+                                </a>
+                            </li>
+                        </ul>
+                </li>
+
             </ul>
         </nav>
         <!-- /.sidebar-menu -->

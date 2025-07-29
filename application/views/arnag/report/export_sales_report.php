@@ -135,7 +135,10 @@ CSS HEADER
                 Inv Type
             </th>
             <th>
-                Qty
+                Qty Billing
+            </th>
+            <th>
+                Qty Shipment
             </th>
             <th>
                 Currency
@@ -144,10 +147,16 @@ CSS HEADER
                 Rate
             </th>
             <th>
-                Original Value
+                Original Value Billing
             </th>
             <th>
-                Equiv Value
+                Original Value Shipment
+            </th>
+            <th>
+                Equiv Value Billing
+            </th>
+            <th>
+                Equiv Value Shipment
             </th>
             <th>
                 VAT
@@ -206,6 +215,9 @@ CSS HEADER
                 <td align="right">
                     <?= $sr['qty']; ?>
                 </td>
+                <td align="right">
+                    <?= $sr['qty_ship']; ?>
+                </td>
 
                 <td align="center">
                     <?= $sr['curr']; ?>
@@ -220,8 +232,17 @@ CSS HEADER
                 </td>
 
                 <td align="right">
+                    <?= $sr['total_ship']; ?>
+                </td>
+
+                <td align="right">
                     <?= $sr['total2']; ?>
                 </td>
+
+                <td align="right">
+                    <?= $sr['total2_ship']; ?>
+                </td>
+
                 <td align="right">
                     <?= $sr['vat']; ?>
                 </td>

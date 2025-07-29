@@ -222,4 +222,31 @@ class Report extends CI_Controller
         //
         $this->load->view('arnag/report/export_outstanding_pi', $data);
     }
+
+    public function aging_ar_jatem()
+    {
+
+        if (!$this->session->userdata('username')) {
+            redirect('auth');
+        }
+
+        $data['title'] = 'AGING PIUTANG DAGANG - BULANAN';
+        $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+        $data['customer'] = $this->Model_nag->cari_customer();
+        $data['type'] = $this->db->get('tbl_type')->result_array();
+        $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+        $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+        $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+        $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+        $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+        $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+        $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+        $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+
+        $this->load->view('templates/header', $data);
+        $this->load->view('templates/sidebar', $data);
+        $this->load->view('arnag/report/aging_ar_jatem', $data);
+        $this->load->view('templates/footer', $data);
+    }
+
 }

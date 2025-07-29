@@ -1279,6 +1279,37 @@ function change_top_5_sales(option) {
 
 <script>
   $(document).ready(function () {
+    // Tanggal default: Juli 2025
+    var defaultYear = 2025;
+    var defaultMonth = 7;
+
+    $('#monthPicker').datepicker({
+      format: "MM yyyy", // ← tampil sebagai: July 2025
+      minViewMode: 1,
+      autoclose: true
+    }).datepicker('setDate', new Date(defaultYear, defaultMonth - 1))
+      .on('changeDate', function (e) {
+        var year = e.date.getFullYear();
+        var month = ("0" + (e.date.getMonth() + 1)).slice(-2);
+
+        var startDate = `${year}-${month}-01`;
+        var endDate = new Date(year, month, 0).toISOString().slice(0, 10);
+
+        $('#start_date').val(startDate);
+        $('#end_date').val(endDate);
+      });
+
+    // Set juga saat awal load
+    var startDate = `${defaultYear}-${("0" + defaultMonth).slice(-2)}-01`;
+    var endDate = new Date(defaultYear, defaultMonth, 0).toISOString().slice(0, 10);
+    $('#start_date').val(startDate);
+    $('#end_date').val(endDate);
+  });
+</script>
+
+
+<script>
+  $(document).ready(function () {
     var minDate = '<?= $min_date ?>';
 
     let datepickerOptions = {
