@@ -223,7 +223,7 @@
                                 <tr>
                                     <th>Category Name</th>
                                     <th>Qty</th>
-                                    <th>Ptrice</th>
+                                    <th>Price</th>
                                     <th>Total</th>
                                     <th>Action</th>
                                 </tr>

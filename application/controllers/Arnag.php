@@ -104,6 +104,9 @@ class Arnag extends CI_Controller
         $data['customer'] = $this->Model_nag->cari_customer();
         $data['kode_kwt'] = $this->Model_nag->get_kode_kwt();
         $data['type'] = $this->db->get('tbl_type')->result_array();
+        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $result = $query->row();
+        $data['min_date'] = ($result->tgl_awal != null) ? $result->tgl_awal : '';
         $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
         $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
         $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
@@ -142,6 +145,9 @@ class Arnag extends CI_Controller
         $data['kode_kwt'] = $this->Model_nag->get_kode_kwt();
         $data['type'] = $this->db->get('tbl_type')->result_array();
         $data['isi_bank'] = $this->Model_nag->load_bank();
+        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $result = $query->row();
+        $data['min_date'] = ($result->tgl_awal != null) ? $result->tgl_awal : '';
         // $data['nm_memo'] = $this->Model_nag->cari_nm_memo_temp();
         $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
         $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
@@ -2593,13 +2599,13 @@ public function rvs_invoice()
 
 public function reverse_kwt()
 {
- $id = $this->input->post('id_inv');
- $keter = $this->input->post('keter');
- $tgl_reverse = date('Y-m-d');
- $nama = $this->session->userdata('username');
- $activity = "Reverse Kwitansi";
+   $id = $this->input->post('id_inv');
+   $keter = $this->input->post('keter');
+   $tgl_reverse = date('Y-m-d');
+   $nama = $this->session->userdata('username');
+   $activity = "Reverse Kwitansi";
 
- $data = [
+   $data = [
 
     'nama'          => $nama,
     'activity'      => $activity,
@@ -2752,13 +2758,13 @@ public function reverse_debitnote()
 
 public function reverse_dn()
 {
- $id = $this->input->post('id_inv');
- $keter = $this->input->post('keter');
- $tgl_reverse = date('Y-m-d');
- $nama = $this->session->userdata('username');
- $activity = "Reverse Debitnote";
+   $id = $this->input->post('id_inv');
+   $keter = $this->input->post('keter');
+   $tgl_reverse = date('Y-m-d');
+   $nama = $this->session->userdata('username');
+   $activity = "Reverse Debitnote";
 
- $data = [
+   $data = [
 
     'nama'          => $nama,
     'activity'      => $activity,
@@ -3315,6 +3321,12 @@ public function approve_doc_reverse()
 {
     $id = $this->input->post('id_inv');
     $this->Model_nag->approve_doc_reverse($id);
+}
+
+public function cancel_doc_reverse()
+{
+    $id = $this->input->post('id_inv');
+    $this->Model_nag->cancel_doc_reverse($id);
 }
 
 

@@ -2246,6 +2246,11 @@ function update_status_bppb() {
 					// Print Preview Invoice
 					let id_invoice = $('[name="id_inv"]').val();
 					print_invoice(id_invoice);
+
+					let profit_center = $('[name="profit_ctr_h"]').val();
+					if (profit_center == 'NAK') {
+						print_invoice_knitting(id_invoice);
+					}
                     // Reload Page
                     window.location.href = window.location.href;
 
@@ -14352,6 +14357,63 @@ function cari_data_doc_reverse() {
 	}
 
 
+	function modal_show_cancel_reverse() {
+		let cek_inv = document.getElementsByName("pilih_rvs_approv");	
+		let selected = [];
+
+		for (let i = 0; i < cek_inv.length; i++) {
+			if (cek_inv[i].checked) {
+				selected.push(cek_inv[i].value);
+			}
+		}
+
+		if (selected.length === 0) {
+			Swal.fire({
+				icon: 'warning',
+				title: 'Pilih data terlebih dahulu!',
+				text: 'Silakan centang minimal satu data yang akan di-cancel.',
+			});
+			return;
+		}
+
+		Swal.fire({
+			title: 'Yakin ingin Cancel Reverse?',
+			icon: 'question',
+			showCancelButton: true,
+			confirmButtonText: 'Ya, Cancel!',
+			cancelButtonText: 'Batal',
+			reverseButtons: true
+		}).then((result) => {
+			if (result.isConfirmed) {
+				refresh_cancel_reverse();
+			}
+		});
+	}
+
+
+
+	async function refresh_cancel_reverse() {
+		var result = await cancel_doc_reverse();
+		console.log(result);
+
+		var cek_inv = document.getElementsByName("pilih_rvs_approv");	
+		for (var i = 0; i < cek_inv.length; i++) {
+			if (cek_inv[i].checked) {
+				var coba = parseInt(i + 1);
+			}
+		}
+
+		Swal.fire({
+			icon: 'success',
+			title: 'Berhasil!',
+			text: 'Reverse Successfully Canceled',
+			confirmButtonText: 'OK'
+		}).then(() => {
+        cari_reverse_draft(); // Hanya dijalankan setelah klik OK
+    });
+	}
+
+
 
 	async function refresh_reverse() {
 		var result = await approve_doc_reverse();
@@ -14402,6 +14464,51 @@ function cari_data_doc_reverse() {
 							msg = 'Success Update Invoice Approve'
 						} else {
 							msg = 'Error Update Invoice Approve'
+						}
+					},
+					error: function (jqXHR, textStatus, errorThrown) {
+						msg = 'Error Update Invoice Header' + jqXHR.text
+					}
+				});   	
+				//
+				// $('#modal-approve-reverse').modal('hide');
+				console.log(id_inv);  
+				// window.location.reload();
+				// cari_invoice_post();
+
+				//
+			} 
+		}
+
+	}
+
+
+	function cancel_doc_reverse(){
+	//
+	var cek_inv = document.getElementsByName("pilih_rvs_approv");	
+	for (var i = 0; i < cek_inv.length; i++) {
+
+		    //Ceklist Invoice		
+		    if (cek_inv[i].checked) {	
+				//   
+				var id_inv = cek_inv[i].value
+                //
+                var formData = {
+                	"id_inv": id_inv,			
+                };
+				//
+				$.ajax({						
+					url: "cancel_doc_reverse/",		
+					type: "POST",	
+					data: formData,			
+					dataType: "JSON",
+					success: function (data) {		
+
+						if (data.status) //if success close modal and reload ajax table
+						{
+							msg = 'Success Update Invoice Cancel'
+						} else {
+							msg = 'Error Update Invoice Cancel'
 						}
 					},
 					error: function (jqXHR, textStatus, errorThrown) {
@@ -15747,7 +15854,8 @@ function simpan_invoice_pot_knitting() {
 					delete_invoice_detail_temporary();
 					// Print Preview Invoice
 					let id_invoice = $('[name="id_inv"]').val();
-					print_invoice(id_invoice);
+					// print_invoice_knitting(id_invoice);
+					// print_invoice(id_invoice);
                     // Reload Page
                     window.location.href = window.location.href;
 
