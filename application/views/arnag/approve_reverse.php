@@ -82,7 +82,7 @@
                 <div class="row">
                     <div class="col-md-4">
                         <button type="button" id="approv_inv" name="approv_inv" class="btn btn-success" onclick="modal_show_approve_reverse()"><i class="fas fa-thumbs-up"></i> Approved</button>
-                        <button type="button" id="cancel_inv" name="cancel_inv" class="btn btn-danger" onclick="modal_show_cancel_reverse()"><i class="fas fa-thumbs-up"></i> Cancel</button>
+                        <button type="button" id="cancel_inv" name="cancel_inv" class="btn btn-danger" onclick="modal_show_cancel_reverse()"><i class="fas fa-trash"></i> Cancel</button>
                     </div>
                 </div>
             </div>
