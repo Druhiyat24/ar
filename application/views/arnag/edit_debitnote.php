@@ -292,7 +292,7 @@
                                                     <input style="width: 300px;word-wrap: break-word;" type="text" class="form-control" name="inputan0" placeholder="" value="<?= $row['deskripsi']; ?>" autocomplete='off'>
                                                 </td>
                                                 <td >
-                                                    <input style="width: 250px;" class="form-control" list="supp" name="supp">
+                                                    <input style="width: 250px;" class="form-control" value="<?= $row["supplier"]; ?>" list="supp" name="supp">
                                                     <datalist id="supp">
                                                         <?php foreach ($supplier as $cs) : ?>
                                                             <option value="<?= $cs['Supplier']; ?>" <?= (isset($row['supplier']) && $row['supplier'] == $cs['Supplier']) ? 'selected' : ''; ?>><?= $cs['Supplier']; ?></option>
@@ -321,7 +321,7 @@
                                                 <td>
                                                     <input style="width: 150px;text-align: right;" type="text" class="form-control" name="inputan8" placeholder="" value="<?= $row['amount']; ?>" autocomplete='off' readonly> 
                                                 </td>
-                                                <td><input style="width: 250px;" class="form-control" value="1.34.04" list="nm_coa" name="nm_coa">
+                                                <td><input style="width: 250px;" class="form-control" value="<?= $row["no_coa"]; ?>" list="nm_coa" name="nm_coa">
                                                     <datalist id="nm_coa"> <?php foreach ($coa as $coa) : ?> <option value="<?= $coa["id_coa"]; ?>" <?= (isset($row['no_coa']) && $row['no_coa'] == $coa['id_coa']) ? 'selected' : ''; ?>><?= $coa["id_coa"]; ?> <?= $coa["coa_name"]; ?> </option><?php endforeach; ?> <option value="-" > - </option> </datalist></td>
 
                                                     <td><input name="chk_a[]" type="checkbox" class="checkall_a" value=""/></td>
