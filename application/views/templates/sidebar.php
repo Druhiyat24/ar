@@ -58,9 +58,10 @@
         <nav class="mt-2">
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                 <!-- Add icons to the links using the .nav-icon class
-                 with font-awesome or any other icon font library -->
-                 <a href="http://10.10.5.62:8080/erp/" class="nav-link"><li class="nav-header">MAIN MENU</li></a>
-                 <li class="nav-item">
+                   with font-awesome or any other icon font library -->
+                   <a href="http://10.10.5.62:8080/erp/" class="nav-link"><li class="nav-header">MAIN MENU</li></a>
+                   
+                   <li class="nav-item has-treeview">
                     <a href="#" class="nav-link">
                         <i class="nav-icon fas fa-user-cog"></i>
                         <p>
@@ -69,41 +70,45 @@
                         </p>
                     </a>
 
-                    <?php foreach ($user_access_1 as $ua_1) : ?>
-                        <ul class="nav nav-treeview" style="margin-left: 8px;">
+                    <!-- Submenu user_access_1 -->
+                    <ul class="nav nav-treeview" style="margin-left: 8px;">
+                        <?php foreach ($user_access_1 as $ua_1) : ?>
                             <li class="nav-item">
                                 <a href="<?= base_url($ua_1['base_url']); ?>" class="nav-link">
                                     <i class="fas fa-chevron-circle-right nav-icon"></i>
                                     <p><?= $ua_1['menu']; ?></p>
                                 </a>
                             </li>
-                        </ul>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </ul>
 
+                    <!-- Folder Collapsible untuk Master -->
                     <ul class="nav nav-treeview" style="margin-left: 8px;">
-                        <li class="nav-item has-treeview">
-                            <a href="#" class="nav-link">
-                                <i class="fas fa-folder-open nav-icon"></i>
+                        <li class="nav-item">
+                            <a href="javascript:void(0);" class="nav-link folder-toggle" data-target="menu_master">
+                                <i class="fas fa-folder nav-icon" id="icon_menu_master"></i>
                                 <p>
                                     Master
                                     <i class="right fas fa-angle-left"></i>
                                 </p>
                             </a>
-                            <?php foreach ($user_access_7 as $ua_7) : ?>
-                                <ul class="nav nav-treeview" style="margin-left: 8px;">
+
+                            <ul class="nav nav-treeview collapse folder-content" id="menu_master" style="margin-left: 8px;">
+                                <?php foreach ($user_access_7 as $ua_7) : ?>
                                     <li class="nav-item">
                                         <a href="<?= base_url($ua_7['base_url']); ?>" class="nav-link">
                                             <i class="fas fa-chevron-circle-right nav-icon"></i>
                                             <p><?= $ua_7['menu']; ?></p>
                                         </a>
                                     </li>
-                                </ul>
-                            <?php endforeach; ?>
+                                <?php endforeach; ?>
+                            </ul>
                         </li>
                     </ul>
                 </li>
 
-                <li class="nav-item">
+
+                <li class="nav-item has-treeview">
                     <a href="#" class="nav-link">
                         <i class="fas fa-file-invoice nav-icon"></i>
                         <p>
@@ -111,17 +116,46 @@
                             <i class="fas fa-angle-left right"></i>
                         </p>
                     </a>
-                    <?php foreach ($user_access_2 as $ua_2) : ?>
-                        <ul class="nav nav-treeview" style="margin-left: 8px;">
-                            <li class="nav-item">
-                                <a href="<?= base_url($ua_2['base_url']); ?>" class="nav-link">
-                                    <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                    <p><?= $ua_2['menu']; ?></p>
-                                </a>
-                            </li>
-                        </ul>
-                    <?php endforeach; ?>
+
+                    <ul class="nav nav-treeview" style="margin-left: 8px;">
+                        <?php
+                        $kategori = [
+                            'invoice' => 'Invoice',
+                            'proforma_invoice' => 'Proforma Invoice',
+                            'return_invoice' => 'Return Invoice',
+                            'dp_invoice' => 'DP-CBD Invoice',
+                            'debitnote' => 'Debit Note'
+                        ];
+
+                        foreach ($kategori as $key => $label) :
+                            $has_access = array_filter($user_access_2, function ($ua) use ($key) {
+                                return $ua['ctg_menu'] == $key;
+                            });
+                            if (!empty($has_access)) :
+                                $folderId = "menu_" . $key;
+                                ?>
+                                <li class="nav-item">
+                                    <a href="javascript:void(0);" class="nav-link folder-toggle" data-target="<?= $folderId ?>">
+                                        <i class="fas fa-folder nav-icon" id="icon_<?= $folderId ?>"></i>
+                                        <p><?= $label ?><i class="fas fa-angle-left right"></i></p>
+                                    </a>
+                                    <ul class="nav nav-treeview folder-content collapse" id="<?= $folderId ?>" style="margin-left: 8px;">
+                                        <?php foreach ($has_access as $ua_2) : ?>
+                                            <li class="nav-item">
+                                                <a href="<?= base_url($ua_2['base_url']); ?>" class="nav-link">
+                                                    <i class="fas fa-chevron-circle-right nav-icon"></i>
+                                                    <p><?= $ua_2['menu']; ?></p>
+                                                </a>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </li>
+                            <?php endif;
+                        endforeach; ?>
+                    </ul>
                 </li>
+
+
 
                 <li class="nav-item">
                     <a href="#" class="nav-link">
@@ -204,7 +238,7 @@
                 </li>
 
 
-            
+
                 <li class="nav-header">REPORT AR</li>
                 <li class="nav-item">
                     <a href="#" class="nav-link">

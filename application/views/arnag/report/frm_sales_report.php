@@ -164,11 +164,14 @@
                                     <th>Order Type</th>
                                     <th>Shipp</th>
                                     <th>Inv Type</th>
-                                    <th>Qty</th>
+                                    <th>Qty Billing</th>
+                                    <th>Qty Shipment</th>
                                     <th>Currency</th>
                                     <th>Rate</th>
-                                    <th>Original Value</th>
-                                    <th>Equiv Value</th>
+                                    <th>Original Value Billing</th>
+                                    <th>Original Value Shipment</th>
+                                    <th>Equiv Value Billing</th>
+                                    <th>Equiv Value Shipment</th>
                                     <th>VAT</th>
                                     <!-- <th>Total</th> -->
                                     <!-- <th>No Faktur</th>

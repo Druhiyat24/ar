@@ -74,11 +74,14 @@ function cari_sales_report(){
                     trHTML += '<td>' + item.type_so + "</td>";               
                     trHTML += '<td>' + item.shipp + "</td>";
                     trHTML += '<td>' + item.type + "</td>";	
-                    trHTML += '<td align="center">' + item.qty + "</td>";   
+                    trHTML += '<td align="right">' + item.qty + "</td>"; 
+                    trHTML += '<td align="right">' + item.qty + "</td>";   
                     trHTML += '<td>' + item.curr + "</td>";	
                     trHTML += '<td>' + item.rate + "</td>";    
                     trHTML += '<td align="right">' + item.total + "</td>";
-                    trHTML += '<td>' + item.total2 + "</td>";
+                    trHTML += '<td align="right">' + item.total + "</td>";
+                    trHTML += '<td align="right">' + item.total2 + "</td>";
+                    trHTML += '<td align="right">' + item.total2 + "</td>";
                     trHTML += '<td>' + item.vat + "</td>";	
                     // trHTML += '<td>' + '' + "</td>";
                     // trHTML += '<td>' + item.no_faktur + "</td>";

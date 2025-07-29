@@ -1267,7 +1267,7 @@ function change_top_5_sales(option) {
     })
   </script>
 
-  <script type="text/javascript">
+<!--   <script type="text/javascript">
     $(document).ready(function () {
       $('.tanggal').datepicker({
         format: "yyyy-mm-dd",
@@ -1275,10 +1275,29 @@ function change_top_5_sales(option) {
       });
     });
   </script>
+-->
 
-  <!-- Date Range Picker 4 -->
-  <script>
-    $(function() {
+<script>
+  $(document).ready(function () {
+    var minDate = '<?= $min_date ?>';
+
+    let datepickerOptions = {
+      format: "yyyy-mm-dd",
+      autoclose: true,
+      todayHighlight: true
+    };
+
+    // Tambahkan startDate hanya jika ada minDate
+    if (minDate !== '') {
+      datepickerOptions.startDate = minDate;
+    }
+
+    $('.tanggal').datepicker(datepickerOptions);
+  });
+</script>
+<!-- Date Range Picker 4 -->
+<script>
+  $(function() {
       //Date range picker
       $('#reservationdate2').datetimepicker({
         format: 'YYYY-MM-DD'
@@ -1528,6 +1547,38 @@ function updateInvoiceNumber() {
   }
 
 </script>
+
+<script>
+$(document).ready(function () {
+    // Toggle on click
+    $('.folder-toggle').on('click', function () {
+        var targetId = $(this).data('target');
+        var $target = $('#' + targetId);
+        var $icon = $('#icon_' + targetId);
+
+        $target.collapse('toggle');
+    });
+
+    // Saat animasi selesai
+    $('.folder-content').on('shown.bs.collapse', function () {
+        var id = $(this).attr('id');
+        $('#icon_' + id).removeClass('fa-folder').addClass('fa-folder-open');
+    });
+
+    $('.folder-content').on('hidden.bs.collapse', function () {
+        var id = $(this).attr('id');
+        $('#icon_' + id).removeClass('fa-folder-open').addClass('fa-folder');
+    });
+
+    // Saat page load: cek yang sudah "show"
+    $('.folder-content.show').each(function () {
+        var id = $(this).attr('id');
+        $('#icon_' + id).removeClass('fa-folder').addClass('fa-folder-open');
+    });
+});
+</script>
+
+
 
 </body>
 
