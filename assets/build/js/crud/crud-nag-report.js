@@ -286,3 +286,53 @@ function export_outstanding_pi(){
     window.open(".../../export_outstanding_pi/" + periode_dari_pi + "/" + periode_sampai_pi + "/" ); 
 }
 
+function cari_aging_jatem(){ 
+       
+    $('#table-sales-report tbody tr').remove(); 
+    //Date range picker
+
+    var id_customer = $('#sr_customer').val();
+    var start_date = $('#start_date').val();
+    var end_date = $('#end_date').val(); 
+    console.log(id_customer, start_date, end_date);
+                        
+        // $.ajax({        
+        //     url: "cari_aging_jatem/" + periode_dari + "/" + periode_sampai + "/" + id_customer + "/" + shipp + "/" + type + "/" + curr + "/" + type_so + "/",                  
+        //     type: "GET",
+        //     dataType: "JSON",
+        //     success: function (response) {
+                                    
+        //     var trHTML = '';
+        //     $.each(response, function (i, item) {                   
+        //             trHTML += '<tr>';                   
+        //             trHTML += '<td>' + item.customer + "</td>";
+        //             trHTML += '<td>' + item.no_invoice + "</td>";   
+        //             trHTML += '<td>' + item.tgl_inv + "</td>";
+        //             trHTML += '<td>' + '' + "</td>";
+        //             trHTML += '<td>' + item.no_faktur + "</td>";
+        //             trHTML += '<td>' + item.tgl_faktur + "</td>";   
+        //             trHTML += '<td>' + item.top + "</td>";        
+        //             trHTML += '<td>' + item.type_so + "</td>";               
+        //             trHTML += '<td>' + item.shipp + "</td>";
+        //             trHTML += '<td>' + item.type + "</td>"; 
+        //             trHTML += '<td align="right">' + item.qty + "</td>"; 
+        //             trHTML += '<td align="right">' + item.qty_ship + "</td>";   
+        //             trHTML += '<td>' + item.curr + "</td>"; 
+        //             trHTML += '<td>' + item.rate + "</td>";    
+        //             trHTML += '<td align="right">' + item.total + "</td>";
+        //             trHTML += '<td align="right">' + item.total_ship + "</td>";
+        //             trHTML += '<td align="right">' + item.total2 + "</td>";
+        //             trHTML += '<td align="right">' + item.total2_ship + "</td>";
+        //             trHTML += '<td>' + item.vat + "</td>";                                        
+        //             trHTML += '</tr>';
+        //         });
+
+        //             $('#table-sales-report').append(trHTML);                
+        
+        //     },
+        //            error: function (jqXHR, textStatus, errorThrown) {
+        //                 alert('Error get data from ajax');
+        //     }
+        // }); 
+}
+

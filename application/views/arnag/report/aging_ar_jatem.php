@@ -6,33 +6,33 @@
     vertical-align: middle !important;
     text-align: center;
     white-space: nowrap;
-  }
+}
 
-  #table-aging-ar tbody td {
+#table-aging-ar tbody td {
     vertical-align: middle;
-  }
+}
 
-  /* Tambahkan border dan padding */
-  #table-aging-ar th,
-  #table-aging-ar td {
+/* Tambahkan border dan padding */
+#table-aging-ar th,
+#table-aging-ar td {
     border: 1px solid #dee2e6;
     padding: 6px 10px;
-  }
+}
 
-  /* Header background lebih mencolok */
-  #table-aging-ar thead {
+/* Header background lebih mencolok */
+#table-aging-ar thead {
     background-color: #f1f1f1;
-  }
+}
 
-  /* Table hover */
-  #table-aging-ar tbody tr:hover {
+/* Table hover */
+#table-aging-ar tbody tr:hover {
     background-color: #f9f9f9;
-  }
+}
 
-  /* Optional: Responsive horizontal scroll */
-  .table-responsive {
+/* Optional: Responsive horizontal scroll */
+.table-responsive {
     overflow-x: auto;
-  }
+}
 </style>
 
 <div class="content-wrapper">
@@ -59,7 +59,6 @@
                                 <h3 class="card-title">Aging Piutang Dagang</h3>
                             </div>
                             <!-- /.card-header -->
-                            <!-- form start -->
                             <form>
                                 <div class="card-body">
                                     <!-- Row 1 -->
@@ -77,8 +76,7 @@
                                   </div>
                               </div>
 
-                              <!-- Periode -->
-                              <div class="col-md-3">
+                              <div class="col-md-2">
                                 <div class="form-group">
                                   <label>Periode</label>
                                   <div class="input-group">
@@ -98,7 +96,7 @@
                     <div class="form-group">
                         <label>Action</label>
                         <div class="input-group d-flex gap-2">
-                            <button type="button" id="find_invoice" name="find_invoice" class="btn btn-primary mr-2" onclick="cari_list_reverse()">
+                            <button type="button" id="find_invoice" name="find_invoice" class="btn btn-primary mr-2" onclick="cari_aging_jatem()">
                                 <i class="fa fa-search"></i> Search
                             </button>
                             <button type="button" class="btn btn-info mr-2" onclick="export_list_invoice()">
@@ -135,12 +133,12 @@
                             <th colspan="3">Konsumen</th>
                             <th rowspan="2">Top</th>
                             <th rowspan="2">Total</th>
-                            <th rowspan="2">M->6</th>
-                            <th rowspan="2">M-5</th>
-                            <th rowspan="2">M-4</th>
-                            <th rowspan="2">M-3</th>
-                            <th rowspan="2">M-2</th>
-                            <th rowspan="2">M-1</th>
+                            <th rowspan="2">M - > 6</th>
+                            <th rowspan="2">M - 5</th>
+                            <th rowspan="2">M - 4</th>
+                            <th rowspan="2">M - 3</th>
+                            <th rowspan="2">M - 2</th>
+                            <th rowspan="2">M - 1</th>
                             <th rowspan="2">Bulan Berjalan</th>
                             <th rowspan="2">AR Days</th>
                             <th colspan="4">Jatuh Tempo Piutang</th>
@@ -149,10 +147,10 @@
                             <th>Coa</th>
                             <th>Id</th>
                             <th>Nama</th>
-                            <th>1-30 H</th>
-                            <th>31-60 H</th>
-                            <th>61-90 H</th>
-                            <th>>90 H</th>
+                            <th>1 - 30 H</th>
+                            <th>31 - 60 H</th>
+                            <th>61 - 90 H</th>
+                            <th>> 90 H</th>
                         </tr>
                     </thead>
                     <tbody>

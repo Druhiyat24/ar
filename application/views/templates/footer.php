@@ -1279,31 +1279,37 @@ function change_top_5_sales(option) {
 
 <script>
   $(document).ready(function () {
-    // Tanggal default: Juli 2025
-    var defaultYear = 2025;
-    var defaultMonth = 7;
+    // Ambil tanggal hari ini
+    var today = new Date();
+    var currentYear = today.getFullYear();
+    var currentMonth = today.getMonth(); // Januari = 0
 
+    function updateDates(year, monthIndex) {
+      var month = ("0" + (monthIndex + 1)).slice(-2);
+      var startDate = `${year}-${month}-01`;
+
+      // Dapatkan hari terakhir bulan ini
+      var lastDay = new Date(year, monthIndex + 1, 0).getDate(); // ← Aman untuk semua bulan
+      var endDate = `${year}-${month}-${lastDay}`;
+
+      $('#start_date').val(startDate);
+      $('#end_date').val(endDate);
+    }
+
+    // Inisialisasi datepicker
     $('#monthPicker').datepicker({
-      format: "MM yyyy", // ← tampil sebagai: July 2025
+      format: "MM yyyy",
       minViewMode: 1,
       autoclose: true
-    }).datepicker('setDate', new Date(defaultYear, defaultMonth - 1))
+    }).datepicker('setDate', new Date(currentYear, currentMonth))
       .on('changeDate', function (e) {
         var year = e.date.getFullYear();
-        var month = ("0" + (e.date.getMonth() + 1)).slice(-2);
-
-        var startDate = `${year}-${month}-01`;
-        var endDate = new Date(year, month, 0).toISOString().slice(0, 10);
-
-        $('#start_date').val(startDate);
-        $('#end_date').val(endDate);
+        var monthIndex = e.date.getMonth();
+        updateDates(year, monthIndex);
       });
 
-    // Set juga saat awal load
-    var startDate = `${defaultYear}-${("0" + defaultMonth).slice(-2)}-01`;
-    var endDate = new Date(defaultYear, defaultMonth, 0).toISOString().slice(0, 10);
-    $('#start_date').val(startDate);
-    $('#end_date').val(endDate);
+    // Set tanggal saat halaman pertama kali dibuka
+    updateDates(currentYear, currentMonth);
   });
 </script>
 
