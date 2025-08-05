@@ -118,6 +118,7 @@ class Landingpage extends CI_Controller
         $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
         $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+        $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         $filter = null;
 

@@ -264,18 +264,20 @@
                     <a href="#" class="nav-link">
                         <i class="nav-icon fas fa-book"></i>
                         <p>
-                            Report 2
+                            Corporate Report
                             <i class="fas fa-angle-left right"></i>
                         </p>
                     </a>
+                        <?php foreach ($user_access_corporate as $ua_c) : ?>
                         <ul class="nav nav-treeview" style="margin-left: 8px;">
                             <li class="nav-item">
-                                <a href="<?= base_url('report/aging_ar_jatem'); ?>" class="nav-link">
+                                <a href="<?= base_url($ua_c['base_url']); ?>" class="nav-link">
                                     <i class="fas fa-chevron-circle-right nav-icon"></i>
-                                    <p>Aging AR & Jatem</p>
+                                    <p><?= $ua_c['menu']; ?></p>
                                 </a>
                             </li>
                         </ul>
+                    <?php endforeach; ?>
                 </li>
 
             </ul>

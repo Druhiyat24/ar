@@ -4746,4 +4746,14 @@ function cancel_doc_reverse($id)
 }
 
 
+function load_user_corporate_report($user)
+{
+    $hasil = $this->db->query("SELECT b.user, a.menu, b.base_url, a.menu_status
+       FROM tbl_user_role AS a INNER JOIN 
+       tbl_user_access AS b ON a.id = b.menu_id
+       WHERE b.user = '$user' AND a.menu_status = 'corporate_report' and a.status = 'Y'");
+    return $hasil->result_array();
+}
+
+
 }

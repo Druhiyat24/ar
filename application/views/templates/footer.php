@@ -1615,7 +1615,12 @@ $(document).ready(function () {
 });
 </script>
 
-
+<script type="text/javascript">
+  $(document).ready(function() {
+    cari_aging_jatem();
+    cari_mut_ar();
+});
+</script>
 
 </body>
 

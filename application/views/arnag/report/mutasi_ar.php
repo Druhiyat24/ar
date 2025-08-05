@@ -10,13 +10,13 @@
     overflow-x: auto;
 }
 
-#table-aging-ar {
+#table-mut-ar {
     border-collapse: collapse;
     width: max-content; /* Supaya bisa scroll horizontal */
 }
 
 /* Sticky Header */
-#table-aging-ar thead th {
+#table-mut-ar thead th {
     position: sticky;
     top: 0;
     z-index: 3; /* Pastikan header paling atas */
@@ -30,32 +30,32 @@
 }
 
 /* Baris kedua header juga sticky */
-#table-aging-ar thead tr:nth-child(2) th {
+#table-mut-ar thead tr:nth-child(2) th {
     top: 35px; /* Sesuaikan ini dengan tinggi baris pertama */
     z-index: 2;
     background: #f9f9f9;
 }
 
 /* Body */
-#table-aging-ar tbody td {
+#table-mut-ar tbody td {
     vertical-align: middle;
     border: 1px solid #dee2e6;
     padding: 6px 10px;
 }
 
 /* Hover row */
-#table-aging-ar tbody tr:hover {
+#table-mut-ar tbody tr:hover {
     background-color: #f9f9f9;
 }
 
 /* Optional hilangkan border sel kosong */
-#table-aging-ar td.empty-cell {
+#table-mut-ar td.empty-cell {
     border: none !important;
     padding: 0 !important;
 }
 
 /* Header dengan garis double */
-#table-aging-ar thead tr.header-bold th {
+#table-mut-ar thead tr.header-bold th {
     font-weight: bold;
     border: double 3px #999 !important;
 }
@@ -79,7 +79,7 @@
                     <div class="col-md-12">
                         <div class="card card-info">
                             <div class="card-header">
-                                <h3 class="card-title">Aging Piutang Dagang</h3>
+                                <h3 class="card-title">Piutang Dagang</h3>
                             </div>
                             <form>
                                 <div class="card-body">
@@ -117,10 +117,10 @@
                     <div class="form-group">
                         <label>Action</label>
                         <div class="input-group d-flex gap-2">
-                            <button type="button" id="find_invoice" name="find_invoice" class="btn btn-primary mr-2" onclick="cari_aging_jatem()">
+                            <button type="button" id="find_invoice" name="find_invoice" class="btn btn-primary mr-2" onclick="cari_mut_ar()">
                                 <i class="fa fa-search"></i> Search
                             </button>
-                            <button type="button" class="btn btn-info mr-2" onclick="export_aging_jatem()">
+                            <button type="button" class="btn btn-info mr-2" onclick="export_mut_ar()">
                                 <i class="fa fa-download"></i> Export Excel
                             </button>
                         </div>
@@ -141,31 +141,28 @@
             </div>
             <div class="table-scroll">
                 <div class="table-wrapper">
-                  <table id="table-aging-ar" class="table table-bordered table-striped table-head-fixed text-nowrap">
+                  <table id="table-mut-ar" class="table table-bordered table-striped table-head-fixed text-nowrap">
                     <thead>
                       <tr>
                         <th rowspan="2">No</th>
                         <th style="width:450px;" colspan="3">Konsumen</th>
                         <th style="width:75px;" rowspan="2">Top</th>
-                        <th style="width:180px;" rowspan="2">Total</th>
-                        <th style="width:180px;" rowspan="2">M - > 6</th>
-                        <th style="width:180px;" rowspan="2">M - 5</th>
-                        <th style="width:180px;" rowspan="2">M - 4</th>
-                        <th style="width:180px;" rowspan="2">M - 3</th>
-                        <th style="width:180px;" rowspan="2">M - 2</th>
-                        <th style="width:180px;" rowspan="2">M - 1</th>
-                        <th style="width:180px;" rowspan="2">Bulan Berjalan</th>
+                        <th style="width:180px;" rowspan="2">Saldo Awal</th>
+                        <th style="width:180px;" colspan="2">Penambahan</th>
+                        <th style="width:180px;" colspan="4">Pengurangan</th>
+                        <th style="width:180px;" rowspan="2">Saldo Akhir</th>
                         <th style="width:90px;" rowspan="2">AR Days</th>
-                        <th colspan="4">Jatuh Tempo Piutang</th>
                     </tr>
                     <tr>
                         <th style="width:100px;">Coa</th>
                         <th style="width:50px;">Id</th>
                         <th style="width:300px;">Nama</th>
-                        <th style="width:180px;">1 - 30 H</th>
-                        <th style="width:180px;">31 - 60 H</th>
-                        <th style="width:180px;">61 - 90 H</th>
-                        <th style="width:180px;">> 90 H</th>
+                        <th style="width:180px;">Penjualan</th>
+                        <th style="width:180px;">Lain-lain</th>
+                        <th style="width:180px;">Pelunasan</th>
+                        <th style="width:180px;">Retur</th>
+                        <th style="width:180px;">Pph 23</th>
+                        <th style="width:180px;">Lain-lain</th>
                     </tr>
                 </thead>
                 <tbody>

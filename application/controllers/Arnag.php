@@ -31,6 +31,7 @@ class Arnag extends CI_Controller
         $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
         $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+        $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
@@ -85,6 +86,7 @@ class Arnag extends CI_Controller
         $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
         $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+        $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
         $this->load->view('templates/header', $data);
@@ -115,6 +117,7 @@ class Arnag extends CI_Controller
         $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
         $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+        $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
         $this->load->view('templates/header', $data);
@@ -157,6 +160,7 @@ class Arnag extends CI_Controller
         $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
         $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+        $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
         $this->load->view('templates/header', $data);
@@ -184,6 +188,7 @@ class Arnag extends CI_Controller
         $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
         $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+        $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
         $this->load->view('templates/header', $data);
@@ -383,6 +388,7 @@ class Arnag extends CI_Controller
         $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
         $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+        $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
         $this->load->view('templates/header', $data);
@@ -545,6 +551,7 @@ public function createinvoice()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -694,6 +701,7 @@ public function listinvoice()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -852,6 +860,7 @@ public function approvalinvoice()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -877,6 +886,7 @@ public function approval_proformainvoice()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -902,6 +912,7 @@ public function approval_debitnote()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -972,6 +983,7 @@ public function duedateupdate()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -1033,6 +1045,7 @@ function proformainvoice()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -1068,6 +1081,7 @@ function proformainvoice_dp_cbd()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -1229,6 +1243,7 @@ function listproformainvoice()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
     $this->load->view('templates/header', $data);
@@ -1256,6 +1271,7 @@ function listproformainvoice_dp_cbd()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
     $this->load->view('templates/header', $data);
@@ -1283,6 +1299,7 @@ function list_debitnote()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
     $this->load->view('templates/header', $data);
@@ -1348,6 +1365,7 @@ public function report_proforma_invoice($id)
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
     $html = $this->load->view('arnag/reportproformainvoice', $data, true);
@@ -1378,6 +1396,7 @@ public function report_proforma_invoice_cbd($id)
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
     $html = $this->load->view('arnag/reportproformainvoicedpcbd', $data, true);
@@ -1409,6 +1428,7 @@ public function report_debit_note($id)
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
     $html = $this->load->view('arnag/reportdebitnote', $data, true);
@@ -1439,6 +1459,7 @@ public function report_debit_note_memo($id)
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
     $html = $this->load->view('arnag/reportdebitnote_memo', $data, true);
@@ -1511,6 +1532,7 @@ public function returninvoice()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -1584,6 +1606,7 @@ public function listreturninvoice()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
     $this->load->view('templates/header', $data);
@@ -1661,6 +1684,7 @@ function debitnote()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -1710,6 +1734,7 @@ public function userrole()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -1944,6 +1969,7 @@ public function listinvoice_manual()
         // $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2044,6 +2070,7 @@ public function createinvoice_manual()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2072,6 +2099,7 @@ public function alokasi_ar()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2104,6 +2132,7 @@ public function create_alokasi()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2222,6 +2251,7 @@ public function kartu_ar_global()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2317,6 +2347,7 @@ public function kartu_ar_detail()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2344,6 +2375,7 @@ public function frm_report_invoice_dpcbd()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2371,6 +2403,7 @@ public function frm_report_debit_note()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2417,6 +2450,7 @@ public function approvalinvoice_manual()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2454,6 +2488,7 @@ public function reverse_invoice()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2479,6 +2514,7 @@ public function reverse_invoice_manual()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2503,6 +2539,7 @@ public function reverse_kwitansi()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2527,6 +2564,7 @@ public function reverse_alokasi()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2599,13 +2637,13 @@ public function rvs_invoice()
 
 public function reverse_kwt()
 {
-   $id = $this->input->post('id_inv');
-   $keter = $this->input->post('keter');
-   $tgl_reverse = date('Y-m-d');
-   $nama = $this->session->userdata('username');
-   $activity = "Reverse Kwitansi";
+ $id = $this->input->post('id_inv');
+ $keter = $this->input->post('keter');
+ $tgl_reverse = date('Y-m-d');
+ $nama = $this->session->userdata('username');
+ $activity = "Reverse Kwitansi";
 
-   $data = [
+ $data = [
 
     'nama'          => $nama,
     'activity'      => $activity,
@@ -2747,6 +2785,7 @@ public function reverse_debitnote()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2758,13 +2797,13 @@ public function reverse_debitnote()
 
 public function reverse_dn()
 {
-   $id = $this->input->post('id_inv');
-   $keter = $this->input->post('keter');
-   $tgl_reverse = date('Y-m-d');
-   $nama = $this->session->userdata('username');
-   $activity = "Reverse Debitnote";
+ $id = $this->input->post('id_inv');
+ $keter = $this->input->post('keter');
+ $tgl_reverse = date('Y-m-d');
+ $nama = $this->session->userdata('username');
+ $activity = "Reverse Debitnote";
 
-   $data = [
+ $data = [
 
     'nama'          => $nama,
     'activity'      => $activity,
@@ -2843,6 +2882,7 @@ public function update_sj()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -2883,6 +2923,7 @@ public function frm_report_sj_not_invoice()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -3030,6 +3071,7 @@ public function edit_invoice($id = null) {
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     if (!$data['invoice']) {
@@ -3136,6 +3178,7 @@ public function reverse_document()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -3168,6 +3211,7 @@ public function create_reverse_document()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -3303,6 +3347,7 @@ public function approve_reverse_document()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -3367,6 +3412,7 @@ public function edit_debitnote($id = null) {
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     // if (!$data['invoice']) {
@@ -3472,6 +3518,7 @@ public function master_other_charges()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
@@ -3592,6 +3639,7 @@ public function createinvoice_knitting()
     $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
     $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
     $this->load->view('templates/header', $data);
