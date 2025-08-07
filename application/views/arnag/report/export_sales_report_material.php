@@ -103,143 +103,72 @@ CSS HEADER
     </div>
     <br />
     <table style="width:100%;font-size:10px;" border="1">
-        <tr align="center">
-            <th>
-                Customer
-            </th>
-            <th>
-                Invoice
-            </th>
-            <th>
-                Invoice Date
-            </th>
-            <th>
-                Shipp Number
-            </th>
-            <th>
-                Shipp Date
-            </th>
-            <th>
-                Group
-            </th>
-            <th>
-                WS
-            </th>
-            <th>
-                Style
-            </th>
-            <th>
-                Product Item
-            </th>
-            <th>
-                Qty
-            </th>
-            <th>
-                Uom
-            </th>
-            <th>
-                Unit Price
-            </th>
-            <th>
-                Shipp
-            </th>
-            <th>
-                Inv Type
-            </th>
-            <th>
-                Order Type
-            </th>
-            <th>
-                Currency
-            </th>
-            <th>
-                Rate
-            </th>
-            <th>
-                Original Value
-            </th>
-            <th>
-                Equiv Value
-            </th>
-          <!--   <th>
-                Total
-            </th> -->
-            <th>
-                No Faktur
-            </th>
-            <th>
-                Tgl Faktur
-            </th>
+        <tr align="center" style="text-align: center;">
+            <th rowspan="2">Customer</th>
+            <th rowspan="2">Invoice</th>
+            <th rowspan="2">Invoice Date</th>
+            <th rowspan="2">Shipp Number</th>
+            <th rowspan="2">Shipp Date</th>
+            <th rowspan="2">Group</th>
+            <th rowspan="2">WS</th>
+            <th rowspan="2">Style</th>
+            <th rowspan="2">Product Item</th>
+            <th colspan="2">Qty</th>
+            <th colspan="2">Uom</th>
+            <th colspan="2">Unit Price</th>
+            <th rowspan="2">Shipp</th>
+            <th rowspan="2">Inv Type</th>
+            <th rowspan="2">Order Type</th>
+            <th rowspan="2">Currency</th>
+            <th rowspan="2">Rate</th>
+            <th colspan="2">Original Value</th>
+            <th colspan="2">Equiv Value</th>
+            <th rowspan="2">No Faktur</th>
+            <th rowspan="2">Tgl Faktur</th>
         </tr>
+        <tr align="center" style="text-align: center;">
+            <th>Billing</th>
+            <th>Shipment</th>
+            <th>Billing</th>
+            <th>Shipment</th>
+            <th>Billing</th>
+            <th>Shipment</th>
+            <th>Billing</th>
+            <th>Shipment</th>
+            <th>Billing</th>
+            <th>Shipment</th>
+        </tr>
+
+
 
         <?php foreach ($sales_report_material as $srm) : ?>
             <tr>
-                <td align="center">
-                    <?= $srm['customer']; ?>
-                </td>
-                <td align="center">
-                    <?= $srm['no_invoice']; ?>
-                </td>
-                <td align="center">
-                    <?= $srm['tgl_inv']; ?>
-                </td>
-                <td align="center">
-                    <?= $srm['bppb_number']; ?>
-                </td>
-                <td align="center">
-                    <?= $srm['sj_date']; ?>
-                </td>
-                <td align="center">
-
-                </td>
-                <td align="center">
-                    <?= $srm['material']; ?>
-                </td>
-                <td align="center">
-                    <?= $srm['styleno']; ?>
-                </td>
-                <td align="center">
-                    <?= $srm['produk']; ?>
-                </td>
-                <td align="right">
-                    <?= $srm['qty']; ?>
-                </td>
-                <td align="center">
-                    <?= $srm['uom']; ?>
-                </td>
-                <td align="right">
-                    <?= $srm['unit_price']; ?>
-                </td>
-                <td align="center">
-                    <?= $srm['type_']; ?>
-                </td>
-                <td align="center">
-                    <?= $srm['inv_type']; ?>
-                </td>
-                <td align="center">
-                    <?= $srm['type_so']; ?>
-                </td>
-                <td align="center">
-                    <?= $srm['curr']; ?>
-                </td>
-                <td align="right">
-                    <?= $srm['rate']; ?>
-                </td>
-                <td align="right">
-                    <?= $srm['total_price']; ?>
-                </td>
-                <td align="right">
-                    <?= $srm['total2']; ?>
-                </td>
-                <!-- <td align="right">
-
-                </td> -->
-                <td align="left">
-                    <?= $srm['no_faktur']; ?>
-                </td>
-                <td align="center">
-                    <?= $srm['tgl_faktur']; ?>
-                </td>
+                <td align="center"><?= $srm['customer']; ?></td>
+                <td align="center"><?= $srm['no_invoice']; ?></td>
+                <td align="center"><?= $srm['tgl_inv']; ?></td>
+                <td align="center"><?= $srm['bppb_number']; ?></td>
+                <td align="center"><?= $srm['sj_date']; ?></td>
+                <td align="center"></td>
+                <td align="center"><?= $srm['material']; ?></td>
+                <td align="center"><?= $srm['styleno']; ?></td>
+                <td align="center"><?= $srm['produk']; ?></td>
+                <td align="right"><?= $srm['qty']; ?></td>
+                <td align="right"><?= $srm['qty_ship']; ?></td>
+                <td align="center"><?= $srm['uom']; ?></td>
+                <td align="center"><?= $srm['uom_ship']; ?></td>
+                <td align="right"><?= $srm['unit_price']; ?></td>
+                <td align="right"><?= $srm['unit_price_ship']; ?></td>
+                <td align="center"><?= $srm['type_']; ?></td>
+                <td align="center"><?= $srm['inv_type']; ?></td>
+                <td align="center"><?= $srm['type_so']; ?></td>
+                <td align="center"><?= $srm['curr']; ?></td>
+                <td align="right"><?= $srm['rate']; ?></td>
+                <td align="right"><?= $srm['total_price']; ?></td>
+                <td align="right"><?= $srm['total_price_ship']; ?></td>
+                <td align="right"><?= $srm['total2']; ?></td>
+                <td align="right"><?= $srm['total2_ship']; ?></td>
+                <td align="left"><?= $srm['no_faktur']; ?></td>
+                <td align="center"><?= $srm['tgl_faktur']; ?></td>
             </tr>
 
         <?php endforeach; ?>

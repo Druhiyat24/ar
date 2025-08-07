@@ -164,16 +164,20 @@
                                     <th>Style</th>
                                     <th>Product Item</th>
                                     <th>Qty</th>
+                                    <th>Qty Shipment</th>
                                     <th>Uom</th>
+                                    <th>Uom Shipment</th>
                                     <th>Unit Price</th>
+                                    <th>Unit Price Shipment</th>
                                     <th>Shipp</th>
                                     <th>Inv Type</th>
                                     <th>Order Type</th>
                                     <th>Currency</th>
                                     <th>Rate</th>
                                     <th>Original Value</th>
+                                    <th>Original Value Shipment</th>
                                     <th>Equiv Value</th>
-                                    <!-- <th>Total</th>     -->
+                                    <th>Equiv Value Shipment</th>
                                     <th>No Faktur</th>
                                     <th>Tgl Faktur</th>                                          
                                 </tr>
