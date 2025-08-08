@@ -13488,7 +13488,7 @@ function reverse_dn(){
 					trHTML += '<td>' + item.unit_price + "</td>";	
 					trHTML += '<td>' + item.total + "</td>";	
 					trHTML += '<td>' + item.id_bppb + "</td>";					
-					trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_no_fg" id="pilih_no_fg" class="flat" value = ' + item.id_bppb + '></td>';										
+					trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_no_fg" id="pilih_no_fg" class="flat" value = ' + item.shipping_number + '></td>';										
 				//trHTML += '<td><button id="approv_inv" name="approv_inv" type="button" class="btn btn-warning btn-sm" onclick="approve_invoice(\'' + item.no_invoice + '\' , \'' + item.id + '\')"><i class="fa fa-stamp"></i> Approved</td>';
 				trHTML += '</tr>';
 
