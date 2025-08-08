@@ -123,6 +123,11 @@ CSS HEADER
             <th>Price</th>
             <th>Total</th>
             <th>Total IDR</th>
+            <th>QTY Shipment</th>
+            <th>UOM Shipment</th>
+            <th>Price Shipment</th>
+            <th>Total Shipment</th>
+            <th>Total IDR Shipment</th>
             <th>Status</th>
         </tr>
 
@@ -178,6 +183,24 @@ CSS HEADER
                 </td>
                 <td align="right">
                     <?= $dli['total_price2']; ?>
+                </td>
+                <td align="center">
+                    <?= $dli['qty_ship']; ?>
+                </td>
+                <td align="center">
+                    <?= $dli['uom_ship']; ?>
+                </td>
+                <td align="center">
+                    <?= $dli['unit_price_ship']; ?>
+                </td>
+                <td align="center">
+                    <?= $dli['total_ship']; ?>
+                </td>
+                <td align="right">
+                    <?= $dli['total_price2_ship']; ?>
+                </td>
+                <td align="center">
+                    Not Yet
                 </td>
             </tr>
         <?php endforeach; ?>

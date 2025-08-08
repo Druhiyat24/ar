@@ -13612,6 +13612,8 @@ function reverse_dn(){
 				var kata = '';
 				var jml_total = 0;
 				var total_idr = 0;
+				var jml_total_ship = 0;
+				var total_idr_ship = 0;
 				var rate = 0;
 				$.each(response, function (i, item) { 
 					kata = 'Total';
@@ -13621,7 +13623,10 @@ function reverse_dn(){
 						rate = 1;
 					}
 					total_idr  = (parseFloat(item.total_price) * rate).toFixed(2);	
-					jml_total += parseFloat(item.ttl_price);					
+					total_idr_ship  = (parseFloat(item.total_price_ship) * rate).toFixed(2);	
+					jml_total += parseFloat(item.ttl_price);
+					jml_total_ship += parseFloat(item.ttl_price_ship);	
+
 					trHTML += '<tr>';					
 					trHTML += '<td>' + item.supplier + "</td>";					
 					trHTML += '<td>' + item.no_so + "</td>";	
@@ -13640,6 +13645,11 @@ function reverse_dn(){
 					trHTML += '<td>' + item.unit_price + "</td>";	
 					trHTML += '<td>' + item.total + "</td>";
 					trHTML += '<td>' + total_idr + "</td>";	
+					trHTML += '<td>' + item.qty_ship + "</td>";
+					trHTML += '<td>' + item.uom_ship + "</td>";
+					trHTML += '<td>' + item.unit_price_ship + "</td>";	
+					trHTML += '<td>' + item.total_ship + "</td>";
+					trHTML += '<td>' + total_idr_ship + "</td>";	
 					trHTML += '<td> Not Yet</td>';					
 					trHTML += '</tr>';
 				});
@@ -13647,6 +13657,8 @@ function reverse_dn(){
 				trHTML += '<tr>';					
 				trHTML += '<th colspan="16" style="text-align: center">' +kata+ "</th>";
 				trHTML += '<th>' + formatMoney(jml_total) + "</th>";
+				trHTML += '<th colspan="4" style="text-align: center">' + "</th>";
+				trHTML += '<th>' + formatMoney(jml_total_ship) + "</th>";
 				trHTML += '<th style="text-align: center"></th>';
 				trHTML += '</tr>';
 

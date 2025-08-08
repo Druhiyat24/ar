@@ -121,6 +121,11 @@ thead {
                                         <th style="text-align: center;vertical-align: middle;">Price</th>
                                         <th style="text-align: center;vertical-align: middle;">Total</th>
                                         <th style="text-align: center;vertical-align: middle;">Total IDR</th>
+                                        <th style="text-align: center;vertical-align: middle;">QTY Shipment</th>
+                                        <th style="text-align: center;vertical-align: middle;">UOM Shipment</th>
+                                        <th style="text-align: center;vertical-align: middle;">Price Shipment</th>
+                                        <th style="text-align: center;vertical-align: middle;">Total Shipment</th>
+                                        <th style="text-align: center;vertical-align: middle;">Total IDR Shipment</th>
                                         <th style="text-align: center;vertical-align: middle;">Status</th>
                                     </tr>
                                 </thead>
