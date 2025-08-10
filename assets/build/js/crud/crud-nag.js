@@ -2377,14 +2377,14 @@ function update_status_bppb() {
 			}
 		});	
 
-	}
+}
 
-	function UpdateInvoice(id, status, inv_date) {
+function UpdateInvoice(id, status, inv_date) {
 
-		console.log(id);
-		if (status != "POST") { 
-			muncul_pesan();
-		} else {
+	console.log(id);
+	if (status != "POST") { 
+		muncul_pesan();
+	} else {
 	//	
 	$('.form-group').removeClass('has-error');
 	$('.help-block').empty();
@@ -15938,9 +15938,217 @@ function simpan_other_charge_invoice()
 
 
 function print_invoice_knitting(id) {
- 	
+
 	window.open(".../../print_invoice_knitting/" + id + "/" );  	
 
 }
 
+
+function cari_kartu_ar_new() { 
+
+	$('#table-kartu_ar2 tbody tr').remove();
+		// $('#bulan_1').val("");
+		// $('#bulan_2').val('');
+		// $('#bulan_3').val('');
+		// $('#bulan_4').val('');
+		// $('#bulan_5').val('');
+		// $('#bulan_6').val('');	
+		//Date range picker
+		$('input[name="cobacoba"]').daterangepicker({
+			autoUpdateInput: false,
+			locale: {
+				cancelLabel: 'Clear'
+			}
+		});
+
+		$('input[name="cobacoba"]').on('apply.daterangepicker', function (ev, picker) {
+			dt_dari_alk = picker.startDate.format('YYYY-MM-DD');
+			dt_sampai_alk = picker.endDate.format('YYYY-MM-DD');
+			$(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+		});
+
+		$('input[name="cobacoba"]').on('cancel.daterangepicker', function (ev, picker) {
+			$(this).val('');
+			dt_dari_alk   = "undefined";
+			dt_sampai_alk = "undefined";
+		});
+
+		var id_cus = $('#customer').val();
+		const currentMonth = new Date(dt_sampai_alk);
+		var tahun  = currentMonth.getFullYear()
+		var bulan1 = currentMonth.getMonth();
+		var bulan2 = currentMonth.getMonth() + 1;
+		var bulan3 = currentMonth.getMonth() + 2;
+		var bulan4 = currentMonth.getMonth() + 3;
+		var bulan5 = currentMonth.getMonth() + 4;
+		var bulan6 = currentMonth.getMonth() + 5;
+		if (bulan1 > 11) {
+			var tahun_1 = tahun +1;
+		}else{
+			var tahun_1 = tahun;
+		}
+		if (bulan2 > 11) {
+			var tahun_2 = tahun +1;
+		}else{
+			var tahun_2 = tahun;
+		}
+		if (bulan3 > 11) {
+			var tahun_3 = tahun +1;
+		}else{
+			var tahun_3 = tahun;
+		}
+		if (bulan4 > 11) {
+			var tahun_4 = tahun +1;
+		}else{
+			var tahun_4 = tahun;
+		}
+		if (bulan5 > 11) {
+			var tahun_5 = tahun +1;
+		}else{
+			var tahun_5 = tahun;
+		}
+		if (bulan6 > 11) {
+			var tahun_6 = tahun +1;
+		}else{
+			var tahun_6 = tahun;
+		}
+		const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+		var bulan_1 =  months[bulan1]; 
+		var bulan_2 =  months[bulan2]; 
+		var bulan_3 =  months[bulan3]; 
+		var bulan_4 =  months[bulan4]; 
+		var bulan_5 =  months[bulan5]; 
+		var bulan_6 =  months[bulan6]; 		
+
+		$.ajax({		
+			url: "cari_kartu_ar_new/" + dt_dari_alk + "/" + dt_sampai_alk + "/" + id_cus + "/",					
+			type: "GET",
+			dataType: "JSON",
+			success: function (response) {
+
+				var trHTML = '';
+				sal_awl = 0;
+				tambah = 0;
+				bayar = 0;
+				total = 0;
+				eqv_idr = 0;
+				amt_aging_0 = 0;
+				amt_aging_1 = 0;
+				amt_aging_2 = 0;
+				amt_aging_3 = 0;
+				amt_aging_4 = 0;
+				amt_aging_5 = 0;
+				amt_aging_6 = 0;
+				amt_aging_7 = 0;
+				tot_aging = 0;
+				readydue = 0;
+				jml_bln1 = 0;
+				jml_bln2 = 0;
+				jml_bln3 = 0;
+				jml_bln4 = 0;
+				jml_bln5 = 0;
+				jml_bln6 = 0;
+				tot_jatem = 0;
+				var kata = 'Total';
+
+				$.each(response, function (i, item) { 
+
+					sal_awl += parseFloat(item.sal_awl);
+					tambah += parseFloat(item.tambah);
+					bayar += parseFloat(item.bayar);
+					total += parseFloat(item.total);
+					eqv_idr += parseFloat(item.eqv_idr);
+					amt_aging_0 += parseFloat(item.amt_aging_0);
+					amt_aging_1 += parseFloat(item.amt_aging_1);
+					amt_aging_2 += parseFloat(item.amt_aging_2);
+					amt_aging_3 += parseFloat(item.amt_aging_3);
+					amt_aging_4 += parseFloat(item.amt_aging_4);
+					amt_aging_5 += parseFloat(item.amt_aging_5);
+					amt_aging_6 += parseFloat(item.amt_aging_6);
+					amt_aging_7 += parseFloat(item.amt_aging_7);
+					tot_aging += parseFloat(item.tot_aging);
+					readydue += parseFloat(item.readydue);
+					jml_bln1 += parseFloat(item.hasil_bln1);
+					jml_bln2 += parseFloat(item.hasil_bln2);
+					jml_bln3 += parseFloat(item.hasil_bln3);
+					jml_bln4 += parseFloat(item.hasil_bln4);
+					jml_bln5 += parseFloat(item.hasil_bln5);
+					jml_bln6 += parseFloat(item.hasil_bln6);
+					tot_jatem += parseFloat(item.tot_jatem);
+
+					trHTML += '<tr>';					
+					trHTML += '<td>' + item.customer + "</td>";
+					trHTML += '<td>' + item.no_invoice + "</td>";	
+					trHTML += '<td>' + item.inv_date + "</td>";
+					trHTML += '<td>' + item.shipp + "</td>";
+					trHTML += '<td>' + item.duedate + "</td>";
+					trHTML += '<td>' + item.top + "</td>";
+					trHTML += '<td>' + item.curr + "</td>";
+					trHTML += '<td>' + formatMoney(item.rate) + "</td>";
+					trHTML += '<td>' + formatMoney(item.sal_awl) + "</td>";
+					trHTML += '<td>' + formatMoney(item.tambah) + "</td>";	
+					trHTML += '<td>' + formatMoney(item.bayar) + "</td>";	
+					trHTML += '<td>' + formatMoney(item.total) + "</td>";
+					trHTML += '<td>' + formatMoney(item.eqv_idr) + "</td>";
+					trHTML += '<td>' + formatMoney(item.amt_aging_0) + "</td>";
+					trHTML += '<td>' + formatMoney(item.amt_aging_1) + "</td>";
+					trHTML += '<td>' + formatMoney(item.amt_aging_2) + "</td>";
+					trHTML += '<td>' + formatMoney(item.amt_aging_3) + "</td>";
+					trHTML += '<td>' + formatMoney(item.amt_aging_4) + "</td>";
+					trHTML += '<td>' + formatMoney(item.amt_aging_5) + "</td>";
+					trHTML += '<td>' + formatMoney(item.amt_aging_6) + "</td>";
+					trHTML += '<td>' + formatMoney(item.amt_aging_7) + "</td>";
+					trHTML += '<td>' + formatMoney(item.tot_aging) + "</td>";
+					trHTML += '<td></td>';
+					trHTML += '<td>' + formatMoney(item.readydue) + "</td>";
+					trHTML += '<td>' + formatMoney(item.hasil_bln1) + "</td>";
+					trHTML += '<td>' + formatMoney(item.hasil_bln2) + "</td>";
+					trHTML += '<td>' + formatMoney(item.hasil_bln3) + "</td>";
+					trHTML += '<td>' + formatMoney(item.hasil_bln4) + "</td>";
+					trHTML += '<td>' + formatMoney(item.hasil_bln5) + "</td>";
+					trHTML += '<td>' + formatMoney(item.hasil_bln6) + "</td>";
+					trHTML += '<td>' + formatMoney(item.tot_jatem) + "</td>";
+					trHTML += '</tr>';
+				});
+				trHTML += '<tr>';					
+				trHTML += '<th colspan="8" style="text-align: center">' +kata+ "</th>";
+				trHTML += '<th>' + formatMoney(sal_awl) + "</th>";
+				trHTML += '<th>' + formatMoney(tambah) + "</th>";	
+				trHTML += '<th>' + formatMoney(bayar) + "</th>";	
+				trHTML += '<th>' + formatMoney(total) + "</th>";
+				trHTML += '<th>' + formatMoney(eqv_idr) + "</th>";
+				trHTML += '<th>' + formatMoney(amt_aging_0) + "</th>";
+				trHTML += '<th>' + formatMoney(amt_aging_1) + "</th>";
+				trHTML += '<th>' + formatMoney(amt_aging_2) + "</th>";	
+				trHTML += '<th>' + formatMoney(amt_aging_3) + "</th>";	
+				trHTML += '<th>' + formatMoney(amt_aging_4) + "</th>";
+				trHTML += '<th>' + formatMoney(amt_aging_5) + "</th>";
+				trHTML += '<th>' + formatMoney(amt_aging_6) + "</th>";	
+				trHTML += '<th>' + formatMoney(amt_aging_7) + "</th>";	
+				trHTML += '<th>' + formatMoney(tot_aging) + "</th>";
+				trHTML += '<th></th>';
+				trHTML += '<th>' + formatMoney(readydue) + "</th>";
+				trHTML += '<th>' + formatMoney(jml_bln1) + "</th>";	
+				trHTML += '<th>' + formatMoney(jml_bln2) + "</th>";	
+				trHTML += '<th>' + formatMoney(jml_bln3) + "</th>";
+				trHTML += '<th>' + formatMoney(jml_bln4) + "</th>";
+				trHTML += '<th>' + formatMoney(jml_bln5) + "</th>";	
+				trHTML += '<th>' + formatMoney(jml_bln6) + "</th>";	
+				trHTML += '<th>' + formatMoney(tot_jatem) + "</th>";
+				trHTML += '</tr>';
+
+				$('#table-kartu_ar2').append(trHTML);	
+				$('#bulan_1').val(bulan_1 + ' ' + tahun_1);
+				$('#bulan_2').val(bulan_2 + ' ' + tahun_2);
+				$('#bulan_3').val(bulan_3 + ' ' + tahun_3);
+				$('#bulan_4').val(bulan_4 + ' ' + tahun_4);
+				$('#bulan_5').val(bulan_5 + ' ' + tahun_5);
+				$('#bulan_6').val(bulan_6 + ' ' + tahun_6);			
+			},
+			error: function (jqXHR, textStatus, errorThrown) {
+				alert(errorThrown);
+			}
+		});	
+
+}
 

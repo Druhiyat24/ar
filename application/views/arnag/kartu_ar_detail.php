@@ -67,7 +67,7 @@ thead {
                                     <div class="form-group">
                                         <label>Action</label>
                                         <div class="input-group">
-                                            <button type="button" id="find_invoice" name="find_invoice" class="btn btn-primary" href="javascript:void(0)" onclick="cari_kartu_ar2()"><i class="fa fa-search"></i>  Search</button>
+                                            <button type="button" id="find_invoice" name="find_invoice" class="btn btn-primary" href="javascript:void(0)" onclick="cari_kartu_ar_new()"><i class="fa fa-search"></i>  Search</button>
                                         </div>
                                     </div>
                                     <div class="col-md-3">

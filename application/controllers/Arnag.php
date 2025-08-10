@@ -3725,4 +3725,10 @@ public function print_invoice_knitting($id)
     $mpdf->Output();
 }
 
+public function cari_kartu_ar_new($dt_dari_alk, $dt_sampai_alk, $id_cus)
+{
+    $data =  $this->Model_nag->cari_kartu_ar_new($dt_dari_alk, $dt_sampai_alk, $id_cus);
+    echo json_encode($data);
+}
+
 }
