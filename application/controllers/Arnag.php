@@ -3731,4 +3731,28 @@ public function cari_kartu_ar_new($dt_dari_alk, $dt_sampai_alk, $id_cus)
     echo json_encode($data);
 }
 
+public function export_kartu_ar_new($dt_dari_alk, $dt_sampai_alk, $id_cus, $bln1, $bln2, $bln3, $bln4, $bln5, $bln6, $thn1, $thn2, $thn3, $thn4, $thn5, $thn6)
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+        //       
+    $data["data_kartu_ar2"] = $this->Model_nag->cari_kartu_ar_new($dt_dari_alk, $dt_sampai_alk, $id_cus);
+    $data["periode_dari"] = $dt_dari_alk;
+    $data["periode_sampai"] = $dt_sampai_alk;
+    $data["bln1"] = $bln1;
+    $data["bln2"] = $bln2;
+    $data["bln3"] = $bln3;
+    $data["bln4"] = $bln4;
+    $data["bln5"] = $bln5;
+    $data["bln6"] = $bln6;
+    $data["thn1"] = $thn1;
+    $data["thn2"] = $thn2;
+    $data["thn3"] = $thn3;
+    $data["thn4"] = $thn4;
+    $data["thn5"] = $thn5;
+    $data["thn6"] = $thn6;
+    $this->load->view('arnag/export_kartu_ar_new', $data);
+}
+
 }

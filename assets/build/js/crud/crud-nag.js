@@ -16152,3 +16152,61 @@ function cari_kartu_ar_new() {
 
 }
 
+
+function export_kartu_ar_new() { 		
+		var id_cus = $('#customer').val();
+		const currentMonth = new Date(dt_sampai_alk);
+		var tahun  = currentMonth.getFullYear()
+		var bulan1 = currentMonth.getMonth();
+		var bulan2 = currentMonth.getMonth() + 1;
+		var bulan3 = currentMonth.getMonth() + 2;
+		var bulan4 = currentMonth.getMonth() + 3;
+		var bulan5 = currentMonth.getMonth() + 4;
+		var bulan6 = currentMonth.getMonth() + 5;
+		if (bulan1 > 11) {
+			var tahun_1 = tahun +1;
+		}else{
+			var tahun_1 = tahun;
+		}
+		if (bulan2 > 11) {
+			var tahun_2 = tahun +1;
+		}else{
+			var tahun_2 = tahun;
+		}
+		if (bulan3 > 11) {
+			var tahun_3 = tahun +1;
+		}else{
+			var tahun_3 = tahun;
+		}
+		if (bulan4 > 11) {
+			var tahun_4 = tahun +1;
+		}else{
+			var tahun_4 = tahun;
+		}
+		if (bulan5 > 11) {
+			var tahun_5 = tahun +1;
+		}else{
+			var tahun_5 = tahun;
+		}
+		if (bulan6 > 11) {
+			var tahun_6 = tahun +1;
+		}else{
+			var tahun_6 = tahun;
+		}
+		const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+		var bulan_1 =  months[bulan1]; 
+		var bulan_2 =  months[bulan2]; 
+		var bulan_3 =  months[bulan3]; 
+		var bulan_4 =  months[bulan4]; 
+		var bulan_5 =  months[bulan5]; 
+		var bulan_6 =  months[bulan6]; 
+
+		$('#bulan_1').append(bulan_1 + ' ' + tahun_1);
+		$('#bulan_2').append(bulan_2 + ' ' + tahun_2);
+		$('#bulan_3').append(bulan_3 + ' ' + tahun_3);
+		$('#bulan_4').append(bulan_4 + ' ' + tahun_4);
+		$('#bulan_5').append(bulan_5 + ' ' + tahun_5);
+		$('#bulan_6').append(bulan_6 + ' ' + tahun_6);		
+		window.open(".../../export_kartu_ar_new/" + dt_dari_alk  + "/" + dt_sampai_alk  + "/" + "/" + id_cus + "/" + bulan_1  + "/" + bulan_2  + "/" + bulan_3  + "/" + bulan_4  + "/" + bulan_5  + "/" + bulan_6  + "/" + tahun_1  + "/" + tahun_2  + "/" + tahun_3  + "/" + tahun_4  + "/" + tahun_5  + "/" + tahun_6  + "/"); 
+	}
+

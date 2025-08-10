@@ -73,7 +73,7 @@ thead {
                                     <div class="col-md-3">
                                         <label>Export Data</label>
                                         <div class="input-group">
-                                            <button type="button" class="btn btn-info" onclick="export_kartu_ar2()"><i class="fa fa-download"></i> Export To Excel</button>
+                                            <button type="button" class="btn btn-info" onclick="export_kartu_ar_new()"><i class="fa fa-download"></i> Export To Excel</button>
                                         </div>
                                     </div>
 
