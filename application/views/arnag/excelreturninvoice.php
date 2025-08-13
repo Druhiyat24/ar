@@ -90,7 +90,7 @@ CSS HEADER
             height: auto;
             text-align: left;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 11pt;
         }
     </style>
 
@@ -102,7 +102,7 @@ CSS HEADER
         <?= $data_return_invoice['no_return']; ?>
     </div>
     <br />
-    <table style="width:100%;font-size:10px;">
+    <table style="width:100%;font-size:11pt;">
         <tr>
             <td style="width: 100px">
                 Date

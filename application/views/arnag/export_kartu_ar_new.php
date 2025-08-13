@@ -95,7 +95,7 @@ table {
     height: auto;
     text-align: left;
     font-weight: bold;
-    font-size: 12px;
+    font-size: 11pt;
 }
 </style>
 </head>
@@ -107,7 +107,7 @@ table {
         Period : <?= $periode_dari; ?> To <?= $periode_sampai; ?>
     </div>
     <br />
-    <table style="width:100%;font-size:10px;" border="1">
+    <table style="width:100%;font-size:11pt;" border="1">
         <tr align="center">
             <th rowspan="2" style="text-align: center;">
                 Customer

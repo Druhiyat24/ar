@@ -90,7 +90,7 @@ CSS HEADER
             height: auto;
             text-align: left;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 11pt;
         }
     </style>
 </head>
@@ -102,7 +102,7 @@ CSS HEADER
         Period : <?= $periode_dari_mt; ?> To <?= $periode_sampai_mt; ?>
     </div>
     <br />
-    <table style="width:100%;font-size:10px;" border="1">
+    <table style="width:100%;font-size:11pt;" border="1">
         <tr align="center" style="text-align: center;">
             <th rowspan="2">Customer</th>
             <th rowspan="2">Invoice</th>

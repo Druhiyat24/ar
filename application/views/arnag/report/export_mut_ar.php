@@ -90,7 +90,7 @@ CSS HEADER
             height: auto;
             text-align: left;
             font-weight: bold;
-            font-size: 15px;
+            font-size: 11pt;
         }
     </style>
 </head>
@@ -115,7 +115,7 @@ CSS HEADER
         PER : <?= $bulanTahun; ?>
     </div>
     <br />
-    <table style="width:100%;font-size:13px;" border="1">
+    <table style="width:100%;font-size:11pt;" border="1">
         <tr>
             <th style="text-align: center;" rowspan="2">No</th>
             <th style="text-align: center;" style="width:450px;" colspan="3">Konsumen</th>

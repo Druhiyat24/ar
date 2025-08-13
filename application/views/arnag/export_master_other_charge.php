@@ -90,7 +90,7 @@ CSS HEADER
             height: auto;
             text-align: left;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 11pt;
         }
     </style>
 </head>
@@ -100,7 +100,7 @@ CSS HEADER
         MASTER OTHER CHARGE
     </div>
     <br />
-    <table style="width:60%;font-size:10px;" border="1">
+    <table style="width:60%;font-size:11pt;" border="1">
         <tr align="center">
             <th style="width: 10%">
                 ID

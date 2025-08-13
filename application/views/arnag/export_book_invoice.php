@@ -90,7 +90,7 @@ CSS HEADER
             height: auto;
             text-align: left;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 11pt;
         }
     </style>
 </head>
@@ -104,7 +104,7 @@ CSS HEADER
         Status : <?= $status_book; ?>
  -->    </div>
     <br />
-    <table style="width:100%;font-size:10px;" border="1">
+    <table style="width:100%;font-size:11pt;" border="1">
         <tr align="center">
             <th>
                 Inv Number
