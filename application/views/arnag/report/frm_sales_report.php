@@ -1,4 +1,132 @@
-<!-- Content Wrapper. Contains page content -->
+<style>
+    .table-wrapper {
+        max-height: 350px;
+        overflow-y: auto;
+        position: relative;
+    }
+
+    .table-scroll {
+        overflow-x: auto;
+    }
+
+    #table-sales-report {
+        border-collapse: collapse;
+        width: max-content; /* Supaya bisa scroll horizontal */
+    }
+
+/* ===== Sticky Header ===== */
+#table-sales-report thead th {
+    position: sticky;
+    top: 0;
+    z-index: 30; /* tinggi supaya di atas td */
+    background: #f1f1f1;
+    text-transform: capitalize;
+    vertical-align: middle;
+    text-align: center;
+    white-space: nowrap;
+    border: 1px solid #dee2e6;
+    padding: 6px 10px;
+}
+
+/* Baris kedua header juga sticky */
+#table-sales-report thead tr:nth-child(2) th {
+    top: 35px; /* tinggi baris pertama */
+    z-index: 29;
+    background: #f9f9f9;
+}
+
+/* ===== Body ===== */
+#table-sales-report tbody td {
+    vertical-align: middle;
+    border: 1px solid #dee2e6;
+    padding: 6px 10px;
+    background: #fff;
+}
+
+#table-sales-report tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+/* ===== Freeze Kolom ===== */
+/* Kolom 1 (No) */
+#table-sales-report th:nth-child(1) {
+    left: 0;
+    z-index: 40; /* header freeze paling tinggi */
+    background-color: #fff;
+}
+#table-sales-report td:nth-child(1) {
+    left: 0;
+    z-index: 20; /* lebih rendah dari header */
+    position: sticky;
+    background-color: #fff;
+}
+
+/* Kolom 2 (Customer) */
+#table-sales-report th:nth-child(2) {
+    left: 30px;
+    z-index: 40;
+    background-color: #fff;
+}
+#table-sales-report td:nth-child(2) {
+    left: 30px;
+    z-index: 20;
+    position: sticky;
+    background-color: #fff;
+}
+
+/* Kolom 3 (Invoice) */
+#table-sales-report th:nth-child(3) {
+    left: 230px;
+    z-index: 40;
+    background-color: #fff;
+}
+#table-sales-report td:nth-child(3) {
+    left: 230px;
+    z-index: 20;
+    position: sticky;
+    background-color: #fff;
+}
+
+/* Kolom 4 (Invoice Date) */
+#table-sales-report th:nth-child(4) {
+    left: 430px;
+    z-index: 40;
+    background-color: #fff;
+}
+#table-sales-report td:nth-child(4) {
+    left: 430px;
+    z-index: 20;
+    position: sticky;
+    background-color: #fff;
+}
+
+/* ===== Search Input di kanan ===== */
+.table-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 8px;
+}
+
+.search-box {
+    position: relative;
+}
+
+.search-box input {
+    padding: 6px 30px 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.search-box i {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #888;
+    pointer-events: none;
+}
+</style>
+
 <div class="content-wrapper">
     <!-- Content Header (Page header) -->
     <section class="content-header">
@@ -149,8 +277,90 @@
                     <div class="card-header">
                         <h3 class="card-title">DataTable Sales Report</h3>
                     </div>
-                    <!-- /.card-header -->
-                    <div class="card-body table-responsive p-0" style="height: 300px;">
+
+                    <div class="card-body">
+                        <div class="table-scroll">
+                            <div class="table-header">
+                                <div class="search-box">
+                                    <input type="text" id="tableSearch" placeholder="Search...">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                            </div>
+                            <div class="table-wrapper">
+                              <table id="table-sales-report" class="table table-bordered table-striped table-head-fixed text-nowrap">
+                                <thead>
+                                  <tr>
+                                    <th style="width:30px;background-color: #FFE4C4;" rowspan="2">No</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Customer</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Invoice</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Invoice Date</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Group</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Relationship</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Profit Center</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">TOP</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Order Type</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Shipp</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Inv Type</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">VAT Number</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">VAT Date</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Currency</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Rate</th>
+                                    <th style="background-color: #90EE90;" colspan="8">Billing Invoice (Original Currency)</th>
+                                    <th style="background-color: #90EE90;" colspan="8">Billing Invoice (Equivalent IDR)</th>
+                                    <th style="background-color: #87CEFA;" colspan="8">Shipping Invoice (Original Currency)</th>
+                                    <th style="background-color: #87CEFA;" colspan="8">Shipping Invoice (Equivalent IDR)</th>
+                                    <th style="width:50px;background-color: #FFFFFF;border:1px solid #FFFFFF;" rowspan="2"></th>
+                                    <th style="width:200px;background-color: #FFDAB9;" rowspan="2">Net Sales</th>
+                                    <th style="width:200px;background-color: #FFDAB9;" rowspan="2">VAT</th>
+                                    <th style="width:200px;background-color: #FFDAB9;" rowspan="2">Total</th>
+                                </tr>
+                                <tr>
+                                    <th style="width:150px;background-color: #90EE90;">Qty</th>
+                                    <th style="width:150px;background-color: #90EE90;">Gross Sales</th>
+                                    <th style="width:150px;background-color: #90EE90;">Others Sales</th>
+                                    <th style="width:150px;background-color: #90EE90;">Discount</th>
+                                    <th style="width:150px;background-color: #90EE90;">Down Payment</th>
+                                    <th style="width:150px;background-color: #90EE90;">Net Sales</th>
+                                    <th style="width:150px;background-color: #90EE90;">VAT</th>
+                                    <th style="width:150px;background-color: #90EE90;">Total</th>
+
+                                    <th style="width:150px;background-color: #90EE90;">Qty</th>
+                                    <th style="width:150px;background-color: #90EE90;">Gross Sales</th>
+                                    <th style="width:150px;background-color: #90EE90;">Others Sales</th>
+                                    <th style="width:150px;background-color: #90EE90;">Discount</th>
+                                    <th style="width:150px;background-color: #90EE90;">Down Payment</th>
+                                    <th style="width:150px;background-color: #90EE90;">Net Sales</th>
+                                    <th style="width:150px;background-color: #90EE90;">VAT</th>
+                                    <th style="width:150px;background-color: #90EE90;">Total</th>
+
+                                    <th style="width:150px;background-color: #87CEFA;">Qty</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Gross Sales</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Others Sales</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Discount</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Down Payment</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Net Sales</th>
+                                    <th style="width:150px;background-color: #87CEFA;">VAT</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Total</th>
+
+                                    <th style="width:150px;background-color: #87CEFA;">Qty</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Gross Sales</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Others Sales</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Discount</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Down Payment</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Net Sales</th>
+                                    <th style="width:150px;background-color: #87CEFA;">VAT</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- /.card-header -->
+                    <!-- <div class="card-body table-responsive p-0" style="height: 300px;">
                         <table id="table-sales-report" class="table table-head-fixed text-nowrap">
                             <thead>
                                 <tr>
@@ -173,16 +383,13 @@
                                     <th>Equiv Value Billing</th>
                                     <th>Equiv Value Shipment</th>
                                     <th>VAT</th>
-                                    <!-- <th>Total</th> -->
-                                    <!-- <th>No Faktur</th>
-                                    <th>Tgl Faktur</th> -->
                                 </tr>
                             </thead>
                             <tbody>
 
                             </tbody>
                         </table>
-                    </div>
+                    </div> -->
                     <!-- /.card-body -->
                 </div>
                 <!-- /.card -->
@@ -197,3 +404,16 @@
         </div>
     </div>
 </div>
+
+<script>
+// Fungsi search sederhana
+document.getElementById("tableSearch").addEventListener("keyup", function() {
+    var value = this.value.toLowerCase();
+    var rows = document.querySelectorAll("#table-sales-report tbody tr");
+
+    rows.forEach(function(row) {
+        var text = row.innerText.toLowerCase();
+        row.style.display = text.indexOf(value) > -1 ? "" : "none";
+    });
+});
+</script>

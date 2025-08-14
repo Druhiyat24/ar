@@ -1,3 +1,144 @@
+<style>
+    .table-wrapper {
+        max-height: 350px;
+        overflow-y: auto;
+        position: relative;
+    }
+
+    .table-scroll {
+        overflow-x: auto;
+    }
+
+    #table-sales-report-material {
+        border-collapse: collapse;
+        width: max-content; /* Supaya bisa scroll horizontal */
+    }
+
+/* ===== Sticky Header ===== */
+#table-sales-report-material thead th {
+    position: sticky;
+    top: 0;
+    z-index: 30; /* tinggi supaya di atas td */
+    background: #f1f1f1;
+    text-transform: capitalize;
+    vertical-align: middle;
+    text-align: center;
+    white-space: nowrap;
+    border: 1px solid #dee2e6;
+    padding: 6px 10px;
+}
+
+/* Baris kedua header juga sticky */
+#table-sales-report-material thead tr:nth-child(2) th {
+    top: 35px; /* tinggi baris pertama */
+    z-index: 29;
+    background: #f9f9f9;
+}
+
+/* ===== Body ===== */
+#table-sales-report-material tbody td {
+    vertical-align: middle;
+    border: 1px solid #dee2e6;
+    padding: 6px 10px;
+    background: #fff;
+}
+
+#table-sales-report-material tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+/* ===== Freeze Kolom ===== */
+/* Kolom 1 (No) */
+#table-sales-report-material th:nth-child(1) {
+    left: 0;
+    z-index: 40; /* header freeze paling tinggi */
+    background-color: #fff;
+}
+#table-sales-report-material td:nth-child(1) {
+    left: 0;
+    z-index: 20; /* lebih rendah dari header */
+    position: sticky;
+    background-color: #fff;
+}
+
+/* Kolom 2 (Customer) */
+#table-sales-report-material th:nth-child(2) {
+    left: 30px;
+    z-index: 40;
+    background-color: #fff;
+}
+#table-sales-report-material td:nth-child(2) {
+    left: 30px;
+    z-index: 20;
+    position: sticky;
+    background-color: #fff;
+}
+
+/* Kolom 3 (Invoice) */
+#table-sales-report-material th:nth-child(3) {
+    left: 230px;
+    z-index: 40;
+    background-color: #fff;
+}
+#table-sales-report-material td:nth-child(3) {
+    left: 230px;
+    z-index: 20;
+    position: sticky;
+    background-color: #fff;
+}
+
+/* Kolom 4 (Invoice Date) */
+#table-sales-report-material th:nth-child(4) {
+    left: 430px;
+    z-index: 40;
+    background-color: #fff;
+}
+#table-sales-report-material td:nth-child(4) {
+    left: 430px;
+    z-index: 20;
+    position: sticky;
+    background-color: #fff;
+}
+
+/* Kolom 4 (Invoice Date) */
+#table-sales-report-material th:nth-child(5) {
+    left: 630px;
+    z-index: 40;
+    background-color: #fff;
+}
+#table-sales-report-material td:nth-child(5) {
+    left: 630px;
+    z-index: 20;
+    position: sticky;
+    background-color: #fff;
+}
+
+/* ===== Search Input di kanan ===== */
+.table-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 8px;
+}
+
+.search-box {
+    position: relative;
+}
+
+.search-box input {
+    padding: 6px 30px 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.search-box i {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #888;
+    pointer-events: none;
+}
+</style>
 <!-- Content Wrapper. Contains page content -->
 <div class="content-wrapper">
     <!-- Content Header (Page header) -->
@@ -20,7 +161,7 @@
                         <!-- general form elements -->
                         <div class="card card-info">
                             <div class="card-header">
-                                <h3 class="card-title">Sales Report / Material</h3>
+                                <h3 class="card-title">Sales Report Detail Item</h3>
                             </div>
                             <!-- /.card-header -->
                             <!-- form start -->
@@ -147,10 +288,64 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">DataTable Sales Report Material</h3>
+                        <h3 class="card-title">DataTable Sales Report Detail Item</h3>
                     </div>
+
+                    <div class="card-body">
+                        <div class="table-scroll">
+                            <div class="table-header">
+                                <div class="search-box">
+                                    <input type="text" id="tableSearch" placeholder="Search...">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                            </div>
+                            <div class="table-wrapper">
+                              <table id="table-sales-report-material" class="table table-bordered table-striped table-head-fixed text-nowrap">
+                                <thead>
+                                  <tr>
+                                    <th style="width:30px;background-color: #FFE4C4;" rowspan="2">No</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Customer</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Invoice</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Invoice Date</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Shipp Number</th>
+                                    <th style="width:150px;background-color: #FFE4C4;" rowspan="2">Shipp Date</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Group</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">WS</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Style</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Product Item</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Order Type</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Shipp</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Inv Type</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">VAT Number</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">VAT Date</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Currency</th>
+                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Rate</th>
+                                    <th style="background-color: #90EE90;" colspan="5">Billing Invoice</th>
+                                    <th style="background-color: #87CEFA;" colspan="5">Shipping Invoice</th>
+                                </tr>
+                                <tr>
+                                    <th style="width:150px;background-color: #90EE90;">Qty</th>
+                                    <th style="width:150px;background-color: #90EE90;">Uom</th>
+                                    <th style="width:150px;background-color: #90EE90;">Unit Price</th>
+                                    <th style="width:150px;background-color: #90EE90;">Total</th>
+                                    <th style="width:150px;background-color: #90EE90;">Total IDR</th>
+
+                                    <th style="width:150px;background-color: #87CEFA;">Qty</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Uom</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Unit Price</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Total</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Total IDR</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
                     <!-- /.card-header -->
-                    <div class="card-body table-responsive p-0" style="height: 300px;">
+                    <!-- <div class="card-body table-responsive p-0" style="height: 300px;">
                         <table id="table-sales-report-material" class="table table-head-fixed text-nowrap">
                             <thead>
                                 <tr>
@@ -186,7 +381,7 @@
 
                             </tbody>
                         </table>
-                    </div>
+                    </div> -->
                     <!-- /.card-body -->
                 </div>
                 <!-- /.card -->

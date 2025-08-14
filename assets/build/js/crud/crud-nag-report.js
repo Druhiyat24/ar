@@ -42,10 +42,10 @@ function cari_sales_report(){
     });
 
     $('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
-       periode_dari = picker.startDate.format('YYYY-MM-DD');
-       periode_sampai = picker.endDate.format('YYYY-MM-DD');
-       $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
-   });
+     periode_dari = picker.startDate.format('YYYY-MM-DD');
+     periode_sampai = picker.endDate.format('YYYY-MM-DD');
+     $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+ });
 
     $('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
         $(this).val('');
@@ -68,40 +68,74 @@ function cari_sales_report(){
 
             var trHTML = '';
             $.each(response, function (i, item) { 					
-                trHTML += '<tr>';					
+                trHTML += '<tr>';
+                trHTML += '<td>' + (i + 1) + '</td>';					
                 trHTML += '<td>' + item.customer + "</td>";
                 trHTML += '<td>' + item.no_invoice + "</td>";	
-                trHTML += '<td>' + item.tgl_inv + "</td>";
-                trHTML += '<td>' + '' + "</td>";
+                trHTML += '<td>' + item.tgl_inv + "</td>"; 
+                trHTML += '<td>' + item.relasi + "</td>";	
+                trHTML += '<td>' + item.cus_ctg + "</td>";
+                trHTML += '<td>' + item.nama_pc + "</td>";
+                trHTML += '<td>' + item.top + "</td>";   
+                trHTML += '<td>' + item.type_so + "</td>"; 
+                trHTML += '<td>' + item.shipp + "</td>"; 
+                trHTML += '<td>' + item.type + "</td>";
                 trHTML += '<td>' + item.no_faktur + "</td>";
                 trHTML += '<td>' + item.tgl_faktur + "</td>";   
-                trHTML += '<td>' + item.top + "</td>";        
-                trHTML += '<td>' + item.type_so + "</td>";               
-                trHTML += '<td>' + item.shipp + "</td>";
-                trHTML += '<td>' + item.type + "</td>";	
-                trHTML += '<td align="right">' + item.qty + "</td>"; 
-                trHTML += '<td align="right">' + item.qty_ship + "</td>";   
-                trHTML += '<td>' + item.curr + "</td>";	
-                trHTML += '<td>' + item.rate + "</td>";    
-                trHTML += '<td align="right">' + item.total + "</td>";
-                trHTML += '<td align="right">' + item.total_ship + "</td>";
-                trHTML += '<td align="right">' + item.total2 + "</td>";
-                trHTML += '<td align="right">' + item.total2_ship + "</td>";
-                trHTML += '<td>' + item.vat + "</td>";	
-                    // trHTML += '<td>' + '' + "</td>";
-                    // trHTML += '<td>' + item.no_faktur + "</td>";
-                    // trHTML += '<td>' + item.tgl_faktur + "</td>";
+                trHTML += '<td>' + item.curr + "</td>";    
+                trHTML += '<td align="right">' + number_format(item.rate,2) + "</td>";
 
-                    trHTML += '</tr>';
-                });
+                trHTML += '<td align="right">' + number_format(item.qty_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.total_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.other_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.diskon_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.twot_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.vat_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.grand_total_bill,2) + "</td>";
 
-            $('#table-sales-report').append(trHTML);				
+                trHTML += '<td align="right">' + number_format(item.qty_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.total_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.other_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.diskon_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.twot_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.vat_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.grand_total_bill_idr,2) + "</td>";
 
-        },
-        error: function (jqXHR, textStatus, errorThrown) {
-            alert('Error get data from ajax');
-        }
-    });	
+                trHTML += '<td align="right">' + number_format(item.qty_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.total_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.other_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.diskon_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.twot_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.vat_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.grand_total_ship,2) + "</td>";
+
+                trHTML += '<td align="right">' + number_format(item.qty_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.total_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.other_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.diskon_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.twot_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.vat_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.grand_total_ship_idr,2) + "</td>";
+
+                trHTML += '<td style="width:50px;background-color:#FFFFFF;border-top:1px solid #FFFFFF;border-bottom:1px solid #FFFFFF;">' + '' + "</td>";
+                trHTML += '<td align="right">' + number_format(item.net_sales,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.vat_sales,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.grand_total_sales,2) + "</td>";
+
+                trHTML += '</tr>';
+            });
+
+$('#table-sales-report').append(trHTML);				
+
+},
+error: function (jqXHR, textStatus, errorThrown) {
+    alert('Error get data from ajax');
+}
+});	
 }
 
 function print_sales_report(){ 
@@ -128,10 +162,10 @@ function cari_sales_report_material() {
     });
 
     $('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
-       periode_dari_mt = picker.startDate.format('YYYY-MM-DD');
-       periode_sampai_mt = picker.endDate.format('YYYY-MM-DD');
-       $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
-   });
+     periode_dari_mt = picker.startDate.format('YYYY-MM-DD');
+     periode_sampai_mt = picker.endDate.format('YYYY-MM-DD');
+     $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+ });
 
     $('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
         $(this).val('');
@@ -155,37 +189,36 @@ function cari_sales_report_material() {
 
             var trHTML = '';
             $.each(response, function (i, item) { 					
-                trHTML += '<tr>';					
+                trHTML += '<tr>';		
+                trHTML += '<td>' + (i + 1) + '</td>';			
                 trHTML += '<td>' + item.customer + "</td>";
-                trHTML += '<td>' + item.no_invoice + "</td>";	
+                trHTML += '<td>' + item.no_invoice + "</td>";
                 trHTML += '<td>' + item.tgl_inv + "</td>";
                 trHTML += '<td>' + item.bppb_number + "</td>";
                 trHTML += '<td>' + item.sj_date + "</td>";
                 trHTML += '<td>' + item.grp + "</td>";
-                trHTML += '<td>' + item.material + "</td>";
+                trHTML += '<td>' + item.ws + "</td>";
                 trHTML += '<td>' + item.styleno + "</td>";
                 trHTML += '<td>' + item.produk + "</td>";
-                trHTML += '<td align="right">' + item.qty + "</td>";
-                trHTML += '<td align="right">' + item.qty_ship + "</td>";
-                trHTML += '<td>' + item.uom + "</td>";
-                trHTML += '<td>' + item.uom_ship + "</td>";
-                trHTML += '<td align="right">' + item.unit_price + "</td>";
-                trHTML += '<td align="right">' + item.unit_price_ship + "</td>";
-                trHTML += '<td>' + item.type_ + "</td>";
-                trHTML += '<td>' + item.inv_type + "</td>";
                 trHTML += '<td>' + item.type_so + "</td>";
+                trHTML += '<td>' + item.shipp + "</td>";
+                trHTML += '<td>' + item.inv_type + "</td>";
+                trHTML += '<td>' + item.no_faktur + "</td>";
+                trHTML += '<td>' + item.tgl_faktur + "</td>";
                 trHTML += '<td>' + item.curr + "</td>";
                 trHTML += '<td>' + item.rate + "</td>";
-                trHTML += '<td align="right">' + item.total_price + "</td>";
-                trHTML += '<td align="right">' + item.total_price_ship + "</td>";
-                trHTML += '<td>' + item.total2 + "</td>";
-                trHTML += '<td>' + item.total2_ship + "</td>";
-                    // trHTML += '<td>' + '' + "</td>";
-                    trHTML += '<td>' + item.no_faktur + "</td>";
-                    trHTML += '<td>' + item.tgl_faktur + "</td>";
-
-                    trHTML += '</tr>';
-                });
+                trHTML += '<td align="right">' + number_format(item.qty_bill,2) + "</td>";
+                trHTML += '<td >' + item.uom_bill + "</td>";
+                trHTML += '<td align="right">' + number_format(item.price_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.total_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.total_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.qty_ship,2) + "</td>";
+                trHTML += '<td >' + item.uom_ship + "</td>";
+                trHTML += '<td align="right">' + number_format(item.price_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.total_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.total_ship_idr,2) + "</td>";
+                trHTML += '</tr>';
+            });
 
             $('#table-sales-report-material').append(trHTML);				
 
@@ -210,10 +243,10 @@ function cari_outstanding_pi(){
     });
 
     $('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
-       periode_dari_pi = picker.startDate.format('YYYY-MM-DD');
-       periode_sampai_pi = picker.endDate.format('YYYY-MM-DD');
-       $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
-   });
+     periode_dari_pi = picker.startDate.format('YYYY-MM-DD');
+     periode_sampai_pi = picker.endDate.format('YYYY-MM-DD');
+     $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+ });
 
     $('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
         $(this).val('');

@@ -103,166 +103,130 @@ CSS HEADER
     </div>
     <br />
     <table style="width:100%;font-size:11pt;" border="1">
-        <tr align="center">
-            <th>
-                Customer
-            </th>
-            <th>
-                Invoice
-            </th>
-            <th>
-                Invoice Date
-            </th>
-            <th>
-                Group
-            </th>
-            <th>
-                Vat Number
-            </th>
-            <th>
-                Vat Date
-            </th>
-            <th>
-                TOP
-            </th>
-            <th>
-                Order Type
-            </th>
-            <th>
-                Shipp
-            </th>
-            <th>
-                Inv Type
-            </th>
-            <th>
-                Qty Billing
-            </th>
-            <th>
-                Qty Shipment
-            </th>
-            <th>
-                Currency
-            </th>
-            <th>
-                Rate
-            </th>
-            <th>
-                Original Value Billing
-            </th>
-            <th>
-                Original Value Shipment
-            </th>
-            <th>
-                Equiv Value Billing
-            </th>
-            <th>
-                Equiv Value Shipment
-            </th>
-            <th>
-                VAT
-            </th>
-        <!--     <th>
-                Total
-            </th> -->
-            <!-- <th>
-                No Faktur
-            </th>
-            <th>
-                Tgl Faktur
-            </th> -->
+        <tr>
+            <th style="background-color: #FFE4C4;" rowspan="2">No</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Customer</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Invoice</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Invoice Date</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Group</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Relationship</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Profit Center</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">TOP</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Order Type</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Shipp</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Inv Type</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">VAT Number</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">VAT Date</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Currency</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Rate</th>
+            <th style="background-color: #90EE90;" colspan="8">Billing Invoice (Original Currency)</th>
+            <th style="background-color: #90EE90;" colspan="8">Billing Invoice (Equivalent IDR)</th>
+            <th style="background-color: #87CEFA;" colspan="8">Shipping Invoice (Original Currency)</th>
+            <th style="background-color: #87CEFA;" colspan="8">Shipping Invoice (Equivalent IDR)</th>
+            <th style="width:50px;background-color: #FFFFFF;border-top:1px solid #FFFFFF;border-bottom:1px solid #FFFFFF;" rowspan="2"></th>
+            <th style="width:120px;background-color: #FFDAB9;" rowspan="2">Net Sales</th>
+            <th style="width:120px;background-color: #FFDAB9;" rowspan="2">VAT</th>
+            <th style="width:120px;background-color: #FFDAB9;" rowspan="2">Total</th>
+        </tr>
+        <tr>
+            <th style="width:120px;background-color: #90EE90;">Qty</th>
+            <th style="width:120px;background-color: #90EE90;">Gross Sales</th>
+            <th style="width:120px;background-color: #90EE90;">Others Sales</th>
+            <th style="width:120px;background-color: #90EE90;">Discount</th>
+            <th style="width:120px;background-color: #90EE90;">Down Payment</th>
+            <th style="width:120px;background-color: #90EE90;">Net Sales</th>
+            <th style="width:120px;background-color: #90EE90;">VAT</th>
+            <th style="width:120px;background-color: #90EE90;">Total</th>
+
+            <th style="width:120px;background-color: #90EE90;">Qty</th>
+            <th style="width:120px;background-color: #90EE90;">Gross Sales</th>
+            <th style="width:120px;background-color: #90EE90;">Others Sales</th>
+            <th style="width:120px;background-color: #90EE90;">Discount</th>
+            <th style="width:120px;background-color: #90EE90;">Down Payment</th>
+            <th style="width:120px;background-color: #90EE90;">Net Sales</th>
+            <th style="width:120px;background-color: #90EE90;">VAT</th>
+            <th style="width:120px;background-color: #90EE90;">Total</th>
+
+            <th style="width:120px;background-color: #87CEFA;">Qty</th>
+            <th style="width:120px;background-color: #87CEFA;">Gross Sales</th>
+            <th style="width:120px;background-color: #87CEFA;">Others Sales</th>
+            <th style="width:120px;background-color: #87CEFA;">Discount</th>
+            <th style="width:120px;background-color: #87CEFA;">Down Payment</th>
+            <th style="width:120px;background-color: #87CEFA;">Net Sales</th>
+            <th style="width:120px;background-color: #87CEFA;">VAT</th>
+            <th style="width:120px;background-color: #87CEFA;">Total</th>
+
+            <th style="width:120px;background-color: #87CEFA;">Qty</th>
+            <th style="width:120px;background-color: #87CEFA;">Gross Sales</th>
+            <th style="width:120px;background-color: #87CEFA;">Others Sales</th>
+            <th style="width:120px;background-color: #87CEFA;">Discount</th>
+            <th style="width:120px;background-color: #87CEFA;">Down Payment</th>
+            <th style="width:120px;background-color: #87CEFA;">Net Sales</th>
+            <th style="width:120px;background-color: #87CEFA;">VAT</th>
+            <th style="width:120px;background-color: #87CEFA;">Total</th>
         </tr>
 
-        <?php foreach ($sales_report as $sr) : ?>
+        <?php $no = 1; foreach ($sales_report as $sr) : ?>
             <tr>
-                <td>
-                    <?= $sr['customer']; ?>
-                </td>
-
-                <td>
-                    <?= $sr['no_invoice']; ?>
-                </td>
-
-                <td align="center">
-                    <?= $sr['tgl_inv']; ?>
-                </td>
-
-                <td align="center">
-                </td>
-
-                <td align="left">
-                    <?= $sr['no_faktur']; ?>
-                </td>
-                <td align="center">
-                    <?= $sr['tgl_faktur']; ?>
-                </td>
-
-                <td align="center">
-                    <?= $sr['top']; ?>
-                </td>
-
-                <td align="center">
-                    <?= $sr['type_so']; ?>
-                </td>
-
-                <td align="center">
-                    <?= $sr['shipp']; ?>
-                </td>
-
-                <td align="center">
-                    <?= $sr['type']; ?>
-                </td>
-
-                <td align="right">
-                    <?= $sr['qty']; ?>
-                </td>
-                <td align="right">
-                    <?= $sr['qty_ship']; ?>
-                </td>
-
-                <td align="center">
-                    <?= $sr['curr']; ?>
-                </td>
-
-                <td align="right">
-                     <?= $sr['rate']; ?>
-                </td>
-
-                <td align="right">
-                    <?= $sr['total']; ?>
-                </td>
-
-                <td align="right">
-                    <?= $sr['total_ship']; ?>
-                </td>
-
-                <td align="right">
-                    <?= $sr['total2']; ?>
-                </td>
-
-                <td align="right">
-                    <?= $sr['total2_ship']; ?>
-                </td>
-
-                <td align="right">
-                    <?= $sr['vat']; ?>
-                </td>
-
-                <!-- <td align="right">
-                </td> -->
-                <!-- <td align="left">
-                    <?= $sr['no_faktur']; ?>
-                </td>
-                <td align="center">
-                    <?= $sr['tgl_faktur']; ?>
-                </td> -->
+                <td><?= $no++; ?></td>
+                <td><?= $sr['customer']; ?></td>
+                <td><?= $sr['no_invoice']; ?></td>
+                <td><?= $sr['tgl_inv']; ?></td>
+                <td><?= $sr['relasi']; ?></td>
+                <td><?= $sr['cus_ctg']; ?></td>
+                <td><?= $sr['nama_pc']; ?></td>
+                <td><?= $sr['top']; ?></td>
+                <td><?= $sr['type_so']; ?></td>
+                <td><?= $sr['shipp']; ?></td>
+                <td><?= $sr['type']; ?></td>
+                <td><?= $sr['no_faktur']; ?></td>
+                <td><?= $sr['tgl_faktur']; ?></td>
+                <td><?= $sr['curr']; ?></td>
+                <td style="text-align:right"><?= number_format($sr['rate'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['qty_bill'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['total_bill'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['other_bill'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['diskon_bill'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['dp_bill'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['twot_bill'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['vat_bill'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['grand_total_bill'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['qty_bill'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['total_bill_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['other_bill_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['diskon_bill_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['dp_bill_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['twot_bill_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['vat_bill_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['grand_total_bill_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['qty_ship'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['total_ship'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['other_ship'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['diskon_ship'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['dp_ship'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['twot_ship'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['vat_ship'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['grand_total_ship'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['qty_ship'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['total_ship_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['other_ship_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['diskon_ship_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['dp_ship_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['twot_ship_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['vat_ship_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['grand_total_ship_idr'],2); ?></td>
+                <td style="width:50px;background-color:#FFFFFF;border-top:1px solid #FFFFFF;border-bottom:1px solid #FFFFFF;"></td>
+                <td style="text-align:right"><?= number_format($sr['net_sales'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['vat_sales'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['grand_total_sales'],2); ?></td>
 
             </tr>
         <?php endforeach; ?>
 
-        <tr>
+        <!-- <tr>
             <td colspan='10'></td>
             <td align='right'><?= $tot_unit['qty']; ?></td>
             <td colspan="5"></td>
-        </tr>
+        </tr> -->
 
     </table>

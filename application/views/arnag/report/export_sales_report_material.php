@@ -97,81 +97,81 @@ CSS HEADER
 
 <body>
     <div class="header_title">
-        SALES REPORT / MATERIAL
+        SALES REPORT DETAIL ITEM
         <br />
         Period : <?= $periode_dari_mt; ?> To <?= $periode_sampai_mt; ?>
     </div>
     <br />
     <table style="width:100%;font-size:11pt;" border="1">
-        <tr align="center" style="text-align: center;">
-            <th rowspan="2">Customer</th>
-            <th rowspan="2">Invoice</th>
-            <th rowspan="2">Invoice Date</th>
-            <th rowspan="2">Shipp Number</th>
-            <th rowspan="2">Shipp Date</th>
-            <th rowspan="2">Group</th>
-            <th rowspan="2">WS</th>
-            <th rowspan="2">Style</th>
-            <th rowspan="2">Product Item</th>
-            <th colspan="2">Qty</th>
-            <th colspan="2">Uom</th>
-            <th colspan="2">Unit Price</th>
-            <th rowspan="2">Shipp</th>
-            <th rowspan="2">Inv Type</th>
-            <th rowspan="2">Order Type</th>
-            <th rowspan="2">Currency</th>
-            <th rowspan="2">Rate</th>
-            <th colspan="2">Original Value</th>
-            <th colspan="2">Equiv Value</th>
-            <th rowspan="2">No Faktur</th>
-            <th rowspan="2">Tgl Faktur</th>
+        <tr>
+            <th style="background-color: #FFE4C4;" rowspan="2">No</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Customer</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Invoice</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Invoice Date</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Shipp Number</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Shipp Date</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Group</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">WS</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Style</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Product Item</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Order Type</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Shipp</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Inv Type</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">VAT Number</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">VAT Date</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Currency</th>
+            <th style="background-color: #FFE4C4;" rowspan="2">Rate</th>
+            <th style="background-color: #90EE90;" colspan="5">Billing Invoice</th>
+            <th style="background-color: #87CEFA;" colspan="5">Shipping Invoice</th>
         </tr>
-        <tr align="center" style="text-align: center;">
-            <th>Billing</th>
-            <th>Shipment</th>
-            <th>Billing</th>
-            <th>Shipment</th>
-            <th>Billing</th>
-            <th>Shipment</th>
-            <th>Billing</th>
-            <th>Shipment</th>
-            <th>Billing</th>
-            <th>Shipment</th>
+        <tr>
+            <th style="width:150px;background-color: #90EE90;">Qty</th>
+            <th style="width:150px;background-color: #90EE90;">Uom</th>
+            <th style="width:150px;background-color: #90EE90;">Unit Price</th>
+            <th style="width:150px;background-color: #90EE90;">Total</th>
+            <th style="width:150px;background-color: #90EE90;">Total IDR</th>
+
+            <th style="width:150px;background-color: #87CEFA;">Qty</th>
+            <th style="width:150px;background-color: #87CEFA;">Uom</th>
+            <th style="width:150px;background-color: #87CEFA;">Unit Price</th>
+            <th style="width:150px;background-color: #87CEFA;">Total</th>
+            <th style="width:150px;background-color: #87CEFA;">Total IDR</th>
         </tr>
 
 
 
-        <?php foreach ($sales_report_material as $srm) : ?>
-            <tr>
-                <td align="center"><?= $srm['customer']; ?></td>
-                <td align="center"><?= $srm['no_invoice']; ?></td>
-                <td align="center"><?= $srm['tgl_inv']; ?></td>
-                <td align="center"><?= $srm['bppb_number']; ?></td>
-                <td align="center"><?= $srm['sj_date']; ?></td>
-                <td align="center"></td>
-                <td align="center"><?= $srm['material']; ?></td>
-                <td align="center"><?= $srm['styleno']; ?></td>
-                <td align="center"><?= $srm['produk']; ?></td>
-                <td align="right"><?= $srm['qty']; ?></td>
-                <td align="right"><?= $srm['qty_ship']; ?></td>
-                <td align="center"><?= $srm['uom']; ?></td>
-                <td align="center"><?= $srm['uom_ship']; ?></td>
-                <td align="right"><?= $srm['unit_price']; ?></td>
-                <td align="right"><?= $srm['unit_price_ship']; ?></td>
-                <td align="center"><?= $srm['type_']; ?></td>
-                <td align="center"><?= $srm['inv_type']; ?></td>
-                <td align="center"><?= $srm['type_so']; ?></td>
-                <td align="center"><?= $srm['curr']; ?></td>
-                <td align="right"><?= $srm['rate']; ?></td>
-                <td align="right"><?= $srm['total_price']; ?></td>
-                <td align="right"><?= $srm['total_price_ship']; ?></td>
-                <td align="right"><?= $srm['total2']; ?></td>
-                <td align="right"><?= $srm['total2_ship']; ?></td>
-                <td align="left"><?= $srm['no_faktur']; ?></td>
-                <td align="center"><?= $srm['tgl_faktur']; ?></td>
-            </tr>
+        <?php $no = 1; foreach ($sales_report_material as $sr) : ?>
+        <tr>
+            <td><?= $no++; ?></td>
+            <td><?= $sr['customer']; ?></td>
+            <td><?= $sr['no_invoice']; ?></td>
+            <td><?= $sr['tgl_inv']; ?></td>
+            <td><?= $sr['bppb_number']; ?></td>
+            <td><?= $sr['sj_date']; ?></td>
+            <td><?= $sr['grp']; ?></td>
+            <td><?= $sr['ws']; ?></td>
+            <td><?= $sr['styleno']; ?></td>
+            <td><?= $sr['produk']; ?></td>
+            <td><?= $sr['type_so']; ?></td>
+            <td><?= $sr['shipp']; ?></td>
+            <td><?= $sr['inv_type']; ?></td>
+            <td><?= $sr['no_faktur']; ?></td>
+            <td><?= $sr['tgl_faktur']; ?></td>
+            <td><?= $sr['curr']; ?></td>
+            <td><?= $sr['rate']; ?></td>
+            <td style="text-align:right"><?= number_format($sr['qty_bill'],2); ?></td>
+            <td><?= $sr['uom_bill']; ?></td>
+            <td style="text-align:right"><?= number_format($sr['price_bill'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['total_bill'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['total_bill_idr'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['qty_ship'],2); ?></td>
+            <td><?= $sr['uom_ship']; ?></td>
+            <td style="text-align:right"><?= number_format($sr['price_ship'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['total_ship'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['total_ship_idr'],2); ?></td>
+        </tr>
 
-        <?php endforeach; ?>
+    <?php endforeach; ?>
 
         <!-- <tr>
             <td colspan='3'></td>

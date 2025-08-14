@@ -106,67 +106,37 @@ class Model_report extends CI_Model
         }
 
 
-        $hasil = $this->db->query("(SELECT a.no_invoice, c.Supplier AS customer, a.shipp, a.doc_type, a.doc_number,  
-          d.type, a.type_so, a.pph, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, b.curr,
-          FORMAT(SUM(b.qty), 2) AS qty,
-          FORMAT(SUM(b.qty), 2) AS qty_ship,
-          FORMAT(SUM(b.unit_price), 2) AS unit_price, 
-          FORMAT(e.total, 2) AS total, 
-          FORMAT(e.total, 2) AS total_ship, 
-          FORMAT(e.discount, 2) AS discount, 
-          FORMAT(e.dp, 2) AS dp, 
-          FORMAT(e.retur, 2) AS retur, 
-          FORMAT(e.twot, 2) AS twot, 
-          FORMAT(e.vat, 2) AS vat, 
-          FORMAT(e.grand_total, 2) AS grand_total, f.top,if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1) as rate, FORMAT(e.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2,  FORMAT(e.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2_ship, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur
-          FROM tbl_book_invoice AS a INNER JOIN 
-          tbl_invoice_detail AS b ON a.id = b.id_book_invoice INNER JOIN      
-          mastersupplier AS c ON a.id_customer = c.Id_Supplier INNER JOIN 
-          tbl_type AS d ON a.id_type = d.id_type INNER JOIN 
-          tbl_invoice_pot AS e ON a.id = e.id_book_invoice INNER JOIN 
-          tbl_master_top AS f ON a.id_top = f.id 
-          WHERE a.no_invoice like '%NAG%' $str) 
-          UNION
-          (SELECT a.no_invoice, c.Supplier AS customer, a.shipp, a.doc_type, a.doc_number,  
-          d.type, a.type_so, a.pph, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, b.curr,
-          FORMAT(SUM(b.qty), 2) AS qty,
-          FORMAT(SUM(b.qty_ship), 2) AS qty_ship,
-          FORMAT(SUM(b.unit_price), 2) AS unit_price, 
-          FORMAT(g.total, 2) AS total, 
-          FORMAT(e.total, 2) AS total_ship, 
-          FORMAT(e.discount, 2) AS discount, 
-          FORMAT(e.dp, 2) AS dp, 
-          FORMAT(e.retur, 2) AS retur, 
-          FORMAT(e.twot, 2) AS twot, 
-          FORMAT(e.vat, 2) AS vat, 
-          FORMAT(e.grand_total, 2) AS grand_total, f.top,if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1) as rate, FORMAT(g.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2,  FORMAT(e.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2_ship, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur
-          FROM tbl_book_invoice AS a INNER JOIN 
-          tbl_invoice_detail_knitting AS b ON a.id = b.id_book_invoice INNER JOIN      
-          mastersupplier AS c ON a.id_customer = c.Id_Supplier INNER JOIN 
-          tbl_type AS d ON a.id_type = d.id_type INNER JOIN 
-          tbl_invoice_pot AS e ON a.id = e.id_book_invoice INNER JOIN 
-          tbl_master_top AS f ON a.id_top = f.id INNER JOIN
-          tbl_invoice_pot_knitting AS g ON a.id = g.id_book_invoice 
-          WHERE a.no_invoice like '%NAK%' $str) 
-          UNION
-          (SELECT a.no_inv as no_invoice, c.Supplier AS customer, a.shipp, a.doc_type, a.doc_number,  
-          a.type, a.type_so, a.pph, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, b.curr,
-          FORMAT(SUM(b.qty), 2) AS qty,
-          FORMAT(SUM(b.qty), 2) AS qty_ship,
-          FORMAT(SUM(b.unit_price), 2) AS unit_price, 
-          FORMAT(e.total, 2) AS total,
-          FORMAT(e.total, 2) AS total_ship, 
-          FORMAT(e.diskon, 2) AS discount, 
-          FORMAT(e.dp, 2) AS dp, 
-          FORMAT(e.retur, 2) AS retur, 
-          FORMAT(e.twot, 2) AS twot, 
-          FORMAT(e.vat, 2) AS vat, 
-          FORMAT(e.grand_total, 2) AS grand_total, a.top,if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date),1) as rate, FORMAT(e.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date),1), 2) AS total2, FORMAT(e.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date),1), 2) AS total2_ship, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur
-          FROM tbl_invoice_nb AS a INNER JOIN 
-          tbl_invoice_nb_detail AS b ON a.no_inv = b.no_inv INNER JOIN      
-          mastersupplier AS c ON a.customer = c.Id_Supplier INNER JOIN 
-          tbl_invoice_nb_pot AS e ON a.no_inv = e.no_inv INNER JOIN
-          tbl_type as d on d.type = a.type $str2) ");
+        $hasil = $this->db->query("SELECT a.*, IFNULL(rate,1) rate, (total_bill * IFNULL(rate,1)) total_bill_idr, (other_bill * IFNULL(rate,1)) other_bill_idr, (diskon_bill * IFNULL(rate,1)) diskon_bill_idr, (dp_bill * IFNULL(rate,1)) dp_bill_idr, (twot_bill * IFNULL(rate,1)) twot_bill_idr, (vat_bill * IFNULL(rate,1)) vat_bill_idr, (grand_total_bill * IFNULL(rate,1)) grand_total_bill_idr, (total_ship * IFNULL(rate,1)) total_ship_idr, (other_ship * IFNULL(rate,1)) other_ship_idr, (diskon_ship * IFNULL(rate,1)) diskon_ship_idr, (dp_ship * IFNULL(rate,1)) dp_ship_idr, (twot_ship * IFNULL(rate,1)) twot_ship_idr, (vat_ship * IFNULL(rate,1)) vat_ship_idr, (grand_total_ship * IFNULL(rate,1)) grand_total_ship_idr, (twot_bill * IFNULL(rate,1)) net_sales, (vat_bill * IFNULL(rate,1)) vat_sales, (grand_total_bill * IFNULL(rate,1)) grand_total_sales
+         from ((SELECT c.Supplier AS customer, a.no_invoice, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, UPPER(coa.relasi) relasi, UPPER(coa.cus_ctg) cus_ctg, pc.nama_pc, f.top, a.type_so, a.shipp, d.type, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, SUM(b.qty) qty_bill, e.total total_bill, 0 other_bill, e.discount diskon_bill, e.dp dp_bill, e.twot twot_bill, e.vat vat_bill, e.grand_total grand_total_bill, SUM(b.qty) qty_ship, e.total total_ship, 0 other_ship, e.discount diskon_ship, e.dp dp_ship, e.twot twot_ship, e.vat vat_ship, e.grand_total grand_total_ship
+             FROM tbl_book_invoice AS a INNER JOIN 
+             tbl_invoice_detail AS b ON a.id = b.id_book_invoice INNER JOIN      
+             mastersupplier AS c ON a.id_customer = c.Id_Supplier INNER JOIN 
+             tbl_type AS d ON a.id_type = d.id_type INNER JOIN 
+             tbl_invoice_pot AS e ON a.id = e.id_book_invoice INNER JOIN 
+             tbl_master_top AS f ON a.id_top = f.id LEFT JOIN
+             mastercoa_v2 coa on coa.no_coa = a.no_coa LEFT JOIN
+             master_pc pc on pc.kode_pc = a.profit_center
+             WHERE a.profit_center = 'NAG' $str)       
+         UNION
+         (SELECT c.Supplier AS customer, a.no_invoice, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, UPPER(coa.relasi) relasi, UPPER(coa.cus_ctg) cus_ctg, pc.nama_pc, f.top, a.type_so, a.shipp, d.type, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, SUM(b.qty) qty_bill, g.total total_bill, g.total_other other_bill, g.discount diskon_bill, g.dp dp_bill, g.twot twot_bill, g.vat vat_bill, g.grand_total grand_total_bill, SUM(b.qty_ship) qty_ship, e.total total_ship, 0 other_ship, e.discount diskon_ship, e.dp dp_ship, e.twot twot_ship, e.vat vat_ship, e.grand_total grand_total_ship
+             FROM tbl_book_invoice AS a INNER JOIN 
+             tbl_invoice_detail_knitting AS b ON a.id = b.id_book_invoice INNER JOIN      
+             mastersupplier AS c ON a.id_customer = c.Id_Supplier INNER JOIN 
+             tbl_type AS d ON a.id_type = d.id_type INNER JOIN 
+             tbl_invoice_pot AS e ON a.id = e.id_book_invoice INNER JOIN 
+             tbl_master_top AS f ON a.id_top = f.id INNER JOIN
+             tbl_invoice_pot_knitting AS g ON a.id = g.id_book_invoice LEFT JOIN
+             mastercoa_v2 coa on coa.no_coa = a.no_coa LEFT JOIN
+             master_pc pc on pc.kode_pc = a.profit_center
+             WHERE a.profit_center = 'NAK' $str)
+         UNION
+         (SELECT c.Supplier AS customer, a.no_inv, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, UPPER(coa.relasi) relasi, UPPER(coa.cus_ctg) cus_ctg, 'NIRWANA ALABARE GARMENT' nama_pc, a.top, a.type_so, a.shipp, a.type, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, SUM(b.qty) qty_bill, e.total total_bill, 0 other_bill, e.diskon diskon_bill, e.dp dp_bill, e.twot twot_bill, e.vat vat_bill, e.grand_total grand_total_bill, SUM(b.qty) qty_ship, e.total total_ship, 0 other_ship, e.diskon diskon_ship, e.dp dp_ship, e.twot twot_ship, e.vat vat_ship, e.grand_total grand_total_ship
+             FROM tbl_invoice_nb AS a INNER JOIN 
+             tbl_invoice_nb_detail AS b ON a.no_inv = b.no_inv INNER JOIN      
+             mastersupplier AS c ON a.customer = c.Id_Supplier INNER JOIN 
+             tbl_invoice_nb_pot AS e ON a.no_inv = e.no_inv INNER JOIN
+             tbl_type as d on d.type = a.type LEFT JOIN
+             mastercoa_v2 coa on coa.no_coa = a.no_coa $str2)) a left join (select tanggal, curr, rate FROM masterrate where v_codecurr = 'Pajak' GROUP BY tanggal, curr) b on b.curr= a.curr AND b.tanggal = a.tgl_inv ");
 return $hasil->result_array();
 }
 
@@ -347,40 +317,34 @@ function sales_report_material($periode_dari_mt, $periode_sampai_mt, $id_custome
         $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
     }
 
-    $hasil = $this->db->query("(SELECT b.id,c.Supplier AS customer, a.no_invoice, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, 
-      b.shipp_number as bppb_number, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS sj_date, '' AS grp, b.ws AS material,b.styleno, concat(b.product_item, ' ', '(',b.size,')') as produk,
-      b.qty, b.qty qty_ship, b.uom, b.uom uom_ship, FORMAT(b.unit_price, 2) AS unit_price, FORMAT(b.unit_price, 2) AS unit_price_ship,             
-      a.shipp AS type_,  d.type AS inv_type, '' AS order_type, b.curr,
-      FORMAT(b.total_price, 2) AS total_price, FORMAT(b.total_price, 2) AS total_price_ship, if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1) as rate, FORMAT(b.total_price * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2, FORMAT(b.total_price * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2_ship,a.type_so,if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur
+    $hasil = $this->db->query("SELECT a.*, IFNULL(rate,1) rate, (total_bill * IFNULL(rate,1)) total_bill_idr, (total_ship * IFNULL(rate,1)) total_ship_idr FROM ((SELECT b.id,c.Supplier AS customer, a.no_invoice, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, 
+      b.shipp_number as bppb_number, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS sj_date, '' AS grp, b.ws ,b.styleno, concat(b.product_item, ' ', '(',b.size,')') as produk, a.type_so, a.shipp ,  d.type AS inv_type,if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, b.qty qty_bill, b.uom uom_bill, b.unit_price price_bill, b.total_price total_bill, b.qty qty_ship, b.uom uom_ship, b.unit_price price_ship, b.total_price total_ship
       FROM tbl_book_invoice AS a INNER JOIN 
       tbl_invoice_detail AS b ON a.id = b.id_book_invoice INNER JOIN      
       mastersupplier AS c ON a.id_customer = c.Id_Supplier INNER JOIN 
       tbl_type AS d ON a.id_type = d.id_type INNER JOIN 
       tbl_invoice_pot AS e ON a.id = e.id_book_invoice INNER JOIN 
       tbl_master_top AS f ON a.id_top = f.id 
-      WHERE a.profit_center = 'NAG' $str GROUP BY b.id ORDER BY a.no_invoice asc) union
-
-      (SELECT b.id,c.Supplier AS customer, a.no_invoice, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, 
-      b.shipp_number as bppb_number, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS sj_date, '' AS grp, b.ws AS material,b.styleno, concat(b.product_item, ' ', '(',b.size,')') as produk,
-      b.qty, b.qty_ship, b.uom, b.uom_ship, FORMAT(b.unit_price, 2) AS unit_price, FORMAT(b.unit_price_ship, 2) AS unit_price_ship,             
-      a.shipp AS type_,  d.type AS inv_type, '' AS order_type, b.curr,
-      FORMAT(b.total_price, 2) AS total_price, FORMAT(b.total_price_ship, 2) AS total_price_ship, if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1) as rate, FORMAT(b.total_price * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2, FORMAT(b.total_price_ship * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2_ship,a.type_so,if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur
+      WHERE a.profit_center = 'NAG' $str GROUP BY b.id ORDER BY a.no_invoice asc)
+    UNION
+    (SELECT b.id,c.Supplier AS customer, a.no_invoice, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, 
+      b.shipp_number as bppb_number, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS sj_date, '' AS grp, b.ws ,b.styleno, concat(b.product_item, ' ', '(',b.size,')') as produk, a.type_so, a.shipp ,  d.type AS inv_type,if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, b.qty qty_bill, b.uom uom_bill, b.unit_price price_bill, b.total_price total_bill, b.qty_ship qty_ship, b.uom_ship uom_ship, b.unit_price_ship price_ship, b.total_price_ship total_ship
       FROM tbl_book_invoice AS a INNER JOIN 
       tbl_invoice_detail_knitting AS b ON a.id = b.id_book_invoice INNER JOIN      
       mastersupplier AS c ON a.id_customer = c.Id_Supplier INNER JOIN 
       tbl_type AS d ON a.id_type = d.id_type INNER JOIN 
-      tbl_invoice_pot AS e ON a.id = e.id_book_invoice INNER JOIN
-      tbl_invoice_pot_knitting AS g ON a.id = g.id_book_invoice INNER JOIN 
+      tbl_invoice_pot AS e ON a.id = e.id_book_invoice INNER JOIN 
       tbl_master_top AS f ON a.id_top = f.id 
-      WHERE a.profit_center = 'NAK' $str GROUP BY b.id ORDER BY a.no_invoice asc) union
-      
-      (SELECT b.id,c.Supplier AS customer,a.no_inv as no_invoice,DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, b.no_shipp,DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS sj_date,'' AS grp,b.no_ws AS material,b.no_style, concat(b.prod_item, ' ', '(',if(b.size = '','-',b.size),')') as produk, b.qty, b.qty qty_ship, b.uom, b.uom uom_ship,  FORMAT(b.unit_price, 2) AS unit_price,  FORMAT(b.unit_price, 2) AS unit_price_ship, a.shipp AS type_,  d.type AS inv_type, '' AS order_type, b.curr, FORMAT(b.total, 2) AS total_price, FORMAT(b.total, 2) AS total_price_ship, if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1) as rate, FORMAT(b.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2, FORMAT(b.total * if(b.curr = 'USD',(select ROUND(rate,2) as rate FROM masterrate where v_codecurr = 'Pajak' and tanggal = b.sj_date limit 1),1), 2) AS total2_ship, a.type_so,if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur
+      WHERE a.profit_center = 'NAK' $str GROUP BY b.id ORDER BY a.no_invoice asc)   
+    UNION
+    (SELECT b.id,c.Supplier AS customer, a.no_inv, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, 
+      b.no_shipp as bppb_number, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS sj_date, '' AS grp, b.no_ws ,b.no_style, concat(b.prod_item, ' ', '(',b.size,')') as produk, a.type_so, a.shipp, d.type AS inv_type,if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, b.qty qty_bill, b.uom uom_bill, b.unit_price price_bill, b.total total_bill, b.qty qty_ship, b.uom uom_ship, b.unit_price price_ship, b.total total_ship
       FROM tbl_invoice_nb AS a INNER JOIN 
       tbl_invoice_nb_detail AS b ON a.no_inv = b.no_inv INNER JOIN      
       mastersupplier AS c ON a.customer = c.Id_Supplier INNER JOIN 
       tbl_invoice_nb_pot AS e ON a.no_inv = e.no_inv INNER JOIN
-      tbl_type as d on d.type = a.type $str2) ");
-return $hasil->result_array();
+      tbl_type as d on d.type = a.type $str2)) a left join (select tanggal, curr, rate FROM masterrate where v_codecurr = 'Pajak' GROUP BY tanggal, curr) b on b.curr= a.curr AND b.tanggal = a.tgl_inv ");
+    return $hasil->result_array();
 }
 
 function tot_unit_material()
@@ -435,10 +399,10 @@ function cari_aging_jatem($id_customer, $start_date, $end_date)
         CASE WHEN total <= 0 THEN 0 WHEN diff_top > 180 AND diff_top <= 360 THEN eqv_idr ELSE 0 END AS amt_aging_6,
         CASE WHEN total <= 0 THEN 0 WHEN diff_top > 360 THEN eqv_idr ELSE 0 END AS amt_aging_7,
         CASE WHEN total <= 0 THEN 0 ELSE eqv_idr END AS tot_aging,
-                CASE WHEN total <= 0 THEN 0 WHEN duedate_int <= 30 THEN eqv_idr ELSE 0 END AS jatuh_tempo_1,
-                CASE WHEN total <= 0 THEN 0 WHEN duedate_int > 30 AND duedate_int <= 60 THEN eqv_idr ELSE 0 END AS jatuh_tempo_2,
-                CASE WHEN total <= 0 THEN 0 WHEN duedate_int > 60 AND duedate_int <= 90 THEN eqv_idr ELSE 0 END AS jatuh_tempo_3,
-                CASE WHEN total <= 0 THEN 0 WHEN duedate_int > 90 THEN eqv_idr ELSE 0 END AS jatuh_tempo_4
+        CASE WHEN total <= 0 THEN 0 WHEN duedate_int <= 30 THEN eqv_idr ELSE 0 END AS jatuh_tempo_1,
+        CASE WHEN total <= 0 THEN 0 WHEN duedate_int > 30 AND duedate_int <= 60 THEN eqv_idr ELSE 0 END AS jatuh_tempo_2,
+        CASE WHEN total <= 0 THEN 0 WHEN duedate_int > 60 AND duedate_int <= 90 THEN eqv_idr ELSE 0 END AS jatuh_tempo_3,
+        CASE WHEN total <= 0 THEN 0 WHEN duedate_int > 90 THEN eqv_idr ELSE 0 END AS jatuh_tempo_4
         from (select a.*, ((sal_awl + tambah) - bayar) total, IF(curr = 'USD',((sal_awl + COALESCE(tambah,0)) - COALESCE(bayar,0)) * rate,((sal_awl + COALESCE(tambah,0)) - COALESCE(bayar,0))) eqv_idr from (select no_invoice, kode_customer, customer, inv_date, id_customer, curr, top, amount1, duedate, bayar, bayar2, rate, shipp, diff_top, duedate_int, ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6, IF(inv_date >= '$start_date',0,COALESCE(amount1,0) - COALESCE(bayar2,0)) sal_awl, IF(inv_date >= '$start_date',COALESCE(amount1,0) - COALESCE(bayar2,0),0) tambah from (SELECT profit_center, no_invoice,kode_customer, customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,coalesce(bayar,0) bayar,no_invoice2,bayar2,rate,shipp, diff_top, duedate_int, ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,'0') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,'0') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,'0') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,'0') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,'0') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,'0') jml_bln6 from (SELECT profit_center, no_invoice,kode_customer, customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp, diff_top, duedate_int, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due from (SELECT profit_center, no_invoice,kode_customer,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,CASE WHEN bayar > 0 AND profit_center = 'NAK' THEN amount1 ELSE bayar END bayar,no_invoice2, CASE WHEN bayar2 > 0 AND profit_center = 'NAK' THEN amount1 ELSE bayar2 END bayar2,rate,shipp,DATEDIFF('$end_date',duedate) diff_top,DATEDIFF(duedate,'$end_date') duedate_int, DATE_FORMAT(duedate,'%m') bln_due, DATE_FORMAT(duedate,'%Y') thn_due,DATE_FORMAT('$end_date','%m') fil_bln1,LPAD(DATE_FORMAT('$end_date','%m') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT('$end_date','%m') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT('$end_date','%m') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT('$end_date','%m') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT('$end_date','%m') + 5,2,0) fil_bln6, DATE_FORMAT('$end_date','%Y') fil_thn, IF(duedate <= '$end_date',amount1,0) ready_due from 
         (SELECT distinct a.profit_center, a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, UPPER(b.supplier_code) kode_customer,a.sj_date inv_date,a.sj_date tgl_inv, b.Id_Supplier AS id_customer, a.curr,f.top,
         FORMAT((d.grand_total), 2) AS amount, if(a.curr = 'IDR',round((d.grand_total),0),round((d.grand_total), 2)) AS amount1,if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.sj_date, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(h.kontrabon_date, INTERVAL f.top DAY)) AS duedate,a.shipp
