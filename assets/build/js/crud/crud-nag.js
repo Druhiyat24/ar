@@ -7919,6 +7919,7 @@ function at_debit_inv2() {
 	var total 	 		= $('[name="grandtotal"]').val();
 	var buyer 	 		= $('[name="buyer"]').val();
 	var keterangan 	 	= $('[name="keterangan"]').val();
+	var profit_center 	= $('[name="profit_center_inm"]').val();
 	if (id_cust == '524' || id_cust == '804' || id_cust == '366') {
 		cust_ctg = 'Related Party';
 	}else{
@@ -7958,7 +7959,8 @@ function at_debit_inv2() {
 		"approve_by":'',	
 		"approve_date": '',					
 		"cancel_by":'',
-		"cancel_date": '', 									
+		"cancel_date": '', 	
+		"profit_center": profit_center,								
 
 	})		
 
@@ -8004,6 +8006,7 @@ function at_pot_inv2() {
 	var total 	 	= $('[name="diskon"]').val();
 	var buyer 	 		= $('[name="buyer"]').val();
 	var keterangan 	 	= $('[name="keterangan"]').val();
+	var profit_center 	= $('[name="profit_center_inm"]').val();
 	if (id_cust == '524' || id_cust == '804' || id_cust == '366') {
 		cust_ctg = 'Related Party';
 	}else{
@@ -8043,7 +8046,8 @@ function at_pot_inv2() {
 		"approve_by":'',	
 		"approve_date": '',					
 		"cancel_by":'',
-		"cancel_date": '', 									
+		"cancel_date": '', 
+		"profit_center": profit_center,									
 
 	})		
 
@@ -8090,6 +8094,7 @@ function at_dp_inv2() {
 	var total 	 	= $('[name="dp"]').val();
 	var buyer 	 		= $('[name="buyer"]').val();
 	var keterangan 	 	= $('[name="keterangan"]').val();
+	var profit_center 	= $('[name="profit_center_inm"]').val();
 	if (id_cust == '524' || id_cust == '804' || id_cust == '366') {
 		cust_ctg = 'Related Party';
 	}else{
@@ -8129,7 +8134,8 @@ function at_dp_inv2() {
 		"approve_by":'',	
 		"approve_date": '',					
 		"cancel_by":'',
-		"cancel_date": '', 									
+		"cancel_date": '', 
+		"profit_center": profit_center,									
 
 	})		
 
@@ -8172,9 +8178,10 @@ function at_credit_inv2() {
 	var id_cust 	 	= $('[name="cust"]').val();
 	var inv_rate 	 	= $('[name="inv_rate"]').val();
 	var inv_curr 	 	= $('[name="inv_curr"]').val();
-	var total 	 	= $('[name="total_h"]').val();
+	var total 	 		= $('[name="total_h"]').val();
 	var buyer 	 		= $('[name="buyer"]').val();
 	var keterangan 	 	= $('[name="keterangan"]').val();
+	var profit_center 	= $('[name="profit_center_inm"]').val();
 	if (id_cust == '524' || id_cust == '804' || id_cust == '366') {
 		cust_ctg = 'Related Party';
 	}else{
@@ -8214,7 +8221,8 @@ function at_credit_inv2() {
 		"approve_by":'',	
 		"approve_date": '',					
 		"cancel_by":'',
-		"cancel_date": '', 									
+		"cancel_date": '', 	
+		"profit_center": profit_center,								
 
 	})		
 
@@ -8261,6 +8269,7 @@ function at_ppn_inv2() {
 	var total 	 	= $('[name="vat"]').val();
 	var buyer 	 		= $('[name="buyer"]').val();
 	var keterangan 	 	= $('[name="keterangan"]').val();
+	var profit_center 	= $('[name="profit_center_inm"]').val();
 	if (id_cust == '524' || id_cust == '804' || id_cust == '366') {
 		cust_ctg = 'Related Party';
 	}else{
@@ -8300,7 +8309,8 @@ function at_ppn_inv2() {
 		"approve_by":'',	
 		"approve_date": '',					
 		"cancel_by":'',
-		"cancel_date": '', 									
+		"cancel_date": '',
+		"profit_center": profit_center, 									
 
 	})		
 
@@ -8357,6 +8367,7 @@ function simpan_invoice_nb() {
             var create_date		= $('#date_inv').val();
             var no_coa     		= $('#no_coa_deb2').val();
             var nama_coa     	= $('#nama_coa_deb2').val();
+            var profit_center 			= $('#profit_center_inm').val();
 			//			
 			data.push({		
 				"no_inv": no_inv,
@@ -8375,7 +8386,8 @@ function simpan_invoice_nb() {
 				"status": status,
 				"create_date": create_date,
 				"no_coa": no_coa,
-				"nama_coa": nama_coa,															
+				"nama_coa": nama_coa,
+				"profit_center": profit_center,															
 			})	
 			
 			var fdata = {

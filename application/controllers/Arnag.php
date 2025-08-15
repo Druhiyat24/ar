@@ -2055,6 +2055,7 @@ public function createinvoice_manual()
 
     $data['title'] = 'Create Invoice Manual';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+    $data['profit_center'] = $this->Model_nag->cari_profit_center();
     $data['isi_bank'] = $this->Model_nag->load_bank();
     $data['customer'] = $this->Model_nag->cari_customer();
     $data['kode_inv'] = $this->Model_nag->get_kode_inv_nb();

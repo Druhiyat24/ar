@@ -1622,6 +1622,19 @@ $(document).ready(function () {
 });
 </script>
 
+<script type="text/javascript">
+  $('#profit_center_inm').on('change', function () {
+    let invNumInput = $('#inv_num');
+    let parts = invNumInput.val().split('/');
+
+    if (parts.length >= 4) {
+        parts[2] = $(this).val();
+        invNumInput.val(parts.join('/'));
+    }
+});
+
+</script>
+
 </body>
 
 </html>
