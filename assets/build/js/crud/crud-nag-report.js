@@ -42,10 +42,10 @@ function cari_sales_report(){
     });
 
     $('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
-     periode_dari = picker.startDate.format('YYYY-MM-DD');
-     periode_sampai = picker.endDate.format('YYYY-MM-DD');
-     $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
- });
+       periode_dari = picker.startDate.format('YYYY-MM-DD');
+       periode_sampai = picker.endDate.format('YYYY-MM-DD');
+       $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+   });
 
     $('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
         $(this).val('');
@@ -67,7 +67,76 @@ function cari_sales_report(){
         success: function (response) {
 
             var trHTML = '';
-            $.each(response, function (i, item) { 					
+            let total_qty_bill = 0;
+            let total_total_bill = 0;
+            let total_other_bill = 0;
+            let total_diskon_bill = 0;
+            let total_twot_bill = 0;
+            let total_dp_bill = 0;
+            let total_vat_bill = 0;
+            let total_grand_total_bill = 0;
+            let total_total_bill_idr = 0;
+            let total_other_bill_idr = 0;
+            let total_diskon_bill_idr = 0;
+            let total_twot_bill_idr = 0;
+            let total_dp_bill_idr = 0;
+            let total_vat_bill_idr = 0;
+            let total_grand_total_bill_idr = 0;
+            let total_qty_ship = 0;
+            let total_total_ship = 0;
+            let total_other_ship = 0;
+            let total_diskon_ship = 0;
+            let total_twot_ship = 0;
+            let total_dp_ship = 0;
+            let total_vat_ship = 0;
+            let total_grand_total_ship = 0;
+            let total_total_ship_idr = 0;
+            let total_other_ship_idr = 0;
+            let total_diskon_ship_idr = 0;
+            let total_twot_ship_idr = 0;
+            let total_dp_ship_idr = 0;
+            let total_vat_ship_idr = 0;
+            let total_grand_total_ship_idr = 0;
+            let total_net_sales = 0;
+            let total_vat_sales = 0;
+            let total_grand_total_sales = 0;
+
+            $.each(response, function (i, item) {
+
+                total_qty_bill += parseFloat(item.qty_bill);
+                total_total_bill += parseFloat(item.total_bill);
+                total_other_bill += parseFloat(item.other_bill);
+                total_diskon_bill += parseFloat(item.diskon_bill);
+                total_twot_bill += parseFloat(item.twot_bill);
+                total_dp_bill += parseFloat(item.dp_bill);
+                total_vat_bill += parseFloat(item.vat_bill);
+                total_grand_total_bill += parseFloat(item.grand_total_bill);
+                total_total_bill_idr += parseFloat(item.total_bill_idr);
+                total_other_bill_idr += parseFloat(item.other_bill_idr);
+                total_diskon_bill_idr += parseFloat(item.diskon_bill_idr);
+                total_twot_bill_idr += parseFloat(item.twot_bill_idr);
+                total_dp_bill_idr += parseFloat(item.dp_bill_idr);
+                total_vat_bill_idr += parseFloat(item.vat_bill_idr);
+                total_grand_total_bill_idr += parseFloat(item.grand_total_bill_idr);
+                total_qty_ship += parseFloat(item.qty_ship);
+                total_total_ship += parseFloat(item.total_ship);
+                total_other_ship += parseFloat(item.other_ship);
+                total_diskon_ship += parseFloat(item.diskon_ship);
+                total_twot_ship += parseFloat(item.twot_ship);
+                total_dp_ship += parseFloat(item.dp_ship);
+                total_vat_ship += parseFloat(item.vat_ship);
+                total_grand_total_ship += parseFloat(item.grand_total_ship);
+                total_total_ship_idr += parseFloat(item.total_ship_idr);
+                total_other_ship_idr += parseFloat(item.other_ship_idr);
+                total_diskon_ship_idr += parseFloat(item.diskon_ship_idr);
+                total_twot_ship_idr += parseFloat(item.twot_ship_idr);
+                total_dp_ship_idr += parseFloat(item.dp_ship_idr);
+                total_vat_ship_idr += parseFloat(item.vat_ship_idr);
+                total_grand_total_ship_idr += parseFloat(item.grand_total_ship_idr);
+                total_net_sales += parseFloat(item.net_sales);
+                total_vat_sales += parseFloat(item.vat_sales);
+                total_grand_total_sales += parseFloat(item.grand_total_sales);
+
                 trHTML += '<tr>';
                 trHTML += '<td>' + (i + 1) + '</td>';					
                 trHTML += '<td>' + item.customer + "</td>";
@@ -129,6 +198,63 @@ function cari_sales_report(){
                 trHTML += '</tr>';
             });
 
+                trHTML += '<tr style="border-top: double 3px #000;">';
+                trHTML += '<td style="text-align: right; font-weight: bold;"></td>';
+                trHTML += '<td style="text-align: center; font-weight: bold;">TOTAL</td>';
+                trHTML += '<td style="text-align: center; font-weight: bold;"></td>';
+                trHTML += '<td style="text-align: center; font-weight: bold;"></td>';
+                trHTML += '<td style="text-align: center; font-weight: bold;"></td>';
+                trHTML += '<td style="text-align: center; font-weight: bold;"></td>';
+                trHTML += '<td style="text-align: center; font-weight: bold;"></td>';
+                trHTML += '<td style="text-align: center; font-weight: bold;"></td>';
+                trHTML += '<td style="text-align: center; font-weight: bold;"></td>';
+                trHTML += '<td style="text-align: center; font-weight: bold;"></td>';
+                trHTML += '<td style="text-align: center; font-weight: bold;"></td>';
+                trHTML += '<td style="text-align: center; font-weight: bold;"></td>';
+                trHTML += '<td style="text-align: center; font-weight: bold;"></td>';
+                trHTML += '<td style="text-align: center; font-weight: bold;"></td>';
+                trHTML += '<td style="text-align: center; font-weight: bold;"></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_qty_bill, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_total_bill, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_other_bill, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_diskon_bill, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_twot_bill, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_dp_bill, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_vat_bill, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_grand_total_bill, 2) + '</b></td>';
+
+                trHTML += '<td align="right"><b>' + number_format(total_qty_bill, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_total_bill_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_other_bill_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_diskon_bill_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_twot_bill_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_dp_bill_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_vat_bill_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_grand_total_bill_idr, 2) + '</b></td>';
+
+                trHTML += '<td align="right"><b>' + number_format(total_qty_ship, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_total_ship, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_other_ship, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_diskon_ship, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_twot_ship, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_dp_ship, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_vat_ship, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_grand_total_ship, 2) + '</b></td>';
+
+                trHTML += '<td align="right"><b>' + number_format(total_qty_ship, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_total_ship_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_other_ship_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_diskon_ship_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_twot_ship_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_dp_ship_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_vat_ship_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_grand_total_ship_idr, 2) + '</b></td>';
+                trHTML += '<td style="width:50px;background-color:#FFFFFF;border-top:1px solid #FFFFFF;border-bottom:1px solid #FFFFFF;">' + '' + '</td>';
+                trHTML += '<td align="right"><b>' + number_format(total_net_sales, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_vat_sales, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_grand_total_sales, 2) + '</b></td>';
+                trHTML += '</tr>';
+
 $('#table-sales-report').append(trHTML);				
 
 },
@@ -162,10 +288,10 @@ function cari_sales_report_material() {
     });
 
     $('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
-     periode_dari_mt = picker.startDate.format('YYYY-MM-DD');
-     periode_sampai_mt = picker.endDate.format('YYYY-MM-DD');
-     $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
- });
+       periode_dari_mt = picker.startDate.format('YYYY-MM-DD');
+       periode_sampai_mt = picker.endDate.format('YYYY-MM-DD');
+       $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+   });
 
     $('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
         $(this).val('');
@@ -243,10 +369,10 @@ function cari_outstanding_pi(){
     });
 
     $('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
-     periode_dari_pi = picker.startDate.format('YYYY-MM-DD');
-     periode_sampai_pi = picker.endDate.format('YYYY-MM-DD');
-     $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
- });
+       periode_dari_pi = picker.startDate.format('YYYY-MM-DD');
+       periode_sampai_pi = picker.endDate.format('YYYY-MM-DD');
+       $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+   });
 
     $('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
         $(this).val('');
