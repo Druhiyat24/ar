@@ -118,6 +118,39 @@
     </section>
 </div>
 
+<div class="modal fade" id="modal-cancel-inv">
+    <form action="<?= base_url('arnag/cancel_alokasi'); ?>" method="POST">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Confirm</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <!--  -->
+                    <div class="form-group row">
+                        <label for="id_inv" class="col-sm-5 col-form-label">Sure Cancel Alokasi :</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control" id="txt_cancel_book" name="txt_cancel_book" style="border:none;" readonly>
+                        </div>
+                    </div>
+                    <!-- Hidden Text -->
+                    <input type="hidden" id="id_book_inv" name="id_book_inv" readonly>
+                    <input type="hidden" id="id_bppb" name="id_bppb" readonly>
+                    <input type="hidden" id="user" name="user" value="<?= $user['username']; ?>" readonly>
+                    <!--  -->
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-danger toastsDefaultDanger">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
 <!-- Modal Update Booking Invoice -->
 <div class="modal fade" id="update-kwt">
     <form action="<?= base_url('arnag/update_tbl_kwitansi'); ?>" method="POST">

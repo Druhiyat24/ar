@@ -9408,90 +9408,109 @@ function save_alokasi() {
 }
 
 //ubah desember
-function at_debit_alokasi() { 
-	
+function at_debit_alokasi() {
 
-	var data = [];
-	var cust_ctg = '';
-	var rate = 0;
-	var total_idr = 0;
+    var data = [];
+    var cust_ctg = '';
+    var rate = 0;
+    var total_idr = 0;
 
-	var id_cust 	 	= $('[name="customer"]').val();
-	var inv_rate 	 	= $('[name="rate"]').val();
-	var inv_curr 	 	= $('[name="pay_type"]').val();
-	var total 	 	= $('[name="total_alokasi"]').val();
-	var buyer 	 		= $('[name="cust"]').val();
-	var kata1 		= "PELUNASAN PIUTANG USAHA DARI";
-	var keter 		 = kata1 +' '+buyer;
-	if (id_cust == '524' || id_cust == '804' || id_cust == '366') {
-		cust_ctg = 'Related Party';
-	}else{
-		cust_ctg = 'Third Party';
-	}
+    var id_cust    = $('[name="customer"]').val();
+    var inv_rate   = $('[name="rate"]').val();
+    var inv_curr   = $('[name="pay_type"]').val();
+    var buyer      = $('[name="cust"]').val();
+    var kata1      = "PELUNASAN PIUTANG USAHA DARI";
+    var keter      = kata1 + ' ' + buyer;
 
-	if (inv_curr == 'IDR') {
-		rate = 1;
-		total_idr = total * rate;
-	}else{
-		rate = inv_rate;
-		total_idr = total * rate;
-	}
+    // Tentukan kategori customer
+    if (id_cust == '524' || id_cust == '804' || id_cust == '366') {
+        cust_ctg = 'Related Party';
+    } else {
+        cust_ctg = 'Third Party';
+    }
 
-	data.push({		
-		"no_journal": $('#alk_number').val(),
-		"tgl_journal": $('#alo_date').val(),
-		"type_journal": 'Alokasi',
-		"no_coa": '1.90.02',
-		"nama_coa": 'POS SILANG PIUTANG USAHA',		
-		"no_costcenter":'-',
-		"nama_costcenter": '-',
-		"reff_doc": '-',
-		"reff_date": '',
-		"buyer": buyer,
-		"no_ws": '',
-		"curr": $('#pay_type').val(),
-		"rate": rate,
-		"debit": $('#total_alokasi').val(),
-		"credit": '0',
-		"debit_idr":total_idr,			
-		"credit_idr":'0',
-		"status": 'POST',
-		"keterangan": keter,
-		"create_by": '',
-		"create_date": '',
-		"approve_by":'',	
-		"approve_date": '',					
-		"cancel_by":'',
-		"cancel_date": '', 									
+    // Rate
+    if (inv_curr == 'IDR') {
+        rate = 1;
+    } else {
+        rate = inv_rate;
+    }
 
-	})		
+    // 🔥 STEP 1: Grouping per profit center
+    var table = document.getElementById("table-sj");
+    var grouping = {};  // object untuk group
 
-	var formData = {
-		'data_table': data
-	}
+    for (var i = 1; i < table.rows.length; i++) {
+        var amount = parseFloat(table.rows[i].cells[7].children[0].value || 0);
+        var profit_center = table.rows[i].cells[9].children[0].value || "-";
 
-	console.log(formData);
-	
-	$.ajax({						
-		url: "at_debit_inv/",		
-		type: "POST",	
-		data: formData,			
-		dataType: "JSON",
-		success: function (data) {
+        if (!grouping[profit_center]) {
+            grouping[profit_center] = 0;
+        }
+        grouping[profit_center] += amount;
+    }
 
-			if (data.status) //if success close modal and reload ajax table
-			{
-				msg = 'Success Update Invoice Header'
-			} else {
-				msg = 'Error Update Invoice Header'
-			}
-		},
-		error: function (jqXHR, textStatus, errorThrown) {
-			msg = 'Error Update Invoice Header' + jqXHR.text
-		}
-	});
+    // 🔥 STEP 2: Convert hasil grouping jadi array data
+    Object.keys(grouping).forEach(function(pc) {
+        var total = grouping[pc];
+        var total_idr = total * rate;
+
+        data.push({
+            "no_journal": $('#alk_number').val(),
+            "tgl_journal": $('#alo_date').val(),
+            "type_journal": 'Alokasi',
+            "no_coa": '1.90.02',
+            "nama_coa": 'POS SILANG PIUTANG USAHA',
+            "no_costcenter": '-',
+            "nama_costcenter": '-',
+            "reff_doc": '-',
+            "reff_date": '',
+            "buyer": buyer,
+            "no_ws": '',
+            "curr": $('#pay_type').val(),
+            "rate": rate,
+            "debit": total,
+            "credit": '0',
+            "debit_idr": total_idr,
+            "credit_idr": '0',
+            "status": 'POST',
+            "keterangan": keter,
+            "create_by": '',
+            "create_date": '',
+            "approve_by": '',
+            "approve_date": '',
+            "cancel_by": '',
+            "cancel_date": '',
+            "profit_center": pc
+        });
+    });
+
+    var formData = {
+        'data_table': data
+    };
+
+    console.log("🚀 Data yang akan dikirim:", formData);
+
+    // 🔥 STEP 3: Simpan via AJAX
+    $.ajax({
+        url: "at_debit_inv/",
+        type: "POST",
+        data: formData,
+        dataType: "JSON",
+        success: function (data) {
+            if (data.status) {
+                // alert('Success Update Invoice Header');
+            } else {
+                // alert('Error Update Invoice Header');
+            }
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            // alert('Error Update Invoice Header ' + jqXHR.responseText);
+        }
+    });
 
 }
+
 
 //ubah desember
 function update_coaname() { 
@@ -10035,6 +10054,7 @@ function simpan_alokasi_detail()
 				var amount = document.getElementById("table-sj").rows[i].cells[7].children[0].value;
 				var keterangan = document.getElementById("table-sj").rows[i].cells[8].children[0].value;
 				var status      = "POST";
+				var profit_center = document.getElementById("table-sj").rows[i].cells[9].children[0].value;
 				
 				data.push({		
 					"no_alk": $('#alk_number').val(),
@@ -10047,7 +10067,8 @@ function simpan_alokasi_detail()
 					"eqp_idr": eqp_idr,
 					"amount": amount,
 					"keterangan": keterangan,
-					"status": status,								
+					"status": status,
+					"profit_center": profit_center,								
 
 				})		
 			}
@@ -10133,7 +10154,8 @@ function cari_alokasi() {
 					trHTML += '<td>' + item.eqp_idr + "</td>";
 					trHTML += '<td>' + item.tanggal_input + "</td>";
 					trHTML += '<td>' + item.nama + "</td>";	
-					trHTML += '<td><button id="print_inv" name="print_inv" type="button" class="btn btn-primary btn-sm" onclick="print_alokasi(' + item.id + ')"><i class="fa fa-print"></i> Print</button> </td>';
+					trHTML += '<td><button id="print_inv" name="print_inv" type="button" class="btn btn-primary btn-sm" onclick="print_alokasi(' + item.id + ')"><i class="fa fa-print"></i> Print</button>' + ''				
+						+ ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="cancel_alokasi(\'' + item.id + '\',\'' + item.no_alk + '\')"><i class="fas fa-trash-alt"></i> Cancel</button></td>';
 				// trHTML += '<td><button type="button" class="btn btn-sm btn-primary swalDefaultError" href="javascript:void(0)" onclick="getType3(\'' + item.supp + '\',\'' + item.no_kwt + '\',\'' + item.total + '\',\'' + item.bilang + '\')">Update</button> ' + '' 
 				// + ' <button id="print_inv" name="print_inv" type="button" class="btn btn-primary btn-sm" onclick="print_kwitansi(' + item.id + ')"><i class="fa fa-print"></i> Print</button> ' + ''
 				// + ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="cancel_kwt(\'' + item.no_kwt + '\', \'' + item.status + '\')">Cancel</button></td> </td>';
@@ -10151,6 +10173,15 @@ function cari_alokasi() {
 		});	
 
 	}
+
+
+	function cancel_alokasi(id, no_invoice){ 
+
+	$('#txt_cancel_book').val(no_invoice);
+	$('#id_book_inv').val(no_invoice);
+	$('#modal-cancel-inv').modal('show');  
+
+}
 
 	function export_list_alokasi() { 		
 		var id_customer = $('#customer').val();	

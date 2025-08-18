@@ -3756,4 +3756,33 @@ public function export_kartu_ar_new($dt_dari_alk, $dt_sampai_alk, $id_cus, $bln1
     $this->load->view('arnag/export_kartu_ar_new', $data);
 }
 
+public function cancel_alokasi()
+{
+    $id = $this->input->post('id_book_inv');
+    $keter = "Cancel Alokasi";
+    $tgl_reverse = date('Y-m-d');
+    $nama = $this->session->userdata('username');
+    $activity = "Cancel Alokasi";
+
+    $data = [
+
+        'nama'          => $nama,
+        'activity'      => $activity,
+        'tanggal_input' => $tgl_reverse,
+        'doc_number'    => $id,
+        'tanggal_doc'   => $tgl_reverse,
+        'keterangan'    => $keter
+
+    ];
+    $this->Model_nag->log_booking_invoice($data, 'tbl_log');
+    $this->Model_nag->copy_alokasi($id);
+    $this->Model_nag->copy_alokasi_detail($id);
+    $this->Model_nag->copy_jurnal_alokasi($id);
+    $this->Model_nag->delete_alokasi($id);
+    $this->Model_nag->delete_jurnal_alokasi($id);
+    $this->Model_nag->delete_alokasi_detail($id);
+
+    redirect('arnag/alokasi_ar');
+}
+
 }
