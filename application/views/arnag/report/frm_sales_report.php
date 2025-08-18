@@ -406,14 +406,40 @@
 </div>
 
 <script>
-// Fungsi search sederhana
 document.getElementById("tableSearch").addEventListener("keyup", function() {
-    var value = this.value.toLowerCase();
-    var rows = document.querySelectorAll("#table-sales-report tbody tr");
+    let value = this.value.toLowerCase().trim();
+    let rows = document.querySelectorAll("#table-sales-report tbody tr");
 
     rows.forEach(function(row) {
-        var text = row.innerText.toLowerCase();
-        row.style.display = text.indexOf(value) > -1 ? "" : "none";
+        // ambil hanya kolom tertentu (index mulai dari 0)
+        let colsToSearch = [1,2,4,5,6,8,9,10,13];
+        let match = false;
+
+        for (let i of colsToSearch) {
+            let cell = row.cells[i];
+            if (cell) {
+                let text = cell.textContent.toLowerCase().trim().replace(/\s+/g, " ");
+                if (text.indexOf(value) > -1) {
+                    match = true;
+                    break;
+                }
+            }
+        }
+
+        row.style.display = match ? "" : "none";
     });
 });
 </script>
+
+<!-- <script>
+// Search cepat tanpa lemot
+document.getElementById("tableSearch").addEventListener("keyup", function() {
+    let value = this.value.toLowerCase();
+    let rows = document.getElementById("table-sales-report").tBodies[0].rows;
+
+    for (let i = 0; i < rows.length; i++) {
+        let rowText = rows[i].innerText.toLowerCase();
+        rows[i].style.display = rowText.indexOf(value) > -1 ? "" : "none";
+    }
+});
+</script> -->
