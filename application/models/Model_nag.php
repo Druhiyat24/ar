@@ -4608,7 +4608,7 @@ function approve_doc_reverse($id)
         SET a.status = 'POST'
         where b.rvs_number = '$rvs_number' ");
 
-    $update_invoice = $this->db->query("INSERT into tbl_list_journal select '', no_journal, tgl_journal, type_journal, no_coa, nama_coa, no_costcenter, nama_costcenter, reff_doc, reff_date, buyer, no_ws, curr, rate, credit, debit, credit_idr, debit_idr, status, keterangan, create_by, create_date, '' approve_by, CURRENT_TIMESTAMP() approve_date, cancel_by, cancel_date, created_at, updated_at, profit_center from tbl_list_journal where no_journal = '$rvs_number' ");
+    $update_journal = $this->db->query("INSERT into tbl_list_journal select '', no_journal, tgl_journal, type_journal, no_coa, nama_coa, no_costcenter, nama_costcenter, reff_doc, reff_date, buyer, no_ws, curr, rate, credit, debit, credit_idr, debit_idr, status, keterangan, create_by, create_date, '' approve_by, CURRENT_TIMESTAMP() approve_date, cancel_by, cancel_date, created_at, updated_at, profit_center from tbl_list_journal where no_journal = '$rvs_number' ");
 
     
     return $hasil;
