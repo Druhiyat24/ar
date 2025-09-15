@@ -552,4 +552,148 @@ function cari_mut_ar($id_customer, $start_date, $end_date)
 return $hasil->result_array();
 }
 
+
+function sales_report_detail_material($periode_dari_mt, $periode_sampai_mt, $id_customer_mt, $shipp_mt, $type_mt, $curr_mt, $type_so_mt)
+{
+
+    if($id_customer_mt == 'All' and $shipp_mt == 'All' and $type_mt == 'All' and $curr_mt == 'All' and $type_so_mt == 'All' ){
+        $str = " AND b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND (a.status = 'POST' OR a.status = 'APPROVED')  ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt == 'All' and $type_mt == 'All' and $curr_mt == 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt != 'All' and $type_mt == 'All' and $curr_mt == 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.shipp = '$shipp_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt == 'All' and $type_mt != 'All' and $curr_mt == 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_type = '$type_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt == 'All' and $type_mt == 'All' and $curr_mt != 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND b.curr = '$curr_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt == 'All' and $type_mt == 'All' and $curr_mt == 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt != 'All' and $type_mt == 'All' and $curr_mt == 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND a.shipp = '$shipp_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt == 'All' and $type_mt != 'All' and $curr_mt == 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND a.id_type = '$type_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt == 'All' and $type_mt == 'All' and $curr_mt != 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND b.curr = '$curr_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt == 'All' and $type_mt == 'All' and $curr_mt == 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt != 'All' and $type_mt != 'All' and $curr_mt == 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.shipp = '$shipp_mt' AND a.id_type = '$type_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt != 'All' and $type_mt == 'All' and $curr_mt != 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.shipp = '$shipp_mt' AND b.curr = '$curr_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt != 'All' and $type_mt == 'All' and $curr_mt == 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.shipp = '$shipp_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt == 'All' and $type_mt != 'All' and $curr_mt != 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_type = '$type_mt' AND b.curr = '$curr_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt == 'All' and $type_mt != 'All' and $curr_mt == 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_type = '$type_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt == 'All' and $type_mt == 'All' and $curr_mt != 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND b.curr = '$curr_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt != 'All' and $type_mt != 'All' and $curr_mt == 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND a.shipp = '$shipp_mt' AND a.id_type = '$type_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt != 'All' and $type_mt == 'All' and $curr_mt != 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND a.shipp = '$shipp_mt' AND b.curr = '$curr_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt != 'All' and $type_mt == 'All' and $curr_mt == 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND a.shipp = '$shipp_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt == 'All' and $type_mt != 'All' and $curr_mt != 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND a.id_type = '$type_mt' AND b.curr = '$curr_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt == 'All' and $type_mt != 'All' and $curr_mt == 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND a.id_type = '$type_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt == 'All' and $type_mt == 'All' and $curr_mt != 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND b.curr = '$curr_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt != 'All' and $type_mt != 'All' and $curr_mt != 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.shipp = '$shipp_mt' AND b.curr = '$curr_mt' AND a.id_type = '$type_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt != 'All' and $type_mt != 'All' and $curr_mt == 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.shipp = '$shipp_mt' AND a.type_so = '$type_so_mt' AND a.id_type = '$type_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt != 'All' and $type_mt == 'All' and $curr_mt != 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.shipp = '$shipp_mt' AND b.curr = '$curr_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt == 'All' and $type_mt != 'All' and $curr_mt != 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_type = '$type_mt' AND b.curr = '$curr_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt != 'All' and $type_mt != 'All' and $curr_mt != 'All' and $type_so_mt == 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND a.shipp = '$shipp_mt' AND a.id_type = '$type_mt' AND b.curr = '$curr_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt != 'All' and $type_mt != 'All' and $curr_mt == 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND a.shipp = '$shipp_mt' AND a.id_type = '$type_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt != 'All' and $type_mt == 'All' and $curr_mt != 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND a.shipp = '$shipp_mt' AND b.curr = '$curr_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt != 'All' and $shipp_mt == 'All' and $type_mt != 'All' and $curr_mt != 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND a.id_type = '$type_mt' AND b.curr = '$curr_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }elseif($id_customer_mt == 'All' and $shipp_mt != 'All' and $type_mt != 'All' and $curr_mt != 'All' and $type_so_mt != 'All'){
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.shipp = '$shipp_mt' AND a.id_type = '$type_mt' AND b.curr = '$curr_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }else{
+        $str = " AND  b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' AND a.id_customer = '$id_customer_mt' AND a.shipp = '$shipp_mt' AND a.id_type = '$type_mt' AND b.curr = '$curr_mt' AND a.type_so = '$type_so_mt' AND (a.status = 'POST' OR a.status = 'APPROVED') ";
+        $str2 = " WHERE b.sj_date BETWEEN '$periode_dari_mt' AND '$periode_sampai_mt' and a.status != 'Cancel' ";
+    }
+
+    $hasil = $this->db->query("SELECT a.*, IFNULL(rate,1) rate, (price_bill * IFNULL(rate,1)) price_bill_idr, (gross_bill * IFNULL(rate,1)) gross_bill_idr, (other_bill * IFNULL(rate,1)) other_bill_idr, (diskon_bill * IFNULL(rate,1)) diskon_bill_idr, (net_bill * IFNULL(rate,1)) net_bill_idr, (dp_bill * IFNULL(rate,1)) dp_bill_idr, (vat_bill * IFNULL(rate,1)) vat_bill_idr, (total_bill * IFNULL(rate,1)) total_bill_idr, (price_ship * IFNULL(rate,1)) price_ship_idr, (gross_ship * IFNULL(rate,1)) gross_ship_idr, (other_ship * IFNULL(rate,1)) other_ship_idr, (diskon_ship * IFNULL(rate,1)) diskon_ship_idr, (net_ship * IFNULL(rate,1)) net_ship_idr, (dp_ship * IFNULL(rate,1)) dp_ship_idr, (vat_ship * IFNULL(rate,1)) vat_ship_idr, (total_ship * IFNULL(rate,1)) total_ship_idr FROM 
+(
+(select id, customer, no_invoice, tgl_inv, bppb_number, sj_date, grp, ws, styleno, produk, type_so, shipp, inv_type, no_faktur, tgl_faktur,curr, qty_bill, uom_bill, price_bill, total_bill gross_bill, other_bill, diskon_bill, (total_bill + other_bill - diskon_bill) net_bill, dp_bill, vat_bill, ((total_bill + other_bill - diskon_bill) - dp_bill + vat_bill) total_bill, qty_ship, uom_ship, price_ship, total_ship gross_ship, other_ship, diskon_ship, (total_ship + other_ship - diskon_ship) net_ship, dp_ship, vat_ship, ((total_ship + other_ship - diskon_ship) - dp_ship + vat_ship) total_ship from (SELECT b.id,c.Supplier AS customer, a.no_invoice, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, 
+      b.shipp_number as bppb_number, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS sj_date, '' AS grp, b.ws ,b.styleno, concat(b.product_item, ' ', '(',b.size,')') as produk, a.type_so, a.shipp ,  d.type AS inv_type,if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, b.qty qty_bill, b.uom uom_bill, b.unit_price price_bill, b.total_price total_bill, 0 other_bill, ROUND((e.discount / qty_all) * b.qty,4) diskon_bill, ROUND((e.dp / qty_all) * b.qty,4) dp_bill, ROUND((e.vat / qty_all) * b.qty,4) vat_bill, b.qty qty_ship, b.uom uom_ship, b.unit_price price_ship, b.total_price total_ship, 0 other_ship, ROUND((e.discount / qty_all) * b.qty,4) diskon_ship, ROUND((e.dp / qty_all) * b.qty,4) dp_ship, ROUND((e.vat / qty_all) * b.qty,4) vat_ship
+      FROM tbl_book_invoice AS a INNER JOIN 
+      tbl_invoice_detail AS b ON a.id = b.id_book_invoice INNER JOIN      
+      mastersupplier AS c ON a.id_customer = c.Id_Supplier INNER JOIN 
+      tbl_type AS d ON a.id_type = d.id_type INNER JOIN 
+      tbl_invoice_pot AS e ON a.id = e.id_book_invoice INNER JOIN 
+      tbl_master_top AS f ON a.id_top = f.id INNER JOIN
+            (select id_book_invoice, sum(qty) qty_all from tbl_invoice_detail GROUP BY id_book_invoice) g on a.id = g.id_book_invoice
+      WHERE a.profit_center = 'NAG' $str GROUP BY b.id ORDER BY a.no_invoice asc) a)
+            
+    UNION
+        
+    (select id, customer, no_invoice, tgl_inv, bppb_number, sj_date, grp, ws, styleno, produk, type_so, shipp, inv_type, no_faktur, tgl_faktur,curr, qty_bill, uom_bill, price_bill, total_bill gross_bill, other_bill, diskon_bill, (total_bill + other_bill - diskon_bill) net_bill, dp_bill, vat_bill, ((total_bill + other_bill - diskon_bill) - dp_bill + vat_bill) total_bill, qty_ship, uom_ship, price_ship, total_ship gross_ship, other_ship, diskon_ship, (total_ship + other_ship - diskon_ship) net_ship, dp_ship, vat_ship, ((total_ship + other_ship - diskon_ship) - dp_ship + vat_ship) total_ship from (SELECT b.id,c.Supplier AS customer, a.no_invoice, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, 
+      b.shipp_number as bppb_number, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS sj_date, '' AS grp, b.ws ,b.styleno, concat(b.product_item, ' ', '(',b.size,')') as produk, a.type_so, a.shipp ,  d.type AS inv_type,if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, b.qty qty_bill, b.uom uom_bill, b.unit_price price_bill, b.total_price total_bill, ROUND((h.total_other / qty_all_bill) * b.qty,4) other_bill, ROUND((h.discount / qty_all_bill) * b.qty,4) diskon_bill, ROUND((h.dp / qty_all_bill) * b.qty,4) dp_bill, ROUND((h.vat / qty_all_bill) * b.qty,4) vat_bill, b.qty_ship, b.uom_ship, b.unit_price_ship price_ship, b.total_price_ship total_ship, 0 other_ship, ROUND((e.discount / qty_all_ship) * b.qty,4) diskon_ship, ROUND((e.dp / qty_all_ship) * b.qty,4) dp_ship, ROUND((e.vat / qty_all_ship) * b.qty,4) vat_ship
+      FROM tbl_book_invoice AS a INNER JOIN 
+      tbl_invoice_detail_knitting AS b ON a.id = b.id_book_invoice INNER JOIN      
+      mastersupplier AS c ON a.id_customer = c.Id_Supplier INNER JOIN 
+      tbl_type AS d ON a.id_type = d.id_type INNER JOIN 
+      tbl_invoice_pot AS e ON a.id = e.id_book_invoice INNER JOIN 
+      tbl_invoice_pot_knitting AS h ON a.id = h.id_book_invoice INNER JOIN 
+      tbl_master_top AS f ON a.id_top = f.id INNER JOIN
+            (select id_book_invoice, sum(qty) qty_all_bill, sum(qty_ship) qty_all_ship from tbl_invoice_detail_knitting GROUP BY id_book_invoice) g on a.id = g.id_book_invoice
+      WHERE a.profit_center = 'NAK' $str GROUP BY b.id ORDER BY a.no_invoice asc) a)
+                 
+    UNION
+        
+    (select id, customer, no_inv, tgl_inv, bppb_number, sj_date, grp, no_ws, no_style, produk, type_so, shipp, inv_type, no_faktur, tgl_faktur,curr, qty_bill, uom_bill, price_bill, total_bill gross_bill, other_bill, diskon_bill, (total_bill + other_bill - diskon_bill) net_bill, dp_bill, vat_bill, ((total_bill + other_bill - diskon_bill) - dp_bill + vat_bill) total_bill, qty_ship, uom_ship, price_ship, total_ship gross_ship, other_ship, diskon_ship, (total_ship + other_ship - diskon_ship) net_ship, dp_ship, vat_ship, ((total_ship + other_ship - diskon_ship) - dp_ship + vat_ship) total_ship from (SELECT b.id,c.Supplier AS customer, a.no_inv, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, 
+      b.no_shipp as bppb_number, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS sj_date, '' AS grp, b.no_ws ,b.no_style, concat(b.prod_item, ' ', '(',b.size,')') as produk, a.type_so, a.shipp, d.type AS inv_type,if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, b.qty qty_bill, b.uom uom_bill, b.unit_price price_bill, b.total total_bill, 0 other_bill, ROUND((e.diskon / qty_all) * b.qty,4) diskon_bill, ROUND((e.dp / qty_all) * b.qty,4) dp_bill, ROUND((e.vat / qty_all) * b.qty,4) vat_bill, b.qty qty_ship, b.uom uom_ship, b.unit_price price_ship, b.total total_ship, 0 other_ship, ROUND((e.diskon / qty_all) * b.qty,4) diskon_ship, ROUND((e.dp / qty_all) * b.qty,4) dp_ship, ROUND((e.vat / qty_all) * b.qty,4) vat_ship
+      FROM tbl_invoice_nb AS a INNER JOIN 
+      tbl_invoice_nb_detail AS b ON a.no_inv = b.no_inv INNER JOIN      
+      mastersupplier AS c ON a.customer = c.Id_Supplier INNER JOIN 
+      tbl_invoice_nb_pot AS e ON a.no_inv = e.no_inv INNER JOIN
+      tbl_type as d on d.type = a.type INNER JOIN
+            (select no_inv, sum(qty) qty_all from tbl_invoice_nb_detail GROUP BY no_inv) g on a.no_inv = g.no_inv $str2) a
+    )
+            ) a left join (select tanggal, curr, rate FROM masterrate where v_codecurr = 'Pajak' GROUP BY tanggal, curr) b on b.curr= a.curr AND b.tanggal = a.tgl_inv ");
+    return $hasil->result_array();
+}
+
 }
