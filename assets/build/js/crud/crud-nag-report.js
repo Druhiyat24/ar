@@ -632,6 +632,130 @@ function cari_mut_ar(){
 }
 
 
+function cari_sales_report_detail_material() { 
+
+    $('#table-sales-report-material tbody tr').remove();    
+    //Date range picker
+    $('input[name="reservation"]').daterangepicker({
+        autoUpdateInput: false,
+        locale: {
+            cancelLabel: 'Clear'
+        }
+    });
+
+    $('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
+       periode_dari_mt = picker.startDate.format('YYYY-MM-DD');
+       periode_sampai_mt = picker.endDate.format('YYYY-MM-DD');
+       $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+   });
+
+    $('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
+        $(this).val('');
+        periode_dari_mt   = "undefined";
+        periode_sampai_mt = "undefined";
+    });
+
+    var id_customer_mt = $('#sr_customer_mt').val();
+    var shipp_mt = $('#sr_type_mt').val();
+    var type_mt = $('#sr_type_inv_mt').val(); 
+    var curr_mt = $('#sr_curr_mt').val();
+    var type_so_mt = $('#sr_order_type_mt').val(); 
+
+    console.log(id_customer_mt, shipp_mt, type_mt, curr_mt, type_so_mt);
+
+    $.ajax({        
+        url: "cari_sales_report_detail_material/" + periode_dari_mt + "/" + periode_sampai_mt + "/" + id_customer_mt + "/" + shipp_mt + "/" + type_mt + "/" + curr_mt + "/" + type_so_mt + "/",                    
+        type: "GET",
+        dataType: "JSON",
+        success: function (response) {
+
+            var trHTML = '';
+            $.each(response, function (i, item) {                   
+                trHTML += '<tr>';       
+                trHTML += '<td>' + (i + 1) + '</td>';           
+                trHTML += '<td>' + item.customer + "</td>";
+                trHTML += '<td>' + item.no_invoice + "</td>";
+                trHTML += '<td>' + item.tgl_inv + "</td>";
+                trHTML += '<td>' + item.bppb_number + "</td>";
+                trHTML += '<td>' + item.sj_date + "</td>";
+                trHTML += '<td>' + item.grp + "</td>";
+                trHTML += '<td>' + item.ws + "</td>";
+                trHTML += '<td>' + item.styleno + "</td>";
+                trHTML += '<td>' + item.produk + "</td>";
+                trHTML += '<td>' + item.type_so + "</td>";
+                trHTML += '<td>' + item.shipp + "</td>";
+                trHTML += '<td>' + item.inv_type + "</td>";
+                trHTML += '<td>' + item.no_faktur + "</td>";
+                trHTML += '<td>' + item.tgl_faktur + "</td>";
+                trHTML += '<td>' + item.curr + "</td>";
+                trHTML += '<td>' + item.rate + "</td>";
+
+                trHTML += '<td align="right">' + number_format(item.qty_bill,2) + "</td>";
+                trHTML += '<td >' + item.uom_bill + "</td>";
+                trHTML += '<td align="right">' + number_format(item.price_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.gross_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.other_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.diskon_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.net_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.vat_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.total_bill,2) + "</td>";
+
+                trHTML += '<td align="right">' + number_format(item.qty_ship,2) + "</td>";
+                trHTML += '<td >' + item.uom_ship + "</td>";
+                trHTML += '<td align="right">' + number_format(item.price_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.gross_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.other_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.diskon_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.net_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.vat_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.total_ship,2) + "</td>";
+
+                trHTML += '<td align="right">' + number_format(item.qty_bill,2) + "</td>";
+                trHTML += '<td >' + item.uom_bill + "</td>";
+                trHTML += '<td align="right">' + number_format(item.price_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.gross_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.other_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.diskon_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.net_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.vat_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.total_bill_idr,2) + "</td>";
+
+                trHTML += '<td align="right">' + number_format(item.qty_ship,2) + "</td>";
+                trHTML += '<td >' + item.uom_ship + "</td>";
+                trHTML += '<td align="right">' + number_format(item.price_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.gross_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.other_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.diskon_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.net_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.vat_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.total_ship_idr,2) + "</td>";
+                trHTML += '</tr>';
+            });
+
+
+
+            $('#table-sales-report-material').append(trHTML);               
+
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            alert('Error get data from ajax');
+        }
+    }); 
+}
+
+function export_sales_report_detail_material(){ 
+    var id_customer_mt = $('#sr_customer_mt').val();
+    var shipp_mt = $('#sr_type_mt').val();
+    var type_mt = $('#sr_type_inv_mt').val(); 
+    var curr_mt = $('#sr_curr_mt').val();
+    var type_so_mt = $('#sr_order_type_mt').val();
+    window.open(".../../export_sales_report_detail_material/" + periode_dari_mt + "/" + periode_sampai_mt + "/" + "/" + id_customer_mt + "/" + shipp_mt + "/" + type_mt + "/" + curr_mt + "/" + type_so_mt + "/" ); 
+}
+
 function export_mut_ar(){ 
     var id_customer = $('#sr_customer').val();
     var start_date = $('#start_date').val();

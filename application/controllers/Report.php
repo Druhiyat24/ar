@@ -101,6 +101,32 @@ class Report extends CI_Controller
         $this->load->view('templates/footer', $data);
     }
 
+    public function frm_sales_report_detail_material()
+    {
+        if (!$this->session->userdata('username')) {
+            redirect('auth');
+        }
+
+        $data['title'] = 'Report Ar';
+        $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+        $data['customer'] = $this->Model_nag->cari_customer();
+        $data['type'] = $this->db->get('tbl_type')->result_array();
+        $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+        $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+        $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+        $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+        $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+        $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+        $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+        $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+        $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
+
+        $this->load->view('templates/header', $data);
+        $this->load->view('templates/sidebar', $data);
+        $this->load->view('arnag/report/frm_sales_report_detail_material', $data);
+        $this->load->view('templates/footer', $data);
+    }
+
     public function sales_report_material($periode_dari_mt, $periode_sampai_mt, $id_customer_mt, $shipp_mt, $type_mt, $curr_mt, $type_so_mt)
     {
         if (!$this->session->userdata('username')) {
@@ -322,6 +348,31 @@ class Report extends CI_Controller
         $data["mut_ar"] = $this->Model_report->cari_mut_ar($id_customer, $start_date, $end_date);
         //
         $this->load->view('arnag/report/export_mut_ar', $data);
+    }
+
+    public function cari_sales_report_detail_material($dt_dari, $dt_sampai, $id_customer_mt, $shipp_mt, $type_mt, $curr_mt, $type_so_mt)
+    {
+        $data =  $this->Model_report->sales_report_detail_material($dt_dari, $dt_sampai, $id_customer_mt, $shipp_mt, $type_mt, $curr_mt, $type_so_mt);
+        echo json_encode($data);
+    }
+
+
+    function export_sales_report_detail_material($periode_dari_mt, $periode_sampai_mt, $id_customer_mt, $shipp_mt, $type_mt, $curr_mt, $type_so_mt)
+    {
+        if (!$this->session->userdata('username')) {
+            redirect('auth');
+        }
+        //       
+        $data["sales_report_material"] = $this->Model_report->sales_report_detail_material($periode_dari_mt, $periode_sampai_mt, $id_customer_mt, $shipp_mt, $type_mt, $curr_mt, $type_so_mt);
+        $data["periode_dari_mt"] = $periode_dari_mt;
+        $data["periode_sampai_mt"] = $periode_sampai_mt;
+        $data["id_customer_mt"] = $id_customer_mt;
+        $data["shipp_mt"] = $shipp_mt;
+        $data["type_mt"] = $type_mt;
+        $data["curr_mt"] = $curr_mt;
+        $data["type_so_mt"] = $type_so_mt;
+        //
+        $this->load->view('arnag/report/export_sales_report_detail_material', $data);
     }
 
 }
