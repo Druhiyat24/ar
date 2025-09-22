@@ -2840,11 +2840,17 @@ function cari_view_alokasi($no_kwt)
 
 function report_alokasi_detail($id)
 {
-    $hasil = $this->db->query("SELECT a.no_alk, a.coa,IFNULL(c.nama_coa,'-') as coa_name, a.cost_center, IFNULL(d.cost_name,'-') as cost_name, a.no_ref, a.ref_date, a.due_date, b.curr, if(b.curr = 'IDR',format(a.total, 2), format(a.total, 2)) as total, format(a.eqp_idr,2) as eqp_idr,format(a.amount, 2) as amount,format(round(a.total,2) - round(a.amount, 2),2) as ost, a.keterangan,e.supplier,if(b.rate = '0','-',b.rate) as rate from tbl_alokasi_detail a left join 
+    // $hasil = $this->db->query("SELECT a.no_alk, a.coa,IFNULL(c.nama_coa,'-') as coa_name, a.cost_center, IFNULL(d.cost_name,'-') as cost_name, a.no_ref, a.ref_date, a.due_date, b.curr, if(b.curr = 'IDR',format(a.total, 2), format(a.total, 2)) as total, format(a.eqp_idr,2) as eqp_idr,format(a.amount, 2) as amount,format(round(a.total,2) - round(a.amount, 2),2) as ost, a.keterangan,e.supplier,if(b.rate = '0','-',b.rate) as rate from tbl_alokasi_detail a left join 
+    //    mastercoa_v2 c on a.coa=c.no_coa LEFT JOIN 
+    //    tbl_alokasi b on a.no_alk = b.no_alk left join
+    //    mastersupplier AS e ON b.customer = e.id_supplier left join
+    //    tbl_cost_center d on a.cost_center = d.code_cost where b.id = '$id' GROUP BY a.id ");
+
+    $hasil = $this->db->query("SELECT a.no_alk, a.coa,IFNULL(c.nama_coa,'-') as coa_name, a.cost_center, IFNULL(CONCAT(d.no_cc,' - ',d.cc_name),'-') as cost_name, a.no_ref, a.ref_date, a.due_date, b.curr, if(b.curr = 'IDR',format(a.total, 2), format(a.total, 2)) as total, format(a.eqp_idr,2) as eqp_idr,format(a.amount, 2) as amount,format(round(a.total,2) - round(a.amount, 2),2) as ost, a.keterangan,e.supplier,if(b.rate = '0','-',b.rate) as rate from tbl_alokasi_detail a left join 
        mastercoa_v2 c on a.coa=c.no_coa LEFT JOIN 
        tbl_alokasi b on a.no_alk = b.no_alk left join
        mastersupplier AS e ON b.customer = e.id_supplier left join
-       tbl_cost_center d on a.cost_center = d.code_cost where b.id = '$id' GROUP BY a.id ");
+       b_master_cc d on a.cost_center = d.no_cc where b.id = '$id' GROUP BY a.id ");
     return $hasil->result_array();
 }
 
