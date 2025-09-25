@@ -2118,7 +2118,7 @@ public function create_alokasi()
     $data['title'] = 'Alokasi';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['customer'] = $this->Model_nag->cari_customer();
-    $data['cost_center'] = $this->Model_nag->cari_cost();
+    $data['cost_center'] = $this->Model_nag->cari_cost2();
     $data['profit_center'] = $this->Model_nag->cari_profit_center();
     $data['coa'] = $this->Model_nag->cari_coa();
     $data['kode_alokasi'] = $this->Model_nag->get_kode_alokasi();
