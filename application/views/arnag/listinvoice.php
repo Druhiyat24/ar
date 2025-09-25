@@ -154,7 +154,7 @@
                 <div class="modal-footer justify-content-between">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
                     <?php $data = $user['username'];
-                    if ($data == 'willy' || $data == 'frisca' || $data == 'hady' || $data == 'hadi' || $data == 'jefri' || $data == 'ramon' || $data == 'lukman') 
+                    if ($data == 'willy' || $data == 'frisca' || $data == 'hady' || $data == 'hadi' || $data == 'jefri' || $data == 'ramon' || $data == 'lukman' || $data == 'faras') 
                     {
                         echo '<button type="submit" class="btn btn-primary toastsDefaultDanger">Cancel Invoice</button>';
                     } else {
