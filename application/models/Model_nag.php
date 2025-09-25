@@ -2401,7 +2401,7 @@ function cari_cost()
 
 function cari_cost2()
 {
-    $hasil = $this->db->query("SELECT id, no_cc as code_cost, CONCAT(no_cc,' - ',cc_name) cc_name as cost_name from b_master_cc where status = 'Active' ");
+    $hasil = $this->db->query("SELECT id, no_cc as code_cost, CONCAT(no_cc,' - ',cc_name) as cost_name from b_master_cc where status = 'Active' ");
     return $hasil->result_array();
 }
 
