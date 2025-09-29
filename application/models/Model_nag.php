@@ -3330,7 +3330,8 @@ function cari_summary_ar($dt_dari_alk, $dt_sampai_alk, $id_cus)
     if ($id_cus == "all_customer") {
 
        $hasil = $this->db->query("SELECT shipp,id_customer,customer, curr, IF(curr = 'USD',sum(total),0) foreign_curr, sum(eqv_idr) eqv_idr, SUM(not_due) not_due, SUM(amt_aging_1) amt_aging_1, SUM(amt_aging_2) amt_aging_2, SUM(amt_aging_3) amt_aging_3, SUM(amt_aging_4) amt_aging_4, SUM(amt_aging_5) amt_aging_5, SUM(amt_aging_6) amt_aging_6, SUM(amt_aging_7) amt_aging_7, SUM(tot_aging) tot_aging, SUM(ready_due) ready_due, SUM(jml_bln1) jml_bln1, SUM(jml_bln2) jml_bln2, SUM(jml_bln3) jml_bln3, SUM(jml_bln4) jml_bln4, SUM(jml_bln5) jml_bln5, SUM(jml_bln6) jml_bln6,SUM(tot_aging2) tot_aging2 from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, rate, sal_awal,tambah,bayar, total, eqv_idr, IF(diff_top <= 0,eqv_idr,0) not_due, IF(diff_top > 0 AND diff_top <= 30,eqv_idr,0) amt_aging_1, IF(diff_top > 30 AND diff_top <= 60,eqv_idr,0) amt_aging_2, IF(diff_top > 60 AND diff_top <= 90,eqv_idr,0) amt_aging_3, IF(diff_top > 90 AND diff_top <= 120,eqv_idr,0) amt_aging_4, IF(diff_top > 120 AND diff_top <= 180,eqv_idr,0) amt_aging_5, IF(diff_top > 180 AND diff_top <= 360,eqv_idr,0) amt_aging_6, IF(diff_top > 360,eqv_idr,0) amt_aging_7,eqv_idr tot_aging,IF(duedate <= '$dt_sampai_alk',eqv_idr,0) ready_due, IF(jml_bln1 > 0 AND duedate > '$dt_sampai_alk',eqv_idr,0) jml_bln1, IF(jml_bln2 > 0,eqv_idr,0) jml_bln2, IF(jml_bln3 > 0,eqv_idr,0) jml_bln3, IF(jml_bln4 > 0,eqv_idr,0) jml_bln4, IF(jml_bln5 > 0,eqv_idr,0) jml_bln5, IF(jml_bln6 > 0,eqv_idr,0) jml_bln6, eqv_idr tot_aging2, id_customer from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, rate, sal_awal,tambah,bayar, ((sal_awal + tambah) - bayar) total, (if(((sal_awal + tambah) - bayar) >= 0.1,((sal_awal + tambah) - bayar),0) * rate) eqv_idr,ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6,diff_top,id_customer  from (SELECT customer, no_invoice, inv_date, shipp, duedate, top, curr, IF(curr = 'USD',rate,'1') rate, IF(inv_date >= '$dt_sampai_alk','0',(COALESCE(amount1,0)) - COALESCE(bayar2,0)) sal_awal, IF(inv_date >= '$dt_sampai_alk',(COALESCE(amount1,0)) - COALESCE(bayar2,0),'0') tambah, bayar,ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6, diff_top,id_customer from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,coalesce(bayar,0) bayar,no_invoice2,bayar2,rate,shipp, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,'0') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,'0') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,'0') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,'0') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,'0') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,'0') jml_bln6 from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due from (SELECT no_invoice,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp,DATEDIFF('$dt_sampai_alk',duedate) diff_top, DATE_FORMAT(duedate,'%m') bln_due, DATE_FORMAT(duedate,'%Y') thn_due,DATE_FORMAT('$dt_sampai_alk','%m') fil_bln1,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT('$dt_sampai_alk','%m') + 5,2,0) fil_bln6, DATE_FORMAT('$dt_sampai_alk','%Y') fil_thn, IF(duedate <= '$dt_sampai_alk',amount1,0) ready_due from 
-        (SELECT distinct a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer,a.sj_date inv_date,a.sj_date tgl_inv, b.Id_Supplier AS id_customer, a.curr,f.top,
+        (                                           
+SELECT distinct a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer,a.sj_date inv_date,a.sj_date tgl_inv, b.Id_Supplier AS id_customer, a.curr,f.top,
             FORMAT((d.grand_total), 2) AS amount, if(a.curr = 'IDR',round((d.grand_total),0),round((d.grand_total), 2)) AS amount1,if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.sj_date, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(h.kontrabon_date, INTERVAL f.top DAY)) AS duedate,a.shipp
             FROM  tbl_book_invoice AS a INNER JOIN 
             mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
@@ -3339,7 +3340,18 @@ function cari_summary_ar($dt_dari_alk, $dt_sampai_alk, $id_cus)
             tbl_master_top AS f ON a.id_top = f.id left join 
             tbl_duedate AS h ON a.id = h.id_invoice left join
             saldoawal_ar as g on g.no_invoice = a.no_invoice
-            where g.no_invoice is null and a.sj_date between '2022-05-01' and '$dt_sampai_alk'
+            where g.no_invoice is null and a.sj_date between '2022-05-01' and '$dt_sampai_alk' and a.profit_center = 'NAG'
+                        UNION
+                        SELECT distinct a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer,a.sj_date inv_date,a.sj_date tgl_inv, b.Id_Supplier AS id_customer, a.curr,f.top,
+            FORMAT((d.grand_total), 2) AS amount, if(a.curr = 'IDR',round((d.grand_total),0),round((d.grand_total), 2)) AS amount1,if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.sj_date, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(h.kontrabon_date, INTERVAL f.top DAY)) AS duedate,a.shipp
+            FROM  tbl_book_invoice AS a INNER JOIN 
+            mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
+            tbl_type AS c ON a.id_type = c.id_type INNER JOIN
+            tbl_invoice_pot_knitting AS d ON a.id = d.id_book_invoice INNER JOIN
+            tbl_master_top AS f ON a.id_top = f.id left join 
+            tbl_duedate AS h ON a.id = h.id_invoice left join
+            saldoawal_ar as g on g.no_invoice = a.no_invoice
+            where g.no_invoice is null and a.sj_date between '2022-05-01' and '$dt_sampai_alk' and a.profit_center = 'NAK'
             union
             SELECT distinct a.no_inv AS no_invoice, UPPER(b.supplier) AS customer,DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date,DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS tgl_inv, b.Id_Supplier AS id_customer, e.curr,a.top,
             FORMAT((d.grand_total), 2) AS amount, if(e.curr = 'IDR',round((d.grand_total),0),round((d.grand_total), 2)) AS amount1, if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(e.sj_date, '%Y-%m-%d'), INTERVAL a.top DAY) ,DATE_ADD(DATE_FORMAT(h.kontrabon_date, '%Y-%m-%d'), INTERVAL a.top DAY)) AS duedate,a.shipp
@@ -3369,7 +3381,20 @@ return $hasil->result_array();
             tbl_master_top AS f ON a.id_top = f.id left join 
             tbl_duedate AS h ON a.id = h.id_invoice left join
             saldoawal_ar as g on g.no_invoice = a.no_invoice
-            where g.no_invoice is null and a.sj_date between '2022-05-01' and '$dt_sampai_alk' and a.id_customer = '$id_cus'                                    
+            where g.no_invoice is null and a.sj_date between '2022-05-01' and '$dt_sampai_alk' and a.profit_center = 'NAG' and a.id_customer = '$id_cus'                                    
+
+            union
+
+            SELECT distinct a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer,a.sj_date inv_date,a.sj_date tgl_inv, b.Id_Supplier AS id_customer, a.curr,f.top,
+            FORMAT((d.grand_total), 2) AS amount, if(a.curr = 'IDR',round((d.grand_total),0),round((d.grand_total), 2)) AS amount1,if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.sj_date, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(h.kontrabon_date, INTERVAL f.top DAY)) AS duedate,a.shipp
+            FROM  tbl_book_invoice AS a INNER JOIN 
+            mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
+            tbl_type AS c ON a.id_type = c.id_type INNER JOIN
+            tbl_invoice_pot_knitting AS d ON a.id = d.id_book_invoice INNER JOIN
+            tbl_master_top AS f ON a.id_top = f.id left join 
+            tbl_duedate AS h ON a.id = h.id_invoice left join
+            saldoawal_ar as g on g.no_invoice = a.no_invoice
+            where g.no_invoice is null and a.sj_date between '2022-05-01' and '$dt_sampai_alk' and a.profit_center = 'NAK' and a.id_customer = '$id_cus'                                    
 
             union
 
