@@ -10330,7 +10330,7 @@ function cari_kartu_ar() {
 		var bulan_6 =  months[bulan6]; 		
 
 		$.ajax({		
-			url: "cari_summary_ar/" + dt_dari_inv + "/" + dt_sampai_inv + "/" + id_cus + "/",					
+			url: "cari_summary_ar_new/" + dt_dari_inv + "/" + dt_sampai_inv + "/" + id_cus + "/",					
 			type: "GET",
 			dataType: "JSON",
 			success: function (response) {
@@ -10469,7 +10469,7 @@ function cari_kartu_ar() {
 
 
 $.ajax({		
-	url: "cari_summary_ar/" + dt_dari_inv + "/" + dt_sampai_inv + "/" + id_cus + "/",					
+	url: "cari_summary_ar_new/" + dt_dari_inv + "/" + dt_sampai_inv + "/" + id_cus + "/",					
 	type: "GET",
 	dataType: "JSON",
 	success: function (response) {
@@ -10602,7 +10602,7 @@ $.ajax({
 
 
 $.ajax({		
-	url: "cari_summary_ar/" + dt_dari_inv + "/" + dt_sampai_inv + "/" + id_cus + "/",					
+	url: "cari_summary_ar_new/" + dt_dari_inv + "/" + dt_sampai_inv + "/" + id_cus + "/",					
 	type: "GET",
 	dataType: "JSON",
 	success: function (response) {

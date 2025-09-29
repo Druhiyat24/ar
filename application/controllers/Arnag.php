@@ -2828,6 +2828,12 @@ public function cari_summary_ar($dt_dari_alk, $dt_sampai_alk, $id_cus)
     echo json_encode($data);
 }
 
+public function cari_summary_ar_new($dt_dari_alk, $dt_sampai_alk, $id_cus)
+{
+    $data =  $this->Model_nag->cari_summary_ar_new($dt_dari_alk, $dt_sampai_alk, $id_cus);
+    echo json_encode($data);
+}
+
 public function cari_summary_dn($dt_dari_alk, $dt_sampai_alk, $id_cus)
 {
     $data =  $this->Model_nag->cari_summary_dn($dt_dari_alk, $dt_sampai_alk, $id_cus);
@@ -2847,7 +2853,7 @@ public function export_excel_kartu_ar($dt_dari_inv, $dt_sampai_inv, $id_customer
         redirect('auth');
     }
         //       
-    $data["data_sales"] = $this->Model_nag->cari_summary_ar($dt_dari_inv, $dt_sampai_inv, $id_customer);
+    $data["data_sales"] = $this->Model_nag->cari_summary_ar_new($dt_dari_inv, $dt_sampai_inv, $id_customer);
     $data["data_debitnote"] = $this->Model_nag->cari_summary_dn($dt_dari_inv, $dt_sampai_inv, $id_customer);
     $data["periode_dari"] = $dt_dari_inv;
     $data["periode_sampai"] = $dt_sampai_inv;
