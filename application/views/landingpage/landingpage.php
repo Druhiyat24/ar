@@ -17,6 +17,9 @@
                 <div class="col-sm-3">
                     <form id="filterForm" method="get" action="<?= base_url('landingpage'); ?>" class="form-inline justify-content-end">
                         <select class="form-control select2bs4" id="dsb_pc" name="dsb_pc" onchange="this.form.submit()">
+                            <?php if ($user['username'] == 'hanum') { ?>
+                                <option value="NAK" <?= ($selected_pc == 'ALL' ? 'selected' : '') ?>>NIRWANA ALABARE KNITTING</option>
+                            <?php } else{ ?>
                             <option value="" disabled <?= empty($selected_pc) ? 'selected' : ''; ?>>Pilih Profit Center</option>
                             <option value="ALL" <?= ($selected_pc == 'ALL' ? 'selected' : '') ?>>ALL</option>
                             <?php foreach ($profit_center as $pc) : ?>
@@ -24,6 +27,7 @@
                                     <?= $pc['nama_pc']; ?>
                                 </option>
                             <?php endforeach; ?>
+                        <?php } ?>
                         </select>
 
                     </form>
