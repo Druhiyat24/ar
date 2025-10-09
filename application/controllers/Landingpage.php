@@ -271,6 +271,7 @@ class Landingpage extends CI_Controller
         $bulan = $this->input->post("bulan");
         $filter = $this->input->post("selected_pc");
         $data['events'] = $this->Model_nag->load_det_sales5($customer,$bulan, $filter);
+        $data['filter'] = $filter;
         $this->load->view('arnag/datamodal_sales5',$data);
     }
 
@@ -279,6 +280,7 @@ class Landingpage extends CI_Controller
         $bulan = $this->input->post("event_id");
         $filter = $this->input->post('selected_pc');
         $data['events'] = $this->Model_nag->load_det_motm($bulan, $filter);
+        $data['filter'] = $filter;
         $this->load->view('arnag/datamodal_motm',$data);
     }
 
