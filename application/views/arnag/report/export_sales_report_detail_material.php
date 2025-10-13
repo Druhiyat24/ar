@@ -205,17 +205,6 @@ CSS HEADER
             <td style="text-align:right"><?= number_format($sr['vat_bill'],2); ?></td>
             <td style="text-align:right"><?= number_format($sr['total_bill'],2); ?></td>
 
-            <td style="text-align:right"><?= number_format($sr['qty_ship'],2); ?></td>
-            <td><?= $sr['uom_ship']; ?></td>
-            <td style="text-align:right"><?= number_format($sr['price_ship'],2); ?></td>
-            <td style="text-align:right"><?= number_format($sr['gross_ship'],2); ?></td>
-            <td style="text-align:right"><?= number_format($sr['other_ship'],2); ?></td>
-            <td style="text-align:right"><?= number_format($sr['diskon_ship'],2); ?></td>
-            <td style="text-align:right"><?= number_format($sr['net_ship'],2); ?></td>
-            <td style="text-align:right"><?= number_format($sr['dp_ship'],2); ?></td>
-            <td style="text-align:right"><?= number_format($sr['vat_ship'],2); ?></td>
-            <td style="text-align:right"><?= number_format($sr['total_ship'],2); ?></td>
-
             <td style="text-align:right"><?= number_format($sr['qty_bill'],2); ?></td>
             <td><?= $sr['uom_bill']; ?></td>
             <td style="text-align:right"><?= number_format($sr['price_bill_idr'],2); ?></td>
@@ -226,6 +215,17 @@ CSS HEADER
             <td style="text-align:right"><?= number_format($sr['dp_bill_idr'],2); ?></td>
             <td style="text-align:right"><?= number_format($sr['vat_bill_idr'],2); ?></td>
             <td style="text-align:right"><?= number_format($sr['total_bill_idr'],2); ?></td>
+
+            <td style="text-align:right"><?= number_format($sr['qty_ship'],2); ?></td>
+            <td><?= $sr['uom_ship']; ?></td>
+            <td style="text-align:right"><?= number_format($sr['price_ship'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['gross_ship'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['other_ship'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['diskon_ship'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['net_ship'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['dp_ship'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['vat_ship'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['total_ship'],2); ?></td>
 
             <td style="text-align:right"><?= number_format($sr['qty_ship'],2); ?></td>
             <td><?= $sr['uom_ship']; ?></td>
