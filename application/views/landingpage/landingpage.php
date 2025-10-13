@@ -538,7 +538,11 @@
                                 <?php endforeach; ?>
                                 <tr>
                                     <th style="text-align: left;font-size: 1rem;" scope="col">Total :</th>
-                                    <th style="text-align: right;font-size: 0.9rem;" scope="col"><?= number_format($ttl_qty,2); ?> PCS</th>
+                                    <th style="text-align: right;font-size: 0.9rem;" scope="col"><?= number_format($ttl_qty,2); ?> <?php if ($selected_pc == 'NAK') {
+                                        echo 'Kilogram';
+                                    }else{
+                                        echo 'PCS';
+                                    } ?></th>
                                     <th style="text-align: right;font-size: 0.9rem;" scope="col"></th>
                                     <th style="text-align: right;font-size: 0.9rem;" scope="col">IDR <?= number_format($ttl_total,2); ?></th>
                                 </tr>
@@ -591,7 +595,11 @@
                                 <?php endforeach; ?>
                                 <tr>
                                     <th style="text-align: left;font-size: 1rem;" scope="col">Total :</th>
-                                    <th style="text-align: right;font-size: 0.9rem;" scope="col"><?= number_format($ttl_qty,2); ?> PCS</th>
+                                    <th style="text-align: right;font-size: 0.9rem;" scope="col"><?= number_format($ttl_qty,2); ?> <?php if ($selected_pc == 'NAK') {
+                                        echo 'Kilogram';
+                                    }else{
+                                        echo 'PCS';
+                                    } ?></th>
                                     <th style="text-align: right;font-size: 0.9rem;" scope="col"></th>
                                     <th style="text-align: right;font-size: 0.9rem;" scope="col">IDR <?= number_format($ttl_total,2); ?></th>
                                 </tr>
@@ -645,7 +653,11 @@
                                 <?php endforeach; ?>
                                 <tr>
                                     <th style="text-align: left;font-size: 1rem;" scope="col">Total :</th>
-                                    <th style="text-align: right;font-size: 0.9rem;" scope="col"><?= number_format($ttl_qty,2); ?> PCS</th>
+                                    <th style="text-align: right;font-size: 0.9rem;" scope="col"><?= number_format($ttl_qty,2); ?> <?php if ($selected_pc == 'NAK') {
+                                        echo 'Kilogram';
+                                    }else{
+                                        echo 'PCS';
+                                    } ?></th>
                                     <th style="text-align: right;font-size: 0.9rem;" scope="col"></th>
                                     <th style="text-align: right;font-size: 0.9rem;" scope="col">IDR <?= number_format($ttl_total,2); ?></th>
                                 </tr>
