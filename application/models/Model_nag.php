@@ -4792,6 +4792,11 @@ function approve_doc_reverse($id)
         SET a.status = 'POST'
         where b.rvs_number = '$rvs_number' ");
 
+    $update_rqdn = $this->db->query("UPDATE req_dn_h a
+        INNER JOIN tbl_reverse_det b ON b.doc_number = a.no_dn
+        SET a.no_dn = null
+        where b.rvs_number = '$rvs_number' ");
+
     $update_invoice = $this->db->query("UPDATE tbl_book_invoice a
         INNER JOIN tbl_reverse_det b ON b.doc_number = a.no_invoice
         SET a.status = 'POST'
