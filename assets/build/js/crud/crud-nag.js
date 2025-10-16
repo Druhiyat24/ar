@@ -571,7 +571,7 @@ function cari_bi() {
 		  //
 		  document.getElementById("inv_number1").value = no_inv;
 		  document.getElementById("profit_ctr_h").value = profit_center;
-		  document.getElementById("cust").value = cust;
+		  document.getElementById("cust").value = cust.replace(/&amp;/g, "&");;
 		  document.getElementById("shipp").value = shipp;
 		  document.getElementById("doc_type").value = doc_type;
 		  document.getElementById("doc_number").value = doc_number;
