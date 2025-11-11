@@ -764,7 +764,7 @@ $tot_sumaging2_d = 0;
             <th colspan="8"></th>
         </tr>
         <tr>
-                <th colspan="3" align="center">Total Other Receivable</th>
+                <th colspan="3" align="center">Grand Total Receivable</th>
                 <th style="text-align: right;">'.number_format(($tot_eqv_c + $tot_eqv_d + $tot_eqv_a + $tot_eqv_b),2).'</th>
                 <th align="center"></th>
                 <th style="border-top: none;border-bottom: none;"></th>

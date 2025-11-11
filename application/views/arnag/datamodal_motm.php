@@ -11,6 +11,7 @@
         <?php $i = 1; 
         $jml = 0;
         $jml2 = 0; 
+        $filter = isset($filter) ? $filter : '';
         if ($filter == 'NAG') {
             $satuan = 'PCS';
         } elseif ($filter == 'NAK') {

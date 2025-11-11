@@ -278,7 +278,7 @@ class Landingpage extends CI_Controller
     public function load_det_motm()
     {
         $bulan = $this->input->post("event_id");
-        $filter = $this->input->post('selected_pc');
+        $filter = $this->input->post('selected_pc') ?? 'ALL';
         $data['events'] = $this->Model_nag->load_det_motm($bulan, $filter);
         $data['filter'] = $filter;
         $this->load->view('arnag/datamodal_motm',$data);
