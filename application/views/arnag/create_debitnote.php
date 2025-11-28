@@ -830,69 +830,67 @@
 
 <script type="text/javascript">
     var tampung = [];
-    function getdata_reqdn(val){
 
-        let array = $('#no_req').val();
-        $('select option').on('mousedown', function (e) {
-            this.selected = !this.selected;
-            alert(this.selected = !this.selected);
-            e.preventDefault();
-        });
-        let text1 = "";
-        let kodenya = text1.concat(array, "");
-        let kode_req = kodenya.toString();
-        let no_req = kode_req.replace(/,/g,"','");
-        console.log(no_req);
-                //
-                $.ajax({                        
-                    url: "cari_list_reqdn/",      
-                    type: "POST",   
-                    data: {
-                        no_req: no_req,
-                    },   
-                    dataType: "JSON",
-                    success: function (response) {
-                // console.log(response,tampung);
+function getdata_reqdn(val){
 
-                var trHTML = '';
-                $.each(response, function (i, item) {
-                    if (!tampung.includes(item.id)) {
-                     console.log(tampung.includes(item.id),item.id); 
-                     trHTML += '<tr>';       
-                     trHTML += '<td><input style="width: 300px;word-wrap: break-word;" type="text" class="form-control" name="inputan0" value="'+ item.itemdesc +'" placeholder="" autocomplete="off">';     
-                     trHTML += '<td><input style="width: 250px;" class="form-control" value="'+ item.nama_supp +'" list="supp" name="supp"> <datalist id="supp"><option value="'+ item.nama_supp +'">'+ nama_supp.supplier +'</option></datalist></td>';
-                     trHTML += '<td><input style="width: 200px" type="text" class="form-control" name="inputan2" value="" placeholder="" autocomplete="off"></td>';
-                     trHTML += '<td><input style="width: 200px" type="text" class="form-control" id="inputan3" name="inputan3" value="'+ item.no_po +'" placeholder="" autocomplete="off" readonly></td>';
-                     trHTML += '<td><input style="width: 200px" type="text" class="form-control" id="inputan4" name="inputan4" value="'+ item.header2 +'" placeholder="" autocomplete="off" readonly></td>';
-                     trHTML += '<td><input style="width: 200px" type="text" class="form-control" id="inputan5" name="inputan5" value="'+ item.header3 +'" placeholder="" autocomplete="off" readonly></td>';
-                     trHTML += '<td><input  type="text" class="form-control" id="amt" name="amt" value="'+ item.total +'" style="text-align:right; width: 150px;" oninput="modal_input_amt_dn(value)" autocomplete="off"></td>';
-                     trHTML += '<td><input  type="text" class="form-control" id="amt_rate" name="amt_rate" style="text-align:right; width: 150px;" value="1" onkeypress="javascript:return isNumber(event)" oninput="modal_input_rate_dn(value)" autocomplete="off"></td>';                                                              
-                     trHTML += '<td ><input style="width: 150px;text-align: right;" type="text" class="form-control" name="inputan8" value="'+ item.total +'" placeholder="" autocomplete="off" readonly></td>';
-                     trHTML += '<td><input style="width: 250px;" class="form-control" value="1.34.05" list="nm_coa" name="nm_coa"></td>';       
-                     trHTML += '<td><input name="chk_a[]" type="checkbox" class="checkall_a" value=""/></td>';                                           
-                     trHTML += '<td hidden><input type="checkbox" name="id_memo_det" id="id_memo_det" class="flat" value = "" checked></td>';
-                     trHTML += '<td hidden><input style="width: 200px" type="text" class="form-control" name="text" value="'+ item.no_bpb +'" placeholder="" autocomplete="off"></td>';
-                     trHTML += '<td hidden><input style="width: 200px" type="text" class="form-control" name="text" value="" placeholder="" autocomplete="off"></td>';
-                     trHTML += '</tr>';
-                     tampung.push(item.id);
-                 }
+    let array = $('#no_req').val();
 
-             });
-                // console.log(tampung,trHTML);
-                $('#tbody2').append(trHTML);     
-                modal_input_amt_dn();
+    $('select option').on('mousedown', function (e) {
+        this.selected = !this.selected;
+        e.preventDefault();
+    });
 
-            },
-            error: function (jqXHR, textStatus, errorThrown) {
-                msg = 'Error Update Invoice Header' + jqXHR.text
-            }
-        });     
-                //
-                // $('#modal-approve-invoice-manual').modal('hide');
-                // console.log(id_inv);  
-                // window.location.reload();
-                // cari_invoice_post();
-            }
+    let no_req = array.toString().replace(/,/g,"','");
+
+    $.ajax({                        
+        url: "cari_list_reqdn/",      
+        type: "POST",   
+        data: {
+            no_req: no_req,
+        },   
+        dataType: "JSON",
+        success: function (response) {
+
+            // 🔥 CLEAR DULU SEBELUM MASUKIN DATA BARU
+            $('#tbody2').empty();
+            tampung = [];   // reset detector duplikasi
+
+            var trHTML = '';
+
+            $.each(response, function (i, item) {
+
+                if (!tampung.includes(item.id)) {
+
+                    trHTML += '<tr>';       
+                    trHTML += '<td><input style="width:300px" type="text" class="form-control" name="inputan0" value="'+ item.itemdesc +'"></td>';     
+                    trHTML += '<td><input style="width:250px;" class="form-control" value="'+ item.nama_supp +'" list="supp" name="supp"></td>';
+                    trHTML += '<td><input style="width:200px" type="text" class="form-control" name="inputan2"></td>';
+                    trHTML += '<td><input style="width:200px" type="text" class="form-control" id="inputan3" name="inputan3" value="'+ item.no_po +'" readonly></td>';
+                    trHTML += '<td><input style="width:200px" type="text" class="form-control" id="inputan4" name="inputan4" value="'+ item.header2 +'" readonly></td>';
+                    trHTML += '<td><input style="width:200px;" type="text" class="form-control" id="inputan5" name="inputan5" value="'+ item.header3 +'" readonly></td>';
+                    trHTML += '<td><input type="text" class="form-control" id="amt" name="amt" value="'+ item.total +'" style="text-align:right;width:150px;" oninput="modal_input_amt_dn(value)"></td>';
+                    trHTML += '<td><input type="text" class="form-control" id="amt_rate" name="amt_rate" value="1" style="text-align:right;width:150px;" oninput="modal_input_rate_dn(value)"></td>';                                                              
+                    trHTML += '<td><input style="width:150px;text-align:right;" type="text" class="form-control" name="inputan8" value="'+ item.total +'" readonly></td>';
+                    trHTML += '<td><input style="width:250px;" class="form-control" value="1.34.05" list="nm_coa" name="nm_coa"></td>';       
+                    trHTML += '<td><input name="chk_a[]" type="checkbox" class="checkall_a"></td>';                                           
+                    trHTML += '<td hidden><input type="checkbox" name="id_memo_det" value="" checked></td>';
+                    trHTML += '<td hidden><input type="text" class="form-control" value="'+ item.no_bpb +'"></td>';
+                    trHTML += '<td hidden><input type="text" class="form-control" value=""></td>';
+                    trHTML += '</tr>';
+
+                    tampung.push(item.id);
+                }
+            });
+
+            $('#tbody2').append(trHTML);
+            modal_input_amt_dn();
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.log("Error Update Invoice Header", jqXHR.text);
+        }
+    });     
+}
+
 
    // JavaScript Document
    function addRow(tableID) {

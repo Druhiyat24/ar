@@ -633,7 +633,7 @@ function add_no_bi() {
 		  //
 		  ubahnomor_alo(date);
 		  document.getElementById("alo_date").value = date;
-		  document.getElementById("cust").value = cust;
+		  document.getElementById("cust").value = cust.replace(/&amp;/g, "&");
 		  document.getElementById("customer").value = id_cust;
 		  document.getElementById("doc_number").value = no_bi;
 		  document.getElementById("id_bank").value = id_bank;
@@ -8776,7 +8776,7 @@ function modal_input_amt_dn(){
 	var totall = 0;
 	var hasilkali = 0;
 	var rate_idr = 1;
-	for (var i = 2; i < (table.rows.length); i++) {
+	for (var i = 1; i < (table.rows.length); i++) {
 
 		var price = document.getElementById("table-dn").rows[i].cells[6].children[0].value || 0;
 		var rate = document.getElementById("table-dn").rows[i].cells[7].children[0].value;
@@ -8812,7 +8812,7 @@ function hitungRow(){
 	var totall = 0;
 	var hasilkali = 0;
 	var rate_idr = 1;
-	for (var i = 2; i < (table.rows.length); i++) {
+	for (var i = 1; i < (table.rows.length); i++) {
 
 		var price = document.getElementById("table-dn").rows[i].cells[6].children[0].value || 0;
 		var rate = document.getElementById("table-dn").rows[i].cells[7].children[0].value;
@@ -8846,7 +8846,7 @@ function modal_input_rate_dn(){
 	var totall = 0;
 	var hasilkali = 0;
 	var rate_idr = 1;
-	for (var i = 2; i < (table.rows.length); i++) {
+	for (var i = 1; i < (table.rows.length); i++) {
 
 		var price = document.getElementById("table-dn").rows[i].cells[6].children[0].value || 0;
 		var rate = document.getElementById("table-dn").rows[i].cells[7].children[0].value;
