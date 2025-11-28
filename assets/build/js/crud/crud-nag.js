@@ -9965,7 +9965,7 @@ function simpandn_det()
 			var data = [];		
 
 			var table = document.getElementById("table-dn");
-			for (var i = 2; i < (table.rows.length); i++) {
+			for (var i = 1; i < (table.rows.length); i++) {
 
 				var deskripsi = document.getElementById("table-dn").rows[i].cells[0].children[0].value;
 				var supplier = document.getElementById("table-dn").rows[i].cells[1].children[0].value;
