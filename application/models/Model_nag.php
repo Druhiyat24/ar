@@ -6,7 +6,7 @@ class Model_nag extends CI_Model
 {
     function cari_customer()
     {
-        $hasil = $this->db->query("SELECT DISTINCT alamat,Id_Supplier, UPPER(Supplier) As Supplier FROM mastersupplier WHERE tipe_sup = 'C' and id_supplier != '1006' order by supplier asc");
+        $hasil = $this->db->query("SELECT DISTINCT alamat,Id_Supplier, UPPER(Supplier) As Supplier FROM mastersupplier WHERE tipe_sup = 'C' and id_supplier NOT IN ('1006','2048') order by supplier asc");
         return $hasil->result_array();
     }
 
@@ -1583,7 +1583,7 @@ function report_debit_note_det_memo($id)
         SELECT b.id,a.id as id_det, a.deskripsi, a.supplier, a.supplier_invoice,SPLIT_STRING(a.header1,',',48) header1, SPLIT_STRING(a.header2,',',48) header2, SPLIT_STRING(a.header3,',',48) header3, Round(a.value,2) as amount, Round(a.rate,2) as rate, Round(a.amount,2) as amount2 ,48 as nomor FROM tbl_debitnote_det AS a INNER JOIN tbl_debitnote_h AS b ON a.no_dn = b.no_dn union
         SELECT b.id,a.id as id_det, a.deskripsi, a.supplier, a.supplier_invoice,SPLIT_STRING(a.header1,',',49) header1, SPLIT_STRING(a.header2,',',49) header2, SPLIT_STRING(a.header3,',',49) header3, Round(a.value,2) as amount, Round(a.rate,2) as rate, Round(a.amount,2) as amount2 ,49 as nomor FROM tbl_debitnote_det AS a INNER JOIN tbl_debitnote_h AS b ON a.no_dn = b.no_dn union
         SELECT b.id,a.id as id_det, a.deskripsi, a.supplier, a.supplier_invoice,SPLIT_STRING(a.header1,',',50) header1, SPLIT_STRING(a.header2,',',50) header2, SPLIT_STRING(a.header3,',',50) header3, Round(a.value,2) as amount, Round(a.rate,2) as rate, Round(a.amount,2) as amount2 ,50 as nomor FROM tbl_debitnote_det AS a INNER JOIN tbl_debitnote_h AS b ON a.no_dn = b.no_dn) b ) c where c.id = '$id' GROUP BY c.id_det ORDER BY c.id_det,c.supplier_invoice asc) a GROUP BY supplier_invoice) a left JOIN
-(select b.id iddn,a.supplier_invoice,a.no_dn,a.deskripsi from tbl_debitnote_det a inner join tbl_debitnote_h b on b.no_dn = a.no_dn where deskripsi != '' GROUP BY a.supplier_invoice,b.id) b on b.supplier_invoice = a.supplier_invoice and b.iddn = a.id");
+(select b.id iddn,a.supplier_invoice,a.no_dn,a.deskripsi from tbl_debitnote_det a inner join tbl_debitnote_h b on b.no_dn = a.no_dn where deskripsi != '' GROUP BY a.supplier_invoice,b.id) b on b.supplier_invoice = a.supplier_invoice and b.iddn = a.id where amount2 != 0");
 return $hasil->result_array();
 }
 
@@ -3981,7 +3981,7 @@ function cari_filter_ar()
 
 function cari_bulan_ar()
 {
-    $hasil = $this->db->query("SELECT bulan_text,nama_bulan from dim_date where tahun = '2025' GROUP BY bulan_text ");
+    $hasil = $this->db->query("SELECT bulan_text,nama_bulan from dim_date where tahun = YEAR(CURDATE()) GROUP BY bulan_text ");
     return $hasil->result_array();
 }
 
@@ -4210,14 +4210,14 @@ function update_nofg($id)
 function cari_sales_ytd_mtm($filter)
 {
     if ($filter == 'NAG') {
-        $where = "select * from tbl_data_sales where tahun = '2025'";
+        $where = "select * from tbl_data_sales where tahun = YEAR(CURDATE())";
     }elseif ($filter == 'NAK') {
-        $where = "select * from tbl_data_sales_knitting where tahun = '2025'";
+        $where = "select * from tbl_data_sales_knitting where tahun = YEAR(CURDATE())";
     }else{
-        $where = "select * from tbl_data_sales where tahun = '2025' UNION select * from tbl_data_sales_knitting where tahun = '2025'";
+        $where = "select * from tbl_data_sales where tahun = YEAR(CURDATE()) UNION select * from tbl_data_sales_knitting where tahun = YEAR(CURDATE())";
     }
 
-    $query = $this->db->query("SELECT GROUP_CONCAT(eqv_idr) eqv_idr from (SELECT bulan_text,ROUND(COALESCE(eqv_idr,0),2) eqv_idr FROM (select DISTINCT bulan_text from dim_date WHERE tahun = '2025') a left join 
+    $query = $this->db->query("SELECT GROUP_CONCAT(eqv_idr) eqv_idr from (SELECT bulan_text,ROUND(COALESCE(eqv_idr,0),2) eqv_idr FROM (select DISTINCT bulan_text from dim_date WHERE tahun = YEAR(CURDATE())) a left join 
         (SELECT bulan,sum(eqv_idr) eqv_idr FROM($where) a GROUP BY bulan) b on b.bulan = a.bulan_text ORDER BY a.bulan_text asc) a");
     if ($query->result()) {  
         foreach ($query->result() as $data) {
@@ -4272,14 +4272,14 @@ function cari_sales_ytd_mtm_pertahun($tahun, $filter)
         {
 
             if ($filter == 'NAG') {
-                $where = "select * from tbl_data_sales where tahun = '2025'";
+                $where = "select * from tbl_data_sales where tahun = YEAR(CURDATE())";
             }elseif ($filter == 'NAK') {
-                $where = "select * from tbl_data_sales_knitting where tahun = '2025'";
+                $where = "select * from tbl_data_sales_knitting where tahun = YEAR(CURDATE())";
             }else{
-                $where = "select * from tbl_data_sales where tahun = '2025' UNION select * from tbl_data_sales_knitting where tahun = '2025'";
+                $where = "select * from tbl_data_sales where tahun = YEAR(CURDATE()) UNION select * from tbl_data_sales_knitting where tahun = YEAR(CURDATE())";
             }
 
-            $query = $this->db->query("SELECT GROUP_CONCAT(eqv_idr) eqv_idr from (SELECT bulan_text,ROUND(COALESCE(eqv_idr,0),2) eqv_idr FROM (select DISTINCT bulan_text from dim_date WHERE tahun = '2025') a left join 
+            $query = $this->db->query("SELECT GROUP_CONCAT(eqv_idr) eqv_idr from (SELECT bulan_text,ROUND(COALESCE(eqv_idr,0),2) eqv_idr FROM (select DISTINCT bulan_text from dim_date WHERE tahun = YEAR(CURDATE())) a left join 
                 (SELECT bulan,sum(eqv_idr) eqv_idr FROM($where) a GROUP BY bulan) b on b.bulan = a.bulan_text ORDER BY a.bulan_text asc) a");
             if ($query->result()) {  
                 foreach ($query->result() as $data) {
@@ -4904,16 +4904,17 @@ function cari_sj_knitting($id_sj, $profit_center)
     $db_pgsql = $this->load->database('db_pgsql', TRUE);
     $hasil  = [];
 
-    $hasil = $db_pgsql->query("SELECT kode_so no_so, kode_out sj, tgl_pengeluaran bppbdate, kode_out shipping_number, '-' ws, lab_dip styleno, '-' product_group, nama_kain product_item, warna color, '-' size,  currency curr, g.nama_unit uom, qty_meter qty, Round(coalesce(harga_shipment,0),4) AS unit_price, ROUND(qty_meter * Round(coalesce(harga_shipment,0),4), 4) AS total_price,  a.no_so id_so, a.id AS id_bppb, 'GRADE A' grade,'A' grade, h.nama_unit uom_so, qty_netto qty_so, Round(coalesce(harga,0),4) AS unit_price_so, ROUND(qty_netto * Round(coalesce(harga,0),4), 4) AS total_price_so, f.po_konsumen, mk.kode_konsumen from official_out_h a 
-        inner join official_out_barcode b on b.id_official = a.id 
-        inner join master_kain c on c.id = b.kain_id 
-        LEFT JOIN master_kain_detail d on d.id = b.detail_kain_id 
-        INNER JOIN detail_so e on e.id = b.detail_so_id 
-        INNER JOIN sales_orders f on f.id = e.sales_order_id 
-        left join master_unit g on g.id = e.id_unit_sales_order_shipment 
-        left join master_unit h on h.id = e.id_unit_sales_order
-        INNER JOIN master_konsumen mk on mk.id = f.konsumen_id
-        where a.status_inv is null and a.tipe_pengeluaran = 'Penjualan' and a.no_so = '$id_sj' and harga != 0 ORDER BY kode_out asc ");
+    $hasil = $db_pgsql->query("SELECT MAX(i.kode_so) AS no_so, MAX(kode_out) AS sj, MAX(tgl_pengeluaran) AS bppbdate, MAX(kode_out) AS shipping_number, '-' AS ws, MAX(lab_dip) AS styleno, '-' AS product_group, MAX(nama_kain) AS product_item, MAX(warna) AS color, '-' AS size, MAX(i.currency) AS curr, MAX(g.nama_unit) AS uom, MAX(qty_meter) AS qty, ROUND(MAX(coalesce(harga_shipment,0)),4) AS unit_price, ROUND(MAX(qty_meter) * ROUND(MAX(coalesce(harga_shipment,0)),4), 4) AS total_price, MAX(a.no_so) AS id_so, MAX(a.id) AS id_bppb, 'GRADE A' AS grade, 'A' AS grade, MAX(h.nama_unit) AS uom_so, MAX(qty_netto) AS qty_so, ROUND(MAX(coalesce(harga,0)),4) AS unit_price_so, ROUND(MAX(qty_netto) * ROUND(MAX(coalesce(harga,0)),4), 4) AS total_price_so,  MAX(i.po_konsumen) AS po_konsumen, MAX(mk.kode_konsumen) AS kode_konsumen 
+        FROM official_out_h a 
+        INNER JOIN official_out_barcode b ON b.id_official = a.id 
+        INNER JOIN master_kain c ON c.id = b.kain_id 
+        LEFT JOIN master_kain_detail d ON d.id = b.detail_kain_id 
+        INNER JOIN sales_orders i ON i.id = a.no_so
+        INNER JOIN detail_so e ON e.sales_order_id = i.id  
+        LEFT JOIN master_unit g ON g.id = e.id_unit_sales_order_shipment 
+        LEFT JOIN master_unit h ON h.id = e.id_unit_sales_order
+        INNER JOIN master_konsumen mk ON mk.id = i.konsumen_id
+        WHERE a.status_inv is null and a.tipe_pengeluaran = 'Penjualan' AND a.no_so = '$id_sj' AND harga != 0 GROUP BY b.id ORDER BY MIN(kode_out) ASC ");
 
     return $hasil->result_array();
 }
@@ -5025,13 +5026,13 @@ function cari_kartu_ar_new($dt_dari_alk, $dt_sampai_alk, $id_cus)
         $where = "WHERE id_customer = '$id_cus'";
     }
 
-    $hasil = $this->db->query("SELECT * from (select  id_customer, customer, no_invoice, inv_date, shipp, duedate, top, curr, if(curr = 'IDR', 1, rate) rate, sal_awl, tambah, bayar,  total, eqv_idr,amt_aging_0,amt_aging_1,amt_aging_2,amt_aging_3,amt_aging_4,amt_aging_5,amt_aging_6,amt_aging_7, tot_aging, readydue, hasil_bln1, hasil_bln2, hasil_bln3, hasil_bln4, hasil_bln5, hasil_bln6, tot_aging tot_jatem from (select a.*, CASE WHEN jml_bln1 > 0 AND Date(duedate) > '$dt_sampai_alk' THEN eqv_idr ELSE 0 END AS hasil_bln1,
+    $hasil = $this->db->query("SELECT * from (select  id_customer, customer, no_invoice, inv_date, shipp, duedate, top, curr, if(curr = 'IDR', 1, rate) rate, sal_awl, tambah, bayar,  total, eqv_idr,amt_aging_0,amt_aging_1,amt_aging_2,amt_aging_3,amt_aging_4,amt_aging_5,amt_aging_6,amt_aging_7, tot_aging, readydue, hasil_bln1, hasil_bln2, hasil_bln3, hasil_bln4, hasil_bln5, hasil_bln6, tot_aging tot_jatem from (select a.*, CASE WHEN jml_bln1 >= 0 AND Date(duedate) >= '$dt_sampai_alk' THEN eqv_idr ELSE 0 END AS hasil_bln1,
         CASE WHEN jml_bln2 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln2,
         CASE WHEN jml_bln3 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln3,
         CASE WHEN jml_bln4 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln4,
         CASE WHEN jml_bln5 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln5,
         CASE WHEN jml_bln6 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln6,
-        CASE WHEN total <= 0 THEN 0 WHEN Date(duedate) <= '$dt_sampai_alk' THEN eqv_idr ELSE 0 END AS readydue,
+        CASE WHEN total <= 0 THEN 0 WHEN Date(duedate) < '$dt_sampai_alk' THEN eqv_idr ELSE 0 END AS readydue,
         CASE WHEN total <= 0 THEN 0 ELSE eqv_idr END AS tot_aging2,
         CASE WHEN total <= 0 THEN 0 WHEN diff_top <= 0 THEN eqv_idr ELSE 0 END AS amt_aging_0,
         CASE WHEN total <= 0 THEN 0 WHEN diff_top > 0  AND diff_top <= 30  THEN eqv_idr ELSE 0 END AS amt_aging_1,

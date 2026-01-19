@@ -20,14 +20,14 @@
                             <?php if ($user['username'] == 'hanum') { ?>
                                 <option value="NAK" <?= ($selected_pc == 'ALL' ? 'selected' : '') ?>>NIRWANA ALABARE KNITTING</option>
                             <?php } else{ ?>
-                            <option value="" disabled <?= empty($selected_pc) ? 'selected' : ''; ?>>Pilih Profit Center</option>
-                            <option value="ALL" <?= ($selected_pc == 'ALL' ? 'selected' : '') ?>>ALL</option>
-                            <?php foreach ($profit_center as $pc) : ?>
-                                <option value="<?= $pc['kode_pc']; ?>" <?= ($pc['kode_pc'] == $selected_pc ? 'selected' : '') ?>>
-                                    <?= $pc['nama_pc']; ?>
-                                </option>
-                            <?php endforeach; ?>
-                        <?php } ?>
+                                <option value="" disabled <?= empty($selected_pc) ? 'selected' : ''; ?>>Pilih Profit Center</option>
+                                <option value="ALL" <?= ($selected_pc == 'ALL' ? 'selected' : '') ?>>ALL</option>
+                                <?php foreach ($profit_center as $pc) : ?>
+                                    <option value="<?= $pc['kode_pc']; ?>" <?= ($pc['kode_pc'] == $selected_pc ? 'selected' : '') ?>>
+                                        <?= $pc['nama_pc']; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php } ?>
                         </select>
 
                     </form>
@@ -90,152 +90,157 @@
                             <div class="card-body text-secondary">
                                 <p class="card-text" style="text-align: center;font-size: 1.4rem;color: #2F4F4F" onclick="showdata_slsni()">IDR <?= number_format($sls_no_inv,2); ?></p>
                             </div>
-                            <div class="card-footer bg-transparent border-danger" style="text-align: center;"><p class="card-text" style="font-size: 1.2rem;"><b><?= number_format($sls_no_inv / (isset($sls_ytd_inv) ? $sls_ytd_inv : $sls_no_inv) * 100,2); ?> %</b></p></div>
-                        </div>
+                            <div class="card-footer bg-transparent border-danger" style="text-align: center;"><p class="card-text" style="font-size: 1.2rem;"><b><?php
+                            $denom = $sls_ytd_inv ?: $sls_no_inv;
+                            $result = ($denom > 0) ? ($sls_no_inv / $denom * 100) : 0;
+
+                            echo number_format($result, 2);
+                        ?> %</b></p></div>
                     </div>
-
-                    <div class="col-lg-3">
-                        <div class="card border-success mb-3" style="max-width: 22rem;">
-                            <div class="card-header bg-danger border-dark"><b style="font-size: 0.9rem;">Account Receivable</b></div>
-                            <div class="card-body text-secondary">
-                                <p class="card-text" style="text-align: center;font-size: 1.4rem;color: #2F4F4F" onclick="showdata_total_ar()">IDR <?= number_format($ar_eqvidr,2); ?></p>
-                            </div>
-                            <div class="card-footer bg-transparent border-danger" style="text-align: center;"><p class="card-text" style="font-size: 1.2rem;"><b>100 %</b></p></div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-3">
-                        <div class="card border-success mb-3" style="max-width: 22rem;">
-                            <div class="card-header bg-danger border-dark"><a href="<?= base_url('arnag/kartu_ar_detail'); ?>" target="blank"><b style="font-size: 0.9rem;">Overdue Receivable</b></a></div>
-                            <div class="card-body text-secondary">
-                                <p class="card-text" style="text-align: center;font-size: 1.4rem;color: #2F4F4F" onclick="showdata_total_overdue()">IDR <?= number_format($ready_due,2); ?></p>
-                            </div>
-                            <div class="card-footer bg-transparent border-danger" style="text-align: center;"><p class="card-text" style="font-size: 1.2rem;"><b><?= number_format($ready_due / $ar_eqvidr * 100,2); ?> %</b></p></div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-3">
-                        <div class="card border-success mb-3" style="max-width: 22rem;">
-                            <div class="card-header bg-danger border-dark"><a href="<?= base_url('arnag/kartu_ar_detail'); ?>" target="blank"><b style="font-size: 0.9rem;">Not Due Receivable</b></a></div>
-                            <div class="card-body text-secondary">
-                                <p class="card-text" style="text-align: center;font-size: 1.4rem;color: #2F4F4F" onclick="showdata_total_notdue()">IDR <?= number_format(($ar_eqvidr - $ready_due),2); ?></p>
-                            </div>
-                            <div class="card-footer bg-transparent border-danger" style="text-align: center;"><p class="card-text" style="font-size: 1.2rem;"><b><?= number_format(($ar_eqvidr - $ready_due) / $ar_eqvidr * 100,2); ?> %</b></p></div>
-                        </div>
-                    </div>
-
-                    <!-- /.col-md-6 -->
-                    <div class="col-lg-6">
-                        <div class="card">
-                            <div class="card-header border-0">
-                                <div class="d-flex justify-content-between">
-                                    <h3 class="card-title"><b><u>Sales Value By Destination</u></b></h3>
-                                    <select style="width:12rem" class="form-control" id="filter_dsb1" name="filter_dsb1" onchange="cari_ar_lokal_ekspor(this.value)">
-                                        <option value="ALL">ALL</option>
-                                        <?php foreach ($filter_ar as $fa) : ?>
-                                            <option value="<?= $fa['val_fil']; ?>"><?= $fa['name_fil']; ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="position-relative mb-4">
-                                    <div id="chart"></div>
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-6">
-                        <div class="card">
-                            <div class="card-header border-0">
-                                <div class="d-flex justify-content-between">
-                                    <h3 class="card-title"><b><u>Sales Value By Order Tipe</u></b></h3>
-                                    <select style="width:12rem" class="form-control" id="filter_dsb1a" name="filter_dsb1a" onchange="cari_ar_fob_cmt(this.value)">
-                                        <option value="ALL">ALL</option>
-                                        <?php foreach ($filter_ar as $fa) : ?>
-                                            <option value="<?= $fa['val_fil']; ?>"><?= $fa['name_fil']; ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="position-relative mb-4">
-                                    <div id="chart2"></div>
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- /.col-md-6 -->
                 </div>
-                <!-- /.row -->
-            </div>
-            <!-- /.container-fluid -->
-        </div>
 
-    </div>
-    <div class="carousel-item">
-        <div class="content">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-lg-12">
-                        <div class="card">
-                            <div class="card-header border-0">
-                                <div class="d-flex justify-content-between">
-                                    <h3 class="card-title"><b><u>TOP 5 Buyer By Sales Value</u></b></h3>
-                                    <select style="width:15rem" class="form-control" id="filter_dsb2" name="filter_dsb2" onchange="change_top_5_sales(this.value)">
-                                        <option value="ALL">ALL</option>
-                                        <?php foreach ($bulan_ar as $bln) : ?>
-                                            <option value="<?= $bln['bulan_text']; ?>"><?= $bln['nama_bulan']; ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
+                <div class="col-lg-3">
+                    <div class="card border-success mb-3" style="max-width: 22rem;">
+                        <div class="card-header bg-danger border-dark"><b style="font-size: 0.9rem;">Account Receivable</b></div>
+                        <div class="card-body text-secondary">
+                            <p class="card-text" style="text-align: center;font-size: 1.4rem;color: #2F4F4F" onclick="showdata_total_ar()">IDR <?= number_format($ar_eqvidr,2); ?></p>
+                        </div>
+                        <div class="card-footer bg-transparent border-danger" style="text-align: center;"><p class="card-text" style="font-size: 1.2rem;"><b>100 %</b></p></div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3">
+                    <div class="card border-success mb-3" style="max-width: 22rem;">
+                        <div class="card-header bg-danger border-dark"><a href="<?= base_url('arnag/kartu_ar_detail'); ?>" target="blank"><b style="font-size: 0.9rem;">Overdue Receivable</b></a></div>
+                        <div class="card-body text-secondary">
+                            <p class="card-text" style="text-align: center;font-size: 1.4rem;color: #2F4F4F" onclick="showdata_total_overdue()">IDR <?= number_format($ready_due,2); ?></p>
+                        </div>
+                        <div class="card-footer bg-transparent border-danger" style="text-align: center;"><p class="card-text" style="font-size: 1.2rem;"><b><?= number_format($ready_due / $ar_eqvidr * 100,2); ?> %</b></p></div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3">
+                    <div class="card border-success mb-3" style="max-width: 22rem;">
+                        <div class="card-header bg-danger border-dark"><a href="<?= base_url('arnag/kartu_ar_detail'); ?>" target="blank"><b style="font-size: 0.9rem;">Not Due Receivable</b></a></div>
+                        <div class="card-body text-secondary">
+                            <p class="card-text" style="text-align: center;font-size: 1.4rem;color: #2F4F4F" onclick="showdata_total_notdue()">IDR <?= number_format(($ar_eqvidr - $ready_due),2); ?></p>
+                        </div>
+                        <div class="card-footer bg-transparent border-danger" style="text-align: center;"><p class="card-text" style="font-size: 1.2rem;"><b><?= number_format(($ar_eqvidr - $ready_due) / $ar_eqvidr * 100,2); ?> %</b></p></div>
+                    </div>
+                </div>
+
+                <!-- /.col-md-6 -->
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header border-0">
+                            <div class="d-flex justify-content-between">
+                                <h3 class="card-title"><b><u>Sales Value By Destination</u></b></h3>
+                                <select style="width:12rem" class="form-control" id="filter_dsb1" name="filter_dsb1" onchange="cari_ar_lokal_ekspor(this.value)">
+                                    <option value="ALL">ALL</option>
+                                    <?php foreach ($filter_ar as $fa) : ?>
+                                        <option value="<?= $fa['val_fil']; ?>"><?= $fa['name_fil']; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
-                            <div class="card-body">
-                                <div class="position-relative mb-4">
-                                    <div id="chart3"></div>
-                                </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="position-relative mb-4">
+                                <div id="chart"></div>
+                            </div>
 
-                                <div class="card">
-                                    <div class="card-header border-0">
-                                        <div class="d-flex justify-content-between">
-                                         <h3 class="card-title"><b><u>Receivable Prediction</u></b></h3>
-                                     </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header border-0">
+                            <div class="d-flex justify-content-between">
+                                <h3 class="card-title"><b><u>Sales Value By Order Tipe</u></b></h3>
+                                <select style="width:12rem" class="form-control" id="filter_dsb1a" name="filter_dsb1a" onchange="cari_ar_fob_cmt(this.value)">
+                                    <option value="ALL">ALL</option>
+                                    <?php foreach ($filter_ar as $fa) : ?>
+                                        <option value="<?= $fa['val_fil']; ?>"><?= $fa['name_fil']; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="position-relative mb-4">
+                                <div id="chart2"></div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- /.col-md-6 -->
+            </div>
+            <!-- /.row -->
+        </div>
+        <!-- /.container-fluid -->
+    </div>
+
+</div>
+<div class="carousel-item">
+    <div class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="card">
+                        <div class="card-header border-0">
+                            <div class="d-flex justify-content-between">
+                                <h3 class="card-title"><b><u>TOP 5 Buyer By Sales Value</u></b></h3>
+                                <select style="width:15rem" class="form-control" id="filter_dsb2" name="filter_dsb2" onchange="change_top_5_sales(this.value)">
+                                    <option value="ALL">ALL</option>
+                                    <?php foreach ($bulan_ar as $bln) : ?>
+                                        <option value="<?= $bln['bulan_text']; ?>"><?= $bln['nama_bulan']; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="position-relative mb-4">
+                                <div id="chart3"></div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header border-0">
+                                    <div class="d-flex justify-content-between">
+                                     <h3 class="card-title"><b><u>Receivable Prediction</u></b></h3>
                                  </div>
-                                 <div class="row">
-                                    <div class="col-lg-12">
-                                        <div class="table-responsive">
-                                            <table class="table table-striped" width="100%">
-                                                <thead>
+                             </div>
+                             <div class="row">
+                                <div class="col-lg-12">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped" width="100%">
+                                            <thead>
+                                                <tr>
+                                                    <th style="text-align: left;font-size: 1rem;" scope="col">Periode</th>
+                                                    <th style="text-align: left;" scope="col">Week 1 (1-7)</th>
+                                                    <th style="text-align: left;" scope="col">Week 2 (8-14)</th>
+                                                    <th style="text-align: left;" scope="col">Week 3 (15-21)</th>
+                                                    <th style="text-align: left;" scope="col">Week 4 (22-31)</th>
+                                                    <th style="text-align: left;" scope="col">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php $i = 1; ?>
+                                                <?php foreach ($data_pred as $dp) : ?>
                                                     <tr>
-                                                        <th style="text-align: left;font-size: 1rem;" scope="col">Periode</th>
-                                                        <th style="text-align: left;" scope="col">Week 1 (1-7)</th>
-                                                        <th style="text-align: left;" scope="col">Week 2 (8-14)</th>
-                                                        <th style="text-align: left;" scope="col">Week 3 (15-21)</th>
-                                                        <th style="text-align: left;" scope="col">Week 4 (22-31)</th>
-                                                        <th style="text-align: left;" scope="col">Total</th>
+                                                        <td style="text-align: left;font-size: 1.1rem;color: #2F4F4F"><?= $dp['periode']; ?></td>
+                                                        <td style="text-align: left;font-size: 1.1rem;color: #2F4F4F">IDR <?= number_format($dp['week1'],2); ?></td>
+                                                        <td style="text-align: left;font-size: 1.1rem;color: #2F4F4F">IDR <?= number_format($dp['week2'],2); ?></td>
+                                                        <td style="text-align: left;font-size: 1.1rem;color: #2F4F4F">IDR <?= number_format($dp['week3'],2); ?></td>
+                                                        <td style="text-align: left;font-size: 1.1rem;color: #2F4F4F">IDR <?= number_format($dp['week4'],2); ?></td>
+                                                        <td style="text-align: left;font-size: 1.1rem;color: #2F4F4F">IDR <?= number_format($dp['week4'] + $dp['week1'] + $dp['week2'] + $dp['week3'],2); ?></td>
                                                     </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <?php $i = 1; ?>
-                                                    <?php foreach ($data_pred as $dp) : ?>
-                                                        <tr>
-                                                            <td style="text-align: left;font-size: 1.1rem;color: #2F4F4F"><?= $dp['periode']; ?></td>
-                                                            <td style="text-align: left;font-size: 1.1rem;color: #2F4F4F">IDR <?= number_format($dp['week1'],2); ?></td>
-                                                            <td style="text-align: left;font-size: 1.1rem;color: #2F4F4F">IDR <?= number_format($dp['week2'],2); ?></td>
-                                                            <td style="text-align: left;font-size: 1.1rem;color: #2F4F4F">IDR <?= number_format($dp['week3'],2); ?></td>
-                                                            <td style="text-align: left;font-size: 1.1rem;color: #2F4F4F">IDR <?= number_format($dp['week4'],2); ?></td>
-                                                            <td style="text-align: left;font-size: 1.1rem;color: #2F4F4F">IDR <?= number_format($dp['week4'] + $dp['week1'] + $dp['week2'] + $dp['week3'],2); ?></td>
-                                                        </tr>
-                                                        <?php $i++; ?>
-                                                    <?php endforeach; ?>
-                                                </tbody>
-                                            </table>
-                                        </div> 
-                                    </div>
+                                                    <?php $i++; ?>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div> 
+                                </div>
                                <!--  <div class="col-lg-3">
                                 <div class="card border-secondary mb-3" style="max-width: 18rem;">
                                     <div class="card-header"><b>Week 1</b></div>
