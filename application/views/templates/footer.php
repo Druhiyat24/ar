@@ -1393,6 +1393,26 @@ function updateInvoiceNumber() {
     $('#inv_book_number').val(invoice);
   }
 
+  $('#profit_center_profor').on('change', function () {
+
+    var pc = $(this).val(); // NAG / NAK / ALL
+    var kode = $('#prof_inv_number').val();
+
+    if (!kode) return;
+
+    var arr = kode.split('/');
+
+    // Pastikan format benar minimal 4 bagian
+    if (arr.length >= 4) {
+        arr[2] = pc; // ganti bagian profit center
+    }
+
+    var newKode = arr.join('/');
+    $('#prof_inv_number').val(newKode);
+
+});
+
+
 
   let kode_shipp = '';  
   let Val_PCmdl = '';   

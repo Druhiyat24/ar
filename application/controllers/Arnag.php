@@ -877,6 +877,7 @@ public function approval_proformainvoice()
     }
 
     $data['title'] = 'Approval Proforma Invoice';
+    $data['profit_center'] = $this->Model_nag->cari_profit_center();
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
     $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
@@ -1037,6 +1038,7 @@ function proformainvoice()
     $data['type'] = $this->db->get('tbl_type')->result_array();
     $data['isi_bank'] = $this->Model_nag->load_bank();
     $data['isi_ppn'] = $this->Model_nag->load_ppn();
+    $data['profit_center'] = $this->Model_nag->cari_profit_center();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
     $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
     $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));

@@ -44,6 +44,16 @@
                              </div>
                              <!-- /.form-group -->
                              <div class="form-group">
+                                <label>Profit Center</label>
+                                <select class="form-control select2bs4" id="profit_center_profor" name="profit_center_profor" required>
+                                    <option value="" disabled selected>Pilih Profit Center</option>
+                                    <?php foreach ($profit_center as $pc) : ?>
+                                        <option value="<?= $pc['kode_pc']; ?>"><?= $pc['nama_pc']; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                             </div>
+
+                             <div class="form-group">
                                  <label>Customer</label>
                                  <select class="form-control select2bs4" id="prof_customer" name="prof_customer">
                                      <?php foreach ($customer as $cs) : ?>
@@ -63,7 +73,7 @@
                              </div>
                              <div class="form-group">
                                  <label>Material Type</label>
-                                 <select id="prof_material_type" name="prof_material_type" class="form-control" required>
+                                 <select class="form-control select2bs4" id="prof_material_type" name="prof_material_type" class="form-control" required>
                                      <option value="Barang Jadi">Barang Jadi</option>
                                      <option value="Non Barang Jadi">Non Barang Jadi</option>
                                  </select>
@@ -71,7 +81,7 @@
                              <!-- BANK -->
                              <div class="form-group">
                                  <label>Bank</label>
-                                 <select class="form-control" id="id_bank_prof" name="id_bank_prof" required>
+                                 <select class="form-control select2bs4" id="id_bank_prof" name="id_bank_prof" required>
                                      <?php foreach ($isi_bank as $bk) : ?>
                                          <option value="<?= $bk['id']; ?>"><?= $bk['nama_bank']; ?> (<?= $bk['no_rek']; ?>)</option>
                                      <?php endforeach; ?>
@@ -380,6 +390,7 @@
                          <!-- ID Customer -->
                          <div class="col-md-2">
                              <input type="hidden" class="form-control float-right" id="prof_id_custm" name="prof_id_custm" readonly>
+                             <input type="hidden" class="form-control float-right" id="prof_profit_center" name="prof_profit_center" readonly>
                          </div>
                          <!-- End Date Range -->
                      </div>

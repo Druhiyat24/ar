@@ -4112,14 +4112,23 @@ function get_kode_proforma_invoice(kode)
 		dataType: "JSON",
 		success: function (id) {
 
-			$('[name="prof_inv_number"]').val(id);
+			var current = id.split('/');
+
+			// Format dari server: 0001//NAG/0126
+			// Kita sisipkan L atau E di index ke-1
+			current[1] = kode;
+
+			var finalKode = current.join('/');
+
+			$('[name="prof_inv_number"]').val(finalKode);
 
 		},
-		error: function (jqXHR, textStatus, errorThrown) {
+		error: function () {
 			alert('Error get data from ajax');
 		}
 	});
 }
+
 
 //ubah september
 function get_kode_proforma_invoice_cbd(kode) 
@@ -4273,10 +4282,12 @@ function add_id_for_proforma_inv(){
     $('[name="prof_check_dp"]').prop('checked', false);
 	//
 	$cust_prof = $("#prof_customer :selected").text(); 	
-	$idcust_prof = $('[name="prof_customer"]').val()	
+	$idcust_prof = $('[name="prof_customer"]').val();
+	$profit_center = $('[name="profit_center_profor"]').val();	
 	//
 	$('[name="prof_custm"]').val($cust_prof);
 	$('[name="prof_id_custm"]').val($idcust_prof);
+	$('[name="prof_profit_center"]').val($profit_center);
 
 }
 //ubah september
