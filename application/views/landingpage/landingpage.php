@@ -46,8 +46,8 @@
                 <div class="container-fluid">
                     <div class="row">
 
-                        <div class="col-lg-3">
-                            <div class="card border-success mb-3" style="max-width: 22rem;">
+                        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                            <div class="card border-success mb-3 w-100">
                                 <div class="card-header bg-info border-dark"><b style="font-size: 0.9rem;">Sales Ytd ( Invoiced )</b></div>
                                 <div class="card-body text-secondary">
                                    <!--  <div id="value">100</div> -->
@@ -56,8 +56,8 @@
                            </div>
                        </div>
 
-                       <div class="col-lg-3">
-                        <div class="card border-success mb-3" style="max-width: 22rem;">
+                       <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                        <div class="card border-success mb-3 w-100">
                             <div class="card-header bg-info border-dark"><a href="<?= base_url('report/frm_sales_report'); ?>" target="blank"><b style="font-size: 0.9rem;">Sales Current Month ( Invoiced )</b></a></div>
                             <div class="card-body text-secondary count_content">
                                 <p class="card-text" style="text-align: center;font-size: 1.4rem;color: #2F4F4F" onclick="showdata_slscm()">IDR <?= number_format($sls_cm_inv,2); ?></p>
@@ -65,8 +65,8 @@
                         </div>
                     </div>
 
-                    <div class="col-lg-3">
-                        <div class="card border-success mb-3" style="max-width: 22rem;">
+                    <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                        <div class="card border-success mb-3 w-100">
                             <div class="card-header bg-info border-dark"><b style="font-size: 0.9rem;">Sales Ytd</b></div>
                             <div class="card-body text-secondary">
                                 <p class="card-text" style="text-align: center;font-size: 1.4rem;color: #2F4F4F" onclick="showdata_slsytd2()">IDR <?= number_format($sls_no_inv + $sls_ytd_inv,2); ?></p>
@@ -74,8 +74,8 @@
                         </div>
                     </div>
 
-                    <div class="col-lg-3">
-                        <div class="card border-success mb-3" style="max-width: 22rem;">
+                    <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                        <div class="card border-success mb-3 w-100">
                             <div class="card-header bg-info border-dark"><b style="font-size: 0.9rem;">Sales Current Month</b></div>
                             <div class="card-body text-secondary">
                                 <p class="card-text" style="text-align: center;font-size: 1.4rem;color: #2F4F4F" onclick="showdata_slscm2()">IDR <?= number_format($sls_cm_no_inv + $sls_cm_inv,2); ?></p>
@@ -83,8 +83,8 @@
                         </div>
                     </div>
 
-                    <div class="col-lg-3">
-                        <div class="card border-success mb-3" style="max-width: 22rem;">
+                    <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                        <div class="card border-success mb-3 w-100">
                             <div class="card-header bg-success
                             border-dark"><a href="<?= base_url('arnag/frm_report_sj_not_invoice'); ?>" target="blank"><b style="font-size: 0.9rem;">Sales ( not invoiced )</b></a></div>
                             <div class="card-body text-secondary">
@@ -99,8 +99,8 @@
                     </div>
                 </div>
 
-                <div class="col-lg-3">
-                    <div class="card border-success mb-3" style="max-width: 22rem;">
+                <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                    <div class="card border-success mb-3 w-100">
                         <div class="card-header bg-danger border-dark"><b style="font-size: 0.9rem;">Account Receivable</b></div>
                         <div class="card-body text-secondary">
                             <p class="card-text" style="text-align: center;font-size: 1.4rem;color: #2F4F4F" onclick="showdata_total_ar()">IDR <?= number_format($ar_eqvidr,2); ?></p>
@@ -109,8 +109,8 @@
                     </div>
                 </div>
 
-                <div class="col-lg-3">
-                    <div class="card border-success mb-3" style="max-width: 22rem;">
+                <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                    <div class="card border-success mb-3 w-100">
                         <div class="card-header bg-danger border-dark"><a href="<?= base_url('arnag/kartu_ar_detail'); ?>" target="blank"><b style="font-size: 0.9rem;">Overdue Receivable</b></a></div>
                         <div class="card-body text-secondary">
                             <p class="card-text" style="text-align: center;font-size: 1.4rem;color: #2F4F4F" onclick="showdata_total_overdue()">IDR <?= number_format($ready_due,2); ?></p>
@@ -119,8 +119,8 @@
                     </div>
                 </div>
 
-                <div class="col-lg-3">
-                    <div class="card border-success mb-3" style="max-width: 22rem;">
+                <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                    <div class="card border-success mb-3 w-100">
                         <div class="card-header bg-danger border-dark"><a href="<?= base_url('arnag/kartu_ar_detail'); ?>" target="blank"><b style="font-size: 0.9rem;">Not Due Receivable</b></a></div>
                         <div class="card-body text-secondary">
                             <p class="card-text" style="text-align: center;font-size: 1.4rem;color: #2F4F4F" onclick="showdata_total_notdue()">IDR <?= number_format(($ar_eqvidr - $ready_due),2); ?></p>
@@ -213,7 +213,7 @@
                              <div class="row">
                                 <div class="col-lg-12">
                                     <div class="table-responsive">
-                                        <table class="table table-striped" width="100%">
+                                        <table class="table table-striped" style="white-space: nowrap;" width="100%">
                                             <thead>
                                                 <tr>
                                                     <th style="text-align: left;font-size: 1rem;" scope="col">Periode</th>
