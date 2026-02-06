@@ -455,7 +455,8 @@ public function simpan_booking_invoice()
             'value'        => $this->input->post('type_val'),
             'doc_type'    => $this->input->post('type_doc'),
             'doc_number'  => $this->input->post('type_doc_number'),
-            'profit_center'  => $this->input->post('mdl_pc')
+            'profit_center'  => $this->input->post('mdl_pc'),
+            'reff_number'  => $this->input->post('reff_num')
         ];
         $this->Model_nag->simpan_booking_invoice($data, 'tbl_book_invoice');
             // Simpan Log

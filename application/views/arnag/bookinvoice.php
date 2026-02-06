@@ -18,13 +18,10 @@
             <div class="row">
                 <!-- left column -->
                 <div class="col-md-6">
-                    <!-- general form elements -->
                     <div class="card card-info">
                         <div class="card-header">
                             <h3 class="card-title">Form Input</h3>
                         </div>
-                        <!-- /.card-header -->
-                        <!-- form start -->
                         <form>
                             <div class="card-body">
                                 <div class="row">
@@ -32,6 +29,10 @@
                                         <div class="form-group col-md-12">
                                             <label>Invoice Number</label>
                                             <input type="text" class="form-control" id="inv_book_number" name="inv_book_number" value="<?= $kode_book_invoice; ?>" required readonly>
+                                        </div>
+                                        <div class="form-group col-md-12">
+                                            <label>Reference Number</label>
+                                            <input type="text" class="form-control" id="reff_number" name="reff_number" autocomplete="off">
                                         </div>
                                         <div class="form-group col-md-12">
                                             <label>Profit Center</label>
@@ -247,6 +248,7 @@
                     <!-- Type Commercial -->
                     <input type="hidden" class="form-control" id="type_comm" name="type_comm" readonly>
                     <input type="hidden" class="form-control" id="mdl_pc" name="mdl_pc" readonly>
+                    <input type="hidden" class="form-control" id="reff_num" name="reff_num" readonly>
                     <!--  -->
                 </div>
                 <div class="modal-footer justify-content-between">

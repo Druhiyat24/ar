@@ -258,7 +258,8 @@ function modal_book_invoice() {
        	$doc_number = $('[name="doc_number"]').val()
        	$typevalue    = $('[name="val"]').val()
        	$typecomm = $('[name="type"]').val()
-       	$mdl_pc = $('[name="profit_center"]').val()		
+       	$mdl_pc = $('[name="profit_center"]').val()
+       	$reff_number = $('[name="reff_number"]').val()		
 	//
 	$('[name="id_inv"]').val($idbook);
 	$('[name="id_cust"]').val($idcust);
@@ -267,7 +268,8 @@ function modal_book_invoice() {
 	$('[name="type_doc_number"]').val($doc_number);
 	$('[name="type_val"]').val($typevalue);
 	$('[name="type_comm"]').val($typecomm)
-	$('[name="mdl_pc"]').val($mdl_pc);		
+	$('[name="mdl_pc"]').val($mdl_pc);	
+	$('[name="reff_num"]').val($reff_number);		
 }
 
 
