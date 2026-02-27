@@ -2712,52 +2712,101 @@ function tambah_tanggal_2(){
 }
 
 //ubah desember
+// function modal_sum_total_sj(){
+
+// 	add_value_tgl();
+	
+// 	var hanya_baca = document.getElementsByName("mdl_disc");
+// 	var mdl_grade = document.getElementsByName("mdl_grade");
+// 	var mdl_tgl_inv = document.getElementsByName("mdl_tgl_inv");
+// 	var mdl_curr = document.getElementsByName("mdl_curr");		
+// 	var input = document.getElementsByName("mdl_cek_sj");
+// 	var total = 0;	
+// 	var grade = '';
+// 	var tgl_inv = '';
+// 	var curr = '';	
+// 	//    	
+// 	for (var i = 0; i < input.length; i++) {
+// 		for (var i = 0; i < mdl_grade.length; i++) {	
+// 			for (var i = 0; i < hanya_baca.length;  i++){
+// 				if (input[i].checked) {		
+// 					hanya_baca[i].readOnly = false;			
+// 					total += parseFloat(input[i].value);
+// 					grade = mdl_grade[i].value;
+// 					tgl_inv = mdl_tgl_inv[i].value;
+// 					curr = mdl_curr[i].value;
+// 				} else {				
+// 					hanya_baca[i].readOnly = true;
+// 					hanya_baca[i].value = '';
+// 					modal_input_discount();
+					
+// 				}			
+
+// 			}
+// 		}
+
+// 	}
+//   	// alert(grade);
+//   	var discount = $('[name="mdl_discount"]').val();
+//   	var dp = $('[name="mdl_dp"]').val(); 
+//   	var retur = $('[name="mdl_return"]').val(); 
+//   	document.getElementsByName("grade_nya")[0].value = grade;	
+//   	document.getElementsByName("tanggal_nya")[0].value = tgl_inv;
+//   	document.getElementsByName("curr_nya")[0].value = curr;	 		
+//   	document.getElementsByName("mdl_total")[0].value = total.toFixed(2);	
+//   	document.getElementsByName("mdl_grandtotal")[0].value = (total-discount-dp-retur).toFixed(2);
+//   	document.getElementsByName("mdl_twot")[0].value = (total-discount-dp-retur).toFixed(2);
+
+//   }
+
 function modal_sum_total_sj(){
 
-	add_value_tgl();
-	
-	var hanya_baca = document.getElementsByName("mdl_disc");
-	var mdl_grade = document.getElementsByName("mdl_grade");
-	var mdl_tgl_inv = document.getElementsByName("mdl_tgl_inv");
-	var mdl_curr = document.getElementsByName("mdl_curr");		
-	var input = document.getElementsByName("mdl_cek_sj");
-	var total = 0;	
-	var grade = '';
-	var tgl_inv = '';
-	var curr = '';	
-	//    	
-	for (var i = 0; i < input.length; i++) {
-		for (var i = 0; i < mdl_grade.length; i++) {	
-			for (var i = 0; i < hanya_baca.length;  i++){
-				if (input[i].checked) {		
-					hanya_baca[i].readOnly = false;			
-					total += parseFloat(input[i].value);
-					grade = mdl_grade[i].value;
-					tgl_inv = mdl_tgl_inv[i].value;
-					curr = mdl_curr[i].value;
-				} else {				
-					hanya_baca[i].readOnly = true;
-					hanya_baca[i].value = '';
-					modal_input_discount();
-					
-				}			
+    add_value_tgl();
 
-			}
-		}
+    var hanya_baca = document.getElementsByName("mdl_disc");
+    var mdl_grade  = document.getElementsByName("mdl_grade");
+    var mdl_tgl_inv = document.getElementsByName("mdl_tgl_inv");
+    var mdl_curr   = document.getElementsByName("mdl_curr");
+    var input      = document.getElementsByName("mdl_cek_sj");
 
-	}
-  	// alert(grade);
-  	var discount = $('[name="mdl_discount"]').val();
-  	var dp = $('[name="mdl_dp"]').val(); 
-  	var retur = $('[name="mdl_return"]').val(); 
-  	document.getElementsByName("grade_nya")[0].value = grade;	
-  	document.getElementsByName("tanggal_nya")[0].value = tgl_inv;
-  	document.getElementsByName("curr_nya")[0].value = curr;	 		
-  	document.getElementsByName("mdl_total")[0].value = total.toFixed(2);	
-  	document.getElementsByName("mdl_grandtotal")[0].value = (total-discount-dp-retur).toFixed(2);
-  	document.getElementsByName("mdl_twot")[0].value = (total-discount-dp-retur).toFixed(2);
+    var total = 0;    
+    var grade = '';
+    var tgl_inv = '';
+    var curr = '';
 
-  }
+    for (var i = 0; i < input.length; i++) {
+
+        if (input[i].checked) {
+
+            hanya_baca[i].readOnly = false;
+            total += parseFloat(input[i].value) || 0;
+
+            grade   = mdl_grade[i].value;
+            tgl_inv = mdl_tgl_inv[i].value;
+            curr    = mdl_curr[i].value;
+
+        } else {
+
+            hanya_baca[i].readOnly = true;
+            hanya_baca[i].value = '';
+        }
+    }
+
+    modal_input_discount();
+
+    var discount = parseFloat($('[name="mdl_discount"]').val()) || 0;
+    var dp       = parseFloat($('[name="mdl_dp"]').val()) || 0;
+    var retur    = parseFloat($('[name="mdl_return"]').val()) || 0;
+
+    document.getElementsByName("grade_nya")[0].value   = grade;
+    document.getElementsByName("tanggal_nya")[0].value = tgl_inv;
+    document.getElementsByName("curr_nya")[0].value    = curr;
+
+    document.getElementsByName("mdl_total")[0].value      = total.toFixed(2);
+    document.getElementsByName("mdl_grandtotal")[0].value = (total-discount-dp-retur).toFixed(2);
+    document.getElementsByName("mdl_twot")[0].value       = (total-discount-dp-retur).toFixed(2);
+}
+
 
 //ubah september
 
