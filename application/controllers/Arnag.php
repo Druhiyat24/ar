@@ -852,6 +852,7 @@ public function approvalinvoice()
     }
 
     $data['title'] = 'Approval Invoice';
+    $data['profit_center'] = $this->Model_nag->cari_profit_center();
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
     $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
@@ -904,6 +905,7 @@ public function approval_debitnote()
     }
 
     $data['title'] = 'Approval Debit Note';
+    $data['profit_center'] = $this->Model_nag->cari_profit_center();
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
     $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
@@ -923,9 +925,9 @@ public function approval_debitnote()
 }    
 
 
-public function cari_invoice_post($dt_dari_inv, $dt_sampai_inv)
+public function cari_invoice_post($dt_dari_inv, $dt_sampai_inv, $profit_center)
 {
-    $data =  $this->Model_nag->cari_invoice_post($dt_dari_inv, $dt_sampai_inv);
+    $data =  $this->Model_nag->cari_invoice_post($dt_dari_inv, $dt_sampai_inv, $profit_center);
     echo json_encode($data);
 }
 
@@ -937,9 +939,9 @@ public function cari_proforma_invoice_post($dt_dari_inv, $dt_sampai_inv)
 }
 
     //ubah september
-public function cari_debitnote_post($dt_dari_inv, $dt_sampai_inv)
+public function cari_debitnote_post($dt_dari_inv, $dt_sampai_inv, $profit_center)
 {
-    $data =  $this->Model_nag->cari_debitnote_post($dt_dari_inv, $dt_sampai_inv);
+    $data =  $this->Model_nag->cari_debitnote_post($dt_dari_inv, $dt_sampai_inv, $profit_center);
     echo json_encode($data);
 }
 

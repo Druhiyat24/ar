@@ -778,8 +778,13 @@ function cari_bank($id)
     return $hasil->row_array();
 }
 
-function cari_invoice_post($dt_dari_inv, $dt_sampai_inv)
+function cari_invoice_post($dt_dari_inv, $dt_sampai_inv, $profit_center)
 {
+    if ($profit_center == 'ALL') {
+        $where = '';
+    }else{
+        $where = "and a.profit_center = '$profit_center'";
+    }
     $hasil = $this->db->query("SELECT DISTINCT a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, a.shipp, a.doc_type, a.doc_number,
       DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date, c.type,  a.status, a.id, c.id_type, b.Id_Supplier AS id_customer , CONCAT(e.curr, ' ', FORMAT(grand_total,2)) total
       FROM  tbl_book_invoice AS a INNER JOIN 
@@ -787,7 +792,7 @@ function cari_invoice_post($dt_dari_inv, $dt_sampai_inv)
       tbl_type AS c ON a.id_type = c.id_type left JOIN
       tbl_invoice_detail as e on a.id=e.id_book_invoice left JOIN
       tbl_invoice_pot as f on a.id=f.id_book_invoice 
-      WHERE a.status = 'POST' AND e.sj_date BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' ORDER BY a.id asc");
+      WHERE a.status = 'POST' AND e.sj_date BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' $where ORDER BY a.id asc");
     return $hasil->result_array();
         //
         //With Duedate Query
@@ -822,10 +827,16 @@ function cari_proforma_invoice_post($dt_dari_inv, $dt_sampai_inv)
 }
 
     //ubah september
-function cari_debitnote_post($dt_dari_inv, $dt_sampai_inv)
+function cari_debitnote_post($dt_dari_inv, $dt_sampai_inv, $profit_center)
 {
+    if ($profit_center == 'ALL') {
+        $where = '';
+    }else{
+        $where = "and a.profit_center = '$profit_center'";
+    }
+
     $hasil = $this->db->query("SELECT a.id,a.no_dn,a.tgl_dn,b.Supplier,a.attn,a.from_curr,a.to_curr,a.amount,a.eqv_curr,a.status from tbl_debitnote_h a INNER JOIN mastersupplier b on b.Id_Supplier = a.customer
-       WHERE a.status = 'POST' AND a.tgl_dn BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
+       WHERE a.status = 'POST' AND a.tgl_dn BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' $where
        GROUP BY a.no_dn");
     return $hasil->result_array();
 }

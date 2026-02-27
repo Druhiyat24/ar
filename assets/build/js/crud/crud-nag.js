@@ -3425,8 +3425,10 @@ function cari_invoice_post(){
 			dt_sampai_approv = "undefined";
 		});
 
+		var profit_center = $('#pc_invoice').val();
+
 		$.ajax({		
-			url: "cari_invoice_post/" + dt_dari_approv + "/" + dt_sampai_approv + "/",					
+			url: "cari_invoice_post/" + dt_dari_approv + "/" + dt_sampai_approv + "/" + profit_center + "/",					
 			type: "GET",
 			dataType: "JSON",
 			success: function (response) {
@@ -3542,8 +3544,10 @@ function cari_debitnote_post(){
 			dt_sampai_approv = "undefined";
 		});
 
+		var profit_center = $('#pc_dn').val();
+
 		$.ajax({		
-			url: "cari_debitnote_post/" + dt_dari_approv + "/" + dt_sampai_approv + "/",					
+			url: "cari_debitnote_post/" + dt_dari_approv + "/" + dt_sampai_approv + "/" + profit_center + "/",					
 			type: "GET",
 			dataType: "JSON",
 			success: function (response) {

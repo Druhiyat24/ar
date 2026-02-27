@@ -28,7 +28,7 @@
             <div class="card">
                 <div class="card-header">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label>Date Range</label>
                                 <div class="input-group">
@@ -39,7 +39,17 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-2">
+                            <label>Profit Center</label>
+                            <select class="form-control select2bs4" id="pc_invoice" name="pc_invoice" required>
+                                <option value="ALL" selected>ALL</option>
+                                <?php foreach ($profit_center as $pc) : ?>
+                                    <option value="<?= $pc['kode_pc']; ?>"><?= $pc['nama_pc']; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
                             <label>Action</label>
                             <div class="input-group">
                                 <button type="button" id="find_invoice_post" name="find_invoice_post" class="btn btn-primary" href="javascript:void(0)" onclick="cari_invoice_post()"><i class="fa fa-search"></i> Search</button>
