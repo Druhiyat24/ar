@@ -175,15 +175,15 @@ table {
 			</tr>
 		<?php endforeach; ?>
 		<tr>
-			<td style="text-align: center" colspan='6'><b>Total Before Value Added Tax</b></td>
+			<td style="text-align: left" colspan='6'><b>Total Before Value Added Tax</b></td>
 			<td align='right'><b><?= $data_invoice_pot['twot']; ?></b></td>
 		</tr>
 		<tr>
-			<td style="text-align: center" colspan='6'><b>Value Added Tax</b></td>
+			<td style="text-align: left" colspan='6'><b>Value Added Tax</b></td>
 			<td align='right'><b><?= $data_invoice_pot['vat']; ?></b></td>
 		</tr>
 		<tr>
-			<td style="text-align: center" colspan='6'><b>Grand Total</b></td>
+			<td style="text-align: left" colspan='6'><b>Grand Total</b></td>
 			<td align='right'><b><?= $data_invoice_pot['grand_total']; ?></b></td>
 		</tr>
 
