@@ -4995,7 +4995,7 @@ function report_invoice_detail_knitting($id)
 function report_invoice_pot_knitting($id)
 {
     $hasil = $this->db->query("SELECT id, id_book_invoice, FORMAT(total, 2) AS total, FORMAT(discount, 2) AS discount, FORMAT(dp, 2) AS dp, 
-      FORMAT(retur, 2) AS retur, FORMAT(twot, 2) AS twot, FORMAT(vat, 2) AS vat, FORMAT(grand_total, 2) AS grand_total 
+      FORMAT(retur, 2) AS retur, FORMAT(twot, 2) AS twot, FORMAT(vat, 2) AS vat, FORMAT(total_other, 2) AS total_other, FORMAT(grand_total, 2) AS grand_total 
       FROM tbl_invoice_pot_knitting 
       WHERE id_book_invoice = '$id' ");
     return $hasil->row_array();

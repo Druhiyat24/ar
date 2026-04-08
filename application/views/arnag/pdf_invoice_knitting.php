@@ -183,6 +183,10 @@ table {
 			<td align='right'><b><?= $data_invoice_pot['vat']; ?></b></td>
 		</tr>
 		<tr>
+			<td style="text-align: left" colspan='6'><b>Other Charges</b></td>
+			<td align='right'><b><?= $data_invoice_pot['total_other']; ?></b></td>
+		</tr>
+		<tr>
 			<td style="text-align: left" colspan='6'><b>Grand Total</b></td>
 			<td align='right'><b><?= $data_invoice_pot['grand_total']; ?></b></td>
 		</tr>
