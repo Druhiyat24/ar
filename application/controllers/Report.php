@@ -208,6 +208,13 @@ class Report extends CI_Controller
         if (!$this->session->userdata('username')) {
             redirect('auth');
         }
+        error_reporting(E_ALL & ~E_WARNING & ~E_NOTICE);
+    ini_set('display_errors', 0);
+
+    if (ob_get_length()) {
+        ob_end_clean();
+    }
+    ob_start();
         //       
         $data["periode_dari"] = $periode_dari;
         $data["periode_sampai"] = $periode_sampai;
@@ -227,6 +234,15 @@ class Report extends CI_Controller
         if (!$this->session->userdata('username')) {
             redirect('auth');
         }
+
+    error_reporting(E_ALL & ~E_WARNING & ~E_NOTICE);
+    ini_set('display_errors', 0);
+
+    if (ob_get_length()) {
+        ob_end_clean();
+    }
+    ob_start();
+
         //       
         $data["sales_report_material"] = $this->Model_report->sales_report_material($periode_dari_mt, $periode_sampai_mt, $id_customer_mt, $shipp_mt, $type_mt, $curr_mt, $type_so_mt);
         $data["periode_dari_mt"] = $periode_dari_mt;
@@ -245,6 +261,13 @@ class Report extends CI_Controller
         if (!$this->session->userdata('username')) {
             redirect('auth');
         }
+        error_reporting(E_ALL & ~E_WARNING & ~E_NOTICE);
+    ini_set('display_errors', 0);
+
+    if (ob_get_length()) {
+        ob_end_clean();
+    }
+    ob_start();
         //       
         $data["report_outstanding_pi"] = $this->Model_report->report_outstanding_pi($periode_dari_pi, $periode_sampai_pi);
         $data["periode_dari_pi"] = $periode_dari_pi;
@@ -293,6 +316,13 @@ class Report extends CI_Controller
         if (!$this->session->userdata('username')) {
             redirect('auth');
         }
+        error_reporting(E_ALL & ~E_WARNING & ~E_NOTICE);
+    ini_set('display_errors', 0);
+
+    if (ob_get_length()) {
+        ob_end_clean();
+    }
+    ob_start();
         //       
         $data["periode_dari"] = $start_date;
         $data["periode_sampai"] = $end_date;
@@ -342,6 +372,13 @@ class Report extends CI_Controller
         if (!$this->session->userdata('username')) {
             redirect('auth');
         }
+        error_reporting(E_ALL & ~E_WARNING & ~E_NOTICE);
+    ini_set('display_errors', 0);
+
+    if (ob_get_length()) {
+        ob_end_clean();
+    }
+    ob_start();
         //       
         $data["periode_dari"] = $start_date;
         $data["periode_sampai"] = $end_date;
@@ -363,6 +400,13 @@ class Report extends CI_Controller
         if (!$this->session->userdata('username')) {
             redirect('auth');
         }
+        error_reporting(E_ALL & ~E_WARNING & ~E_NOTICE);
+    ini_set('display_errors', 0);
+
+    if (ob_get_length()) {
+        ob_end_clean();
+    }
+    ob_start();
         //       
         $data["sales_report_material"] = $this->Model_report->sales_report_detail_material($periode_dari_mt, $periode_sampai_mt, $id_customer_mt, $shipp_mt, $type_mt, $curr_mt, $type_so_mt);
         $data["periode_dari_mt"] = $periode_dari_mt;
