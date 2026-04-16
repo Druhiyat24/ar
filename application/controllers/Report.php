@@ -8,6 +8,7 @@ class Report extends CI_Controller
     {
         parent::__construct();
         //is_logged_in();
+        ini_set('memory_limit', '2048M');
     }
 
     //Sales Report
