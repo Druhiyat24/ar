@@ -124,8 +124,7 @@
                             'proforma_invoice' => 'Proforma Invoice',
                             'return_invoice' => 'Return Invoice',
                             'dp_invoice' => 'DP-CBD Invoice',
-                            'debitnote' => 'Debit Note',
-                            'projection' => 'Projection'
+                            'debitnote' => 'Debit Note'
                         ];
 
                         foreach ($kategori as $key => $label) :
