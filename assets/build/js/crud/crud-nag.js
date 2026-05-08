@@ -12117,6 +12117,7 @@ function cari_mutasi_debit_note() {
 				trHTML += '<td>' + item.supplier + "</td>";
 				trHTML += '<td>' + item.attn + "</td>";	
 				trHTML += '<td>' + item.duedate + "</td>";
+				trHTML += '<td>' + item.duedate_update + "</td>";
 				trHTML += '<td>' + item.top + "</td>";
 				trHTML += '<td>' + item.from_curr + "</td>";
 				trHTML += '<td>' + formatMoney(item.rate) + "</td>";
@@ -12147,7 +12148,7 @@ function cari_mutasi_debit_note() {
 			}
 		});
 trHTML += '<tr>';					
-trHTML += '<th colspan="9" style="text-align: center">' +kata+ "</th>";
+trHTML += '<th colspan="10" style="text-align: center">' +kata+ "</th>";
 trHTML += '<th>' + formatMoney(sal_awl_) + "</th>";
 trHTML += '<th>' + formatMoney(tambah_) + "</th>";	
 trHTML += '<th>' + formatMoney(bayar_) + "</th>";	
@@ -16180,6 +16181,7 @@ function cari_kartu_ar_new() {
 					trHTML += '<td>' + item.inv_date + "</td>";
 					trHTML += '<td>' + item.shipp + "</td>";
 					trHTML += '<td>' + item.duedate + "</td>";
+					trHTML += '<td>' + item.duedate_update + "</td>";
 					trHTML += '<td>' + item.top + "</td>";
 					trHTML += '<td>' + item.curr + "</td>";
 					trHTML += '<td>' + formatMoney(item.rate) + "</td>";
@@ -16209,7 +16211,7 @@ function cari_kartu_ar_new() {
 					trHTML += '</tr>';
 				});
 				trHTML += '<tr>';					
-				trHTML += '<th colspan="8" style="text-align: center">' +kata+ "</th>";
+				trHTML += '<th colspan="9" style="text-align: center">' +kata+ "</th>";
 				trHTML += '<th>' + formatMoney(sal_awl) + "</th>";
 				trHTML += '<th>' + formatMoney(tambah) + "</th>";	
 				trHTML += '<th>' + formatMoney(bayar) + "</th>";	
@@ -16307,4 +16309,685 @@ function export_kartu_ar_new() {
 		$('#bulan_6').append(bulan_6 + ' ' + tahun_6);		
 		window.open(".../../export_kartu_ar_new/" + dt_dari_alk  + "/" + dt_sampai_alk  + "/" + "/" + id_cus + "/" + bulan_1  + "/" + bulan_2  + "/" + bulan_3  + "/" + bulan_4  + "/" + bulan_5  + "/" + bulan_6  + "/" + tahun_1  + "/" + tahun_2  + "/" + tahun_3  + "/" + tahun_4  + "/" + tahun_5  + "/" + tahun_6  + "/"); 
 	}
+
+
+	function add_document_duedate() {
+    let cust_id = $('#duedate_cust').val();
+    let cust_name = $('#duedate_cust option:selected').text().trim();
+    let type_doc = $('#type_doc').val();
+    let user = $('#user_login').val();
+    let kode_type_doc = $('#type_doc option:selected').data('kode');
+    // alert(user);
+
+    // Validasi jika type_doc belum dipilih
+    if (!type_doc) {
+    	Swal.fire({
+    		icon: 'warning',
+    		title: 'Oops...',
+    		text: 'Silakan pilih Type Document terlebih dahulu!'
+    	});
+    	return;
+    }
+
+    $('#mdl_custmr').val(cust_id);
+    $('#mdl_nama_custmr').val(cust_name);
+    $('#mdl_type_doc').val(kode_type_doc);
+    $('#mdl_type_doc_show').val(type_doc);
+
+    // Kosongkan tabel jika perlu
+    delete_data_reff_duedate(user);
+    $('#table-doc-duedate tbody tr').remove();
+    cari_data_reff_duedate();
+
+    // Tampilkan modal
+    $('#modal-add-duedate').modal('show');
+}
+
+function cari_data_reff_duedate() { 
+
+	$('#table-list-data tbody tr').remove();	
+		//Date range picker
+		$('input[name="cobacoba"]').daterangepicker({
+			autoUpdateInput: false,
+			locale: {
+				cancelLabel: 'Clear'
+			}
+		});
+
+		$('input[name="cobacoba"]').on('apply.daterangepicker', function (ev, picker) {
+			dt_dari_doc = picker.startDate.format('YYYY-MM-DD');
+			dt_sampai_doc = picker.endDate.format('YYYY-MM-DD');
+			$(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+		});
+
+
+		var id_customer = $('#mdl_custmr').val();
+		var doc_type = $('#mdl_type_doc').val();
+
+		console.log(dt_dari_doc + ' ' + dt_sampai_doc + ' ' + id_customer + ' ' + doc_type);
+
+		$.ajax({		
+			url: "cari_data_reff_duedate/" + dt_dari_doc + "/" + dt_sampai_doc + "/" + id_customer + "/" + doc_type + "/",					
+			type: "GET",
+			dataType: "JSON",
+			success: function (response) {
+				console.log(response);
+				var trHTML = '';
+				$.each(response, function (i, item) { 								
+					trHTML += '<tr>';					
+					trHTML += '<td style="width: 15%;">' + item.no_invoice + "</td>";
+					trHTML += '<td style="width: 10%;">' + item.inv_date + "</td>";
+					trHTML += '<td style="width: 10%;">' + item.duedate + "</td>";
+					trHTML += '<td style="width: 20%;">' + item.customer + "</td>";	
+					trHTML += '<td style="width: 10%;">' + item.curr + "</td>";
+					trHTML += '<td style="width: 15%;" data-total="'+item.total+'">' + formatMoney(item.total) + "</td>";
+
+					trHTML += '<td style="width: 15%;"><input type="text" class="form-control amount_duedate" ' + 'data-total="'+item.total+'" ' + 'name="amount_duedate" value="" style="text-align:right; width:150px;" autocomplete="off" readonly></td>';	
+					trHTML += '<td style="width: 24%;">' +
+					'<textarea class="form-control ket_reverse" id="ket_duedate" name="ket_duedate" rows="2" style="width: 200px; text-align: left" readonly></textarea>' +
+					'</td>';
+
+					trHTML += '<td style="width: 6%;">' + '<input type="checkbox" class="cb_duedate" ' + 'data-idcustomer="' + item.id_customer + '" ' + 'onclick="toggleDuedate(this)">' +'</td>';
+
+					trHTML += '</tr>';
+				});
+
+				$('#table-list-data').append(trHTML);				
+
+			},
+			error: function (jqXHR, textStatus, errorThrown) {
+				console.error('Error:', jqXHR.responseText);
+			}
+		});	
+
+	}
+
+	function toggleDuedate(checkbox) {
+
+    var row = $(checkbox).closest('tr');
+    var textarea = row.find('.ket_reverse');
+    var input = row.find('.amount_duedate');
+
+    var total = parseFloat(input.data('total')) || 0;
+
+    if (checkbox.checked) {
+        textarea.prop('readonly', false);
+        input.prop('readonly', false);
+
+        // isi otomatis total
+        input.val(formatMoney(total));
+
+    } else {
+        textarea.prop('readonly', true).val('');
+        input.prop('readonly', true).val('');
+    }
+}
+
+
+$(document).on('input', '.amount_duedate', function () {
+
+    var input = $(this);
+    var val = parseFloat(input.val().replace(/,/g,'')) || 0;
+    var total = parseFloat(input.data('total')) || 0;
+
+    if (val > total) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Tidak boleh melebihi total!',
+            text: 'Nilai input lebih besar dari total invoice'
+        });
+
+        input.val(total); // TANPA format dulu
+    }
+});
+
+
+$(document).on('blur', '.amount_duedate', function () {
+
+    var input = $(this);
+    var val = parseFloat(input.val().replace(/,/g,'')) || 0;
+
+    input.val(formatMoney(val));
+});
+
+
+$(document).on('focus', '.amount_duedate', function () {
+    var val = $(this).val().replace(/,/g,'');
+    $(this).val(val);
+});
+
+$(document).on('change', '#check_all_duedate', function () {
+
+    var isChecked = $(this).prop('checked');
+
+    $('.cb_duedate').each(function () {
+        $(this).prop('checked', isChecked);
+
+        // trigger toggle biar ikut isi amount & enable input
+        toggleDuedate(this);
+    });
+
+});
+
+$(document).on('change', '.cb_duedate', function () {
+
+    if (!$(this).prop('checked')) {
+        $('#check_all_duedate').prop('checked', false);
+    } else {
+        let total = $('.cb_duedate').length;
+        let checked = $('.cb_duedate:checked').length;
+
+        if (total === checked) {
+            $('#check_all_duedate').prop('checked', true);
+        }
+    }
+
+});
+
+function simpan_duedate_temp() {
+
+    return new Promise(resolve => {
+
+        var msg;
+        var data = [];
+        var errorMsg = [];
+        var isValid = true;
+        let created_by = $('#user_login_temp').val();
+
+        let now = new Date();
+        let created_date = now.getFullYear() + '-' +
+                String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                String(now.getDate()).padStart(2, '0') + ' ' +
+                String(now.getHours()).padStart(2, '0') + ':' +
+                String(now.getMinutes()).padStart(2, '0') + ':' +
+                String(now.getSeconds()).padStart(2, '0');
+
+        $("#table-list-data input.cb_duedate:checked").each(function () {
+
+            var row = $(this).closest("tr");
+            let id_customer = $(this).data('idcustomer');
+
+            let no_inv   = row.find('td:eq(0)').text();
+            let tgl_inv  = row.find('td:eq(1)').text();
+            let duedate  = row.find('td:eq(2)').text();
+            let curr     = row.find('td:eq(4)').text();
+
+            let total = row.find('td:eq(5)').data('total') 
+                      || row.find('td:eq(5)').text().replace(/,/g,'');
+
+            let amount = (row.find(".amount_duedate").val() || '0').replace(/,/g,'');
+            let ket    = row.find(".ket_reverse").val() || '';
+
+            
+
+            // VALIDASI
+            if (!amount || amount == 0 || ket.trim() === '') {
+                isValid = false;
+                errorMsg.push(no_inv);
+                return;
+            }
+
+            data.push({
+                "no_dokumen": no_inv,
+                "tgl_dokumen": tgl_inv,
+                "duedate": duedate,
+                "id_customer": id_customer,
+                "curr": curr,
+                "total_invoice": total,
+                "amount": amount,
+                "deskripsi": ket,
+                "created_by": created_by,
+                "created_date": created_date
+            });
+
+        });
+
+        // ❗ tidak ada yang dipilih
+        if (data.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Tidak ada data!',
+                text: 'Silakan pilih minimal 1 data'
+            });
+            resolve({ msg: 'No Data' });
+            return;
+        }
+
+        // ❗ validasi gagal
+        if (!isValid) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Data belum lengkap!',
+                html: 'Invoice berikut belum isi <b>Amount / Keterangan</b>:<br><br>' +
+                      errorMsg.join('<br>')
+            });
+            resolve({ msg: 'Validation Error' });
+            return;
+        }
+
+        $.ajax({
+            url: "simpan_duedate_temp/",
+            type: "POST",
+            data: { data_table: data },
+            dataType: "JSON",
+            success: function (res) {
+
+                if (res.status) {
+                    msg = 'Success Input Detail';
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success',
+                        text: msg
+                    }).then(() => {
+                        load_doc_duedate_temp();
+                        $('#modal-add-duedate').modal('hide');
+                    });
+
+                } else {
+                    msg = 'Error Input Detail';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Failed',
+                        text: msg
+                    });
+                }
+
+                resolve({ msg: msg });
+            },
+            error: function () {
+
+                msg = 'Error Input Detail';
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Ajax Error',
+                    text: msg
+                });
+
+                resolve({ msg: msg });
+            }
+        });
+
+    });
+}
+
+
+
+function delete_data_reff_duedate($user){ 
+
+    let user = $user;
+
+    $.ajax({						
+        url: "delete_data_reff_duedate/" + user,
+			type: "GET",				
+			dataType: "JSON",
+			success: function (data) {
+
+			if (data.status) //if success close modal and reload ajax table
+			{
+				msg = 'Success Delete Table Temporary'			     
+			} else {
+				msg = 'Error Delete Table Temporary'				
+			}
+		},
+		error: function (jqXHR, textStatus, errorThrown) {
+			msg = 'Error Delete Table Temporary' + jqXHR.text			
+		}
+	});
+
+	}
+
+
+	function load_doc_duedate_temp(){ 
+
+		$.ajax({		
+			url: "load_doc_duedate_temp/",							
+			type: "GET",
+			dataType: "JSON",
+			success: function (response) {
+				var trHTML = '';
+				$.each(response, function (i, item) {
+					trHTML += '<tr>';		
+					trHTML += '<td style="width: 15%;">' + item.no_dokumen + "</td>";
+					trHTML += '<td style="width: 10%;">' + item.tgl_dokumen + "</td>";
+					trHTML += '<td style="width: 20%;">' + item.duedate + "</td>";
+					trHTML += '<td style="width: 20%;">' + item.customer + "</td>";
+					trHTML += '<td style="width: 10%;">' + item.curr + "</td>";
+					trHTML += '<td style="width: 15%;">' + formatMoney(item.amount) + "</td>";
+					trHTML += '<td style="width: 30%;">' + item.deskripsi + "</td>";
+					trHTML += '<td hidden>' + item.id_customer + "</td>";
+					trHTML += '</tr>';
+
+				});
+				$('#table-doc-duedate').append(trHTML);
+			},
+			error: function (jqXHR, textStatus, errorThrown) {
+				alert('Error get data from ajax');
+			}
+		});  	  	
+
+	}
+
+
+
+function simpan_data_duedate() {
+
+    let header = {
+        doc_number: $('#duedate_number').val(),
+        duedate_update: $('#duedate_to').val(),
+        keterangan: $('#duedate_deskripsi').val()
+    };
+
+    let detail = [];
+    let invalidList = [];
+    let isValid = true;
+
+    let duedate_new = $('#duedate_to').val(); // tanggal baru (header)
+
+    $('#table-doc-duedate tbody tr').each(function () {
+
+        let row = $(this).find('td');
+
+        let no_inv = row.eq(0).text();
+        let duedate_before = row.eq(2).text();
+
+        // convert ke format date
+        let before = new Date(duedate_before);
+        let after  = new Date(duedate_new);
+
+        // ❌ validasi
+        if (after < before) {
+            isValid = false;
+            invalidList.push(no_inv + ' (' + duedate_before + ')');
+        }
+
+        detail.push({
+            no_invoice: no_inv,
+            duedate_before: duedate_before,
+            curr: row.eq(4).text(),
+            amount: row.eq(5).text().replace(/,/g,''), 
+            keterangan: row.eq(6).text()
+        });
+
+    });
+
+    if (!isValid) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Invalid Due Date!',
+            html: 'Due Date baru tidak boleh lebih kecil dari sebelumnya:<br><br>' +
+                  invalidList.join('<br>')
+        });
+        return;
+    }
+
+    if (detail.length === 0) {
+        Swal.fire('Oops', 'Silakan tambahkan minimal 1 data detail!', 'warning');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Simpan Data?',
+        text: "Pastikan semua data sudah benar.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Simpan!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+
+        if (result.isConfirmed) {
+
+            $.ajax({
+                url: "simpan_data_duedate/",
+                method: 'POST',
+                data: {
+                    header: header,
+                    detail: detail
+                },
+                dataType: 'json',
+                success: function (response) {
+                    if (response.status === true) {
+                        Swal.fire('Sukses', response.message, 'success').then(() => {
+                            window.location.href = BASE_URL + 'arnag/list_duedate_update';
+                        });
+                    } else {
+                        Swal.fire('Gagal', response.message, 'error');
+                    }
+                },
+                error: function (xhr) {
+                    Swal.fire('Error', 'Terjadi kesalahan saat mengirim data.', 'error');
+                    console.error('Error:', xhr.responseText);
+                }
+            });
+
+        }
+
+    });
+}
+
+
+
+
+$(document).ready(function () {
+
+    // 🔥 load pertama kali TANPA FILTER
+    cari_list_duedate_update();
+
+    $('#reservation2').daterangepicker({
+        autoUpdateInput: false,
+        locale: {
+            cancelLabel: 'Clear'
+        }
+    });
+
+    $('#reservation2').on('apply.daterangepicker', function (ev, picker) {
+
+        dt_dari_inv = picker.startDate.format('YYYY-MM-DD');
+        dt_sampai_inv = picker.endDate.format('YYYY-MM-DD');
+
+        $(this).val(
+            picker.startDate.format('DD/MM/YYYY') + ' - ' +
+            picker.endDate.format('DD/MM/YYYY')
+        );
+
+        cari_list_duedate_update();
+    });
+
+    $('#reservation2').on('cancel.daterangepicker', function () {
+
+        $(this).val('');
+        dt_dari_inv = '';
+        dt_sampai_inv = '';
+
+        cari_list_duedate_update();
+    });
+
+});
+
+function cari_list_duedate_update() {
+
+    let dari = dt_dari_inv ? dt_dari_inv : 'all';
+    let sampai = dt_sampai_inv ? dt_sampai_inv : 'all';
+
+    $('#table-list-duedate-update').DataTable({
+        destroy: true,
+        processing: true,
+        serverSide: false,
+        ajax: {
+            url: "cari_list_duedate_update/" + dari + "/" + sampai,
+            type: "GET",
+            dataSrc: ''
+        },
+        columns: [
+    { data: 'doc_number', className: 'text-center' },
+    { data: 'duedate_update', className: 'text-center' },
+    { data: 'keterangan' },
+    {
+        data: 'status',
+        className: 'text-center',
+        render: function (data) {
+            if (data === 'POST') {
+                return '<span class="badge badge-success">POST</span>';
+            } else {
+                return '<span class="badge badge-secondary">' + data + '</span>';
+            }
+        }
+    },
+    { data: 'user_create' },
+    {
+        data: null,
+        className: 'text-center',
+        render: function (data, type, row) {
+
+            let btnDetail = `
+                <button class="btn btn-info btn-sm"
+                    onclick="cari_detail_duedate_update(${row.id})">
+                    <i class="fas fa-eye"></i> Detail
+                </button>
+            `;
+
+            let btnCancel = '';
+
+            if (row.status === 'POST') {
+                btnCancel = `
+                    <button class="btn btn-danger btn-sm"
+                        onclick="cancel_duedate_update('${row.id}','${row.doc_number}','${row.status}')">
+                        <i class="fas fa-trash-alt"></i> Cancel
+                    </button>
+                `;
+            }
+
+            return btnDetail + ' ' + btnCancel;
+        }
+    }
+]
+,
+        scrollY: "300px",
+        scrollCollapse: true,
+        paging: true
+    });
+}
+
+
+function cari_detail_duedate_update(id) { 
+
+		$('#table-duedate-detail tbody tr').remove();		
+		$('#modal-duedate-detail').modal('show');
+		console.log(id)
+		$.ajax({		
+			url: "cari_detail_duedate_update/" + id + "/",					
+			type: "GET",
+			dataType: "JSON",
+			success: function (response) {
+				console.log(response);
+				var trHTML = '';
+				$.each(response, function (i, item) { 			
+					trHTML += '<tr>';										
+					trHTML += '<td>' + item.no_invoice + "</td>";
+					trHTML += '<td>' + item.sj_date + "</td>";	
+					trHTML += '<td>' + item.duedate_update + "</td>";
+					trHTML += '<td>' + item.customer + "</td>";	
+					trHTML += '<td>' + item.curr + "</td>";		
+					trHTML += '<td align="right">' + formatMoney(item.amount)+ "</td>";	
+					trHTML += '<td>' + item.keterangan + "</td>";	
+					trHTML += '<td>' + item.status + "</td>";				
+					trHTML += '</tr>';
+                //
+                $('#inv_number_list').val(item.doc_number)
+				//				
+			});
+
+				$('#table-duedate-detail').append(trHTML);
+
+			// cari_inv_pot(id_inv);						
+
+		},
+		error: function (jqXHR, textStatus, errorThrown) {
+			alert('Error get data from ajax');
+		}
+	});	
+
+	}
+
+
+	function cancel_duedate_update(id, doc_number, status) {
+
+    Swal.fire({
+        title: 'Cancel Document?',
+        html: `
+            <b>Doc Number:</b> ${doc_number}
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, Cancel!',
+        cancelButtonText: 'No'
+    }).then((result) => {
+
+        if (result.isConfirmed) {
+
+            Swal.fire({
+                title: 'Processing...',
+                text: 'Please wait',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            $.ajax({
+                url: "cancel_duedate_update",
+                type: "POST",
+                dataType: "JSON",
+                data: {
+                    id: id,
+                    doc_number: doc_number
+                },
+                success: function (res) {
+
+                    Swal.close();
+
+                    if (res.status === 'success') {
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success',
+                            text: res.message
+                        });
+
+                        // reload table
+                        $('#table-list-duedate-update').DataTable().ajax.reload(null, false);
+
+                    } else {
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Failed',
+                            text: res.message
+                        });
+
+                    }
+                },
+                error: function () {
+
+                    Swal.close();
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Server error!'
+                    });
+
+                }
+            });
+
+        }
+
+    });
+}
+
+
+
+
 
