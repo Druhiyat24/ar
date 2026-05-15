@@ -200,7 +200,7 @@
                                         </div>
                                     </div>
                                     <!-- Row 2 -->
-                                    <div class="row align-items-end">
+                                    <div class="row">
                                         <div class="col-md-2">
                                             <div class="form-group mb-0">
                                                 <label>From</label>

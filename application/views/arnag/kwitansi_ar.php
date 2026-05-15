@@ -55,6 +55,15 @@
                                         </div>
                                     </div>
                                     <div class="col-md-2">
+                                        <div class="form-group mb-0">
+                                            <label>To</label>
+                                            <div class="input-group">
+                                                <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
                                         <div class="d-flex" style="gap:6px;">
                                             <button type="button" id="find_invoice" name="find_invoice" class="btn btn-primary" href="javascript:void(0)" onclick="cari_kwitansi()"><i class="fa fa-search"></i> Search</button>
                                         </div>

@@ -27,12 +27,21 @@
             </div>
             <div class="card">
                 <div class="card-header">
-                    <div class="row align-items-end">
+                    <div class="row">
                         <div class="col-md-2">
                             <div class="form-group mb-0">
                                 <label>From</label>
                                 <div class="input-group">
                                     <input type="text" name="filter_from" id="filter_from" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group mb-0">
+                                <label>To</label>
+                                <div class="input-group">
+                                    <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
                                     <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                 </div>
                             </div>
