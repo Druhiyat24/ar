@@ -4935,7 +4935,7 @@ function cari_sj_knitting($id_sj, $profit_center)
         INNER JOIN master_kain c ON c.id = b.kain_id 
         LEFT JOIN master_kain_detail d ON d.id = b.detail_kain_id 
         INNER JOIN sales_orders i ON i.id = a.no_so
-        INNER JOIN detail_so e ON e.sales_order_id = i.id  
+        INNER JOIN detail_so e ON e.sales_order_id = i.id  and e.master_kain_id = b.kain_id
         LEFT JOIN master_unit g ON g.id = e.id_unit_sales_order_shipment 
         LEFT JOIN master_unit h ON h.id = e.id_unit_sales_order
         INNER JOIN master_konsumen mk ON mk.id = i.konsumen_id

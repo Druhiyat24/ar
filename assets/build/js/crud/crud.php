@@ -35,8 +35,16 @@ let dt_sampai_sj
 var Toast
 var base_url = '<?php echo base_url();?>';
 
-//Load Date 
+//Load Date
 $(document).ready(function () {
+	// Inisialisasi semua daterangepicker di sini agar langsung aktif tanpa perlu klik search dulu
+	var drpConfig = { autoUpdateInput: false, locale: { cancelLabel: 'Clear' } };
+	$('input[name="reservation2"]').daterangepicker(drpConfig);
+	$('input[name="reservation"]').daterangepicker(drpConfig);
+	$('input[name="cobacoba"]').daterangepicker(drpConfig);
+	$('input[name="cobacoba3"]').daterangepicker(drpConfig);
+	$('input[name="tgl_fil_memo"]').daterangepicker(drpConfig);
+
 	$('input[name="reservation2"]').on('apply.daterangepicker', function (ev, picker) {
         dt_dari_inv = picker.startDate.format('YYYY-MM-DD');
 		dt_sampai_inv = picker.endDate.format('YYYY-MM-DD');

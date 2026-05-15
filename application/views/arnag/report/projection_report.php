@@ -16,23 +16,24 @@
 
 /* ===== Sticky Header ===== */
 #table-projection-report thead th {
-    position: sticky;
-    top: 0;
-    z-index: 30; /* tinggi supaya di atas td */
-    background: #f1f1f1;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 30 !important;
+    background: #f1f1f1 !important;
     text-transform: capitalize;
-    vertical-align: middle;
-    text-align: center;
-    white-space: nowrap;
-    border: 1px solid #dee2e6;
-    padding: 6px 10px;
+    vertical-align: middle !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    border: 1px solid #dee2e6 !important;
+    padding: 6px 10px !important;  /* override global padding agar tinggi row 1 tetap 31px */
+    font-size: 12px !important;
 }
 
-/* Baris kedua header juga sticky */
+/* Baris kedua header sticky — top di-set otomatis via JS sesuai tinggi row 1 */
 #table-projection-report thead tr:nth-child(2) th {
-    top: 35px; /* tinggi baris pertama */
-    z-index: 29;
-    background: #f9f9f9;
+    top: 35px; /* fallback, di-override JS */
+    z-index: 29 !important;
+    background: #f9f9f9 !important;
 }
 
 /* ===== Body ===== */
@@ -155,9 +156,9 @@
                             <form>
                                 <div class="card-body">
                                     <!-- Row 1 -->
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <div class="form-group">
+                                    <div class="row align-items-end">
+                                        <div class="col-md-3">
+                                            <div class="form-group mb-0">
                                                 <label>Customer</label>
                                                 <select class="form-control select2bs4" id="sr_customer" name="sr_customer">
                                                     <option value="All">All Customer</option>
@@ -168,32 +169,60 @@
                                             </div>
                                         </div>
 
-                                        <div class="form-group col-md-2">
-                                            <label>From</label>
-                                            <div class="input-group mb-1">
-                                                <input type="text" name="filter_from" id="filter_from" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        <div class="col-md-2">
+                                            <div class="form-group mb-0">
+                                                <label>From</label>
+                                                <div class="input-group">
+                                                    <input type="text" name="filter_from" id="filter_from" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div class="form-group col-md-2">
-                                            <label>To</label>
-                                            <div class="input-group mb-1">
-                                                <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        <div class="col-md-2">
+                                            <div class="form-group mb-0">
+                                                <label>To</label>
+                                                <div class="input-group">
+                                                    <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div class="form-group">
-                                            <label>Action</label>
-                                            <div class="input-group">
-                                                <button type="button" id="find_data" name="find_data" class="btn btn-primary" href="javascript:void(0)" onclick="cari_projection_report()"><i class="fa fa-search"></i>  Search</button>
+                                        <div class="col-md-2">
+                                            <div class="form-group mb-0">
+                                                <label>Type</label>
+                                                <select class="form-control select2bs4" id="filter_type" name="filter_type">
+                                                    <option value="daily">Daily</option>
+                                                    <option value="weekly">Weekly</option>
+                                                    <option value="monthly">Monthly</option>
+                                                </select>
                                             </div>
                                         </div>
+
                                         <div class="col-md-3">
-                                            <label>Export Data</label>
-                                            <div class="input-group">
-                                                <button type="button" class="btn btn-info" onclick="export_projection_report()"><i class="fa fa-download"></i> Export To Excel</button>
+                                            <div class="d-flex" style="gap:8px;">
+                                                <button type="button"
+                                                    id="find_data"
+                                                    class="btn btn-primary"
+                                                    style="height:38px; white-space:nowrap;"
+                                                    onclick="cari_projection_report()">
+                                                    <i class="fa fa-search"></i> Search
+                                                </button>
+
+                                                <button type="button"
+                                                    class="btn btn-success"
+                                                    style="height:38px; white-space:nowrap;"
+                                                    onclick="export_projection_report()">
+                                                    <i class="fa fa-file-excel"></i> Export
+                                                </button>
+
+                                                <button type="button"
+                                                    class="btn btn-warning"
+                                                    style="height:38px; white-space:nowrap;"
+                                                    onclick="save_history_projection_report()">
+                                                    <i class="fa fa-download"></i> Save History
+                                                </button>
                                             </div>
                                         </div>
 

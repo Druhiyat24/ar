@@ -948,13 +948,95 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
 
     $this->db->query($sqlMain);
 
-    $this->db->query("PREPARE stmt FROM @sql");
-$this->db->query("EXECUTE stmt");
-$query = $this->db->query("EXECUTE stmt"); // ambil result
 
-$this->db->query("DEALLOCATE PREPARE stmt");
+$getSql = $this->db->query("SELECT @sql AS sqlku")->row_array();
 
-return $query->result();
+$sqlFix = $getSql['sqlku'];
+
+$query = $this->db->query($sqlFix);
+
+return $query->result_array();
+}
+
+
+public function save_history_projection_report($id_customer, $from, $to, $created_by, $type = 'daily')
+{
+    // 1. Generate doc_number format PR/MMYY/NNNNN (reset tiap bulan)
+    $mmyy = date('my', strtotime($from)); // e.g. "0625" untuk Juni 2025
+
+    $q = $this->db->query("
+        SELECT IFNULL(MAX(CAST(SUBSTRING(doc_number, 9, 5) AS UNSIGNED)), 0) + 1 AS next_no
+        FROM tbl_history_projection_h
+        WHERE doc_number LIKE 'PR/$mmyy/%'
+    ");
+    $next_no    = (int)($q->row()->next_no ?? 1);
+    $doc_number = 'PR/' . $mmyy . '/' . str_pad($next_no, 5, '0', STR_PAD_LEFT);
+
+    // 2. Insert log/header
+    $this->db->insert('tbl_history_projection_h', [
+        'doc_number'     => $doc_number,
+        'periode_dari'   => $from,
+        'periode_sampai' => $to,
+        'id_customer'    => $id_customer,
+        'type'           => $type,
+        'created_by'     => $created_by,
+        'created_at'     => date('Y-m-d H:i:s'),
+    ]);
+
+    // 3. INSERT...SELECT detail dari hasil projection
+    $rows = $this->cari_projection_report_export($id_customer, $from, $to);
+
+    if (!empty($rows)) {
+        $batch = [];
+        foreach ($rows as $r) {
+            $batch[] = [
+                'doc_number'     => $doc_number,
+                'id_customer'    => $r['id_customer'],
+                'customer'       => $r['customer'],
+                'no_invoice'     => $r['no_invoice'],
+                'inv_date'       => $r['inv_date'],
+                'shipp'          => $r['shipp'],
+                'duedate'        => $r['duedate'],
+                'duedate_update' => $r['duedate_update'],
+                'top'            => $r['top'],
+                'curr'           => $r['curr'],
+                'amount'         => $r['amount'],
+                'rate'           => $r['rate'],
+                'amount_idr'     => $r['amount_idr'],
+            ];
+        }
+        $this->db->insert_batch('tbl_history_projection_det', $batch);
+    }
+
+    return $doc_number;
+}
+
+
+public function get_history_projection_list($from, $to)
+{
+    $hasil = $this->db->query("
+        SELECT h.doc_number, h.periode_dari, h.periode_sampai, h.id_customer,
+               h.created_by, h.created_at,
+               COUNT(d.id)        AS total_invoice,
+               SUM(d.amount_idr)  AS total_amount_idr
+        FROM tbl_history_projection_h h
+        LEFT JOIN tbl_history_projection_det d ON d.doc_number = h.doc_number
+        WHERE DATE(h.created_at) BETWEEN '$from' AND '$to'
+        GROUP BY h.doc_number
+        ORDER BY h.created_at DESC
+    ");
+    return $hasil->result_array();
+}
+
+
+public function get_history_projection_detail($doc_number)
+{
+    $doc_number = $this->db->escape_str($doc_number);
+
+    $header = $this->db->get_where('tbl_history_projection_h', ['doc_number' => $doc_number])->row_array();
+    $detail = $this->db->get_where('tbl_history_projection_det', ['doc_number' => $doc_number])->result_array();
+
+    return ['header' => $header, 'detail' => $detail];
 }
 
 
