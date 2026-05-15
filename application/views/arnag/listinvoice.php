@@ -47,15 +47,21 @@
                                         </select>
                                     </div>
 
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <!-- <label>Date Range</label> -->
-                                            <label>Date Range</label>
+                                    <div class="col-md-2">
+                                        <div class="form-group mb-0">
+                                            <label>From</label>
                                             <div class="input-group">
-                                                <div class="input-group-prepend">
-                                                    <span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
-                                                </div>
-                                                <input type="text" class="form-control float-right" id="reservation2" name="reservation2">
+                                                <input type="text" name="filter_from" id="filter_from" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group mb-0">
+                                            <label>To</label>
+                                            <div class="input-group">
+                                                <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                             </div>
                                         </div>
                                     </div>
