@@ -425,22 +425,36 @@
                                 <label>Id Customer</label>
                                 <input type="text" class="form-control float-right" id="custmr" name="custmr" readonly>
                             </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <!-- <label>Date Range</label> -->
-                                        <label>Date Range</label>
+                            <div class="col-md-2">
+                                <div class="form-group mb-0">
+                                    <label>From</label>
                                     <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
-                                        </div>
-                                        <input type="text" class="form-control float-right" id="reservation2" name="reservation2">
+                                        <input type="text" name="filter_from_so" id="filter_from" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                        <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-2">
+                                <div class="form-group mb-0">
+                                    <label>To</label>
+                                    <div class="input-group">
+                                        <input type="text" name="filter_to_so" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                        <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group mb-0">
+                                    <label>Search Data</label>
+                                    <div class="input-group">
+                                        <button type="button" id="find_so" name="find_so" class="btn btn-info" href="javascript:void(0)" onclick="cari_data_inv()"><i class="fa fa-search"></i> Search</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- <div class="col-md-4">
                             </br>
                                 <button type="button" id="find_so" name="find_so" class="btn btn-info" href="javascript:void(0)" onclick="cari_data_inv()"><i class="fa fa-search"></i> Search</button>
-                            </div>
+                            </div> -->
                         </div>
                         <div class="col-md-2">
                             <input type="hidden" class="form-control float-right" id="id_custm" name="id_custm" readonly>

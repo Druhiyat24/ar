@@ -162,18 +162,24 @@
                                 <input type="text" class="form-control float-left" id="mdl_type_doc_show" name="nama_custmr" readonly>
                                 <input type="hidden" id="user_login_temp" name="user_login_temp" value="<?= $this->session->userdata('username'); ?>">
                             </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <!-- <label>Date Range</label> -->
-                                    <label>Date Range</label>
+                            <div class="col-md-2">
+                                  <div class="form-group mb-0">
+                                    <label>From</label>
                                     <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
-                                        </div>
-                                        <input type="text" class="form-control float-right" id="cobacoba" name="cobacoba">
+                                      <input type="text" name="filter_from_so" id="filter_from" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                      <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                     </div>
+                                  </div>
                                 </div>
-                            </div>
+                                <div class="col-md-2">
+                                  <div class="form-group mb-0">
+                                    <label>To</label>
+                                    <div class="input-group">
+                                      <input type="text" name="filter_to_so" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                      <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                    </div>
+                                  </div>
+                                </div>
 
                             <div class="col-md-2 mt-2">
 

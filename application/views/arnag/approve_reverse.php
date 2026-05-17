@@ -48,23 +48,17 @@
                         </div>
                         <div class="col-md-2">
                             <div class="form-group mb-0">
-                                <label>To</label>
+                                <label>Search Data</label>
                                 <div class="input-group">
-                                    <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
-                                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                    <button type="button" id="find_invoice_post" name="find_invoice_post" class="btn btn-primary" href="javascript:void(0)" onclick="cari_reverse_draft()"><i class="fa fa-search"></i> Search</button>
                                 </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="d-flex" style="gap:6px;">
-                                <button type="button" id="find_invoice_post" name="find_invoice_post" class="btn btn-primary" href="javascript:void(0)" onclick="cari_reverse_draft()"><i class="fa fa-search"></i> Search</button>
                             </div>
                         </div>
                     </div>
                 </div>
                 <!-- /.card-header -->
                 <div class="d-flex justify-content-between">
-                 <div class="ml-auto">
+                   <div class="ml-auto">
                     <span class="input-group-text"><i class="fas fa-search"></i></span>
                 </div>
                 <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Reverse.." onkeyup="cari_noinv()">
@@ -175,18 +169,18 @@
                         <!-- /.card-body -->
                     </div>
                 </div>
-                    <!-- End Datatable Nomor Booking Invoice  -->
-                </div>
-            
-                <!--  -->
-                <div class="modal-footer right-content-between">
-                    <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
-                </div>
+                <!-- End Datatable Nomor Booking Invoice  -->
             </div>
-            <!-- /.modal-content -->
+            
+            <!--  -->
+            <div class="modal-footer right-content-between">
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+            </div>
         </div>
-        <!-- /.modal-dialog -->
+        <!-- /.modal-content -->
     </div>
+    <!-- /.modal-dialog -->
+</div>
 
 
 <script>

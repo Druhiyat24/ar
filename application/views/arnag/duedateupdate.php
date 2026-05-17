@@ -108,12 +108,10 @@
                             </div>
                             <div class="form-group col-md-4">
                                 <label>Kontabon Date :</label>
-                                <div class="input-group date" id="reservationdate" data-target-input="nearest">
-                                    <input type="text" class="form-control datetimepicker-input" data-target="#reservationdate" name="tgl_kontrabon" id="tgl_kontrabon">
-                                    <div class="input-group-append" data-target="#reservationdate" data-toggle="datetimepicker">
+                                <div class="input-group">
+                                        <input type="text" name="tgl_kontrabon" id="tgl_kontrabon" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
                                         <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                     </div>
-                                </div>
                             </div>
                             <div class="form-group col-md-4">
                                 <label>Note :</label>

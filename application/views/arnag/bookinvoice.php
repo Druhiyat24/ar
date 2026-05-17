@@ -140,7 +140,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="form-group col-md-3">
+                                            <div class="form-group col-md-2">
                                                 <label>Status</label>
                                                 <select class="form-control select2bs4" id="book_status" name="book_status">
                                                     <option value="All">All</option>
@@ -152,7 +152,7 @@
                                             <div class="col-md-2">
                                                 <div class="d-flex" style="gap:6px;">
                                                     <button type="button" id="find_book_invoice" name="find_book_invoice" class="btn btn-primary" href="javascript:void(0)" onclick="loadbookinvoice()"><i class="fa fa-search"></i> Search</button>
-                                                    <button type="button" class="btn btn-info" onclick="export_book_invoice()"><i class="fa fa-download"></i> Export To Excel</button>
+                                                    <button type="button" class="btn btn-info" onclick="export_book_invoice()"><i class="fa fa-download"></i> Export</button>
                                                 </div>
                                             </div>
 

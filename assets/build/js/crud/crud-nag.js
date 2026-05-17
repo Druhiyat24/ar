@@ -354,24 +354,10 @@ function cari_bi() {
 	$('#table-add-bi tbody tr').remove();	
 
 		//Date range picker
-		$('input[name="reservation"]').daterangepicker({
-			autoUpdateInput: false,
-			locale: {
-				cancelLabel: 'Clear'
-			}
-		});
+		var dt_dari = $('#filter_from').val();
+		var dt_sampai = $('#filter_to').val();
 
-		$('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
-			dt_dari = picker.startDate.format('YYYY-MM-DD');
-			dt_sampai = picker.endDate.format('YYYY-MM-DD');
-			$(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
-		});
-
-		$('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
-			$(this).val('');
-			dt_dari = "undefined";
-			dt_sampai = "undefined";
-		});
+		console.log(dt_dari + '|' + dt_sampai)
 
 		$.ajax({		
 			url: "cari_bi/" + dt_dari + "/" + dt_sampai + "/",		
@@ -415,24 +401,8 @@ function cari_bi() {
 		$('#table-add-bookinvoice tbody tr').remove();	
 
 		//Date range picker
-		$('input[name="reservation"]').daterangepicker({
-			autoUpdateInput: false,
-			locale: {
-				cancelLabel: 'Clear'
-			}
-		});
-
-		$('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
-			dt_dari = picker.startDate.format('YYYY-MM-DD');
-			dt_sampai = picker.endDate.format('YYYY-MM-DD');
-			$(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
-		});
-
-		$('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
-			$(this).val('');
-			dt_dari = "undefined";
-			dt_sampai = "undefined";
-		});
+		var dt_dari = $('#filter_from').val();
+		var dt_sampai = $('#filter_to').val();
 
 		$.ajax({		
 			url: "cari_book_inv/" + dt_dari + "/" + dt_sampai + "/",		
@@ -806,8 +776,8 @@ function cari_so() {
 	$('#table-sj-2 tbody tr').remove();
 	// modal_clear_component();
 
-		var from = $('#filter_from').val();
-		var to = $('#filter_to').val();
+		var from = $('#filter_from_so').val();
+		var to = $('#filter_to_so').val();
 		var buyer       = $('#buyer').val();
 		var id_customer = $('#id_custm').val();
 		var profit_center = $('#profit_ctr').val();
@@ -855,8 +825,8 @@ function cari_so() {
 		$('#table-sj-2 tbody tr').remove();
 	// modal_clear_component();
 
-		var from = $('#filter_from').val();
-		var to = $('#filter_to').val();
+		var from = $('#filter_from_so').val();
+		var to = $('#filter_to_so').val();
 		var buyer       = $('#buyer').val();
 		var id_customer = $('#id_custm').val();
 		var profit_center = $('#profit_ctr').val();
@@ -12668,24 +12638,8 @@ function delete_memo_temp(){
 
 				$('#table-inv-memo tbody tr').remove();	
 		//Date range picker
-		$('input[name="tgl_fil_memo"]').daterangepicker({
-			autoUpdateInput: false,
-			locale: {
-				cancelLabel: 'Clear'
-			}
-		});
-
-		$('input[name="tgl_fil_memo"]').on('apply.daterangepicker', function (ev, picker) {
-			dt_dari_memo = picker.startDate.format('YYYY-MM-DD');
-			dt_sampai_memo = picker.endDate.format('YYYY-MM-DD');
-			$(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
-		});
-
-		$('input[name="tgl_fil_memo"]').on('cancel.daterangepicker', function (ev, picker) {
-			$(this).val('');
-			dt_dari_memo   = "undefined";
-			dt_sampai_memo = "undefined";
-		});
+		var dt_dari_memo = $('#filter_from').val();
+		var dt_sampai_memo = $('#filter_to').val();
 
 		var id_customer = $('#id_custm').val();
 
@@ -14541,24 +14495,8 @@ function cari_book_inv_knitting() {
 	$('#table-add-bookinvoice tbody tr').remove();	
 
 		//Date range picker
-		$('input[name="reservation"]').daterangepicker({
-			autoUpdateInput: false,
-			locale: {
-				cancelLabel: 'Clear'
-			}
-		});
-
-		$('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
-			dt_dari = picker.startDate.format('YYYY-MM-DD');
-			dt_sampai = picker.endDate.format('YYYY-MM-DD');
-			$(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
-		});
-
-		$('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
-			$(this).val('');
-			dt_dari = "undefined";
-			dt_sampai = "undefined";
-		});
+		var dt_dari = $('#filter_from').val();
+		var dt_sampai = $('#filter_to').val();
 
 		$.ajax({		
 			url: "cari_book_inv_knitting/" + dt_dari + "/" + dt_sampai + "/",		
@@ -14601,8 +14539,8 @@ function cari_book_inv_knitting() {
 		$('#table-sj-2 tbody tr').remove();
 	// modal_clear_component();
 
-		var from = $('#filter_from').val();
-		var to = $('#filter_to').val();
+		var from = $('#filter_from_so').val();
+		var to = $('#filter_to_so').val();
 		var buyer       = $('#buyer').val();
 		var id_customer = $('#id_custm').val();
 		var profit_center = $('#profit_ctr').val();
@@ -15763,18 +15701,8 @@ function cari_data_reff_duedate() {
 
 	$('#table-list-data tbody tr').remove();	
 		//Date range picker
-		$('input[name="cobacoba"]').daterangepicker({
-			autoUpdateInput: false,
-			locale: {
-				cancelLabel: 'Clear'
-			}
-		});
-
-		$('input[name="cobacoba"]').on('apply.daterangepicker', function (ev, picker) {
-			dt_dari_doc = picker.startDate.format('YYYY-MM-DD');
-			dt_sampai_doc = picker.endDate.format('YYYY-MM-DD');
-			$(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
-		});
+		var dt_dari_doc = $('#filter_from').val();
+		var dt_sampai_doc = $('#filter_to').val();
 
 
 		var id_customer = $('#mdl_custmr').val();

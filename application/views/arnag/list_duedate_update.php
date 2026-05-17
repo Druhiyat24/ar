@@ -19,90 +19,85 @@
                 <div class="col-md-12">
                     <!-- general form elements -->
                     <div class="card card-info">
-                       <div class="card-header text-white bg-success">
-                            <h3 class="card-title"><?= mb_strtoupper($title, 'UTF-8'); ?></h3>
-                        </div>
-                        <!-- /.card-header -->
-                        <!-- form start -->
-                        <form>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-2">
-                                        <div class="form-group mb-0">
-                                            <label>From</label>
-                                            <div class="input-group">
-                                                <input type="text" name="filter_from" id="filter_from" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
-                                            </div>
+                     <div class="card-header text-white bg-success">
+                        <h3 class="card-title"><?= mb_strtoupper($title, 'UTF-8'); ?></h3>
+                    </div>
+                    <!-- /.card-header -->
+                    <!-- form start -->
+                    <form>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-2">
+                                    <div class="form-group mb-0">
+                                        <label>From</label>
+                                        <div class="input-group">
+                                            <input type="text" name="filter_from" id="filter_from" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                            <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                         </div>
                                     </div>
-                                    <div class="col-md-2">
-                                        <div class="form-group mb-0">
-                                            <label>To</label>
-                                            <div class="input-group">
-                                                <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
-                                            </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group mb-0">
+                                        <label>To</label>
+                                        <div class="input-group">
+                                            <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                            <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                         </div>
                                     </div>
-                                    <div class="col-md-2">
-                                        <div class="form-group mb-0">
-                                            <label>To</label>
-                                            <div class="input-group">
-                                                <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
-                                            </div>
-                                        </div>
+                                </div>
+                                
+                                <div class="col-md-2">
+                                    <div class="form-group mb-0">
+                                      <label>Action</label>
+                                      <div class="input-group">
+                                        <button type="button" class="btn btn-info" onclick="cari_list_duedate_update()">
+                                            <i class="fa fa-search"></i> Search
+                                        </button>
+                                        <a href="<?php echo base_url('arnag/create_duedate_update'); ?>" class="btn btn-warning">
+                                            <i class="fas fa-plus"></i> Create
+                                        </a>
                                     </div>
-                                    <div class="col-md-2">
-                                        <div class="d-flex" style="gap:6px;">
-                                            <button type="button" class="btn btn-info" onclick="cari_list_duedate_update()">
-                                                <i class="fa fa-search"></i> Search
-                                            </button>
-                                            <a href="<?php echo base_url('arnag/create_duedate_update'); ?>" class="btn btn-warning">
-                                                <i class="fas fa-plus"></i> Create
-                                            </a>
-                                        </div>
-                                    </div>
-
-
                                 </div>
                             </div>
-                            <!-- /.card-body -->
-                        </form>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Data Table List Invoice -->
-            <div class="card">
-    <div class="card-header bg-info">
-        <h3 class="card-title">LIST DATA</h3>
+
+                        </div>
+                    </div>
+                    <!-- /.card-body -->
+                </form>
+            </div>
+        </div>
     </div>
 
-    <div class="card-body">
-
-        <div class="table-responsive">
-            <table id="table-list-duedate-update" class="table table-bordered table-hover">
-                <thead>
-                    <tr>
-                        <th>Document Number</th>
-                        <th>DueDate Update</th>
-                        <th>Keterangan</th>
-                        <th>Status</th>
-                        <th>User Created</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+    <!-- Data Table List Invoice -->
+    <div class="card">
+        <div class="card-header bg-info">
+            <h3 class="card-title">LIST DATA</h3>
         </div>
 
-    </div>
-</div>
+        <div class="card-body">
 
-        </div><!-- /.container-fluid -->
-    </section>
+            <div class="table-responsive">
+                <table id="table-list-duedate-update" class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>Document Number</th>
+                            <th>DueDate Update</th>
+                            <th>Keterangan</th>
+                            <th>Status</th>
+                            <th>User Created</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+</div><!-- /.container-fluid -->
+</section>
 </div>
 
 <div class="modal fade" id="modal-cancel-inv-nb">
@@ -135,9 +130,9 @@
                     if ($data == 'willy' || $data == 'yulianto' || $data == 'hady' || $data == 'hadi' || $data == 'jefri' || $data == 'ramon' || $data == 'lukman' || $data == 'oktora' || $data == 'oktora malau') 
                     {
                         echo '<button type="submit" class="btn btn-primary toastsDefaultDanger">Cancel Invoice</button>';
-                     } else {
-                    echo '<button type="button" disabled class="btn btn-primary toastsDefaultDanger">Cancel Invoice</button>';
-                }
+                    } else {
+                        echo '<button type="button" disabled class="btn btn-primary toastsDefaultDanger">Cancel Invoice</button>';
+                    }
                     ?>
                 </div>
             </div>
@@ -190,20 +185,20 @@
                         <!-- /.card-body -->
                     </div>
                 </div>
-                    <!-- End Datatable Nomor Booking Invoice  -->
-                </div>
-            
-                <!--  -->
-                <div class="modal-footer right-content-between">
-                    <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
-                </div>
+                <!-- End Datatable Nomor Booking Invoice  -->
             </div>
-            <!-- /.modal-content -->
+            
+            <!--  -->
+            <div class="modal-footer right-content-between">
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+            </div>
         </div>
-        <!-- /.modal-dialog -->
+        <!-- /.modal-content -->
     </div>
+    <!-- /.modal-dialog -->
+</div>
 
-    <script>
+<script>
     function cari_noinvoice() {
         // Declare variables
         var input, filter, table, tr, td, i, txtValue;
