@@ -911,7 +911,7 @@ public function approvalinvoice()
         redirect('auth');
     }
 
-    $data['title'] = 'Secondary Approval Invoice';
+    $data['title'] = 'Second Approval Invoice';
     $data['profit_center'] = $this->Model_nag->cari_profit_center();
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
@@ -941,7 +941,7 @@ public function approval_proformainvoice()
         redirect('auth');
     }
 
-    $data['title'] = 'Secondary Approval Proforma Invoice';
+    $data['title'] = 'Second Approval Proforma Invoice';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
     $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
@@ -970,7 +970,7 @@ public function approval_debitnote()
         redirect('auth');
     }
 
-    $data['title'] = 'Secondary Approval Debit Note';
+    $data['title'] = 'Second Approval Debit Note';
     $data['profit_center'] = $this->Model_nag->cari_profit_center();
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
@@ -2603,7 +2603,7 @@ public function approvalinvoice_manual()
         redirect('auth');
     }
 
-    $data['title'] = 'Secondary Approval Invoice Manual';
+    $data['title'] = 'Second Approval Invoice Manual';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
     $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));

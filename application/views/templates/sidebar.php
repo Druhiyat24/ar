@@ -400,7 +400,7 @@
                             <a href="#" class="nav-link">
                                 <i class="fas fa-check-double nav-icon"></i>
                                 <p>
-                                    Secondary Approval
+                                    Second Approval
                                     <i class="fas fa-angle-left right"></i>
                                 </p>
                             </a>

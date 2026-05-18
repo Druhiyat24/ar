@@ -937,7 +937,7 @@ function approve_debitnote($id)
 
 function approve_invoice_second($id)
 {
-    $hasil = $this->db->query("UPDATE tbl_book_invoice SET status = 'SECONDARY APPROVED' WHERE id = '$id' ");
+    $hasil = $this->db->query("UPDATE tbl_book_invoice SET status = 'SECOND APPROVED' WHERE id = '$id' ");
 
     $query = $this->db->query("SELECT profit_center FROM tbl_book_invoice WHERE id = '$id'");
     $row = $query->row();
@@ -994,13 +994,13 @@ $this->db->query("insert into sb_list_journal select '', a.* from (select a.no_i
 
 function approve_profinvoice_second($id)
 {
-    $hasil = $this->db->query("UPDATE tbl_invoice_proforma SET status = 'SECONDARY APPROVED' WHERE id = '$id' ");
+    $hasil = $this->db->query("UPDATE tbl_invoice_proforma SET status = 'SECOND APPROVED' WHERE id = '$id' ");
     return $hasil;
 }
 
 function approve_debitnote_second($id)
 {
-    $hasil = $this->db->query("UPDATE tbl_debitnote_h SET status = 'SECONDARY APPROVED' WHERE id = '$id' ");
+    $hasil = $this->db->query("UPDATE tbl_debitnote_h SET status = 'SECOND APPROVED' WHERE id = '$id' ");
     return $hasil;
 }
 
@@ -2896,7 +2896,7 @@ function approve_invoicedp($id)
 
 function approve_invoicedp_second($id)
 {
-    $hasil = $this->db->query("UPDATE tbl_invoice_proforma_dp_cbd SET status = 'SECONDARY APPROVED' WHERE id = '$id' ");
+    $hasil = $this->db->query("UPDATE tbl_invoice_proforma_dp_cbd SET status = 'SECOND APPROVED' WHERE id = '$id' ");
     return $hasil;
 }
 
@@ -3044,7 +3044,7 @@ function approve_invoice_manual($id)
 
 function approve_invoice_manual_second($id)
 {
-    $hasil = $this->db->query("UPDATE tbl_invoice_nb SET status = 'SECONDARY APPROVED' WHERE id = '$id' ");
+    $hasil = $this->db->query("UPDATE tbl_invoice_nb SET status = 'SECOND APPROVED' WHERE id = '$id' ");
     return $hasil;
 }
 
