@@ -696,4 +696,367 @@ function sales_report_detail_material($periode_dari_mt, $periode_sampai_mt, $id_
     return $hasil->result_array();
 }
 
+
+public function cari_projection_report($id_customer, $start, $end)
+{
+    // supaya GROUP_CONCAT panjang
+    $this->db->query("SET SESSION group_concat_max_len = 1000000");
+
+    // set parameter
+    $this->db->query("SET @start = '$start'");
+    $this->db->query("SET @end   = '$end'");
+
+    // =========================
+    // GENERATE KOLOM DINAMIS
+    // =========================
+    $sqlCols = "
+    WITH RECURSIVE dates AS (
+    SELECT @start AS tgl, 1 AS urut
+    UNION ALL
+    SELECT DATE_ADD(tgl, INTERVAL 1 DAY), urut + 1
+    FROM dates
+    WHERE tgl < @end
+)
+
+SELECT 
+GROUP_CONCAT(
+    CONCAT(
+        'SUM(CASE WHEN a.duedate_update = ''',
+        tgl,
+        ''' THEN (a.amount * b.rate) ELSE 0 END) AS data',
+        urut
+    )
+) INTO @cols
+FROM dates
+    ";
+    $this->db->query($sqlCols);
+
+    // =========================
+    // QUERY UTAMA (PAKAI CTE)
+    // =========================
+    $sqlMain = "
+    SET @sql = CONCAT('WITH
+invoice as (select * from (select id_customer, customer, no_invoice, inv_date, shipp, ''-'' vendor, ''-'' attn, duedate, top, curr, rate, total, eqv_idr from (select  id_customer, customer, no_invoice, inv_date, shipp, duedate, top, curr, if(curr = ''IDR'', 1, rate) rate, sal_awl, tambah, bayar,  total, eqv_idr,amt_aging_0,amt_aging_1,amt_aging_2,amt_aging_3,amt_aging_4,amt_aging_5,amt_aging_6,amt_aging_7, tot_aging, readydue, hasil_bln1, hasil_bln2, hasil_bln3, hasil_bln4, hasil_bln5, hasil_bln6, tot_aging tot_jatem from (select a.*, CASE WHEN jml_bln1 > 0 AND Date(duedate) >= CURRENT_DATE() THEN eqv_idr ELSE 0 END AS hasil_bln1,
+        CASE WHEN jml_bln2 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln2,
+        CASE WHEN jml_bln3 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln3,
+        CASE WHEN jml_bln4 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln4,
+        CASE WHEN jml_bln5 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln5,
+        CASE WHEN jml_bln6 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln6,
+        CASE WHEN total <= 0 THEN 0 WHEN Date(duedate) < CURRENT_DATE() THEN eqv_idr ELSE 0 END AS readydue,
+        CASE WHEN total <= 0 THEN 0 ELSE eqv_idr END AS tot_aging2,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top <= 0 THEN eqv_idr ELSE 0 END AS amt_aging_0,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top > 0  AND diff_top <= 30  THEN eqv_idr ELSE 0 END AS amt_aging_1,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top > 30 AND diff_top <= 60  THEN eqv_idr ELSE 0 END AS amt_aging_2,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top > 60 AND diff_top <= 90  THEN eqv_idr ELSE 0 END AS amt_aging_3,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top > 90 AND diff_top <= 120 THEN eqv_idr ELSE 0 END AS amt_aging_4,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top > 120 AND diff_top <= 180 THEN eqv_idr ELSE 0 END AS amt_aging_5,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top > 180 AND diff_top <= 360 THEN eqv_idr ELSE 0 END AS amt_aging_6,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top > 360 THEN eqv_idr ELSE 0 END AS amt_aging_7,
+        CASE WHEN total <= 0 THEN 0 ELSE eqv_idr END AS tot_aging
+        from (select a.*, ((sal_awl + tambah) - bayar) total, IF(curr = ''USD'',((sal_awl + COALESCE(tambah,0)) - COALESCE(bayar,0)) * rate,((sal_awl + COALESCE(tambah,0)) - COALESCE(bayar,0))) eqv_idr from (select no_invoice, kode_customer, customer, inv_date, id_customer, curr, top, amount1, duedate, bayar, bayar2, rate, shipp, diff_top, ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6, IF(inv_date >= CURRENT_DATE(),0,COALESCE(amount1,0) - COALESCE(bayar2,0)) sal_awl, IF(inv_date >= CURRENT_DATE(),COALESCE(amount1,0) - COALESCE(bayar2,0),0) tambah from (SELECT profit_center, no_invoice,kode_customer, customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,coalesce(bayar,0) bayar,no_invoice2,bayar2,rate,shipp, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,''0'') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,''0'') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,''0'') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,''0'') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,''0'') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,''0'') jml_bln6 from (SELECT profit_center, no_invoice,kode_customer, customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due from (SELECT profit_center, no_invoice,kode_customer,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,CASE WHEN bayar > 0 AND profit_center = ''NAK'' THEN amount1 ELSE bayar END bayar,no_invoice2, CASE WHEN bayar2 > 0 AND profit_center = ''NAK'' THEN amount1 ELSE bayar2 END bayar2,rate,shipp,DATEDIFF(CURRENT_DATE(),duedate) diff_top, DATE_FORMAT(duedate,''%m'') bln_due, DATE_FORMAT(duedate,''%Y'') thn_due,DATE_FORMAT(CURRENT_DATE(),''%m'') fil_bln1,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 5,2,0) fil_bln6, DATE_FORMAT(CURRENT_DATE(),''%Y'') fil_thn, IF(duedate <= CURRENT_DATE(),amount1,0) ready_due from 
+            (SELECT distinct a.profit_center, a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, UPPER(b.supplier_code) kode_customer,a.sj_date inv_date,a.sj_date tgl_inv, b.Id_Supplier AS id_customer, a.curr,f.top,
+                FORMAT((d.grand_total), 2) AS amount, if(a.curr = ''IDR'',round((d.grand_total),0),round((d.grand_total), 2)) AS amount1,if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.sj_date, ''%Y-%m-%d''), INTERVAL f.top DAY) ,DATE_ADD(h.kontrabon_date, INTERVAL f.top DAY)) AS duedate,a.shipp
+                FROM  tbl_book_invoice AS a INNER JOIN 
+                mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
+                tbl_type AS c ON a.id_type = c.id_type INNER JOIN
+                tbl_invoice_pot AS d ON a.id = d.id_book_invoice INNER JOIN
+                tbl_master_top AS f ON a.id_top = f.id left join 
+                tbl_duedate AS h ON a.id = h.id_invoice
+                where a.sj_date between ''2022-05-01'' and CURRENT_DATE() and a.profit_center = ''NAG''
+                UNION
+                SELECT distinct a.profit_center, a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, UPPER(b.supplier_code) kode_customer,a.sj_date inv_date,a.sj_date tgl_inv, b.Id_Supplier AS id_customer, a.curr,f.top,
+                FORMAT((d.grand_total), 2) AS amount, if(a.curr = ''IDR'',round((d.grand_total),0),round((d.grand_total), 2)) AS amount1,if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.sj_date, ''%Y-%m-%d''), INTERVAL f.top DAY) ,DATE_ADD(h.kontrabon_date, INTERVAL f.top DAY)) AS duedate,a.shipp
+                FROM  tbl_book_invoice AS a INNER JOIN 
+                mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
+                tbl_type AS c ON a.id_type = c.id_type INNER JOIN
+                tbl_invoice_pot_knitting AS d ON a.id = d.id_book_invoice INNER JOIN
+                tbl_master_top AS f ON a.id_top = f.id left join 
+                tbl_duedate AS h ON a.id = h.id_invoice
+                where a.sj_date between ''2022-05-01'' and CURRENT_DATE() and a.profit_center = ''NAK''
+                UNION
+                SELECT distinct ''NAG'' profit_center, a.no_inv AS no_invoice, UPPER(b.supplier) AS customer, UPPER(b.supplier_code) kode_customer,DATE_FORMAT(e.sj_date, ''%Y-%m-%d'') AS inv_date,DATE_FORMAT(e.sj_date, ''%Y-%m-%d'') AS tgl_inv, b.Id_Supplier AS id_customer, e.curr,a.top,
+                FORMAT((d.grand_total), 2) AS amount, if(e.curr = ''IDR'',round((d.grand_total),0),round((d.grand_total), 2)) AS amount1, if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(e.sj_date, ''%Y-%m-%d''), INTERVAL a.top DAY) ,DATE_ADD(DATE_FORMAT(h.kontrabon_date, ''%Y-%m-%d''), INTERVAL a.top DAY)) AS duedate,a.shipp
+                FROM  tbl_invoice_nb AS a INNER JOIN 
+                mastersupplier AS b ON a.customer = b.id_supplier INNER JOIN 
+                tbl_invoice_nb_pot AS d ON a.no_inv = d.no_inv INNER JOIN
+                tbl_invoice_nb_detail as e on a.no_inv=e.no_inv left JOIN 
+                tbl_duedate AS h ON a.id = h.id_invoice left join
+                saldoawal_ar as g on g.no_invoice = a.no_inv
+                where g.no_invoice is null and a.status != ''CANCEL'' and e.sj_date between ''2022-05-01'' and CURRENT_DATE()
+                union                                                                     
+                select ''NAG'' profit_center, no_invoice, customer, UPPER(b.supplier_code) kode_customer, inv_date, sj_date as tgl_inv,id_customer, curr, top, FORMAT((grand_total), 2) AS amount, if(curr = ''IDR'',round((grand_total),0),round((grand_total), 2)) AS amount1, due_date,shipp from saldoawal_ar a INNER JOIN mastersupplier AS b ON a.id_customer = b.id_supplier where no_invoice not like ''%DN/%'') inv LEFT JOIN
+            (select a.no_ref as no_invoice1, sum(a.amount) as bayar from tbl_alokasi_detail a inner join tbl_alokasi b on b.no_alk = a.no_alk where a.status != ''CANCEL'' and b.tgl_alk between CURRENT_DATE() and CURRENT_DATE() and a.total != ''0'' group by a.no_ref) byr on byr.no_invoice1 = inv.no_invoice LEFT JOIN
+            (select a.no_ref as no_invoice2, sum(a.amount) as bayar2 from tbl_alokasi_detail a inner join tbl_alokasi b on b.no_alk = a.no_alk where a.status != ''CANCEL'' and b.tgl_alk < CURRENT_DATE() and a.total != ''0'' group by a.no_ref) byr2 on byr2.no_invoice2 = inv.no_invoice JOIN
+            (select IF((select id from tbl_tgl_tb where tgl_akhir = CURRENT_DATE()) != '''',(select rate from masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN''),(select rate from masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''PAJAK'')) rate) rt) a) a) a) a) a) a WHERE sal_awl > 0 OR tambah > 0 OR bayar > 0 OR total > 0) a
+                        UNION
+select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor, attn, duedate, top, from_curr curr, rate, ((amount1 - IFNULL(bayar2,0)) - IFNULL(bayar,0)) AS total, ((amount1 - IFNULL(bayar2,0)) - IFNULL(bayar,0)) * IFNULL(rate,1) AS eqv_idr from (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,amount1, duedate, no_invoice1 , bayar, no_invoice2, bayar2, amount, supplier, rate, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,''0'') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,''0'') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,''0'') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,''0'') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,''0'') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,''0'') jml_bln6 FROM (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,amount1, duedate, no_invoice1 , bayar, no_invoice2, bayar2, amount, supplier, rate, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due FROM (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,COALESCE(amount1,0) amount1, duedate, no_invoice1,COALESCE(bayar,0) bayar, no_invoice2,COALESCE(bayar2,0) bayar2, COALESCE(amount,0) amount,IF(supplier is null,''-'',supplier) supplier,IF(from_curr = ''IDR'',''1'',rate) rate,DATEDIFF(CURRENT_DATE(),duedate) diff_top, DATE_FORMAT(duedate,''%m'') bln_due, DATE_FORMAT(duedate,''%Y'') thn_due,DATE_FORMAT(CURRENT_DATE(),''%m'') fil_bln1,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 5,2,0) fil_bln6, DATE_FORMAT(CURRENT_DATE(),''%Y'') fil_thn, IF(duedate <= CURRENT_DATE(),amount1,0) ready_due  from 
+        (
+            SELECT distinct a.no_dn AS no_invoice, UPPER(b.supplier) AS customer, a.attn,DATE_FORMAT(a.tgl_dn, ''%Y-%m-%d'') AS inv_date,DATE_FORMAT(a.tgl_dn, ''%Y-%m-%d'') AS tgl_inv, b.Id_Supplier AS id_customer, a.to_curr as from_curr,DATEDIFF(a.due_date,a.tgl_dn) top,
+            FORMAT(a.eqv_curr, 2) AS amount, if(a.to_curr = ''USD'',a.eqv_curr,round(a.eqv_curr, 2)) AS amount1,a.due_date duedate
+            FROM  tbl_debitnote_h AS a INNER JOIN 
+            mastersupplier AS b ON a.customer = b.id_supplier left join
+            saldoawal_ar as g on g.no_invoice = a.no_dn
+            where g.no_invoice is null and a.status != ''CANCEL'' and a.tgl_dn between ''2022-05-01'' and CURRENT_DATE()
+            union
+
+            select no_invoice, customer, '''' attn, inv_date, sj_date as tgl_inv,id_customer, curr, top, FORMAT((grand_total), 2) AS amount, if(curr = ''IDR'',round((grand_total),0),round((grand_total), 2)) AS amount1, due_date from saldoawal_ar where no_invoice like ''%DN/%''
+            ) inv LEFT JOIN
+        
+        (select a.no_ref as no_invoice1, sum(a.amount) as bayar from tbl_alokasi_detail a inner join tbl_alokasi b on b.no_alk = a.no_alk where a.status != ''CANCEL'' and b.tgl_alk between CURRENT_DATE() and CURRENT_DATE() and a.total != ''0'' group by a.no_ref) byr on byr.no_invoice1 = inv.no_invoice LEFT JOIN
+        
+        (select a.no_ref as no_invoice2, sum(a.amount) as bayar2 from tbl_alokasi_detail a inner join tbl_alokasi b on b.no_alk = a.no_alk where a.status != ''CANCEL'' and b.tgl_alk >= ''2022-05-01'' and b.tgl_alk < CURRENT_DATE() and a.total != ''0'' group by a.no_ref) byr2 on byr2.no_invoice2 = inv.no_invoice LEFT JOIN
+
+        (select no_dn dnno,GROUP_CONCAT(DISTINCT supplier SEPARATOR '' | '') supplier from tbl_debitnote_det where supplier != ''-'' AND supplier != '''' GROUP BY no_dn
+            ) l_supp on l_supp.dnno = inv.no_invoice JOIN
+
+        (select IF((select id from tbl_tgl_tb where tgl_akhir = CURRENT_DATE()) != '''',(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN''),(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN'')) rate) rate) a) a order by no_invoice asc) a WHERE ((amount1 - IFNULL(bayar2,0)) - IFNULL(bayar,0)) > 0) a),
+                
+                duedate as (select b.no_invoice, b.duedate_update, b.amount from tbl_duedate_update_h a INNER JOIN tbl_duedate_update_det b on b.doc_number = a.doc_number where a.duedate_update BETWEEN ''',@start,''' and ''',@end,''' and a.status != ''CANCEL'' and b.status = ''Y'' GROUP BY b.id)
+                
+                select id_customer, customer, b.no_invoice, inv_date, shipp, duedate, duedate_update, top, curr, rate, total, eqv_idr, a.amount, (a.amount * rate) amount_idr, ', @cols, ' from duedate a INNER JOIN invoice b on b.no_invoice  = a.no_invoice GROUP BY b.no_invoice')";
+
+    $this->db->query($sqlMain);
+
+    // =========================
+    // EXECUTE
+    // =========================
+    $this->db->query("PREPARE stmt FROM @sql");
+    $query = $this->db->query("EXECUTE stmt");
+    $this->db->query("DEALLOCATE PREPARE stmt");
+
+    return $query->result_array();
+}
+
+
+public function cari_projection_report_export($id_customer, $start, $end)
+{
+    // supaya GROUP_CONCAT panjang
+    $this->db->query("SET SESSION group_concat_max_len = 1000000");
+
+    // set parameter
+    $this->db->query("SET @start = '$start'");
+    $this->db->query("SET @end   = '$end'");
+
+    // =========================
+    // GENERATE KOLOM DINAMIS
+    // =========================
+    $sqlCols = "
+    WITH RECURSIVE dates AS (
+    SELECT @start AS tgl, 1 AS urut
+    UNION ALL
+    SELECT DATE_ADD(tgl, INTERVAL 1 DAY), urut + 1
+    FROM dates
+    WHERE tgl < @end
+)
+
+SELECT 
+GROUP_CONCAT(
+    CONCAT(
+        'SUM(CASE WHEN a.duedate_update = ''',
+        tgl,
+        ''' THEN (a.amount * b.rate) ELSE 0 END) AS data',
+        urut
+    )
+) INTO @cols
+FROM dates
+    ";
+    $this->db->query($sqlCols);
+
+    // =========================
+    // QUERY UTAMA (PAKAI CTE)
+    // =========================
+    $sqlMain = "
+    SET @sql = CONCAT('WITH
+invoice as (select * from (select id_customer, customer, no_invoice, inv_date, shipp, ''-'' vendor, ''-'' attn, duedate, top, curr, rate, total, eqv_idr from (select  id_customer, customer, no_invoice, inv_date, shipp, duedate, top, curr, if(curr = ''IDR'', 1, rate) rate, sal_awl, tambah, bayar,  total, eqv_idr,amt_aging_0,amt_aging_1,amt_aging_2,amt_aging_3,amt_aging_4,amt_aging_5,amt_aging_6,amt_aging_7, tot_aging, readydue, hasil_bln1, hasil_bln2, hasil_bln3, hasil_bln4, hasil_bln5, hasil_bln6, tot_aging tot_jatem from (select a.*, CASE WHEN jml_bln1 > 0 AND Date(duedate) >= CURRENT_DATE() THEN eqv_idr ELSE 0 END AS hasil_bln1,
+        CASE WHEN jml_bln2 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln2,
+        CASE WHEN jml_bln3 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln3,
+        CASE WHEN jml_bln4 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln4,
+        CASE WHEN jml_bln5 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln5,
+        CASE WHEN jml_bln6 > 0 THEN eqv_idr ELSE 0 END AS hasil_bln6,
+        CASE WHEN total <= 0 THEN 0 WHEN Date(duedate) < CURRENT_DATE() THEN eqv_idr ELSE 0 END AS readydue,
+        CASE WHEN total <= 0 THEN 0 ELSE eqv_idr END AS tot_aging2,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top <= 0 THEN eqv_idr ELSE 0 END AS amt_aging_0,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top > 0  AND diff_top <= 30  THEN eqv_idr ELSE 0 END AS amt_aging_1,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top > 30 AND diff_top <= 60  THEN eqv_idr ELSE 0 END AS amt_aging_2,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top > 60 AND diff_top <= 90  THEN eqv_idr ELSE 0 END AS amt_aging_3,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top > 90 AND diff_top <= 120 THEN eqv_idr ELSE 0 END AS amt_aging_4,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top > 120 AND diff_top <= 180 THEN eqv_idr ELSE 0 END AS amt_aging_5,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top > 180 AND diff_top <= 360 THEN eqv_idr ELSE 0 END AS amt_aging_6,
+        CASE WHEN total <= 0 THEN 0 WHEN diff_top > 360 THEN eqv_idr ELSE 0 END AS amt_aging_7,
+        CASE WHEN total <= 0 THEN 0 ELSE eqv_idr END AS tot_aging
+        from (select a.*, ((sal_awl + tambah) - bayar) total, IF(curr = ''USD'',((sal_awl + COALESCE(tambah,0)) - COALESCE(bayar,0)) * rate,((sal_awl + COALESCE(tambah,0)) - COALESCE(bayar,0))) eqv_idr from (select no_invoice, kode_customer, customer, inv_date, id_customer, curr, top, amount1, duedate, bayar, bayar2, rate, shipp, diff_top, ready_due, jml_bln1, jml_bln2, jml_bln3, jml_bln4, jml_bln5, jml_bln6, IF(inv_date >= CURRENT_DATE(),0,COALESCE(amount1,0) - COALESCE(bayar2,0)) sal_awl, IF(inv_date >= CURRENT_DATE(),COALESCE(amount1,0) - COALESCE(bayar2,0),0) tambah from (SELECT profit_center, no_invoice,kode_customer, customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,coalesce(bayar,0) bayar,no_invoice2,bayar2,rate,shipp, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,''0'') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,''0'') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,''0'') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,''0'') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,''0'') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,''0'') jml_bln6 from (SELECT profit_center, no_invoice,kode_customer, customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,bayar,no_invoice2,bayar2,rate,shipp, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due from (SELECT profit_center, no_invoice,kode_customer,customer,inv_date,tgl_inv,id_customer,curr,top,amount,amount1,duedate,no_invoice1,CASE WHEN bayar > 0 AND profit_center = ''NAK'' THEN amount1 ELSE bayar END bayar,no_invoice2, CASE WHEN bayar2 > 0 AND profit_center = ''NAK'' THEN amount1 ELSE bayar2 END bayar2,rate,shipp,DATEDIFF(CURRENT_DATE(),duedate) diff_top, DATE_FORMAT(duedate,''%m'') bln_due, DATE_FORMAT(duedate,''%Y'') thn_due,DATE_FORMAT(CURRENT_DATE(),''%m'') fil_bln1,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 5,2,0) fil_bln6, DATE_FORMAT(CURRENT_DATE(),''%Y'') fil_thn, IF(duedate <= CURRENT_DATE(),amount1,0) ready_due from 
+            (SELECT distinct a.profit_center, a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, UPPER(b.supplier_code) kode_customer,a.sj_date inv_date,a.sj_date tgl_inv, b.Id_Supplier AS id_customer, a.curr,f.top,
+                FORMAT((d.grand_total), 2) AS amount, if(a.curr = ''IDR'',round((d.grand_total),0),round((d.grand_total), 2)) AS amount1,if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.sj_date, ''%Y-%m-%d''), INTERVAL f.top DAY) ,DATE_ADD(h.kontrabon_date, INTERVAL f.top DAY)) AS duedate,a.shipp
+                FROM  tbl_book_invoice AS a INNER JOIN 
+                mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
+                tbl_type AS c ON a.id_type = c.id_type INNER JOIN
+                tbl_invoice_pot AS d ON a.id = d.id_book_invoice INNER JOIN
+                tbl_master_top AS f ON a.id_top = f.id left join 
+                tbl_duedate AS h ON a.id = h.id_invoice
+                where a.sj_date between ''2022-05-01'' and CURRENT_DATE() and a.profit_center = ''NAG''
+                UNION
+                SELECT distinct a.profit_center, a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, UPPER(b.supplier_code) kode_customer,a.sj_date inv_date,a.sj_date tgl_inv, b.Id_Supplier AS id_customer, a.curr,f.top,
+                FORMAT((d.grand_total), 2) AS amount, if(a.curr = ''IDR'',round((d.grand_total),0),round((d.grand_total), 2)) AS amount1,if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.sj_date, ''%Y-%m-%d''), INTERVAL f.top DAY) ,DATE_ADD(h.kontrabon_date, INTERVAL f.top DAY)) AS duedate,a.shipp
+                FROM  tbl_book_invoice AS a INNER JOIN 
+                mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
+                tbl_type AS c ON a.id_type = c.id_type INNER JOIN
+                tbl_invoice_pot_knitting AS d ON a.id = d.id_book_invoice INNER JOIN
+                tbl_master_top AS f ON a.id_top = f.id left join 
+                tbl_duedate AS h ON a.id = h.id_invoice
+                where a.sj_date between ''2022-05-01'' and CURRENT_DATE() and a.profit_center = ''NAK''
+                UNION
+                SELECT distinct ''NAG'' profit_center, a.no_inv AS no_invoice, UPPER(b.supplier) AS customer, UPPER(b.supplier_code) kode_customer,DATE_FORMAT(e.sj_date, ''%Y-%m-%d'') AS inv_date,DATE_FORMAT(e.sj_date, ''%Y-%m-%d'') AS tgl_inv, b.Id_Supplier AS id_customer, e.curr,a.top,
+                FORMAT((d.grand_total), 2) AS amount, if(e.curr = ''IDR'',round((d.grand_total),0),round((d.grand_total), 2)) AS amount1, if(h.kontrabon_date is null, DATE_ADD(DATE_FORMAT(e.sj_date, ''%Y-%m-%d''), INTERVAL a.top DAY) ,DATE_ADD(DATE_FORMAT(h.kontrabon_date, ''%Y-%m-%d''), INTERVAL a.top DAY)) AS duedate,a.shipp
+                FROM  tbl_invoice_nb AS a INNER JOIN 
+                mastersupplier AS b ON a.customer = b.id_supplier INNER JOIN 
+                tbl_invoice_nb_pot AS d ON a.no_inv = d.no_inv INNER JOIN
+                tbl_invoice_nb_detail as e on a.no_inv=e.no_inv left JOIN 
+                tbl_duedate AS h ON a.id = h.id_invoice left join
+                saldoawal_ar as g on g.no_invoice = a.no_inv
+                where g.no_invoice is null and a.status != ''CANCEL'' and e.sj_date between ''2022-05-01'' and CURRENT_DATE()
+                union                                                                     
+                select ''NAG'' profit_center, no_invoice, customer, UPPER(b.supplier_code) kode_customer, inv_date, sj_date as tgl_inv,id_customer, curr, top, FORMAT((grand_total), 2) AS amount, if(curr = ''IDR'',round((grand_total),0),round((grand_total), 2)) AS amount1, due_date,shipp from saldoawal_ar a INNER JOIN mastersupplier AS b ON a.id_customer = b.id_supplier where no_invoice not like ''%DN/%'') inv LEFT JOIN
+            (select a.no_ref as no_invoice1, sum(a.amount) as bayar from tbl_alokasi_detail a inner join tbl_alokasi b on b.no_alk = a.no_alk where a.status != ''CANCEL'' and b.tgl_alk between CURRENT_DATE() and CURRENT_DATE() and a.total != ''0'' group by a.no_ref) byr on byr.no_invoice1 = inv.no_invoice LEFT JOIN
+            (select a.no_ref as no_invoice2, sum(a.amount) as bayar2 from tbl_alokasi_detail a inner join tbl_alokasi b on b.no_alk = a.no_alk where a.status != ''CANCEL'' and b.tgl_alk < CURRENT_DATE() and a.total != ''0'' group by a.no_ref) byr2 on byr2.no_invoice2 = inv.no_invoice JOIN
+            (select IF((select id from tbl_tgl_tb where tgl_akhir = CURRENT_DATE()) != '''',(select rate from masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN''),(select rate from masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''PAJAK'')) rate) rt) a) a) a) a) a) a WHERE sal_awl > 0 OR tambah > 0 OR bayar > 0 OR total > 0) a
+                        UNION
+select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor, attn, duedate, top, from_curr curr, rate, ((amount1 - IFNULL(bayar2,0)) - IFNULL(bayar,0)) AS total, ((amount1 - IFNULL(bayar2,0)) - IFNULL(bayar,0)) * IFNULL(rate,1) AS eqv_idr from (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,amount1, duedate, no_invoice1 , bayar, no_invoice2, bayar2, amount, supplier, rate, diff_top,ready_due, IF(bln_due = fil_bln1 and thn_due = fil_thn1,amount1,''0'') jml_bln1,IF(bln_due = fil_bln2 and thn_due = fil_thn2,amount1,''0'') jml_bln2,IF(bln_due = fil_bln3 and thn_due = fil_thn3,amount1,''0'') jml_bln3,IF(bln_due = fil_bln4 and thn_due = fil_thn4,amount1,''0'') jml_bln4,IF(bln_due = fil_bln5 and thn_due = fil_thn5,amount1,''0'') jml_bln5,IF(bln_due = fil_bln6 and thn_due = fil_thn6,amount1,''0'') jml_bln6 FROM (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,amount1, duedate, no_invoice1 , bayar, no_invoice2, bayar2, amount, supplier, rate, diff_top, bln_due, thn_due, LPAD(IF(fil_bln1 <= 12,fil_bln1,(fil_bln1 - 12)),2,0) fil_bln1,LPAD(IF(fil_bln2 <= 12,fil_bln2,(fil_bln2 - 12)),2,0) fil_bln2,LPAD(IF(fil_bln3 <= 12,fil_bln3,(fil_bln3 - 12)),2,0) fil_bln3,LPAD(IF(fil_bln4 <= 12,fil_bln4,(fil_bln4 - 12)),2,0) fil_bln4,LPAD(IF(fil_bln5 <= 12,fil_bln5,(fil_bln5 - 12)),2,0) fil_bln5, LPAD(IF(fil_bln6 <= 12,fil_bln6,(fil_bln6 - 12)),2,0) fil_bln6,LPAD(IF(fil_bln1 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn1,LPAD(IF(fil_bln2 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn2,LPAD(IF(fil_bln3 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn3, LPAD(IF(fil_bln4 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn4,LPAD(IF(fil_bln5 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn5, LPAD(IF(fil_bln6 <= 12,fil_thn,(fil_thn + 1)),4,0) fil_thn6, ready_due FROM (SELECT no_invoice,customer,attn,inv_date,tgl_inv,id_customer,from_curr,top,COALESCE(amount1,0) amount1, duedate, no_invoice1,COALESCE(bayar,0) bayar, no_invoice2,COALESCE(bayar2,0) bayar2, COALESCE(amount,0) amount,IF(supplier is null,''-'',supplier) supplier,IF(from_curr = ''IDR'',''1'',rate) rate,DATEDIFF(CURRENT_DATE(),duedate) diff_top, DATE_FORMAT(duedate,''%m'') bln_due, DATE_FORMAT(duedate,''%Y'') thn_due,DATE_FORMAT(CURRENT_DATE(),''%m'') fil_bln1,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 1,2,0) fil_bln2, LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 2,2,0) fil_bln3,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 3,2,0) fil_bln4,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 4,2,0) fil_bln5,LPAD(DATE_FORMAT(CURRENT_DATE(),''%m'') + 5,2,0) fil_bln6, DATE_FORMAT(CURRENT_DATE(),''%Y'') fil_thn, IF(duedate <= CURRENT_DATE(),amount1,0) ready_due  from 
+        (
+            SELECT distinct a.no_dn AS no_invoice, UPPER(b.supplier) AS customer, a.attn,DATE_FORMAT(a.tgl_dn, ''%Y-%m-%d'') AS inv_date,DATE_FORMAT(a.tgl_dn, ''%Y-%m-%d'') AS tgl_inv, b.Id_Supplier AS id_customer, a.to_curr as from_curr,DATEDIFF(a.due_date,a.tgl_dn) top,
+            FORMAT(a.eqv_curr, 2) AS amount, if(a.to_curr = ''USD'',a.eqv_curr,round(a.eqv_curr, 2)) AS amount1,a.due_date duedate
+            FROM  tbl_debitnote_h AS a INNER JOIN 
+            mastersupplier AS b ON a.customer = b.id_supplier left join
+            saldoawal_ar as g on g.no_invoice = a.no_dn
+            where g.no_invoice is null and a.status != ''CANCEL'' and a.tgl_dn between ''2022-05-01'' and CURRENT_DATE()
+            union
+
+            select no_invoice, customer, '''' attn, inv_date, sj_date as tgl_inv,id_customer, curr, top, FORMAT((grand_total), 2) AS amount, if(curr = ''IDR'',round((grand_total),0),round((grand_total), 2)) AS amount1, due_date from saldoawal_ar where no_invoice like ''%DN/%''
+            ) inv LEFT JOIN
+        
+        (select a.no_ref as no_invoice1, sum(a.amount) as bayar from tbl_alokasi_detail a inner join tbl_alokasi b on b.no_alk = a.no_alk where a.status != ''CANCEL'' and b.tgl_alk between CURRENT_DATE() and CURRENT_DATE() and a.total != ''0'' group by a.no_ref) byr on byr.no_invoice1 = inv.no_invoice LEFT JOIN
+        
+        (select a.no_ref as no_invoice2, sum(a.amount) as bayar2 from tbl_alokasi_detail a inner join tbl_alokasi b on b.no_alk = a.no_alk where a.status != ''CANCEL'' and b.tgl_alk >= ''2022-05-01'' and b.tgl_alk < CURRENT_DATE() and a.total != ''0'' group by a.no_ref) byr2 on byr2.no_invoice2 = inv.no_invoice LEFT JOIN
+
+        (select no_dn dnno,GROUP_CONCAT(DISTINCT supplier SEPARATOR '' | '') supplier from tbl_debitnote_det where supplier != ''-'' AND supplier != '''' GROUP BY no_dn
+            ) l_supp on l_supp.dnno = inv.no_invoice JOIN
+
+        (select IF((select id from tbl_tgl_tb where tgl_akhir = CURRENT_DATE()) != '''',(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN''),(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN'')) rate) rate) a) a order by no_invoice asc) a WHERE ((amount1 - IFNULL(bayar2,0)) - IFNULL(bayar,0)) > 0) a),
+                
+                duedate as (select b.no_invoice, b.duedate_update, b.amount from tbl_duedate_update_h a INNER JOIN tbl_duedate_update_det b on b.doc_number = a.doc_number where a.duedate_update BETWEEN ''',@start,''' and ''',@end,''' and a.status != ''CANCEL'' and b.status = ''Y'' GROUP BY b.id)
+                
+                select id_customer, customer, b.no_invoice, inv_date, shipp, duedate, duedate_update, top, curr, rate, total, eqv_idr, a.amount, (a.amount * rate) amount_idr, ', @cols, ' from duedate a INNER JOIN invoice b on b.no_invoice  = a.no_invoice GROUP BY b.no_invoice')";
+
+    $this->db->query($sqlMain);
+
+
+$getSql = $this->db->query("SELECT @sql AS sqlku")->row_array();
+
+$sqlFix = $getSql['sqlku'];
+
+$query = $this->db->query($sqlFix);
+
+return $query->result_array();
+}
+
+
+public function save_history_projection_report($id_customer, $from, $to, $created_by, $type = 'daily')
+{
+    // 1. Generate doc_number format PR/MMYY/NNNNN (reset tiap bulan)
+    $mmyy = date('my', strtotime($from)); // e.g. "0625" untuk Juni 2025
+
+    $q = $this->db->query("
+        SELECT IFNULL(MAX(CAST(SUBSTRING(doc_number, 9, 5) AS UNSIGNED)), 0) + 1 AS next_no
+        FROM tbl_history_projection_h
+        WHERE doc_number LIKE 'PR/$mmyy/%'
+    ");
+    $next_no    = (int)($q->row()->next_no ?? 1);
+    $doc_number = 'PR/' . $mmyy . '/' . str_pad($next_no, 5, '0', STR_PAD_LEFT);
+
+    // 2. Insert log/header
+    $this->db->insert('tbl_history_projection_h', [
+        'doc_number'     => $doc_number,
+        'periode_dari'   => $from,
+        'periode_sampai' => $to,
+        'id_customer'    => $id_customer,
+        'type'           => $type,
+        'created_by'     => $created_by,
+        'created_at'     => date('Y-m-d H:i:s'),
+    ]);
+
+    // 3. INSERT...SELECT detail dari hasil projection
+    $rows = $this->cari_projection_report_export($id_customer, $from, $to);
+
+    if (!empty($rows)) {
+        $batch = [];
+        foreach ($rows as $r) {
+            $batch[] = [
+                'doc_number'     => $doc_number,
+                'id_customer'    => $r['id_customer'],
+                'customer'       => $r['customer'],
+                'no_invoice'     => $r['no_invoice'],
+                'inv_date'       => $r['inv_date'],
+                'shipp'          => $r['shipp'],
+                'duedate'        => $r['duedate'],
+                'duedate_update' => $r['duedate_update'],
+                'top'            => $r['top'],
+                'curr'           => $r['curr'],
+                'amount'         => $r['amount'],
+                'rate'           => $r['rate'],
+                'amount_idr'     => $r['amount_idr'],
+            ];
+        }
+        $this->db->insert_batch('tbl_history_projection_det', $batch);
+    }
+
+    return $doc_number;
+}
+
+
+public function get_history_projection_list($from, $to)
+{
+    $hasil = $this->db->query("
+        SELECT h.doc_number, h.periode_dari, h.periode_sampai, h.id_customer,
+               h.created_by, h.created_at, h.type,
+               COUNT(d.id)        AS total_invoice,
+               SUM(d.amount_idr)  AS total_amount_idr
+        FROM tbl_history_projection_h h
+        LEFT JOIN tbl_history_projection_det d ON d.doc_number = h.doc_number
+        WHERE DATE(h.created_at) BETWEEN '$from' AND '$to'
+        GROUP BY h.doc_number
+        ORDER BY h.created_at DESC
+    ");
+    return $hasil->result_array();
+}
+
+
+public function cancel_history_projection_report($doc_number)
+{
+    $doc_number = $this->db->escape_str($doc_number);
+
+    // Pastikan tabel _cancel sudah ada (buat sekali jika belum)
+    $this->db->query("CREATE TABLE IF NOT EXISTS tbl_history_projection_h_cancel   LIKE tbl_history_projection_h");
+    $this->db->query("CREATE TABLE IF NOT EXISTS tbl_history_projection_det_cancel LIKE tbl_history_projection_det");
+
+    // Copy data ke tabel _cancel sebelum dihapus
+    $this->db->query("INSERT INTO tbl_history_projection_h_cancel   SELECT * FROM tbl_history_projection_h   WHERE doc_number = '$doc_number'");
+    $this->db->query("INSERT INTO tbl_history_projection_det_cancel SELECT * FROM tbl_history_projection_det WHERE doc_number = '$doc_number'");
+
+    // Hapus dari tabel asli
+    $this->db->query("DELETE FROM tbl_history_projection_det WHERE doc_number = '$doc_number'");
+    $this->db->query("DELETE FROM tbl_history_projection_h   WHERE doc_number = '$doc_number'");
+
+    return $this->db->affected_rows() >= 0;
+}
+
+public function get_history_projection_detail($doc_number)
+{
+    $doc_number = $this->db->escape_str($doc_number);
+
+    $header = $this->db->get_where('tbl_history_projection_h', ['doc_number' => $doc_number])->row_array();
+    $detail = $this->db->get_where('tbl_history_projection_det', ['doc_number' => $doc_number])->result_array();
+
+    return ['header' => $header, 'detail' => $detail];
+}
+
+
 }

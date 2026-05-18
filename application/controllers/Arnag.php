@@ -33,6 +33,9 @@ class Arnag extends CI_Controller
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
         $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
+        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $result = $query->row();
+        $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
         $this->load->view('arnag/mastertop', $data);
@@ -89,6 +92,9 @@ class Arnag extends CI_Controller
         $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $result = $query->row();
+        $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
         $this->load->view('arnag/bookinvoice', $data);
@@ -120,6 +126,9 @@ class Arnag extends CI_Controller
         $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $result = $query->row();
+        $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
         $this->load->view('arnag/create_kwitansi', $data);
@@ -163,6 +172,9 @@ class Arnag extends CI_Controller
         $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $result = $query->row();
+        $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
         $this->load->view('arnag/create_debitnote', $data);
@@ -191,6 +203,9 @@ class Arnag extends CI_Controller
         $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $result = $query->row();
+        $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
         $this->load->view('arnag/kwitansi_ar', $data);
@@ -391,6 +406,9 @@ class Arnag extends CI_Controller
         $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $result = $query->row();
+        $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
         $this->load->view('arnag/approval_invoice_dpcbd', $data);
@@ -409,6 +427,42 @@ class Arnag extends CI_Controller
     {
         $id = $this->input->post('id_inv');
         $this->Model_nag->approve_invoicedp($id);
+    }
+
+    public function approve_invoicedp_second()
+    {
+        $id = $this->input->post('id_inv');
+        $this->Model_nag->approve_invoicedp_second($id);
+    }
+
+    public function cari_dpcbd_invoice_second_approv($dt_dari_inv, $dt_sampai_inv)
+    {
+        $data = $this->Model_nag->cari_dpcbd_invoice_second_approv($dt_dari_inv, $dt_sampai_inv);
+        echo json_encode($data);
+    }
+
+    public function first_approval_invoice_dpcbd()
+    {
+        if (!$this->session->userdata('username')) { redirect('auth'); }
+        $data['title'] = 'First Approval Invoice DP & CBD';
+        $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+        $data['profit_center'] = $this->Model_nag->cari_profit_center();
+        $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+        $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+        $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+        $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+        $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+        $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+        $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+        $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+        $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
+        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $result = $query->row();
+        $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
+        $this->load->view('templates/header', $data);
+        $this->load->view('templates/sidebar', $data);
+        $this->load->view('arnag/first_approval_invoice_dpcbd', $data);
+        $this->load->view('templates/footer', $data);
     }
 
     public function get_kode_book_invoice($kode_inv)
@@ -555,6 +609,9 @@ public function createinvoice()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/createinvoice', $data);
@@ -705,6 +762,9 @@ public function listinvoice()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/listinvoice', $data);
@@ -851,7 +911,7 @@ public function approvalinvoice()
         redirect('auth');
     }
 
-    $data['title'] = 'Approval Invoice';
+    $data['title'] = 'Second Approval Invoice';
     $data['profit_center'] = $this->Model_nag->cari_profit_center();
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
@@ -865,6 +925,9 @@ public function approvalinvoice()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/approvalinvoice', $data);
@@ -878,7 +941,7 @@ public function approval_proformainvoice()
         redirect('auth');
     }
 
-    $data['title'] = 'Approval Proforma Invoice';
+    $data['title'] = 'Second Approval Proforma Invoice';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
     $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
@@ -891,6 +954,9 @@ public function approval_proformainvoice()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/approval_proformainvoice', $data);
@@ -904,7 +970,7 @@ public function approval_debitnote()
         redirect('auth');
     }
 
-    $data['title'] = 'Approval Debit Note';
+    $data['title'] = 'Second Approval Debit Note';
     $data['profit_center'] = $this->Model_nag->cari_profit_center();
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
@@ -918,6 +984,9 @@ public function approval_debitnote()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/approval_debitnote', $data);
@@ -945,6 +1014,24 @@ public function cari_debitnote_post($dt_dari_inv, $dt_sampai_inv, $profit_center
     echo json_encode($data);
 }
 
+public function cari_invoice_second_approv($dt_dari_inv, $dt_sampai_inv, $profit_center)
+{
+    $data = $this->Model_nag->cari_invoice_second_approv($dt_dari_inv, $dt_sampai_inv, $profit_center);
+    echo json_encode($data);
+}
+
+public function cari_proforma_invoice_second_approv($dt_dari_inv, $dt_sampai_inv)
+{
+    $data = $this->Model_nag->cari_proforma_invoice_second_approv($dt_dari_inv, $dt_sampai_inv);
+    echo json_encode($data);
+}
+
+public function cari_debitnote_second_approv($dt_dari_inv, $dt_sampai_inv, $profit_center)
+{
+    $data = $this->Model_nag->cari_debitnote_second_approv($dt_dari_inv, $dt_sampai_inv, $profit_center);
+    echo json_encode($data);
+}
+
 public function approve_invoice()
 {
     $id = $this->input->post('id_inv');
@@ -963,6 +1050,24 @@ public function approve_debitnote()
 {
     $id = $this->input->post('id_inv');
     $this->Model_nag->approve_debitnote($id);
+}
+
+public function approve_invoice_second()
+{
+    $id = $this->input->post('id_inv');
+    $this->Model_nag->approve_invoice_second($id);
+}
+
+public function approve_profinvoice_second()
+{
+    $id = $this->input->post('id_inv');
+    $this->Model_nag->approve_profinvoice_second($id);
+}
+
+public function approve_debitnote_second()
+{
+    $id = $this->input->post('id_inv');
+    $this->Model_nag->approve_debitnote_second($id);
 }
 
     //Due Date Update
@@ -989,6 +1094,9 @@ public function duedateupdate()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/duedateupdate', $data);
@@ -1051,6 +1159,9 @@ function proformainvoice()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/proformainvoice', $data);
@@ -1087,6 +1198,9 @@ function proformainvoice_dp_cbd()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/proformainvoice_dp_cbd', $data);
@@ -1249,6 +1363,9 @@ function listproformainvoice()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/listproformainvoice', $data);
@@ -1277,6 +1394,9 @@ function listproformainvoice_dp_cbd()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/listproformainvoice_dp_cbd', $data);
@@ -1305,6 +1425,9 @@ function list_debitnote()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/list_debitnote', $data);
@@ -1538,6 +1661,9 @@ public function returninvoice()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/returninvoice', $data);
@@ -1612,6 +1738,9 @@ public function listreturninvoice()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/listreturinvoice', $data);
@@ -1690,6 +1819,9 @@ function debitnote()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/debitnote', $data);
@@ -1740,6 +1872,9 @@ public function userrole()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/userrole', $data);
@@ -1975,6 +2110,9 @@ public function listinvoice_manual()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/listinvoice_manual', $data);
@@ -2077,6 +2215,9 @@ public function createinvoice_manual()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/createinvoice_manual', $data);
@@ -2106,6 +2247,9 @@ public function alokasi_ar()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/alokasi_ar', $data);
@@ -2139,6 +2283,9 @@ public function create_alokasi()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/create_alokasi', $data);
@@ -2258,6 +2405,9 @@ public function kartu_ar_global()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/kartu_ar_global', $data);
@@ -2354,6 +2504,9 @@ public function kartu_ar_detail()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/kartu_ar_detail', $data);
@@ -2382,6 +2535,9 @@ public function frm_report_invoice_dpcbd()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/frm_report_invoice_dpcbd', $data);
@@ -2410,6 +2566,9 @@ public function frm_report_debit_note()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/frm_report_debit_note', $data);
@@ -2444,7 +2603,7 @@ public function approvalinvoice_manual()
         redirect('auth');
     }
 
-    $data['title'] = 'Approval Invoice Manual';
+    $data['title'] = 'Second Approval Invoice Manual';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
     $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
@@ -2457,6 +2616,9 @@ public function approvalinvoice_manual()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/approvalinvoice_manual', $data);
@@ -2470,10 +2632,22 @@ public function cari_invoice_manual_post($dt_dari_inv, $dt_sampai_inv)
     echo json_encode($data);
 }
 
+public function cari_invoice_manual_second_approv($dt_dari_inv, $dt_sampai_inv)
+{
+    $data = $this->Model_nag->cari_invoice_manual_second_approv($dt_dari_inv, $dt_sampai_inv);
+    echo json_encode($data);
+}
+
 public function approve_invoice_manual()
 {
     $id = $this->input->post('id_inv');
     $this->Model_nag->approve_invoice_manual($id);
+}
+
+public function approve_invoice_manual_second()
+{
+    $id = $this->input->post('id_inv');
+    $this->Model_nag->approve_invoice_manual_second($id);
 }
 
 public function reverse_invoice()
@@ -2495,6 +2669,9 @@ public function reverse_invoice()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/reverse_invoice', $data);
@@ -2521,6 +2698,9 @@ public function reverse_invoice_manual()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/reverse_invoice_manual', $data);
@@ -2546,6 +2726,9 @@ public function reverse_kwitansi()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/reverse_kwitansi', $data);
@@ -2571,6 +2754,9 @@ public function reverse_alokasi()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/reverse_alokasi', $data);
@@ -2792,6 +2978,9 @@ public function reverse_debitnote()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/reverse_debitnote', $data);
@@ -2895,6 +3084,9 @@ public function update_sj()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/update_sj', $data);
@@ -2936,6 +3128,9 @@ public function frm_report_sj_not_invoice()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/frm_report_sj_not_invoice', $data);
@@ -3088,6 +3283,9 @@ public function edit_invoice($id = null) {
         show_404();
     }
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/edit_invoice', $data);
@@ -3191,6 +3389,9 @@ public function reverse_document()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/list_reverse', $data);
@@ -3224,6 +3425,9 @@ public function create_reverse_document()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/create_reverse', $data);
@@ -3360,6 +3564,9 @@ public function approve_reverse_document()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/approve_reverse', $data);
@@ -3429,6 +3636,9 @@ public function edit_debitnote($id = null) {
     //     show_404();
     // }
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/edit_debitnote', $data);
@@ -3531,6 +3741,9 @@ public function master_other_charges()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/master_other_charges', $data);
@@ -3652,6 +3865,9 @@ public function createinvoice_knitting()
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
 
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/createinvoice_knitting', $data);
@@ -3793,5 +4009,310 @@ public function cancel_alokasi()
 
     redirect('arnag/alokasi_ar');
 }
+
+
+public function list_duedate_update()
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+
+    $data['title'] = 'List DueDate Update';
+    $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+    $data['customer'] = $this->Model_nag->cari_customer();
+    $data['bank'] = $this->Model_nag->load_bank();
+    $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+    $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+    $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+    $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+    $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+    $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+    $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+
+        // $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+    $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+    $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
+
+
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
+    $this->load->view('templates/header', $data);
+    $this->load->view('templates/sidebar', $data);
+    $this->load->view('arnag/list_duedate_update', $data);
+    $this->load->view('templates/footer', $data);
+}
+
+public function create_duedate_update()
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+
+    $data['title'] = 'Form DueDate Update';
+    $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+    $data['customer'] = $this->Model_nag->cari_customer();
+    $data['cost_center'] = $this->Model_nag->cari_cost();
+    $data['profit_center'] = $this->Model_nag->cari_profit_center();
+    $data['coa'] = $this->Model_nag->cari_coa();
+    $data['kode_number'] = $this->Model_nag->get_kode_duedate_update();
+    $data['type'] = $this->db->get('tbl_type')->result_array();
+    $data['isi_bank'] = $this->Model_nag->load_bank();
+    $data['pilihan'] = $this->Model_nag->get_pilihan_duedate_update();
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result->tgl_awal != null) ? $result->tgl_awal : '';
+    $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+    $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+    $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+    $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+    $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+    $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+    $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+    $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
+
+
+    $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
+    $this->load->view('templates/header', $data);
+    $this->load->view('templates/sidebar', $data);
+    $this->load->view('arnag/create_duedate_update', $data);
+    $this->load->view('templates/footer', $data);
+}
+
+public function cari_data_reff_duedate($dt_dari_doc, $dt_sampai_doc, $id_customer, $doc_type)
+{
+    $data =  $this->Model_nag->cari_data_reff_duedate($dt_dari_doc, $dt_sampai_doc, $id_customer, $doc_type);
+    echo json_encode($data);
+}
+
+public function simpan_duedate_temp()
+{
+    $data = $this->input->post('data_table');
+
+    if (empty($data)) {
+        echo json_encode([
+            "status" => FALSE,
+            "msg" => "Data kosong"
+        ]);
+        return;
+    }
+
+    $insert = $this->Model_nag->simpan_duedate_temp($data);
+
+    if ($insert) {
+        echo json_encode([
+            "status" => TRUE
+        ]);
+    } else {
+        echo json_encode([
+            "status" => FALSE,
+            "msg" => "Gagal insert ke database"
+        ]);
+    }
+}
+
+public function delete_data_reff_duedate($user)
+{
+    $this->Model_nag->delete_data_reff_duedate($user);
+    echo json_encode(array("status" => TRUE));
+}
+
+public function load_doc_duedate_temp()
+{
+     $user = $this->session->userdata('username');
+    $data =  $this->Model_nag->load_doc_duedate_temp($user);
+    echo json_encode($data);
+}
+
+
+public function simpan_data_duedate()
+{
+    $header = $this->input->post('header');
+    $detail = $this->input->post('detail');
+
+    $this->db->trans_begin();
+
+
+    $data_h = [
+        'doc_number'      => $header['doc_number'],
+        'duedate_update'  => $header['duedate_update'],
+        'keterangan'      => $header['keterangan'],
+        'status'          => 'POST',
+        'created_by'      => $this->session->userdata('username'),
+        'created_date'    => date('Y-m-d H:i:s'),
+        'cancel_by'       => null,
+        'cancel_date'     => null
+    ];
+
+    $this->db->insert('tbl_duedate_update_h', $data_h);
+
+
+    foreach ($detail as $dt) {
+        $data_d = [
+            'doc_number'        => $header['doc_number'],
+            'no_invoice'        => $dt['no_invoice'],
+            'duedate_update'    => $header['duedate_update'],
+            'curr'              => $dt['curr'],
+            'amount'            => $dt['amount'],
+            'keterangan'        => $dt['keterangan'],
+            'status'            => 'Y'
+        ];
+        $this->db->insert('tbl_duedate_update_det', $data_d);
+    }
+
+    if ($this->db->trans_status() === FALSE) {
+        $this->db->trans_rollback();
+        echo json_encode(['status' => false, 'message' => 'Gagal simpan data!']);
+    } else {
+        $this->db->trans_commit();
+        echo json_encode(['status' => true, 'message' => 'Berhasil simpan data!']);
+    }
+}
+
+public function cari_list_duedate_update($dari = 'all', $sampai = 'all')
+{
+    $data = $this->Model_nag->cari_list_duedate_update($dari, $sampai);
+    echo json_encode($data);
+}
+
+public function cari_detail_duedate_update($id)
+{
+    $data =  $this->Model_nag->cari_detail_duedate_update($id);
+    echo json_encode($data);
+}
+
+public function cancel_duedate_update()
+{
+    $id = $this->input->post('id');
+    $doc_number = $this->input->post('doc_number');
+
+    // ambil user login (sesuaikan dengan session kamu)
+    $user_cancel = $this->session->userdata('username');
+
+    $result = $this->Model_nag->cancel_duedate_update($id, $doc_number, $user_cancel);
+
+    if ($result) {
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Document berhasil di cancel'
+        ]);
+    } else {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Gagal cancel document'
+        ]);
+    }
+}
+
+
+    // =========================================================
+    // FIRST APPROVE
+    // =========================================================
+
+    public function first_approvalinvoice()
+    {
+        if (!$this->session->userdata('username')) { redirect('auth'); }
+
+        $data['title']               = 'First Approve Invoice';
+        $data['profit_center']       = $this->Model_nag->cari_profit_center();
+        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $result = $query->row();
+        $data['min_date'] = ($result->tgl_awal != null) ? $result->tgl_awal : '';
+        $data['user']                = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+        $data['user_access_1']       = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+        $data['user_access_2']       = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+        $data['user_access_3']       = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+        $data['user_access_4']       = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+        $data['user_access_5']       = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+        $data['user_access_6']       = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+        $data['user_access_7']       = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+        $data['user_access_reverse']   = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+        $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
+
+        $this->load->view('templates/header',  $data);
+        $this->load->view('templates/sidebar', $data);
+        $this->load->view('arnag/first_approvalinvoice', $data);
+        $this->load->view('templates/footer',  $data);
+    }
+
+    public function first_approvalinvoice_manual()
+    {
+        if (!$this->session->userdata('username')) { redirect('auth'); }
+
+        $data['title']               = 'First Approve Invoice Manual';
+        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $result = $query->row();
+        $data['min_date'] = ($result->tgl_awal != null) ? $result->tgl_awal : '';
+        $data['user']                = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+        $data['user_access_1']       = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+        $data['user_access_2']       = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+        $data['user_access_3']       = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+        $data['user_access_4']       = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+        $data['user_access_5']       = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+        $data['user_access_6']       = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+        $data['user_access_7']       = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+        $data['user_access_reverse']   = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+        $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
+
+        $this->load->view('templates/header',  $data);
+        $this->load->view('templates/sidebar', $data);
+        $this->load->view('arnag/first_approvalinvoice_manual', $data);
+        $this->load->view('templates/footer',  $data);
+    }
+
+    public function first_approval_proformainvoice()
+    {
+        if (!$this->session->userdata('username')) { redirect('auth'); }
+
+        $data['title']               = 'First Approve Proforma Invoice';
+        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $result = $query->row();
+        $data['min_date'] = ($result->tgl_awal != null) ? $result->tgl_awal : '';
+        $data['user']                = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+        $data['user_access_1']       = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+        $data['user_access_2']       = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+        $data['user_access_3']       = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+        $data['user_access_4']       = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+        $data['user_access_5']       = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+        $data['user_access_6']       = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+        $data['user_access_7']       = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+        $data['user_access_reverse']   = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+        $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
+
+        $this->load->view('templates/header',  $data);
+        $this->load->view('templates/sidebar', $data);
+        $this->load->view('arnag/first_approval_proformainvoice', $data);
+        $this->load->view('templates/footer',  $data);
+    }
+
+    public function first_approval_debitnote()
+    {
+        if (!$this->session->userdata('username')) { redirect('auth'); }
+
+        $data['title']               = 'First Approve Debit Note';
+        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $result = $query->row();
+        $data['min_date'] = ($result->tgl_awal != null) ? $result->tgl_awal : '';
+        $data['profit_center']       = $this->Model_nag->cari_profit_center();
+        $data['user']                = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+        $data['user_access_1']       = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+        $data['user_access_2']       = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+        $data['user_access_3']       = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+        $data['user_access_4']       = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+        $data['user_access_5']       = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+        $data['user_access_6']       = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+        $data['user_access_7']       = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+        $data['user_access_reverse']   = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+        $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
+
+        $this->load->view('templates/header',  $data);
+        $this->load->view('templates/sidebar', $data);
+        $this->load->view('arnag/first_approval_debitnote', $data);
+        $this->load->view('templates/footer',  $data);
+    }
 
 }

@@ -1,28 +1,4 @@
-let periode_dari;
-let periode_sampai;
-let periode_dari_mt;
-let periode_sampai_mt;
-let periode_dari_pi;
-let periode_sampai_pi;
 let id_customer;
-//
-$(document).ready(function () {
-
-    $('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
-        periode_dari  = picker.startDate.format('YYYY-MM-DD');
-        periode_sampai = picker.endDate.format('YYYY-MM-DD');
-        //
-        periode_dari_mt  = picker.startDate.format('YYYY-MM-DD');
-        periode_sampai_mt = picker.endDate.format('YYYY-MM-DD');
-        //
-        periode_dari_pi  = picker.startDate.format('YYYY-MM-DD');
-        periode_sampai_pi = picker.endDate.format('YYYY-MM-DD');
-        //
-        $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
-
-    });
-
-});
 
 function number_format(number, decimals) {
     number = parseFloat(number).toFixed(decimals);
@@ -30,38 +6,21 @@ function number_format(number, decimals) {
 }
 
 //Sales Report
-function cari_sales_report(){ 
+function cari_sales_report(){
 
-	$('#table-sales-report tbody tr').remove();	
-    //Date range picker
-    $('input[name="reservation"]').daterangepicker({
-        autoUpdateInput: false,
-        locale: {
-            cancelLabel: 'Clear'
-        }
-    });
+	$('#table-sales-report tbody tr').remove();
 
-    $('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
-       periode_dari = picker.startDate.format('YYYY-MM-DD');
-       periode_sampai = picker.endDate.format('YYYY-MM-DD');
-       $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
-   });
-
-    $('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
-        $(this).val('');
-        periode_dari   = "undefined";
-        periode_sampai = "undefined";
-    });
-
+    var from = $('#filter_from').val();
+    var to = $('#filter_to').val();
     var id_customer = $('#sr_customer').val();
     var shipp = $('#sr_type').val();
-    var type = $('#sr_type_inv').val();	
+    var type = $('#sr_type_inv').val();
     var curr = $('#sr_curr').val();
-    var type_so = $('#sr_order_type').val(); 
+    var type_so = $('#sr_order_type').val();
     console.log(id_customer, shipp, type, curr, type_so);
 
-    $.ajax({		
-        url: "cari_sales_report/" + periode_dari + "/" + periode_sampai + "/" + id_customer + "/" + shipp + "/" + type + "/" + curr + "/" + type_so + "/",					
+    $.ajax({
+        url: "cari_sales_report/" + from + "/" + to + "/" + id_customer + "/" + shipp + "/" + type + "/" + curr + "/" + type_so + "/",					
         type: "GET",
         dataType: "JSON",
         success: function (response) {
@@ -264,51 +223,36 @@ error: function (jqXHR, textStatus, errorThrown) {
 });	
 }
 
-function print_sales_report(){ 
+function print_sales_report(){
     var id_customer = $('#sr_customer').val();
     var shipp = $('#sr_type').val();
-    var type = $('#sr_type_inv').val(); 
+    var type = $('#sr_type_inv').val();
     var curr = $('#sr_curr').val();
     var type_so = $('#sr_order_type').val();
+    var from = $('#filter_from').val();
+    var to = $('#filter_to').val();
 
-    window.open(".../../sales_report/" + periode_dari + "/" + periode_sampai + "/" + "/" + id_customer + "/" + shipp + "/" + type + "/" + curr + "/" + type_so + "/" );      
+    window.open(".../../sales_report/" + from + "/" + to + "/" + "/" + id_customer + "/" + shipp + "/" + type + "/" + curr + "/" + type_so + "/" );
 
 }
 
 //Sales Report Per Material
-function cari_sales_report_material() { 
+function cari_sales_report_material() {
 
-	$('#table-sales-report-material tbody tr').remove();	
-    //Date range picker
-    $('input[name="reservation"]').daterangepicker({
-        autoUpdateInput: false,
-        locale: {
-            cancelLabel: 'Clear'
-        }
-    });
+	$('#table-sales-report-material tbody tr').remove();
 
-    $('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
-       periode_dari_mt = picker.startDate.format('YYYY-MM-DD');
-       periode_sampai_mt = picker.endDate.format('YYYY-MM-DD');
-       $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
-   });
-
-    $('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
-        $(this).val('');
-        periode_dari_mt   = "undefined";
-        periode_sampai_mt = "undefined";
-    });
-
+    var from = $('#filter_from').val();
+    var to = $('#filter_to').val();
     var id_customer_mt = $('#sr_customer_mt').val();
     var shipp_mt = $('#sr_type_mt').val();
-    var type_mt = $('#sr_type_inv_mt').val(); 
+    var type_mt = $('#sr_type_inv_mt').val();
     var curr_mt = $('#sr_curr_mt').val();
-    var type_so_mt = $('#sr_order_type_mt').val(); 
+    var type_so_mt = $('#sr_order_type_mt').val();
 
     console.log(id_customer_mt, shipp_mt, type_mt, curr_mt, type_so_mt);
 
-    $.ajax({		
-        url: "cari_sales_report_material/" + periode_dari_mt + "/" + periode_sampai_mt + "/" + id_customer_mt + "/" + shipp_mt + "/" + type_mt + "/" + curr_mt + "/" + type_so_mt + "/",					
+    $.ajax({
+        url: "cari_sales_report_material/" + from + "/" + to + "/" + id_customer_mt + "/" + shipp_mt + "/" + type_mt + "/" + curr_mt + "/" + type_so_mt + "/",					
         type: "GET",
         dataType: "JSON",
         success: function (response) {
@@ -357,33 +301,15 @@ function cari_sales_report_material() {
 
 
 //Outstanding PI
-function cari_outstanding_pi(){ 
+function cari_outstanding_pi(){
 
-	$('#table-outstanding-pi tbody tr').remove();	
-    //Date range picker
-    $('input[name="reservation"]').daterangepicker({
-        autoUpdateInput: false,
-        locale: {
-            cancelLabel: 'Clear'
-        }
-    });
+	$('#table-outstanding-pi tbody tr').remove();
 
-    $('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
-       periode_dari_pi = picker.startDate.format('YYYY-MM-DD');
-       periode_sampai_pi = picker.endDate.format('YYYY-MM-DD');
-       $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
-   });
+    var from = $('#filter_from').val();
+    var to = $('#filter_to').val();
 
-    $('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
-        $(this).val('');
-        periode_dari_pi   = "undefined";
-        periode_sampai_pi = "undefined";
-    });
-
-    //var id_customer = $('#sr_customer').val();	
-
-    $.ajax({		
-        url: "cari_outstanding_pi/" + periode_dari_pi + "/" + periode_sampai_pi + "/",					
+    $.ajax({
+        url: "cari_outstanding_pi/" + from + "/" + to + "/",					
         type: "GET",
         dataType: "JSON",
         success: function (response) {
@@ -413,46 +339,55 @@ function cari_outstanding_pi(){
     });	
 }
 
-function print_outstanding_pi() { 
-    window.open(".../../report_outstanding_pi/" + periode_dari_pi + "/" + periode_sampai_pi + "/" ); 
+function print_outstanding_pi() {
+    var from = $('#filter_from').val();
+    var to = $('#filter_to').val();
+    window.open(".../../report_outstanding_pi/" + from + "/" + to + "/" );
 }
 
 //Export To Excel
 //Sales Report
-function export_sales_report(){ 
+function export_sales_report(){
     var id_customer = $('#sr_customer').val();
     var shipp = $('#sr_type').val();
-    var type = $('#sr_type_inv').val(); 
+    var type = $('#sr_type_inv').val();
     var curr = $('#sr_curr').val();
     var type_so = $('#sr_order_type').val();
-    window.open(".../../export_sales_report/" + periode_dari + "/" + periode_sampai + "/" + "/" + id_customer + "/" + shipp + "/" + type + "/" + curr + "/" + type_so + "/" );      
+    var from = $('#filter_from').val();
+    var to = $('#filter_to').val();
+    window.open(".../../export_sales_report/" + from + "/" + to + "/" + "/" + id_customer + "/" + shipp + "/" + type + "/" + curr + "/" + type_so + "/" );
 }
 
 //Sales Report Per Material
-function export_sales_report_material(){ 
+function export_sales_report_material(){
     var id_customer_mt = $('#sr_customer_mt').val();
     var shipp_mt = $('#sr_type_mt').val();
-    var type_mt = $('#sr_type_inv_mt').val(); 
+    var type_mt = $('#sr_type_inv_mt').val();
     var curr_mt = $('#sr_curr_mt').val();
     var type_so_mt = $('#sr_order_type_mt').val();
-    window.open(".../../export_sales_report_material/" + periode_dari_mt + "/" + periode_sampai_mt + "/" + "/" + id_customer_mt + "/" + shipp_mt + "/" + type_mt + "/" + curr_mt + "/" + type_so_mt + "/" ); 
+    var from = $('#filter_from').val();
+    var to = $('#filter_to').val();
+    window.open(".../../export_sales_report_material/" + from + "/" + to + "/" + "/" + id_customer_mt + "/" + shipp_mt + "/" + type_mt + "/" + curr_mt + "/" + type_so_mt + "/" );
 }
 
-function print_sales_report_material(){ 
+function print_sales_report_material(){
     var id_customer_mt = $('#sr_customer_mt').val();
     var shipp_mt = $('#sr_type_mt').val();
-    var type_mt = $('#sr_type_inv_mt').val(); 
+    var type_mt = $('#sr_type_inv_mt').val();
     var curr_mt = $('#sr_curr_mt').val();
     var type_so_mt = $('#sr_order_type_mt').val();
-    
-    //window.open("http://10.10.2.179/ar-nag/report/sales_report_material/" + periode_dari_mt + "/" + periode_sampai_mt + "/" ); 
-    window.open(".../../sales_report_material/" + periode_dari_mt + "/" + periode_sampai_mt + "/" + "/" + id_customer_mt + "/" + shipp_mt + "/" + type_mt + "/" + curr_mt + "/" + type_so_mt + "/" ); 
+    var from = $('#filter_from').val();
+    var to = $('#filter_to').val();
+
+    window.open(".../../sales_report_material/" + from + "/" + to + "/" + "/" + id_customer_mt + "/" + shipp_mt + "/" + type_mt + "/" + curr_mt + "/" + type_so_mt + "/" );
 
 }
 
 //Outstanding PI
-function export_outstanding_pi(){ 
-    window.open(".../../export_outstanding_pi/" + periode_dari_pi + "/" + periode_sampai_pi + "/" ); 
+function export_outstanding_pi(){
+    var from = $('#filter_from').val();
+    var to = $('#filter_to').val();
+    window.open(".../../export_outstanding_pi/" + from + "/" + to + "/" );
 }
 
 function cari_aging_jatem(){ 
@@ -632,39 +567,22 @@ function cari_mut_ar(){
 }
 
 
-function cari_sales_report_detail_material() { 
+function cari_sales_report_detail_material() {
 
-    $('#table-sales-report-material tbody tr').remove();    
-    //Date range picker
-    $('input[name="reservation"]').daterangepicker({
-        autoUpdateInput: false,
-        locale: {
-            cancelLabel: 'Clear'
-        }
-    });
+    $('#table-sales-report-material tbody tr').remove();
 
-    $('input[name="reservation"]').on('apply.daterangepicker', function (ev, picker) {
-       periode_dari_mt = picker.startDate.format('YYYY-MM-DD');
-       periode_sampai_mt = picker.endDate.format('YYYY-MM-DD');
-       $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
-   });
-
-    $('input[name="reservation"]').on('cancel.daterangepicker', function (ev, picker) {
-        $(this).val('');
-        periode_dari_mt   = "undefined";
-        periode_sampai_mt = "undefined";
-    });
-
+    var from = $('#filter_from').val();
+    var to = $('#filter_to').val();
     var id_customer_mt = $('#sr_customer_mt').val();
     var shipp_mt = $('#sr_type_mt').val();
-    var type_mt = $('#sr_type_inv_mt').val(); 
+    var type_mt = $('#sr_type_inv_mt').val();
     var curr_mt = $('#sr_curr_mt').val();
-    var type_so_mt = $('#sr_order_type_mt').val(); 
+    var type_so_mt = $('#sr_order_type_mt').val();
 
     console.log(id_customer_mt, shipp_mt, type_mt, curr_mt, type_so_mt);
 
-    $.ajax({        
-        url: "cari_sales_report_detail_material/" + periode_dari_mt + "/" + periode_sampai_mt + "/" + id_customer_mt + "/" + shipp_mt + "/" + type_mt + "/" + curr_mt + "/" + type_so_mt + "/",                    
+    $.ajax({
+        url: "cari_sales_report_detail_material/" + from + "/" + to + "/" + id_customer_mt + "/" + shipp_mt + "/" + type_mt + "/" + curr_mt + "/" + type_so_mt + "/",                    
         type: "GET",
         dataType: "JSON",
         success: function (response) {
@@ -747,13 +665,15 @@ function cari_sales_report_detail_material() {
     }); 
 }
 
-function export_sales_report_detail_material(){ 
+function export_sales_report_detail_material(){
     var id_customer_mt = $('#sr_customer_mt').val();
     var shipp_mt = $('#sr_type_mt').val();
-    var type_mt = $('#sr_type_inv_mt').val(); 
+    var type_mt = $('#sr_type_inv_mt').val();
     var curr_mt = $('#sr_curr_mt').val();
     var type_so_mt = $('#sr_order_type_mt').val();
-    window.open(".../../export_sales_report_detail_material/" + periode_dari_mt + "/" + periode_sampai_mt + "/" + "/" + id_customer_mt + "/" + shipp_mt + "/" + type_mt + "/" + curr_mt + "/" + type_so_mt + "/" ); 
+    var from = $('#filter_from').val();
+    var to = $('#filter_to').val();
+    window.open(".../../export_sales_report_detail_material/" + from + "/" + to + "/" + "/" + id_customer_mt + "/" + shipp_mt + "/" + type_mt + "/" + curr_mt + "/" + type_so_mt + "/" );
 }
 
 function export_mut_ar(){ 
@@ -761,4 +681,250 @@ function export_mut_ar(){
     var start_date = $('#start_date').val();
     var end_date = $('#end_date').val(); 
     window.open(".../../export_mut_ar/" + id_customer + "/" + start_date + "/" + "/" + end_date + "/" );      
+}
+
+function renderProjectionHeader(from, to) {
+
+    let start = new Date(from);
+    let end   = new Date(to);
+
+    let dates = [];
+
+    // generate tanggal
+    let bulanEng = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+while(start <= end){
+    let d = new Date(start);
+
+    let tgl = d.getDate(); // tanpa 0 depan
+    let bln = bulanEng[d.getMonth()];
+    let thn = d.getFullYear();
+
+    dates.push(tgl + ' ' + bln + ' ' + thn);
+
+    start.setDate(start.getDate() + 1);
+}
+
+    let colCount = dates.length;
+
+    let thead = `
+        <tr>
+            <th style="width:30px;background-color: #FFE4C4;" rowspan="2">No</th>
+            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Customer</th>
+            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Reff Number</th>
+            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Reff Date</th>
+            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Category</th>
+            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Due Date</th>
+            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Due Date Update</th>
+            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">TOP</th>
+            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Curr</th>
+            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Total</th>
+            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Rate</th>
+            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Total IDR</th>
+            <th style="background-color: #90EE90;" colspan="${colCount}">Duedate Projection</th>
+        </tr>
+        <tr>
+    `;
+
+    dates.forEach(function(tgl){
+        thead += `<th style="width:150px;background-color: #90EE90;">${tgl}</th>`;
+    });
+
+    thead += `</tr>`;
+
+    $('#table-projection-report thead').html(thead);
+
+    return dates.length; // penting untuk dipakai di bawah
+}
+
+function formatTgl(dateStr){
+    if(!dateStr) return '';
+
+    let d = new Date(dateStr + 'T00:00:00'); // aman timezone
+
+    let bulanEng = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+    let tgl = d.getDate();
+    let bln = bulanEng[d.getMonth()];
+    let thn = d.getFullYear();
+
+    return tgl + ' ' + bln + ' ' + thn;
+}
+
+function cari_projection_report(){
+
+    $('#table-projection-report tbody tr').remove();
+
+    var id_customer = $('#sr_customer').val();
+    var from = $('#filter_from').val();
+    var to = $('#filter_to').val();  
+    console.log(id_customer, from, to);
+
+    let totalHari = renderProjectionHeader(from, to);
+
+    $.ajax({        
+        url: "cari_projection_report/" + id_customer + "/" + from + "/" + to + "/",                  
+        type: "GET",
+        dataType: "JSON",
+        success: function (response) {
+
+            let trHTML = '';
+            let total_amount = 0;
+            let total_amount_idr = 0;
+            let totals = {};
+
+            // =========================
+            // LOOP DATA
+            // =========================
+            $.each(response, function (i, item) {
+
+                total_amount += parseFloat(item.amount || 0);
+                total_amount_idr += parseFloat(item.amount_idr || 0);
+
+                trHTML += '<tr>';
+                trHTML += '<td>' + (i + 1) + '</td>';                   
+                trHTML += '<td>' + item.customer + "</td>";
+                trHTML += '<td>' + item.no_invoice + "</td>";   
+                trHTML += '<td>' + formatTgl(item.inv_date) + "</td>"; 
+                trHTML += '<td>' + item.shipp + "</td>";   
+                trHTML += '<td>' + formatTgl(item.duedate) + "</td>";   
+                trHTML += '<td>' + formatTgl(item.duedate_update) + "</td>"; 
+                trHTML += '<td>' + item.top + "</td>"; 
+                trHTML += '<td>' + item.curr + "</td>";    
+
+                trHTML += '<td align="right">' + number_format(item.amount,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.rate,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.amount_idr,2) + "</td>";
+
+                // =========================
+                // KOLOM DINAMIS
+                // =========================
+                for(let j = 1; j <= totalHari; j++){
+                    let key = 'data' + j;
+                    let val = parseFloat(item[key]) || 0;
+
+                    trHTML += '<td align="right">' + number_format(val,2) + "</td>";
+
+                    if(!totals[key]) totals[key] = 0;
+                    totals[key] += val;
+                }
+
+                trHTML += '</tr>';
+            });
+
+            // =========================
+            // TOTAL ROW
+            // =========================
+            trHTML += '<tr style="border-top: double 3px #000;">';
+
+            trHTML += '<td></td>';
+            trHTML += '<td align="center"><b>TOTAL</b></td>';
+
+            for(let i = 0; i < 7; i++){
+                trHTML += '<td></td>';
+            }
+
+            trHTML += '<td align="right"><b>' + number_format(total_amount, 2) + '</b></td>';
+            trHTML += '<td></td>';
+            trHTML += '<td align="right"><b>' + number_format(total_amount_idr, 2) + '</b></td>';
+
+            // TOTAL DINAMIS
+            for(let j = 1; j <= totalHari; j++){
+                let key = 'data' + j;
+                let val = totals[key] || 0;
+
+                trHTML += '<td align="right"><b>' + number_format(val, 2) + '</b></td>';
+            }
+
+            trHTML += '</tr>';
+
+            $('#table-projection-report tbody').html(trHTML);
+        },
+        error: function () {
+            alert('Error get data from ajax');
+        }
+    }); 
+}
+
+function export_projection_report(){
+
+    let id_customer = $('#sr_customer').val();
+    let from = $('#filter_from').val();
+    let to   = $('#filter_to').val();
+
+    if(!from || !to){
+        alert('Tanggal harus diisi!');
+        return;
+    }
+
+    let url = "cari_projection_report/" + id_customer + "/" + from + "/" + to;
+
+    window.open(url, '_blank');
+}
+
+function save_history_projection_report(){
+    let id_customer = $('#sr_customer').val();
+    let from        = $('#filter_from').val();
+    let to          = $('#filter_to').val();
+    let type        = $('#filter_type').val() || 'daily';
+
+    if (!from || !to) {
+        Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Tanggal From dan To harus diisi!' });
+        return;
+    }
+
+    let fromDate = new Date(from);
+    let toDate   = new Date(to);
+    let diffDays = Math.round((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
+
+    if (type === 'weekly') {
+        if (diffDays !== 7) {
+            Swal.fire({ icon: 'error', title: 'Validasi Weekly', text: 'Periode Weekly harus tepat 7 hari. Saat ini ' + diffDays + ' hari.' });
+            return;
+        }
+    }
+
+    if (type === 'monthly') {
+        let lastDay = new Date(fromDate.getFullYear(), fromDate.getMonth() + 1, 0);
+        if (fromDate.getDate() !== 1) {
+            Swal.fire({ icon: 'error', title: 'Validasi Monthly', text: 'Tanggal From harus dimulai dari tanggal 1.' });
+            return;
+        }
+        if (fromDate.getFullYear() !== toDate.getFullYear() || fromDate.getMonth() !== toDate.getMonth()) {
+            Swal.fire({ icon: 'error', title: 'Validasi Monthly', text: 'Monthly hanya diperbolehkan dalam 1 bulan yang sama.' });
+            return;
+        }
+        if (toDate.getDate() !== lastDay.getDate()) {
+            Swal.fire({ icon: 'error', title: 'Validasi Monthly', text: 'Tanggal To harus akhir bulan (tanggal ' + lastDay.getDate() + ').' });
+            return;
+        }
+    }
+
+    Swal.fire({
+        title: 'Save History',
+        text: 'Simpan data projection sebagai history ' + type + ' (' + from + ' s/d ' + to + ')?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Simpan',
+        cancelButtonText: 'Batal'
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: 'save_history_projection_report/' + id_customer + '/' + from + '/' + to + '/',
+                type: 'POST',
+                data: { type: type },
+                dataType: 'JSON',
+                success: function(res) {
+                    if (res.status === 'success') {
+                        Swal.fire({ icon: 'success', title: 'Tersimpan!', text: 'Doc Number: ' + res.doc_number });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Gagal', text: res.message || 'Tidak ada data untuk disimpan.' });
+                    }
+                },
+                error: function() {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan saat menyimpan.' });
+                }
+            });
+        }
+    });
 }

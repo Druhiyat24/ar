@@ -1195,33 +1195,13 @@ function change_top_5_sales(option) {
     });
   </script> -->
 
-  <!-- Date Range Picker -->
+  <!-- Date Range Picker - reservation and reservation2 removed; using .tanggal Bootstrap datepicker instead -->
+  <!-- Date Range Picker with time picker -->
   <script>
     $(function() {
-      //Date range picker
-      $('#reservation').daterangepicker()
-      //Date range picker with time picker
       $('#reservationtime').daterangepicker({
         timePicker: true,
         timePickerIncrement: 30,
-        locale: {
-          format: 'MM/DD/YYYY hh:mm A'
-        }
-      })
-    })
-  </script>
-
-  <!-- Date Range Picker 2 -->
-  <script>
-    $(function() {
-      //Date range picker
-      $('#reservation2').daterangepicker()
-
-      //Date range picker with time picker
-      $('#reservationtime').daterangepicker({
-        timePicker: true,
-        timePickerIncrement: 30,
-        // startDate: '05-05-2022',
         locale: {
           format: 'MM/DD/YYYY hh:mm A'
         }
