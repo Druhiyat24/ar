@@ -721,9 +721,9 @@ public function cari_projection_report($id_customer, $start, $end)
 SELECT 
 GROUP_CONCAT(
     CONCAT(
-        'SUM(CASE WHEN a.duedate_update = ''',
+        'SUM(CASE WHEN COALESCE(b.duedate_update,a.duedate) = ''',
         tgl,
-        ''' THEN (a.amount * b.rate) ELSE 0 END) AS data',
+        ''' THEN (COALESCE(b.amount,total) * a.rate) ELSE 0 END) AS data',
         urut
     )
 ) INTO @cols
@@ -813,7 +813,7 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
                 
                 duedate as (select b.no_invoice, b.duedate_update, b.amount from tbl_duedate_update_h a INNER JOIN tbl_duedate_update_det b on b.doc_number = a.doc_number where a.duedate_update BETWEEN ''',@start,''' and ''',@end,''' and a.status != ''CANCEL'' and b.status = ''Y'' GROUP BY b.id)
                 
-                select id_customer, customer, b.no_invoice, inv_date, shipp, duedate, duedate_update, top, curr, rate, total, eqv_idr, a.amount, (a.amount * rate) amount_idr, ', @cols, ' from duedate a INNER JOIN invoice b on b.no_invoice  = a.no_invoice GROUP BY b.no_invoice')";
+                select a.id_customer, a.customer, a.no_invoice, a.inv_date, a.shipp, a.duedate, COALESCE(b.duedate_update,a.duedate) duedate_update, top, curr, rate, total, eqv_idr, COALESCE(b.amount,total) amount, (COALESCE(b.amount,total) * rate) amount_idr, ', @cols, ' from invoice a LEFT JOIN duedate b on b.no_invoice  = a.no_invoice where COALESCE(b.duedate_update,a.duedate) BETWEEN ''',@start,''' and ''',@end,''' GROUP BY a.no_invoice')";
 
     $this->db->query($sqlMain);
 
@@ -852,9 +852,9 @@ public function cari_projection_report_export($id_customer, $start, $end)
 SELECT 
 GROUP_CONCAT(
     CONCAT(
-        'SUM(CASE WHEN a.duedate_update = ''',
+        'SUM(CASE WHEN COALESCE(b.duedate_update,a.duedate) = ''',
         tgl,
-        ''' THEN (a.amount * b.rate) ELSE 0 END) AS data',
+        ''' THEN (COALESCE(b.amount,total) * a.rate) ELSE 0 END) AS data',
         urut
     )
 ) INTO @cols
@@ -944,7 +944,7 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
                 
                 duedate as (select b.no_invoice, b.duedate_update, b.amount from tbl_duedate_update_h a INNER JOIN tbl_duedate_update_det b on b.doc_number = a.doc_number where a.duedate_update BETWEEN ''',@start,''' and ''',@end,''' and a.status != ''CANCEL'' and b.status = ''Y'' GROUP BY b.id)
                 
-                select id_customer, customer, b.no_invoice, inv_date, shipp, duedate, duedate_update, top, curr, rate, total, eqv_idr, a.amount, (a.amount * rate) amount_idr, ', @cols, ' from duedate a INNER JOIN invoice b on b.no_invoice  = a.no_invoice GROUP BY b.no_invoice')";
+                select a.id_customer, a.customer, a.no_invoice, a.inv_date, a.shipp, a.duedate, COALESCE(b.duedate_update,a.duedate) duedate_update, top, curr, rate, total, eqv_idr, COALESCE(b.amount,total) amount, (COALESCE(b.amount,total) * rate) amount_idr, ', @cols, ' from invoice a LEFT JOIN duedate b on b.no_invoice  = a.no_invoice where COALESCE(b.duedate_update,a.duedate) BETWEEN ''',@start,''' and ''',@end,''' GROUP BY a.no_invoice')";
 
     $this->db->query($sqlMain);
 

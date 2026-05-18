@@ -857,7 +857,7 @@ function export_projection_report(){
         return;
     }
 
-    let url = "cari_projection_report/" + id_customer + "/" + from + "/" + to;
+    let url = "export_projection_report/" + id_customer + "/" + from + "/" + to;
 
     window.open(url, '_blank');
 }
