@@ -211,25 +211,6 @@
       outline: none;
     }*/
 
-    #modal-add-duedate .modal-dialog {
-    max-width: 75%;
-}
-
-
-    #modal-add-duedate .modal-body {
-    max-height: 100vh;
-    overflow-y: auto;
-}
-
-#modal-duedate-detail .modal-dialog {
-    max-width: 75%;
-}
-
-
-    #modal-duedate-detail .modal-body {
-    max-height: 100vh;
-    overflow-y: auto;
-}
 
 /* ===== Filter row alignment ===== */
 /* Remove bottom margin from form-groups inside filter rows so align-items-end works correctly */

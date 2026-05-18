@@ -11910,7 +11910,6 @@ function cari_mutasi_debit_note() {
 				trHTML += '<td>' + item.supplier + "</td>";
 				trHTML += '<td>' + item.attn + "</td>";	
 				trHTML += '<td>' + item.duedate + "</td>";
-				trHTML += '<td>' + item.duedate_update + "</td>";
 				trHTML += '<td>' + item.top + "</td>";
 				trHTML += '<td>' + item.from_curr + "</td>";
 				trHTML += '<td>' + formatMoney(item.rate) + "</td>";
@@ -11941,7 +11940,7 @@ function cari_mutasi_debit_note() {
 			}
 		});
 trHTML += '<tr>';					
-trHTML += '<th colspan="10" style="text-align: center">' +kata+ "</th>";
+trHTML += '<th colspan="9" style="text-align: center">' +kata+ "</th>";
 trHTML += '<th>' + formatMoney(sal_awl_) + "</th>";
 trHTML += '<th>' + formatMoney(tambah_) + "</th>";	
 trHTML += '<th>' + formatMoney(bayar_) + "</th>";	
@@ -15798,7 +15797,6 @@ function cari_kartu_ar_new() {
 					trHTML += '<td>' + item.inv_date + "</td>";
 					trHTML += '<td>' + item.shipp + "</td>";
 					trHTML += '<td>' + item.duedate + "</td>";
-					trHTML += '<td>' + item.duedate_update + "</td>";
 					trHTML += '<td>' + item.top + "</td>";
 					trHTML += '<td>' + item.curr + "</td>";
 					trHTML += '<td>' + formatMoney(item.rate) + "</td>";
@@ -15828,7 +15826,7 @@ function cari_kartu_ar_new() {
 					trHTML += '</tr>';
 				});
 				trHTML += '<tr>';					
-				trHTML += '<th colspan="9" style="text-align: center">' +kata+ "</th>";
+				trHTML += '<th colspan="8" style="text-align: center">' +kata+ "</th>";
 				trHTML += '<th>' + formatMoney(sal_awl) + "</th>";
 				trHTML += '<th>' + formatMoney(tambah) + "</th>";	
 				trHTML += '<th>' + formatMoney(bayar) + "</th>";	
