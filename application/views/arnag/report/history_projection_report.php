@@ -32,11 +32,20 @@
                                             </div>
                                         </div>
                                         <div class="form-group col-md-2">
+                                            <label>Type</label>
+                                            <select id="hist_type" class="form-control select2bs4" onchange="apply_history_filter()">
+                                                <option value="">All Type</option>
+                                                <option value="daily">Daily</option>
+                                                <option value="weekly">Weekly</option>
+                                                <option value="monthly">Monthly</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group col-md-2">
                                             <label>Doc Number</label>
                                             <div style="position:relative;">
                                                 <input type="text" id="hist_doc_filter" class="form-control"
                                                     placeholder="Cari doc number..." autocomplete="off"
-                                                    oninput="filter_history_by_doc()"
+                                                    oninput="apply_history_filter()"
                                                     style="padding-right:30px;">
                                                 <i class="fa fa-search" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#aaa;pointer-events:none;"></i>
                                             </div>
@@ -75,6 +84,7 @@
                                     <th>Doc Number</th>
                                     <th class="text-center">Periode From</th>
                                     <th class="text-center">Periode To</th>
+                                    <th class="text-center">Type</th>
                                     <th class="text-center">Total Invoice</th>
                                     <th class="text-right">Total Amount IDR</th>
                                     <th>Saved By</th>
@@ -152,22 +162,28 @@ function load_history_list() {
         success : function(res) {
             let html = '';
             if (!res || res.length === 0) {
-                html = '<tr><td colspan="9" class="text-center text-muted">Tidak ada data</td></tr>';
+                html = '<tr><td colspan="10" class="text-center text-muted">Tidak ada data</td></tr>';
             } else {
                 $.each(res, function(i, r) {
                     let total_idr = parseFloat(r.total_amount_idr || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    html += `<tr data-doc="${r.doc_number}">
+                    let typeBadge = { daily: 'badge-primary', weekly: 'badge-warning', monthly: 'badge-success' };
+                    let typeClass = typeBadge[r.type] || 'badge-secondary';
+                    html += `<tr data-doc="${r.doc_number}" data-type="${r.type || ''}">
                         <td class="text-center">${i + 1}</td>
                         <td>${r.doc_number}</td>
                         <td class="text-center">${r.periode_dari}</td>
                         <td class="text-center">${r.periode_sampai}</td>
+                        <td class="text-center"><span class="badge ${typeClass}">${r.type || '-'}</span></td>
                         <td class="text-center">${r.total_invoice}</td>
                         <td class="text-right">${total_idr}</td>
                         <td>${r.created_by}</td>
                         <td class="text-center">${r.created_at}</td>
-                        <td class="text-center">
+                        <td class="text-center" style="white-space:nowrap;">
                             <button class="btn btn-info btn-xs" onclick="view_history_detail('${r.doc_number}')">
                                 <i class="fa fa-eye"></i> View
+                            </button>
+                            <button class="btn btn-danger btn-xs ml-1" onclick="cancel_history_projection('${r.doc_number}')">
+                                <i class="fa fa-times"></i> Cancel
                             </button>
                         </td>
                     </tr>`;
@@ -307,11 +323,51 @@ function formatDate(ymd) {
     return p[2] + ' ' + months[parseInt(p[1]) - 1] + ' ' + p[0];
 }
 
-function filter_history_by_doc() {
-    let keyword = $('#hist_doc_filter').val().toLowerCase().trim();
+function apply_history_filter() {
+    let keyword  = ($('#hist_doc_filter').val() || '').toLowerCase().trim();
+    let typeFilter = ($('#hist_type').val() || '').toLowerCase();
+
     $('#tbody-history-list tr').each(function() {
-        let doc = $(this).data('doc') || '';
-        $(this).toggle(doc.toLowerCase().indexOf(keyword) > -1 || keyword === '');
+        let doc  = ($(this).data('doc')  || '').toLowerCase();
+        let type = ($(this).data('type') || '').toLowerCase();
+
+        let matchDoc  = !keyword    || doc.indexOf(keyword) > -1;
+        let matchType = !typeFilter || type === typeFilter;
+
+        $(this).toggle(matchDoc && matchType);
+    });
+}
+
+function cancel_history_projection(doc_number) {
+    Swal.fire({
+        title: 'Cancel History',
+        html: 'Hapus history <strong>' + doc_number + '</strong>?<br><small class="text-muted">Data header dan detail akan dihapus permanen.</small>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal'
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            $.ajax({
+                url     : 'cancel_history_projection_report/',
+                type    : 'POST',
+                data    : { doc_number: doc_number },
+                dataType: 'JSON',
+                success : function(res) {
+                    if (res.status === 'success') {
+                        Swal.fire({ icon: 'success', title: 'Dihapus!', text: doc_number + ' berhasil dihapus.', timer: 1500, showConfirmButton: false });
+                        load_history_list();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Gagal', text: res.message || 'Gagal menghapus data.' });
+                    }
+                },
+                error: function() {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan saat menghapus.' });
+                }
+            });
+        }
     });
 }
 </script>

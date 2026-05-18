@@ -17,9 +17,9 @@
                 <!-- left column -->
                 <div class="col-md-12">
                     <!-- general form elements -->
-                    <div class="card card-info">
+                    <div class="card card-primary">
                         <div class="card-header">
-                            <h3 class="card-title">List Invoice</h3>
+                            <h3 class="card-title">List Proforma Invoice DP & CBD</h3>
                         </div>
                         <!-- /.card-header -->
                     </div>
@@ -27,7 +27,7 @@
             </div>
             <div class="card">
                 <div class="card-header">
-                    <div class="row">
+                    <div class="row align-items-end">
                         <div class="col-md-2">
                             <div class="form-group mb-0">
                                 <label>From</label>
@@ -46,41 +46,38 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <label>Action</label>
-                            <div class="input-group">
-                                <button type="button" id="find_invoice_post" name="find_invoice_post" class="btn btn-primary" href="javascript:void(0)" onclick="cari_invoice_manual_post()"><i class="fa fa-search"></i> Search</button>
+                        <div class="col-md-2">
+                            <div class="d-flex" style="gap:6px;">
+                                <button type="button" class="btn btn-primary" onclick="cari_dpcbd_invoice_post()"><i class="fa fa-search"></i> Search</button>
                             </div>
                         </div>
                     </div>
                 </div>
                 <!-- /.card-header -->
-                    <div class="d-flex justify-content-between">
-                           <div class="ml-auto">
-                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                            </div>
-                                <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_noinv()">
-                             </div>
+                <div class="d-flex justify-content-between">
+                    <div class="ml-auto">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    </div>
+                    <input type="text" id="cari_noinv_first_dpcbd" name="cari_noinv_first_dpcbd" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_noinv_first_dpcbd()">
+                </div>
                 <div class="card-body table-responsive p-0" style="height: 300px;">
-                    <table id="table-approval-invoice-manual" class="table table-head-fixed text-nowrap">
+                    <table id="table-approval-invoicedp" class="table table-head-fixed text-nowrap">
                         <thead>
                             <tr>
-                                <th>Inv Number</th>
+                                <th>No Inv</th>
+                                <th>Date</th>
                                 <th>Customer</th>
                                 <th>Shipp</th>
-                                <th>Document Type</th>
-                                <th>Document Number</th>
-                                <th>Inv Date</th>
+                                <th>PEB</th>
                                 <th>Type</th>
-                                <th>Total</th>
+                                <th>Faktur Pajak</th>
                                 <th>Status</th>
+                                <th>Amount</th>
                                 <th>ID</th>
-                                <th style="text-align:center"><input type="checkbox" onchange="check_approv_invoice_manual(this)" id="cek_inv_mnl_approve" name="cek_inv_mnl_approve"></th>
+                                <th style="text-align:center"><input type="checkbox" onchange="check_approv_dpinvoice(this)" id="cek_invdp_approve" name="cek_invdp_approve"></th>
                             </tr>
                         </thead>
-                        <tbody>
-
-                        </tbody>
+                        <tbody></tbody>
                     </table>
                 </div>
                 <!-- /.card-body -->
@@ -90,62 +87,52 @@
                 <div class="card-header">
                     <div class="row">
                         <div class="col-md-4">
-                            <button type="button" id="approv_inv_mnl" name="approv_inv_mnl" class="btn btn-warning" onclick="modal_show_approve_invoice_manual()"><i class="fa fa-thumbs-up"></i> Approved</button>
+                            <button type="button" class="btn btn-warning" onclick="modal_show_approve_invoicedp()"><i class="fas fa-thumbs-up"></i> Approved</button>
                         </div>
                     </div>
                 </div>
             </div>
-            <!--  -->
         </div><!-- /.container-fluid -->
     </section>
 </div>
 
-<!-- Modal Approved Invoice -->
-<div class="modal fade" id="modal-approve-invoice-manual">
+<!-- Modal Approved Invoice DP & CBD First -->
+<div class="modal fade" id="modal-approve-invoicedp">
     <form>
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title">Confirm</h4>
+                    <h4 class="modal-title">Confirm First Approval</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group row">
-                        <label for="id_inv_approv1" class="col-sm-5 col-form-label">Approved Invoice? </label>
+                        <label class="col-sm-5 col-form-label">First Approve Invoice DP & CBD?</label>
                     </div>
                 </div>
                 <div class="modal-footer justify-content-between">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="refresh_manual()">Approved</button>
+                    <button type="button" class="btn btn-primary" onclick="refresh_invdp()">Approved</button>
                 </div>
             </div>
         </div>
     </form>
 </div>
 
-
-    <script>
-    function cari_noinv() {
-        // Declare variables
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("cari_noinv");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("table-approval-invoice-manual");
-        tr = table.getElementsByTagName("tr");
-
-        // Loop through all table rows, and hide those who don't match the search query
-        for (i = 0; i < tr.length; i++) {
-            td = tr[i].getElementsByTagName("td")[0]; //kolom ke berapa.. ini kolom ke 1,, harusnya kolom ke 0
-            if (td) {
-                txtValue = td.textContent || td.innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    tr[i].style.display = "";
-                } else {
-                    tr[i].style.display = "none";
-                }
-            }
+<script>
+function cari_noinv_first_dpcbd() {
+    var input = document.getElementById("cari_noinv_first_dpcbd");
+    var filter = input.value.toUpperCase();
+    var table = document.getElementById("table-approval-invoicedp");
+    var tr = table.getElementsByTagName("tr");
+    for (var i = 0; i < tr.length; i++) {
+        var td = tr[i].getElementsByTagName("td")[0];
+        if (td) {
+            var txtValue = td.textContent || td.innerText;
+            tr[i].style.display = txtValue.toUpperCase().indexOf(filter) > -1 ? "" : "none";
         }
     }
+}
 </script>

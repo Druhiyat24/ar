@@ -59,7 +59,7 @@
                         <div class="col-md-2">
                             <label>Action</label>
                             <div class="input-group">
-                                <button type="button" id="find_invoice_post" name="find_invoice_post" class="btn btn-primary" href="javascript:void(0)" onclick="cari_invoice_post()"><i class="fa fa-search"></i> Search</button>
+                                <button type="button" id="find_invoice_post" name="find_invoice_post" class="btn btn-primary" href="javascript:void(0)" onclick="cari_invoice_second_approv()"><i class="fa fa-search"></i> Search</button>
                             </div>
                         </div>
                     </div>
@@ -128,7 +128,7 @@
                 </div>
                 <div class="modal-footer justify-content-between">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="refresh()">Approved</button>
+                    <button type="button" class="btn btn-primary" onclick="refresh_second()">Approved</button>
                 </div>
             </div>
         </div>

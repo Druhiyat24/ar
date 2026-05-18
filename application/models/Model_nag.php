@@ -842,6 +842,51 @@ function cari_debitnote_post($dt_dari_inv, $dt_sampai_inv, $profit_center)
 }
 
 
+function cari_invoice_second_approv($dt_dari_inv, $dt_sampai_inv, $profit_center)
+{
+    if ($profit_center == 'ALL') {
+        $where = '';
+    } else {
+        $where = "and a.profit_center = '$profit_center'";
+    }
+    $hasil = $this->db->query("SELECT DISTINCT a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, a.shipp, a.doc_type, a.doc_number,
+      DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date, c.type, a.status, a.id, c.id_type, b.Id_Supplier AS id_customer, CONCAT(e.curr, ' ', FORMAT(grand_total,2)) total
+      FROM tbl_book_invoice AS a INNER JOIN
+      mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN
+      tbl_type AS c ON a.id_type = c.id_type LEFT JOIN
+      tbl_invoice_detail AS e ON a.id = e.id_book_invoice LEFT JOIN
+      tbl_invoice_pot AS f ON a.id = f.id_book_invoice
+      WHERE a.status = 'FIRST APPROVED' AND e.sj_date BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' $where ORDER BY a.id ASC");
+    return $hasil->result_array();
+}
+
+function cari_proforma_invoice_second_approv($dt_dari_inv, $dt_sampai_inv)
+{
+    $hasil = $this->db->query("SELECT a.id, a.no_proforma_invoice AS no_pi, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi, b.supplier AS customer, a.shipp, a.peb,
+      c.type, a.status, a.no_faktur_pajak, FORMAT(a.total, 2) AS amount
+      FROM tbl_invoice_proforma AS a INNER JOIN
+      mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN
+      tbl_type AS c ON a.id_type = c.id_type INNER JOIN
+      tbl_invoice_proforma_detail_so AS d ON a.no_proforma_invoice = d.no_invoice_proforma
+      WHERE a.status = 'FIRST APPROVED' AND a.tgl_proforma_inv BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv'
+      GROUP BY a.no_proforma_invoice");
+    return $hasil->result_array();
+}
+
+function cari_debitnote_second_approv($dt_dari_inv, $dt_sampai_inv, $profit_center)
+{
+    if ($profit_center == 'ALL') {
+        $where = '';
+    } else {
+        $where = "and a.profit_center = '$profit_center'";
+    }
+    $hasil = $this->db->query("SELECT a.id, a.no_dn, a.tgl_dn, b.Supplier, a.attn, a.from_curr, a.to_curr, a.amount, a.eqv_curr, a.status
+      FROM tbl_debitnote_h a INNER JOIN mastersupplier b ON b.Id_Supplier = a.customer
+      WHERE a.status = 'FIRST APPROVED' AND a.tgl_dn BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' $where
+      GROUP BY a.no_dn");
+    return $hasil->result_array();
+}
+
 function cari_invoice_appv($dt_dari_inv, $dt_sampai_inv)
 {
     $hasil = $this->db->query("SELECT DISTINCT a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, a.shipp, a.doc_type, a.doc_number,
@@ -871,7 +916,28 @@ function cari_invoice_appv($dt_dari_inv, $dt_sampai_inv)
 
 function approve_invoice($id)
 {
-    $hasil = $this->db->query("UPDATE tbl_book_invoice SET status = 'APPROVED' WHERE id = '$id' ");
+    $hasil = $this->db->query("UPDATE tbl_book_invoice SET status = 'FIRST APPROVED' WHERE id = '$id' ");
+
+return $hasil;
+}
+
+    //ubah september
+function approve_profinvoice($id)
+{
+    $hasil = $this->db->query("UPDATE tbl_invoice_proforma SET status = 'FIRST APPROVED' WHERE id = '$id' ");
+    return $hasil;
+}
+
+    //ubah september
+function approve_debitnote($id)
+{
+    $hasil = $this->db->query("UPDATE tbl_debitnote_h SET status = 'FIRST APPROVED' WHERE id = '$id' ");
+    return $hasil;
+}
+
+function approve_invoice_second($id)
+{
+    $hasil = $this->db->query("UPDATE tbl_book_invoice SET status = 'SECONDARY APPROVED' WHERE id = '$id' ");
 
     $query = $this->db->query("SELECT profit_center FROM tbl_book_invoice WHERE id = '$id'");
     $row = $query->row();
@@ -923,20 +989,18 @@ $this->db->query("insert into sb_list_journal select '', a.* from (select a.no_i
         select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, '2.53.01' no_coa, 'PPN KELUARAN' nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, vat credit, 0 debit_idr, (vat * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr) a where debit > 0 OR credit > 0");
 }
 
-return $hasil;
-}
-
-    //ubah september
-function approve_profinvoice($id)
-{
-    $hasil = $this->db->query("UPDATE tbl_invoice_proforma SET status = 'APPROVED' WHERE id = '$id' ");
     return $hasil;
 }
 
-    //ubah september
-function approve_debitnote($id)
+function approve_profinvoice_second($id)
 {
-    $hasil = $this->db->query("UPDATE tbl_debitnote_h SET status = 'APPROVED' WHERE id = '$id' ");
+    $hasil = $this->db->query("UPDATE tbl_invoice_proforma SET status = 'SECONDARY APPROVED' WHERE id = '$id' ");
+    return $hasil;
+}
+
+function approve_debitnote_second($id)
+{
+    $hasil = $this->db->query("UPDATE tbl_debitnote_h SET status = 'SECONDARY APPROVED' WHERE id = '$id' ");
     return $hasil;
 }
 
@@ -2826,8 +2890,27 @@ function update_coaname()
     //ubah desember
 function approve_invoicedp($id)
 {
-    $hasil = $this->db->query("UPDATE tbl_invoice_proforma_dp_cbd SET status = 'APPROVED' WHERE id = '$id' ");
+    $hasil = $this->db->query("UPDATE tbl_invoice_proforma_dp_cbd SET status = 'FIRST APPROVED' WHERE id = '$id' ");
     return $hasil;
+}
+
+function approve_invoicedp_second($id)
+{
+    $hasil = $this->db->query("UPDATE tbl_invoice_proforma_dp_cbd SET status = 'SECONDARY APPROVED' WHERE id = '$id' ");
+    return $hasil;
+}
+
+function cari_dpcbd_invoice_second_approv($dt_dari_inv, $dt_sampai_inv)
+{
+    $hasil = $this->db->query("SELECT a.id, a.no_proforma_invoice AS no_pi, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi, b.supplier AS customer, a.shipp, a.peb,
+      c.type, a.status, a.no_faktur_pajak, FORMAT(IF(a.dp = '0', a.total, IF(a.tipe_dp = '%', (a.total * (a.dp/100)), a.dp)), 2) AS amount
+      FROM tbl_invoice_proforma_dp_cbd AS a INNER JOIN
+      mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN
+      tbl_type AS c ON a.id_type = c.id_type INNER JOIN
+      tbl_invoice_proforma_detail_dp_cbd AS d ON a.no_proforma_invoice = d.no_invoice_proforma
+      WHERE a.status = 'FIRST APPROVED' AND a.tgl_proforma_inv BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv'
+      GROUP BY a.no_proforma_invoice");
+    return $hasil->result_array();
 }
 
 function simpanalokasi($data)
@@ -2941,9 +3024,27 @@ function cari_invoice_manual_post($dt_dari_inv, $dt_sampai_inv)
 
 }
 
+function cari_invoice_manual_second_approv($dt_dari_inv, $dt_sampai_inv)
+{
+    $hasil = $this->db->query("SELECT DISTINCT a.no_inv AS no_invoice, UPPER(b.supplier) AS customer, a.shipp, a.doc_type, a.doc_number,
+      DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date, a.type, a.status, a.id, b.Id_Supplier AS id_customer, CONCAT(e.curr, ' ', FORMAT(grand_total,2)) total
+      FROM tbl_invoice_nb AS a INNER JOIN
+      mastersupplier AS b ON a.customer = b.id_supplier LEFT JOIN
+      tbl_invoice_nb_detail AS e ON a.no_inv = e.no_inv LEFT JOIN
+      tbl_invoice_nb_pot AS f ON a.no_inv = f.no_inv
+      WHERE a.status = 'FIRST APPROVED' AND e.sj_date BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' ORDER BY a.id ASC");
+    return $hasil->result_array();
+}
+
 function approve_invoice_manual($id)
 {
-    $hasil = $this->db->query("UPDATE tbl_invoice_nb SET status = 'APPROVED' WHERE id = '$id' ");
+    $hasil = $this->db->query("UPDATE tbl_invoice_nb SET status = 'FIRST APPROVED' WHERE id = '$id' ");
+    return $hasil;
+}
+
+function approve_invoice_manual_second($id)
+{
+    $hasil = $this->db->query("UPDATE tbl_invoice_nb SET status = 'SECONDARY APPROVED' WHERE id = '$id' ");
     return $hasil;
 }
 

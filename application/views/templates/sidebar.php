@@ -38,13 +38,57 @@
 }
 
 .brand-link {
-    background: rgba(255,255,255,0.05) !important;
-    border-bottom: 1px solid rgba(255,255,255,0.08) !important;
-    padding: 14px 16px !important;
-    transition: background .2s;
+    background: linear-gradient(135deg, #0d1b4b 0%, #1a237e 60%, #283593 100%) !important;
+    border-bottom: 2px solid rgba(100,130,255,0.35) !important;
+    padding: 16px 14px 14px !important;
+    transition: background .25s;
+    position: relative;
+    overflow: hidden;
 }
-.brand-link:hover { background: rgba(255,255,255,0.1) !important; }
-.brand-text { color: #e0e6ff !important; letter-spacing: .5px; font-size: 15px; }
+.brand-link::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #5c6bc0, #42a5f5, #5c6bc0, transparent);
+}
+.brand-link:hover { background: linear-gradient(135deg, #1a237e 0%, #283593 60%, #3949ab 100%) !important; }
+
+/* Logo ring glow */
+.brand-link .brand-image {
+    border: 2px solid rgba(100,149,255,0.5) !important;
+    box-shadow: 0 0 10px rgba(66,165,245,0.4), 0 0 0 3px rgba(66,165,245,0.1) !important;
+    width: 38px !important;
+    height: 38px !important;
+    margin-top: 0 !important;
+    transition: box-shadow .25s;
+}
+.brand-link:hover .brand-image {
+    box-shadow: 0 0 16px rgba(66,165,245,0.65), 0 0 0 4px rgba(66,165,245,0.15) !important;
+}
+
+/* Brand text block */
+.brand-text {
+    display: inline-flex !important;
+    flex-direction: column !important;
+    line-height: 1.2 !important;
+    vertical-align: middle !important;
+}
+.brand-name {
+    color: #ffffff !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    letter-spacing: 1.5px !important;
+    text-transform: uppercase;
+}
+.brand-sub {
+    color: #7986cb !important;
+    font-size: 9.5px !important;
+    font-weight: 400 !important;
+    letter-spacing: .8px !important;
+    text-transform: uppercase;
+    margin-top: 1px;
+}
 
 /* Nav header */
 .nav-header {
@@ -106,14 +150,42 @@
 .sidebar::-webkit-scrollbar { width: 4px; }
 .sidebar::-webkit-scrollbar-track { background: transparent; }
 .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+
+/* ── Sidebar Search Results ── */
+.sidebar-search-results {
+    background: #0f1535 !important;
+    border: 1px solid rgba(92,107,192,0.35) !important;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.6) !important;
+}
+.sidebar-search-results .list-group-item {
+    background: #0f1535 !important;
+    color: #cfd8e3 !important;
+    border-color: rgba(92,107,192,0.15) !important;
+}
+.sidebar-search-results .list-group-item:hover {
+    background: rgba(57,73,171,0.4) !important;
+    color: #fff !important;
+}
+.sidebar-search-results .list-group-item .search-title {
+    color: #e8eeff !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+}
+.sidebar-search-results .list-group-item .search-path {
+    color: #5c6bc0 !important;
+    font-size: 11px !important;
+}
 </style>
 
 <!-- Main Sidebar Container -->
 <aside class="main-sidebar elevation-4">
     <!-- Brand Logo -->
     <a href="#" class="brand-link">
-        <img src="<?= base_url('assets/') ?>dist/img/nag_logo.png" alt="Nag-Logo" class="brand-image img-circle elevation-3" style="opacity:.9">
-        <span class="brand-text font-weight-light"><b>NWN-ALABARE</b></span>
+        <img src="<?= base_url('assets/') ?>dist/img/nag_logo.png" alt="Nag-Logo" class="brand-image img-circle elevation-3">
+        <span class="brand-text ml-2">
+            <span class="brand-name">Nirwana Alabare</span>
+            <span class="brand-sub">AR Management System</span>
+        </span>
     </a>
 
     <!-- Sidebar -->
@@ -299,25 +371,25 @@
                                 <li class="nav-item">
                                     <a href="<?= base_url('arnag/first_approvalinvoice'); ?>" class="nav-link">
                                         <i class="far fa-circle nav-icon" style="font-size:8px;"></i>
-                                        <p>Invoice</p>
+                                        <p>Approval Invoice</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a href="<?= base_url('arnag/first_approvalinvoice_manual'); ?>" class="nav-link">
                                         <i class="far fa-circle nav-icon" style="font-size:8px;"></i>
-                                        <p>Invoice Manual</p>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="<?= base_url('arnag/first_approval_proformainvoice'); ?>" class="nav-link">
-                                        <i class="far fa-circle nav-icon" style="font-size:8px;"></i>
-                                        <p>Proforma Invoice</p>
+                                        <p>Approval Invoice Manual</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a href="<?= base_url('arnag/first_approval_debitnote'); ?>" class="nav-link">
                                         <i class="far fa-circle nav-icon" style="font-size:8px;"></i>
-                                        <p>Debit Note</p>
+                                        <p>Approval Debit Note</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="<?= base_url('arnag/first_approval_invoice_dpcbd'); ?>" class="nav-link">
+                                        <i class="far fa-circle nav-icon" style="font-size:8px;"></i>
+                                        <p>Approval Invoice DP & CBD</p>
                                     </a>
                                 </li>
                             </ul>

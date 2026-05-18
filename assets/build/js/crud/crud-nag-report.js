@@ -861,3 +861,70 @@ function export_projection_report(){
 
     window.open(url, '_blank');
 }
+
+function save_history_projection_report(){
+    let id_customer = $('#sr_customer').val();
+    let from        = $('#filter_from').val();
+    let to          = $('#filter_to').val();
+    let type        = $('#filter_type').val() || 'daily';
+
+    if (!from || !to) {
+        Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Tanggal From dan To harus diisi!' });
+        return;
+    }
+
+    let fromDate = new Date(from);
+    let toDate   = new Date(to);
+    let diffDays = Math.round((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
+
+    if (type === 'weekly') {
+        if (diffDays !== 7) {
+            Swal.fire({ icon: 'error', title: 'Validasi Weekly', text: 'Periode Weekly harus tepat 7 hari. Saat ini ' + diffDays + ' hari.' });
+            return;
+        }
+    }
+
+    if (type === 'monthly') {
+        let lastDay = new Date(fromDate.getFullYear(), fromDate.getMonth() + 1, 0);
+        if (fromDate.getDate() !== 1) {
+            Swal.fire({ icon: 'error', title: 'Validasi Monthly', text: 'Tanggal From harus dimulai dari tanggal 1.' });
+            return;
+        }
+        if (fromDate.getFullYear() !== toDate.getFullYear() || fromDate.getMonth() !== toDate.getMonth()) {
+            Swal.fire({ icon: 'error', title: 'Validasi Monthly', text: 'Monthly hanya diperbolehkan dalam 1 bulan yang sama.' });
+            return;
+        }
+        if (toDate.getDate() !== lastDay.getDate()) {
+            Swal.fire({ icon: 'error', title: 'Validasi Monthly', text: 'Tanggal To harus akhir bulan (tanggal ' + lastDay.getDate() + ').' });
+            return;
+        }
+    }
+
+    Swal.fire({
+        title: 'Save History',
+        text: 'Simpan data projection sebagai history ' + type + ' (' + from + ' s/d ' + to + ')?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Simpan',
+        cancelButtonText: 'Batal'
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: 'save_history_projection_report/' + id_customer + '/' + from + '/' + to + '/',
+                type: 'POST',
+                data: { type: type },
+                dataType: 'JSON',
+                success: function(res) {
+                    if (res.status === 'success') {
+                        Swal.fire({ icon: 'success', title: 'Tersimpan!', text: 'Doc Number: ' + res.doc_number });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Gagal', text: res.message || 'Tidak ada data untuk disimpan.' });
+                    }
+                },
+                error: function() {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan saat menyimpan.' });
+                }
+            });
+        }
+    });
+}

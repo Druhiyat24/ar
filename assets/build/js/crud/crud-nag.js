@@ -3071,19 +3071,64 @@ function approve_invoicedp(){
 
 //ubah desember
 async function refresh_invdp(){
-	var result = await approve_invoicedp()
-	console.log(result);
-	var cek_inv = document.getElementsByName("pilih_invdp_approv");	
-	for (var i = 0; i < cek_inv.length; i++) {
+	await approve_invoicedp();
+	alert("Invoice DP & CBD First Approved successfully");
+	cari_dpcbd_invoice_post();
+}
 
-		    //Ceklist Invoice		
-		    if (cek_inv[i].checked) {	
-		    	var coba = parseInt(i + 1);		
-		    }
+function approve_invoicedp_second(){
+	var cek_inv = document.getElementsByName("pilih_invdp_approv");
+	for (var i = 0; i < cek_inv.length; i++) {
+		if (cek_inv[i].checked) {
+			var formData = { "id_inv": cek_inv[i].value };
+			$.ajax({
+				url: "approve_invoicedp_second/",
+				type: "POST",
+				data: formData,
+				dataType: "JSON",
+				error: function (jqXHR) { msg = 'Error Update ' + jqXHR.text; }
+			});
+			$('#modal-approve-invoicedp').modal('hide');
 		}
-		alert("Invoice DP & CBD Successfully Approved");
-		cari_dpcbd_invoice_post();
 	}
+}
+
+async function refresh_invdp_second(){
+	await approve_invoicedp_second();
+	alert("Invoice DP & CBD Secondary Approved successfully");
+	cari_dpcbd_invoice_second_approv();
+}
+
+function cari_dpcbd_invoice_second_approv(){
+	$('#table-approval-invoicedp tbody tr').remove();
+	var from = $('#filter_from').val();
+	var to = $('#filter_to').val();
+	$.ajax({
+		url: "cari_dpcbd_invoice_second_approv/" + from + "/" + to + "/",
+		type: "GET",
+		dataType: "JSON",
+		success: function (response) {
+			var trHTML = '';
+			$.each(response, function (i, item) {
+				trHTML += '<tr>';
+				trHTML += '<td>' + item.no_pi + "</td>";
+				trHTML += '<td>' + item.date_pi + "</td>";
+				trHTML += '<td>' + item.customer + "</td>";
+				trHTML += '<td>' + item.shipp + "</td>";
+				trHTML += '<td>' + item.peb + "</td>";
+				trHTML += '<td>' + item.type + "</td>";
+				trHTML += '<td>' + item.no_faktur_pajak + "</td>";
+				trHTML += '<td>' + item.status + "</td>";
+				trHTML += '<td>' + item.amount + "</td>";
+				trHTML += '<td>' + item.id + "</td>";
+				trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_invdp_approv" class="flat" value="' + item.id + '"></td>';
+				trHTML += '</tr>';
+			});
+			$('#table-approval-invoicedp').append(trHTML);
+		},
+		error: function () { alert('Error get data from ajax'); }
+	});
+}
 
 //  async function refresh(){
 //    var result = await approve_invoice()
@@ -3358,7 +3403,194 @@ function cari_debitnote_post(){
 		});	
 	}
 
-	function check_approv_invoice(ele) { 
+function approve_invoice_second(){
+	var cek_inv = document.getElementsByName("pilih_inv_approv");
+	for (var i = 0; i < cek_inv.length; i++) {
+		if (cek_inv[i].checked) {
+			var formData = { "id_inv": cek_inv[i].value };
+			$.ajax({
+				url: "approve_invoice_second/",
+				type: "POST",
+				data: formData,
+				dataType: "JSON",
+				error: function (jqXHR) { msg = 'Error Update Invoice ' + jqXHR.text; }
+			});
+			$('#modal-approve-invoice').modal('hide');
+		}
+	}
+}
+
+function approve_profinvoice_second(){
+	var cek_inv = document.getElementsByName("pilih_profinv_approv");
+	for (var i = 0; i < cek_inv.length; i++) {
+		if (cek_inv[i].checked) {
+			var formData = { "id_inv": cek_inv[i].value };
+			$.ajax({
+				url: "approve_profinvoice_second/",
+				type: "POST",
+				data: formData,
+				dataType: "JSON",
+				error: function (jqXHR) { msg = 'Error Update ' + jqXHR.text; }
+			});
+			$('#modal-approve-profinvoice').modal('hide');
+		}
+	}
+}
+
+function approve_debitnote_second(){
+	var cek_inv = document.getElementsByName("pilih_debitnote_approv");
+	for (var i = 0; i < cek_inv.length; i++) {
+		if (cek_inv[i].checked) {
+			var formData = { "id_inv": cek_inv[i].value };
+			$.ajax({
+				url: "approve_debitnote_second/",
+				type: "POST",
+				data: formData,
+				dataType: "JSON",
+				error: function (jqXHR) { msg = 'Error Update ' + jqXHR.text; }
+			});
+			$('#modal-approve-debitnote').modal('hide');
+		}
+	}
+}
+
+function approve_invoice_manual_second(){
+	var cek_inv = document.getElementsByName("pilih_inv_mnl_approv");
+	for (var i = 0; i < cek_inv.length; i++) {
+		if (cek_inv[i].checked) {
+			var formData = { "id_inv": cek_inv[i].value };
+			$.ajax({
+				url: "approve_invoice_manual_second/",
+				type: "POST",
+				data: formData,
+				dataType: "JSON",
+				error: function (jqXHR) { msg = 'Error Update ' + jqXHR.text; }
+			});
+			$('#modal-approve-invoice-manual').modal('hide');
+		}
+	}
+}
+
+async function refresh_second(){
+	await approve_invoice_second();
+	alert("Invoice Secondary Approved successfully");
+	cari_invoice_second_approv();
+}
+
+async function refresh_pi_second(){
+	await approve_profinvoice_second();
+	alert("Proforma Invoice Secondary Approved successfully");
+	cari_proforma_invoice_second_approv();
+}
+
+async function refresh_dn_second(){
+	await approve_debitnote_second();
+	alert("Debit Note Secondary Approved successfully");
+	cari_debitnote_second_approv();
+}
+
+async function refresh_manual_second(){
+	await approve_invoice_manual_second();
+	alert("Invoice Manual Secondary Approved successfully");
+	cari_invoice_manual_second_approv();
+}
+
+function cari_invoice_second_approv(){
+	$('#table-approval-invoice tbody tr').remove();
+	var from = $('#filter_from').val();
+	var to = $('#filter_to').val();
+	var profit_center = $('#pc_invoice').val();
+	$.ajax({
+		url: "cari_invoice_second_approv/" + from + "/" + to + "/" + profit_center + "/",
+		type: "GET",
+		dataType: "JSON",
+		success: function (response) {
+			var trHTML = '';
+			$.each(response, function (i, item) {
+				trHTML += '<tr>';
+				trHTML += '<td>' + item.no_invoice + "</td>";
+				trHTML += '<td>' + item.customer + "</td>";
+				trHTML += '<td>' + item.shipp + "</td>";
+				trHTML += '<td>' + item.doc_type + "</td>";
+				trHTML += '<td>' + item.doc_number + "</td>";
+				trHTML += '<td>' + item.inv_date + "</td>";
+				trHTML += '<td>' + item.type + "</td>";
+				trHTML += '<td>' + item.total + "</td>";
+				trHTML += '<td>' + item.status + "</td>";
+				trHTML += '<td>' + item.id + "</td>";
+				trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_inv_approv" id="pilih_inv_approv" class="flat" value="' + item.id + '"></td>';
+				trHTML += '</tr>';
+			});
+			$('#table-approval-invoice').append(trHTML);
+		},
+		error: function () { alert('Error get data from ajax'); }
+	});
+}
+
+function cari_proforma_invoice_second_approv(){
+	$('#table-approval-profinvoice tbody tr').remove();
+	var from = $('#filter_from').val();
+	var to = $('#filter_to').val();
+	$.ajax({
+		url: "cari_proforma_invoice_second_approv/" + from + "/" + to + "/",
+		type: "GET",
+		dataType: "JSON",
+		success: function (response) {
+			var trHTML = '';
+			$.each(response, function (i, item) {
+				trHTML += '<tr>';
+				trHTML += '<td>' + item.no_pi + "</td>";
+				trHTML += '<td>' + item.date_pi + "</td>";
+				trHTML += '<td>' + item.customer + "</td>";
+				trHTML += '<td>' + item.shipp + "</td>";
+				trHTML += '<td>' + item.peb + "</td>";
+				trHTML += '<td>' + item.type + "</td>";
+				trHTML += '<td>' + item.no_faktur_pajak + "</td>";
+				trHTML += '<td>' + item.status + "</td>";
+				trHTML += '<td>' + item.amount + "</td>";
+				trHTML += '<td>' + item.id + "</td>";
+				trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_profinv_approv" id="pilih_profinv_approv" class="flat" value="' + item.id + '"></td>';
+				trHTML += '</tr>';
+			});
+			$('#table-approval-profinvoice').append(trHTML);
+		},
+		error: function () { alert('Error get data from ajax'); }
+	});
+}
+
+function cari_debitnote_second_approv(){
+	$('#table-approval-debitnote tbody tr').remove();
+	var from = $('#filter_from').val();
+	var to = $('#filter_to').val();
+	var profit_center = $('#pc_dn').val();
+	$.ajax({
+		url: "cari_debitnote_second_approv/" + from + "/" + to + "/" + profit_center + "/",
+		type: "GET",
+		dataType: "JSON",
+		success: function (response) {
+			var trHTML = '';
+			$.each(response, function (i, item) {
+				trHTML += '<tr>';
+				trHTML += '<td>' + item.no_dn + "</td>";
+				trHTML += '<td>' + item.tgl_dn + "</td>";
+				trHTML += '<td>' + item.Supplier + "</td>";
+				trHTML += '<td>' + item.attn + "</td>";
+				trHTML += '<td>' + item.from_curr + "</td>";
+				trHTML += '<td>' + item.to_curr + "</td>";
+				trHTML += '<td>' + item.amount + "</td>";
+				trHTML += '<td>' + item.eqv_curr + "</td>";
+				trHTML += '<td>' + item.status + "</td>";
+				trHTML += '<td>' + item.id + "</td>";
+				trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_debitnote_approv" id="pilih_debitnote_approv" class="flat" value="' + item.id + '"></td>';
+				trHTML += '</tr>';
+			});
+			$('#table-approval-debitnote').append(trHTML);
+		},
+		error: function () { alert('Error get data from ajax'); }
+	});
+}
+
+	function check_approv_invoice(ele) {
 
 		var checkboxes = document.getElementsByTagName('input');
 		if (ele.checked) {
@@ -11793,6 +12025,37 @@ function cari_invoice_manual_post(){
 		});	
 	}
 
+
+function cari_invoice_manual_second_approv(){
+	$('#table-approval-invoice-manual tbody tr').remove();
+	var from = $('#filter_from').val();
+	var to = $('#filter_to').val();
+	$.ajax({
+		url: "cari_invoice_manual_second_approv/" + from + "/" + to + "/",
+		type: "GET",
+		dataType: "JSON",
+		success: function (response) {
+			var trHTML = '';
+			$.each(response, function (i, item) {
+				trHTML += '<tr>';
+				trHTML += '<td>' + item.no_invoice + "</td>";
+				trHTML += '<td>' + item.customer + "</td>";
+				trHTML += '<td>' + item.shipp + "</td>";
+				trHTML += '<td>' + item.doc_type + "</td>";
+				trHTML += '<td>' + item.doc_number + "</td>";
+				trHTML += '<td>' + item.inv_date + "</td>";
+				trHTML += '<td>' + item.type + "</td>";
+				trHTML += '<td>' + item.total + "</td>";
+				trHTML += '<td>' + item.status + "</td>";
+				trHTML += '<td>' + item.id + "</td>";
+				trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_inv_mnl_approv" id="pilih_inv_mnl_approv" class="flat" value="' + item.id + '"></td>';
+				trHTML += '</tr>';
+			});
+			$('#table-approval-invoice-manual').append(trHTML);
+		},
+		error: function () { alert('Error get data from ajax'); }
+	});
+}
 
 	function approve_invoice_manual(){
 	//

@@ -1016,7 +1016,7 @@ public function get_history_projection_list($from, $to)
 {
     $hasil = $this->db->query("
         SELECT h.doc_number, h.periode_dari, h.periode_sampai, h.id_customer,
-               h.created_by, h.created_at,
+               h.created_by, h.created_at, h.type,
                COUNT(d.id)        AS total_invoice,
                SUM(d.amount_idr)  AS total_amount_idr
         FROM tbl_history_projection_h h
@@ -1028,6 +1028,25 @@ public function get_history_projection_list($from, $to)
     return $hasil->result_array();
 }
 
+
+public function cancel_history_projection_report($doc_number)
+{
+    $doc_number = $this->db->escape_str($doc_number);
+
+    // Pastikan tabel _cancel sudah ada (buat sekali jika belum)
+    $this->db->query("CREATE TABLE IF NOT EXISTS tbl_history_projection_h_cancel   LIKE tbl_history_projection_h");
+    $this->db->query("CREATE TABLE IF NOT EXISTS tbl_history_projection_det_cancel LIKE tbl_history_projection_det");
+
+    // Copy data ke tabel _cancel sebelum dihapus
+    $this->db->query("INSERT INTO tbl_history_projection_h_cancel   SELECT * FROM tbl_history_projection_h   WHERE doc_number = '$doc_number'");
+    $this->db->query("INSERT INTO tbl_history_projection_det_cancel SELECT * FROM tbl_history_projection_det WHERE doc_number = '$doc_number'");
+
+    // Hapus dari tabel asli
+    $this->db->query("DELETE FROM tbl_history_projection_det WHERE doc_number = '$doc_number'");
+    $this->db->query("DELETE FROM tbl_history_projection_h   WHERE doc_number = '$doc_number'");
+
+    return $this->db->affected_rows() >= 0;
+}
 
 public function get_history_projection_detail($doc_number)
 {

@@ -672,6 +672,20 @@ public function export_projection_report($id_customer = '', $from = '', $to = ''
         echo json_encode($data);
     }
 
+    public function cancel_history_projection_report()
+    {
+        $doc_number = $this->input->post('doc_number');
+        if (!$doc_number) {
+            echo json_encode(['status' => 'error', 'message' => 'Doc number tidak valid.']);
+            return;
+        }
+        $result = $this->Model_report->cancel_history_projection_report($doc_number);
+        echo json_encode($result
+            ? ['status' => 'success']
+            : ['status' => 'error', 'message' => 'Gagal menghapus data.']
+        );
+    }
+
     public function get_history_projection_detail()
     {
         $doc_number = $this->input->post('doc_number');
