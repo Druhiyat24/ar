@@ -1,3 +1,6 @@
+<!-- DataTables 2.x CSS — khusus halaman ini -->
+<link rel="stylesheet" href="<?= base_url('assets/plugins/datatables2/css/dataTables.bootstrap4.min.css'); ?>">
+
 <div class="content-wrapper">
     <section class="content-header">
         <div class="container-fluid"></div>
@@ -92,9 +95,7 @@
                                     <th class="text-center">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="tbody-history-list">
-                                <tr><td colspan="9" class="text-center text-muted">Klik Search untuk menampilkan data</td></tr>
-                            </tbody>
+                            <tbody id="tbody-history-list"></tbody>
                         </table>
                     </div>
                 </div>
@@ -149,50 +150,109 @@
 
 <script>
 let _activeDocNumber = '';
+var histDT = null;
+
+/* ── DataTables 2.x dimuat dinamis agar tidak konflik dengan load order ── */
+document.addEventListener('DOMContentLoaded', function () {
+    var css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = '<?= base_url('assets/plugins/datatables2/css/dataTables.bootstrap4.min.css'); ?>';
+    document.head.appendChild(css);
+
+    var s = document.createElement('script');
+    s.src = '<?= base_url('assets/plugins/datatables2/js/dataTables.min.js'); ?>';
+    s.onload = function () {
+        var s2 = document.createElement('script');
+        s2.src = '<?= base_url('assets/plugins/datatables2/js/dataTables.bootstrap4.min.js'); ?>';
+        document.head.appendChild(s2);
+    };
+    document.head.appendChild(s);
+});
+
+function _initHistDT(url) {
+    if (histDT) { histDT.destroy(); histDT = null; }
+
+    let typeBadge = { daily:'badge-primary', weekly:'badge-warning', monthly:'badge-success' };
+
+    histDT = $('#tbl-history-list').DataTable({
+        destroy  : true,
+        ajax     : { url: url, dataSrc: '', type: 'GET' },
+        columns  : [
+            {
+                data: null, orderable: false, width: '40px', className: 'text-center',
+                render: function (d, t, r, m) { return m.row + 1; }
+            },
+            { data: 'doc_number' },
+            { data: 'periode_dari',    className: 'text-center' },
+            { data: 'periode_sampai',  className: 'text-center' },
+            {
+                data: 'type', className: 'text-center',
+                render: function (d) {
+                    return '<span class="badge ' + (typeBadge[d] || 'badge-secondary') + '">' + (d || '-') + '</span>';
+                }
+            },
+            { data: 'total_invoice',   className: 'text-center' },
+            {
+                data: 'total_amount_idr', className: 'text-right',
+                render: function (d) {
+                    return parseFloat(d || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+            },
+            { data: 'created_by' },
+            { data: 'created_at', className: 'text-center' },
+            {
+                data: null, orderable: false, className: 'text-center',
+                render: function (d, t, r) {
+                    return '<span style="white-space:nowrap;">' +
+                        '<button class="btn btn-info btn-xs" onclick="view_history_detail(\'' + r.doc_number + '\')"><i class="fa fa-eye"></i> View</button> ' +
+                        '<button class="btn btn-danger btn-xs" onclick="cancel_history_projection(\'' + r.doc_number + '\')"><i class="fa fa-times"></i> Cancel</button>' +
+                        '</span>';
+                }
+            }
+        ],
+        order    : [[8, 'desc']],
+        pageLength: 10,
+        language : {
+            emptyTable    : 'Tidak ada data',
+            zeroRecords   : 'Tidak ada data yang cocok',
+            info          : 'Menampilkan _START_ - _END_ dari _TOTAL_ data',
+            infoEmpty     : 'Tidak ada data',
+            infoFiltered  : '(difilter dari _MAX_ data)',
+            search        : '<i class="fa fa-search"></i>',
+            searchPlaceholder: 'Cari...',
+            paginate      : { first: '«', last: '»', next: '›', previous: '‹' },
+            lengthMenu    : 'Tampilkan _MENU_ baris'
+        },
+        dom: '<"row align-items-center mb-2"<"col-sm-4"l><"col-sm-8 text-right"f>>rt<"row mt-2 align-items-center"<"col-sm-5"i><"col-sm-7 d-flex justify-content-end"p>>',
+        initComplete: function () {
+            // Sambungkan filter Type & DocNumber ke DataTables
+            $('#hist_type').off('change').on('change', function () {
+                histDT.column(4).search(this.value ? '^' + this.value + '$' : '', true, false).draw();
+            });
+            $('#hist_doc_filter').off('input').on('input', function () {
+                histDT.column(1).search(this.value).draw();
+            });
+        }
+    });
+}
 
 function load_history_list() {
     let from = $('#hist_from').val();
     let to   = $('#hist_to').val();
-    if (!from || !to) { alert('Tanggal harus diisi!'); return; }
+    if (!from || !to) { Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Tanggal harus diisi!' }); return; }
 
-    $.ajax({
-        url     : 'get_history_projection_list/' + from + '/' + to + '/',
-        type    : 'GET',
-        dataType: 'JSON',
-        success : function(res) {
-            let html = '';
-            if (!res || res.length === 0) {
-                html = '<tr><td colspan="10" class="text-center text-muted">Tidak ada data</td></tr>';
-            } else {
-                $.each(res, function(i, r) {
-                    let total_idr = parseFloat(r.total_amount_idr || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    let typeBadge = { daily: 'badge-primary', weekly: 'badge-warning', monthly: 'badge-success' };
-                    let typeClass = typeBadge[r.type] || 'badge-secondary';
-                    html += `<tr data-doc="${r.doc_number}" data-type="${r.type || ''}">
-                        <td class="text-center">${i + 1}</td>
-                        <td>${r.doc_number}</td>
-                        <td class="text-center">${r.periode_dari}</td>
-                        <td class="text-center">${r.periode_sampai}</td>
-                        <td class="text-center"><span class="badge ${typeClass}">${r.type || '-'}</span></td>
-                        <td class="text-center">${r.total_invoice}</td>
-                        <td class="text-right">${total_idr}</td>
-                        <td>${r.created_by}</td>
-                        <td class="text-center">${r.created_at}</td>
-                        <td class="text-center" style="white-space:nowrap;">
-                            <button class="btn btn-info btn-xs" onclick="view_history_detail('${r.doc_number}')">
-                                <i class="fa fa-eye"></i> View
-                            </button>
-                            <button class="btn btn-danger btn-xs ml-1" onclick="cancel_history_projection('${r.doc_number}')">
-                                <i class="fa fa-times"></i> Cancel
-                            </button>
-                        </td>
-                    </tr>`;
-                });
-            }
-            $('#tbody-history-list').html(html);
-        },
-        error: function() { alert('Error loading data.'); }
-    });
+    let url = 'get_history_projection_list/' + from + '/' + to + '/';
+
+    if (histDT) {
+        histDT.ajax.url(url).load(function () {
+            histDT.column(4).search('', true, false).draw(false);
+            histDT.column(1).search('').draw(false);
+            $('#hist_type').val('');
+            $('#hist_doc_filter').val('');
+        });
+    } else {
+        _initHistDT(url);
+    }
 }
 
 function view_history_detail(doc_number) {
@@ -323,20 +383,7 @@ function formatDate(ymd) {
     return p[2] + ' ' + months[parseInt(p[1]) - 1] + ' ' + p[0];
 }
 
-function apply_history_filter() {
-    let keyword  = ($('#hist_doc_filter').val() || '').toLowerCase().trim();
-    let typeFilter = ($('#hist_type').val() || '').toLowerCase();
-
-    $('#tbody-history-list tr').each(function() {
-        let doc  = ($(this).data('doc')  || '').toLowerCase();
-        let type = ($(this).data('type') || '').toLowerCase();
-
-        let matchDoc  = !keyword    || doc.indexOf(keyword) > -1;
-        let matchType = !typeFilter || type === typeFilter;
-
-        $(this).toggle(matchDoc && matchType);
-    });
-}
+/* apply_history_filter dihapus — DataTables 2.x handle filter via initComplete */
 
 function cancel_history_projection(doc_number) {
     Swal.fire({

@@ -362,7 +362,7 @@
                             <a href="#" class="nav-link">
                                 <i class="fas fa-check-circle nav-icon"></i>
                                 <p>
-                                    First Approve
+                                    First Approval
                                     <i class="fas fa-angle-left right"></i>
                                 </p>
                             </a>
