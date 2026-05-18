@@ -110,6 +110,7 @@ thead {
                                         <th rowspan="2" style="text-align: center;vertical-align: middle;">Vendor</th>
                                         <th rowspan="2" style="text-align: center;vertical-align: middle;">Attn</th>
                                         <th rowspan="2" style="text-align: center;vertical-align: middle;">Due Date</th>
+                                        <th rowspan="2" style="text-align: center;vertical-align: middle;">Due Date Update</th>
                                         <th rowspan="2" style="text-align: center;vertical-align: middle;">TOP</th>
                                         <th rowspan="2" style="text-align: center;vertical-align: middle;">Curr</th>
                                         <th rowspan="2" style="text-align: center;vertical-align: middle;">Rate</th>

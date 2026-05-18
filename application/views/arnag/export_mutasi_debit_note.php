@@ -133,6 +133,9 @@ CSS HEADER
                 Due Date
             </th>
             <th rowspan="2" style="text-align: center;">
+                Due Date Update
+            </th>
+            <th rowspan="2" style="text-align: center;">
                 TOP
             </th>
             <th rowspan="2" style="text-align: center;">
@@ -428,6 +431,9 @@ CSS HEADER
                 </td>
                 <td align="center">
                     '.$dli['duedate'].'
+                </td>
+                <td align="center">
+                    '.$dli['duedate_update'].'
                 </td>
                 <td align="center">
                     '.$dli['top'].'

@@ -122,6 +122,9 @@ table {
                 Due Date
             </th>
             <th rowspan="2" style="text-align: center;">
+                Due Date Update
+            </th>
+            <th rowspan="2" style="text-align: center;">
                 TOP
             </th>
             <th rowspan="2" style="text-align: center;">
@@ -216,6 +219,7 @@ table {
             <td align="center">'.$dli['no_invoice'].'</td>
             <td align="center">'.$dli['inv_date'].'</td>
             <td align="center">'.$dli['duedate'].'</td>
+            <td align="center">'.$dli['duedate_update'].'</td>
             <td align="center">'.$dli['top'].'</td>
             <td align="center">'.$dli['curr'].'</td>
             <td align="center">'.$dli['rate'].'</td>
