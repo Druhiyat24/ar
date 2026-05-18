@@ -1,39 +1,18 @@
 <style>
     .table-wrapper {
-        max-height: 350px;
-        overflow-y: auto;
+        max-height: 500px;
+        overflow: auto;
         position: relative;
     }
 
     .table-scroll {
-        overflow-x: auto;
+        /* overflow ditangani table-wrapper */
     }
 
     #table-sales-report {
         border-collapse: collapse;
         width: max-content; /* Supaya bisa scroll horizontal */
     }
-
-/* ===== Sticky Header ===== */
-#table-sales-report thead th {
-    position: sticky;
-    top: 0;
-    z-index: 30; /* tinggi supaya di atas td */
-    background: #f1f1f1;
-    text-transform: capitalize;
-    vertical-align: middle;
-    text-align: center;
-    white-space: nowrap;
-    border: 1px solid #dee2e6;
-    padding: 6px 10px;
-}
-
-/* Baris kedua header juga sticky */
-#table-sales-report thead tr:nth-child(2) th {
-    top: 35px; /* tinggi baris pertama */
-    z-index: 29;
-    background: #f9f9f9;
-}
 
 /* ===== Body ===== */
 #table-sales-report tbody td {
@@ -42,63 +21,13 @@
     padding: 6px 10px;
     background: #fff;
 }
+#table-sales-report tbody tr:hover td { background-color: #f9f9f9; }
 
-#table-sales-report tbody tr:hover {
-    background-color: #f9f9f9;
-}
-
-/* ===== Freeze Kolom ===== */
-/* Kolom 1 (No) */
-#table-sales-report th:nth-child(1) {
-    left: 0;
-    z-index: 40; /* header freeze paling tinggi */
-    background-color: #fff;
-}
-#table-sales-report td:nth-child(1) {
-    left: 0;
-    z-index: 20; /* lebih rendah dari header */
-    position: sticky;
-    background-color: #fff;
-}
-
-/* Kolom 2 (Customer) */
-#table-sales-report th:nth-child(2) {
-    left: 30px;
-    z-index: 40;
-    background-color: #fff;
-}
-#table-sales-report td:nth-child(2) {
-    left: 30px;
-    z-index: 20;
-    position: sticky;
-    background-color: #fff;
-}
-
-/* Kolom 3 (Invoice) */
-#table-sales-report th:nth-child(3) {
-    left: 230px;
-    z-index: 40;
-    background-color: #fff;
-}
-#table-sales-report td:nth-child(3) {
-    left: 230px;
-    z-index: 20;
-    position: sticky;
-    background-color: #fff;
-}
-
-/* Kolom 4 (Invoice Date) */
-#table-sales-report th:nth-child(4) {
-    left: 430px;
-    z-index: 40;
-    background-color: #fff;
-}
-#table-sales-report td:nth-child(4) {
-    left: 430px;
-    z-index: 20;
-    position: sticky;
-    background-color: #fff;
-}
+/* ===== Freeze Kolom Body ===== */
+#table-sales-report td:nth-child(1) { position:sticky !important; left:0 !important;     z-index:20; background:#fff; }
+#table-sales-report td:nth-child(2) { position:sticky !important; left:30px !important;  z-index:20; background:#fff; }
+#table-sales-report td:nth-child(3) { position:sticky !important; left:230px !important; z-index:20; background:#fff; }
+#table-sales-report td:nth-child(4) { position:sticky !important; left:430px !important; z-index:20; background:#fff; }
 
 /* ===== Search Input di kanan ===== */
 .table-header {
@@ -284,15 +213,14 @@
                     </div>
 
                     <div class="card-body">
-                        <div class="table-scroll">
-                            <div class="table-header">
-                                <div class="search-box">
-                                    <input type="text" id="tableSearch" placeholder="Search...">
-                                    <i class="fas fa-search"></i>
-                                </div>
+                        <div class="table-header">
+                            <div class="search-box">
+                                <input type="text" id="tableSearch" placeholder="Search...">
+                                <i class="fas fa-search"></i>
                             </div>
-                            <div class="table-wrapper">
-                              <table id="table-sales-report" class="table table-bordered table-striped table-head-fixed text-nowrap">
+                        </div>
+                        <div id="sales-table-wrap" style="max-height:500px; overflow:auto; position:relative;">
+                              <table id="table-sales-report" class="table table-bordered table-striped text-nowrap" style="border-collapse:collapse; width:max-content;">
                                 <thead>
                                   <tr>
                                     <th style="width:30px;background-color: #FFE4C4;" rowspan="2">No</th>
@@ -360,8 +288,9 @@
                             <tbody>
                             </tbody>
                         </table>
-                    </div>
-                </div>
+                        </div><!-- /#sales-table-wrap -->
+                    </div><!-- /.card-body -->
+                </div><!-- /.card -->
             </div>
 
             <!-- /.card-header -->
@@ -411,6 +340,32 @@
 </div>
 
 <script>
+/* Hitung top row-2 header setelah layout ready */
+(function applySalesSticky() {
+    var tr1 = document.querySelector('#table-sales-report thead tr:first-child');
+    if (!tr1) { setTimeout(applySalesSticky, 50); return; }
+    var h = tr1.getBoundingClientRect().height;
+    if (h <= 0) { setTimeout(applySalesSticky, 50); return; }
+
+    var frozenLeft = [0, 30, 230, 430]; // left offset tiap kolom frozen
+
+    // Row 1: semua th sticky top:0, 4 kolom pertama juga sticky left
+    var row1Ths = tr1.querySelectorAll('th');
+    row1Ths.forEach(function(th, i) {
+        th.style.setProperty('position', 'sticky', 'important');
+        th.style.setProperty('top', '0px', 'important');
+        th.style.setProperty('z-index', i < 4 ? '41' : '30', 'important');
+        if (i < 4) th.style.setProperty('left', frozenLeft[i] + 'px', 'important');
+    });
+
+    // Row 2: sticky top = tinggi row 1
+    document.querySelectorAll('#table-sales-report thead tr:nth-child(2) th').forEach(function(th) {
+        th.style.setProperty('position', 'sticky', 'important');
+        th.style.setProperty('top', h + 'px', 'important');
+        th.style.setProperty('z-index', '29', 'important');
+    });
+})();
+
 document.getElementById("tableSearch").addEventListener("keyup", function() {
     let value = this.value.toLowerCase().trim();
     let rows = document.querySelectorAll("#table-sales-report tbody tr");

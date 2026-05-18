@@ -129,14 +129,17 @@
 
                 <p id="modal-period" class="mb-1 font-weight-bold" style="font-size:12px;"></p>
 
-                <div style="overflow-x:auto; max-height:500px; overflow-y:auto;">
-                    <table id="tbl-history-detail"
-                           class="table table-bordered table-sm"
-                           style="width:max-content; border-collapse:collapse; font-size:11px;">
-                        <thead id="thead-history-detail"></thead>
-                        <tbody id="tbody-history-detail"></tbody>
-                        <tfoot id="tfoot-history-detail"></tfoot>
-                    </table>
+                <!-- wrapper: horizontal scroll di luar, vertikal di dalam -->
+                <div style="overflow-x:auto;">
+                    <div id="history-detail-scroll" style="max-height:470px; overflow-y:auto;">
+                        <table id="tbl-history-detail"
+                               class="table table-bordered table-sm"
+                               style="width:max-content; border-collapse:collapse; font-size:11px;">
+                            <thead id="thead-history-detail"></thead>
+                            <tbody id="tbody-history-detail"></tbody>
+                            <tfoot id="tfoot-history-detail"></tfoot>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -294,30 +297,47 @@ function render_detail_table(res) {
     }
 
     // ── THEAD ──
-    let hdrBg  = 'background-color:#FFE4C4;';
-    let projBg = 'background-color:#90EE90;';
-    let thStyle = 'style="white-space:nowrap; padding:4px 8px; border:1px solid #dee2e6; text-align:center; font-size:11px;' ;
+    let hdrBg  = '#FFE4C4';
+    let projBg = '#90EE90';
+    // Row-1: sticky top:0
+    let th1 = (bg, extra='') =>
+        `style="white-space:nowrap;padding:4px 8px;border:1px solid #dee2e6;text-align:center;font-size:11px;background:${bg};position:sticky;top:0;z-index:3;${extra}"`;
+    // Row-2: top will be set after render via JS
+    let th2 = (bg) =>
+        `class="th-row2" style="white-space:nowrap;padding:4px 8px;border:1px solid #dee2e6;text-align:center;font-size:11px;background:${bg};position:sticky;top:0;z-index:2;"`;
 
     let thead = `<tr>
-        <th ${thStyle + hdrBg}" rowspan="2">No</th>
-        <th ${thStyle + hdrBg}" rowspan="2">Customer</th>
-        <th ${thStyle + hdrBg}" rowspan="2">Reff Number</th>
-        <th ${thStyle + hdrBg}" rowspan="2">Reff Date</th>
-        <th ${thStyle + hdrBg}" rowspan="2">Category</th>
-        <th ${thStyle + hdrBg}" rowspan="2">Due Date</th>
-        <th ${thStyle + hdrBg}" rowspan="2">Due Date Update</th>
-        <th ${thStyle + hdrBg}" rowspan="2">TOP</th>
-        <th ${thStyle + hdrBg}" rowspan="2">Curr</th>
-        <th ${thStyle + hdrBg}" rowspan="2">Amount</th>
-        <th ${thStyle + hdrBg}" rowspan="2">Rate</th>
-        <th ${thStyle + hdrBg}" rowspan="2">Amount IDR</th>
-        <th ${thStyle + projBg}" colspan="${dates.length}">Duedate Projection</th>
+        <th ${th1(hdrBg)} rowspan="2">No</th>
+        <th ${th1(hdrBg)} rowspan="2">Customer</th>
+        <th ${th1(hdrBg)} rowspan="2">Reff Number</th>
+        <th ${th1(hdrBg)} rowspan="2">Reff Date</th>
+        <th ${th1(hdrBg)} rowspan="2">Category</th>
+        <th ${th1(hdrBg)} rowspan="2">Due Date</th>
+        <th ${th1(hdrBg)} rowspan="2">Due Date Update</th>
+        <th ${th1(hdrBg)} rowspan="2">TOP</th>
+        <th ${th1(hdrBg)} rowspan="2">Curr</th>
+        <th ${th1(hdrBg)} rowspan="2">Amount</th>
+        <th ${th1(hdrBg)} rowspan="2">Rate</th>
+        <th ${th1(hdrBg)} rowspan="2">Amount IDR</th>
+        <th ${th1(projBg)} colspan="${dates.length}">Duedate Projection</th>
     </tr><tr>`;
     dates.forEach(function(d) {
-        thead += `<th ${thStyle + projBg}">${formatDate(d)}</th>`;
+        thead += `<th ${th2(projBg)}>${formatDate(d)}</th>`;
     });
     thead += '</tr>';
     $('#thead-history-detail').html(thead);
+
+    // Ukur row-1 height lalu pasang top row-2; retry sampai dapat nilai valid
+    (function fixRow2() {
+        let h = $('#tbl-history-detail thead tr:eq(0)')[0]
+                    ? $('#tbl-history-detail thead tr:eq(0)')[0].getBoundingClientRect().height
+                    : 0;
+        if (h > 0) {
+            $('#tbl-history-detail .th-row2').css('top', h + 'px');
+        } else {
+            setTimeout(fixRow2, 50);
+        }
+    })();
 
     // ── TBODY ──
     let tbody = '';

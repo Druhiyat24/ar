@@ -5801,7 +5801,7 @@ function cari_debit_note(){
 				// trHTML += '<td><button id="export_to_excel" name="export_to_excel" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_pi(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button></td>';					
 
 				trHTML += '</tr>';
-			}else if(item.status == 'APPROVED'){
+			}else if(item.status == 'APPROVED' || item.status == 'FIRST APPROVED' || item.status == 'SECOND APPROVED'){
 				trHTML += '<tr>';					
 				trHTML += '<td>' + item.no_dn + "</td>";	
 				trHTML += '<td>' + item.tgl_dn + "</td>";

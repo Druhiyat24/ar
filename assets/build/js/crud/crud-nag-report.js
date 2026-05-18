@@ -709,30 +709,35 @@ while(start <= end){
 
     let thead = `
         <tr>
-            <th style="width:30px;background-color: #FFE4C4;" rowspan="2">No</th>
-            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Customer</th>
-            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Reff Number</th>
-            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Reff Date</th>
-            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Category</th>
-            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Due Date</th>
-            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Due Date Update</th>
-            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">TOP</th>
-            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Curr</th>
-            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Total</th>
-            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Rate</th>
-            <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Total IDR</th>
-            <th style="background-color: #90EE90;" colspan="${colCount}">Duedate Projection</th>
+            <th style="width:30px;background-color:#FFE4C4;" rowspan="2">No</th>
+            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Customer</th>
+            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Reff Number</th>
+            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Reff Date</th>
+            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Category</th>
+            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Due Date</th>
+            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Due Date Update</th>
+            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">TOP</th>
+            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Curr</th>
+            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Total</th>
+            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Rate</th>
+            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Total IDR</th>
+            <th style="background-color:#90EE90;" colspan="${colCount}">Duedate Projection</th>
         </tr>
         <tr>
     `;
 
     dates.forEach(function(tgl){
-        thead += `<th style="width:150px;background-color: #90EE90;">${tgl}</th>`;
+        thead += `<th style="width:150px;background-color:#90EE90;">${tgl}</th>`;
     });
 
     thead += `</tr>`;
 
     $('#table-projection-report thead').html(thead);
+
+    // Hitung top row-2 via fungsi di view
+    if (typeof fixProjHeaderRow2 === 'function') {
+        setTimeout(fixProjHeaderRow2, 0);
+    }
 
     return dates.length; // penting untuk dipakai di bawah
 }
