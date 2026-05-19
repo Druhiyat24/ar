@@ -293,41 +293,6 @@
                 </div><!-- /.card -->
             </div>
 
-            <!-- /.card-header -->
-                    <!-- <div class="card-body table-responsive p-0" style="height: 300px;">
-                        <table id="table-sales-report" class="table table-head-fixed text-nowrap">
-                            <thead>
-                                <tr>
-                                    <th>Customer</th>
-                                    <th>Invoice</th>
-                                    <th>Invoice Date</th>
-                                    <th>Group</th>
-                                    <th>Vat Number</th>
-                                    <th>Vat Date</th>
-                                    <th>TOP</th>
-                                    <th>Order Type</th>
-                                    <th>Shipp</th>
-                                    <th>Inv Type</th>
-                                    <th>Qty Billing</th>
-                                    <th>Qty Shipment</th>
-                                    <th>Currency</th>
-                                    <th>Rate</th>
-                                    <th>Original Value Billing</th>
-                                    <th>Original Value Shipment</th>
-                                    <th>Equiv Value Billing</th>
-                                    <th>Equiv Value Shipment</th>
-                                    <th>VAT</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-
-                            </tbody>
-                        </table>
-                    </div> -->
-                    <!-- /.card-body -->
-                </div>
-                <!-- /.card -->
-            </div>
         </div>
         <!-- Button Print -->
         <div class="row">
