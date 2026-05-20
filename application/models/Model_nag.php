@@ -2098,7 +2098,7 @@ function cari_invoice_kwt($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer)
   tbl_type AS c ON a.id_type = c.id_type INNER JOIN
   tbl_invoice_pot AS d ON a.id = d.id_book_invoice  INNER JOIN
   tbl_invoice_detail as e on a.id=e.id_book_invoice      
-  WHERE e.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.id_customer = '$id_customer' and a.status = 'APPROVED' and a.no_kwt is null  and e.curr = 'IDR'
+  WHERE e.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.id_customer = '$id_customer' and a.status like '%APPROVED%' and a.no_kwt is null  and e.curr = 'IDR'
   ORDER BY a.id) union                                                                      
 
   (SELECT distinct  f.no_inv AS no_invoice, UPPER(g.supplier) AS customer, f.shipp,                                     f.doc_type, f.doc_number,i.curr, 
@@ -2108,7 +2108,7 @@ function cari_invoice_kwt($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer)
   mastersupplier AS g ON f.customer = g.id_supplier INNER JOIN 
   tbl_invoice_nb_pot AS h ON f.no_inv = h.no_inv INNER JOIN
   tbl_invoice_nb_detail as i on f.no_inv=i.no_inv      
-  WHERE i.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND f.customer = '$id_customer' and f.status = 'APPROVED' and f.no_kwt is null  and i.curr = 'IDR'
+  WHERE i.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND f.customer = '$id_customer' and f.status like '%APPROVED%' and f.no_kwt is null  and i.curr = 'IDR'
   ORDER BY f.id) ");
 
  return $hasil->result_array();
