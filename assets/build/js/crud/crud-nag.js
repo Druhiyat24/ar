@@ -15960,20 +15960,24 @@ function export_kartu_ar_new() {
     $('#modal-add-duedate').modal('show');
 }
 
-function cari_data_reff_duedate() { 
+function toggleAllDate(cb) {
+    var disabled = cb.checked;
+    $('#filter_from, #filter_to').prop('disabled', disabled)
+        .css('background-color', disabled ? '#e9ecef' : '');
+}
 
-	$('#table-list-data tbody tr').remove();	
-		//Date range picker
-		var dt_dari_doc = $('#filter_from').val();
-		var dt_sampai_doc = $('#filter_to').val();
+function cari_data_reff_duedate() {
 
+	$('#table-list-data tbody tr').remove();
+
+		var allDate       = $('#chk_all_date').prop('checked');
+		var dt_dari_doc   = allDate ? 'all' : ($('#filter_from').val() || 'all');
+		var dt_sampai_doc = allDate ? 'all' : ($('#filter_to').val()   || 'all');
 
 		var id_customer = $('#mdl_custmr').val();
-		var doc_type = $('#mdl_type_doc').val();
+		var doc_type    = $('#mdl_type_doc').val();
 
-		console.log(dt_dari_doc + ' ' + dt_sampai_doc + ' ' + id_customer + ' ' + doc_type);
-
-		$.ajax({		
+		$.ajax({
 			url: "cari_data_reff_duedate/" + dt_dari_doc + "/" + dt_sampai_doc + "/" + id_customer + "/" + doc_type + "/",					
 			type: "GET",
 			dataType: "JSON",

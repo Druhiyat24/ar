@@ -1038,8 +1038,8 @@ public function cancel_history_projection_report($doc_number)
     $this->db->query("CREATE TABLE IF NOT EXISTS tbl_history_projection_det_cancel LIKE tbl_history_projection_det");
 
     // Copy data ke tabel _cancel sebelum dihapus
-    $this->db->query("INSERT INTO tbl_history_projection_h_cancel   SELECT * FROM tbl_history_projection_h   WHERE doc_number = '$doc_number'");
-    $this->db->query("INSERT INTO tbl_history_projection_det_cancel SELECT * FROM tbl_history_projection_det WHERE doc_number = '$doc_number'");
+    $this->db->query("INSERT IGNORE INTO tbl_history_projection_h_cancel   SELECT * FROM tbl_history_projection_h   WHERE doc_number = '$doc_number'");
+    $this->db->query("INSERT IGNORE INTO tbl_history_projection_det_cancel SELECT * FROM tbl_history_projection_det WHERE doc_number = '$doc_number'");
 
     // Hapus dari tabel asli
     $this->db->query("DELETE FROM tbl_history_projection_det WHERE doc_number = '$doc_number'");

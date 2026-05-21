@@ -186,8 +186,8 @@ function _initHistDT(url) {
                 render: function (d, t, r, m) { return m.row + 1; }
             },
             { data: 'doc_number' },
-            { data: 'periode_dari',    className: 'text-center' },
-            { data: 'periode_sampai',  className: 'text-center' },
+            { data: 'periode_dari',   className: 'text-center', render: function(d){ return d ? formatDate(d.slice(0,10)) : '-'; } },
+            { data: 'periode_sampai', className: 'text-center', render: function(d){ return d ? formatDate(d.slice(0,10)) : '-'; } },
             {
                 data: 'type', className: 'text-center',
                 render: function (d) {
@@ -202,7 +202,7 @@ function _initHistDT(url) {
                 }
             },
             { data: 'created_by' },
-            { data: 'created_at', className: 'text-center' },
+            { data: 'created_at', className: 'text-center', render: function(d){ return d ? formatDate(d.slice(0,10)) : '-'; } },
             {
                 data: null, orderable: false, className: 'text-center',
                 render: function (d, t, r) {

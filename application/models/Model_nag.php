@@ -5284,7 +5284,10 @@ function get_pilihan_duedate_update()
 
 function cari_data_reff_duedate($dt_dari_doc, $dt_sampai_doc, $id_customer, $doc_type)
 {
-
+    if ($dt_dari_doc === 'all' || $dt_sampai_doc === 'all') {
+        $dt_dari_doc   = '2000-01-01';
+        $dt_sampai_doc = '2099-12-31';
+    }
 
     if ($doc_type == 'INV') {
 
@@ -5458,7 +5461,7 @@ select no_invoice, id_customer, customer, inv_date, duedate, top, from_curr curr
         (select no_dn dnno,GROUP_CONCAT(DISTINCT supplier SEPARATOR ' | ') supplier from tbl_debitnote_det where supplier != '-' AND supplier != '' GROUP BY no_dn
             ) l_supp on l_supp.dnno = inv.no_invoice JOIN
 
-        (select IF((select id from tbl_tgl_tb where tgl_akhir = CURRENT_DATE()) != '',(select rate from masterrate where tanggal = CURRENT_DATE() and v_codecurr = 'HARIAN'),(select rate from masterrate where tanggal = CURRENT_DATE() and v_codecurr = 'PAJAK')) rate) rate) a) a order by no_invoice asc) a WHERE ((amount1 - IFNULL(bayar2,0)) - IFNULL(bayar,0)) > 0 and inv_date >= '$dt_dari_doc' AND inv_date <= '$dt_sampai_doc') a ");
+        (select IF((select id from tbl_tgl_tb where tgl_akhir = CURRENT_DATE()) != '',(select rate from masterrate where tanggal = CURRENT_DATE() and v_codecurr = 'HARIAN'),(select rate from masterrate where tanggal = CURRENT_DATE() and v_codecurr = 'PAJAK')) rate) rate) a) a order by no_invoice asc) a WHERE ((amount1 - IFNULL(bayar2,0)) - IFNULL(bayar,0)) > 0 and inv_date >= '$dt_dari_doc' AND inv_date <= '$dt_sampai_doc') a where 1=1 ".$where." ");
 
         return $hasil->result_array();
     }

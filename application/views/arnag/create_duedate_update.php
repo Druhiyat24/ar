@@ -101,7 +101,7 @@
                                 <th>Customer</th>
                                 <th>Currency</th>
                                 <th>Total</th>
-                                <th>descriptions</th>
+                                <th>Descriptions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -163,29 +163,35 @@
                                 <input type="hidden" id="user_login_temp" name="user_login_temp" value="<?= $this->session->userdata('username'); ?>">
                             </div>
                             <div class="col-md-2">
-                                  <div class="form-group mb-0">
+                                <div class="form-group mb-0">
                                     <label>From</label>
                                     <div class="input-group">
-                                      <input type="text" name="filter_from_so" id="filter_from" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
-                                      <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        <input type="text" name="filter_from_so" id="filter_from" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                        <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                     </div>
-                                  </div>
                                 </div>
-                                <div class="col-md-2">
-                                  <div class="form-group mb-0">
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group mb-0">
                                     <label>To</label>
                                     <div class="input-group">
-                                      <input type="text" name="filter_to_so" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
-                                      <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        <input type="text" name="filter_to_so" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                        <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                     </div>
-                                  </div>
                                 </div>
-
-                            <div class="col-md-2 mt-2">
-
-                            </br>
-                            <button type="button" id="find_doc" name="find_doc" class="btn btn-info" href="javascript:void(0)" onclick="cari_data_reff_duedate()"><i class="fa fa-search"></i> Search</button>
-                        </div>
+                            </div>
+                            <div class="col-md-1">
+                                <div class="form-group mb-0">
+                                    <label>All Date</label>
+                                    <div class="d-flex align-items-center" style="height:38px;">
+                                        <input type="checkbox" id="chk_all_date" onchange="toggleAllDate(this)" style="width:18px;height:18px;cursor:pointer;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-1 mt-2">
+                                <br>
+                                <button type="button" id="find_doc" name="find_doc" class="btn btn-info" onclick="cari_data_reff_duedate()"><i class="fa fa-search"></i> Search</button>
+                            </div>
                     </div>
                     <!-- End Date Range -->
                 </div>
