@@ -239,7 +239,7 @@ body { overflow-y: scroll; }
                                         <span><a href="<?= base_url('arnag/kartu_ar_detail'); ?>" target="blank">Overdue Receivable</a></span>
                                     </div>
                                     <div class="kpi-value">IDR <?= number_format($ready_due, 2); ?></div>
-                                    <div class="kpi-footer"><?= number_format($ready_due / $ar_eqvidr * 100, 2); ?> %</div>
+                                    <div class="kpi-footer"><?= number_format($ar_eqvidr > 0 ? ($ready_due / $ar_eqvidr * 100) : 0, 2); ?> %</div>
                                 </div>
                             </div>
 
@@ -251,7 +251,7 @@ body { overflow-y: scroll; }
                                         <span><a href="<?= base_url('arnag/kartu_ar_detail'); ?>" target="blank">Not Due Receivable</a></span>
                                     </div>
                                     <div class="kpi-value">IDR <?= number_format(($ar_eqvidr - $ready_due), 2); ?></div>
-                                    <div class="kpi-footer"><?= number_format(($ar_eqvidr - $ready_due) / $ar_eqvidr * 100, 2); ?> %</div>
+                                    <div class="kpi-footer"><?= number_format($ar_eqvidr > 0 ? (($ar_eqvidr - $ready_due) / $ar_eqvidr * 100) : 0, 2); ?> %</div>
                                 </div>
                             </div>
 
