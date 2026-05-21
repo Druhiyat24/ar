@@ -160,33 +160,35 @@ class Landingpage extends CI_Controller
 
 
         if ($filter) {
-            $data['sls_ytd_inv']   = $this->Model_nag->cari_sls_ytd_inv($filter)   ?? 0;
-            $data['data_slsytd']   = $this->Model_nag->modal_caridata_slsytd($filter) ?: [];
-            $data['sls_cm_inv']    = $this->Model_nag->cari_sls_cm_inv($filter)    ?? 0;
-            $data['data_slscm']    = $this->Model_nag->modal_caridata_slscm($filter)  ?: [];
+            // Scalar KPI — biarkan null agar view bisa bedakan null vs 0 dari DB
+            $data['sls_ytd_inv']   = $this->Model_nag->cari_sls_ytd_inv($filter);
+            $data['sls_cm_inv']    = $this->Model_nag->cari_sls_cm_inv($filter);
+            $data['sls_no_inv']    = $this->Model_nag->cari_sls_no_inv($filter);
+            $data['sls_cm_no_inv'] = $this->Model_nag->cari_sls_cm_no_inv($filter);
+            $data['ar_eqvidr']     = $this->Model_nag->cari_ar_eqvidr($filter);
+            $data['ready_due']     = $this->Model_nag->cari_ready_due($filter);
+            $data['ar_lokal']      = $this->Model_nag->cari_ar_lokal($filter);
+            $data['ar_ekspor']     = $this->Model_nag->cari_ar_ekspor($filter);
+            $data['ar_lokal_ni']   = $this->Model_nag->cari_ar_lokal_ni($filter);
+            $data['ar_ekspor_ni']  = $this->Model_nag->cari_ar_ekspor_ni($filter);
+            $data['ar_fob']        = $this->Model_nag->cari_ar_fob($filter);
+            $data['ar_cmt']        = $this->Model_nag->cari_ar_cmt($filter);
+            $data['ar_fob_ni']     = $this->Model_nag->cari_ar_fob_ni($filter);
+            $data['ar_cmt_ni']     = $this->Model_nag->cari_ar_cmt_ni($filter);
+            $data['bulan_ar']      = $this->Model_nag->cari_bulan_ar();
+            $data['tahun_ar']      = $this->Model_nag->cari_tahun_ar();
+            // Array data — harus array agar foreach aman
+            $data['data_slsytd']   = $this->Model_nag->modal_caridata_slsytd($filter)  ?: [];
+            $data['data_slscm']    = $this->Model_nag->modal_caridata_slscm($filter)   ?: [];
             $data['data_slsytd2']  = $this->Model_nag->modal_caridata_slsytd2($filter) ?: [];
-            $data['sls_no_inv']    = $this->Model_nag->cari_sls_no_inv($filter)    ?? 0;
-            $data['sls_cm_no_inv'] = $this->Model_nag->cari_sls_cm_no_inv($filter) ?? 0;
             $data['data_slscm2']   = $this->Model_nag->modal_caridata_slscm2($filter)  ?: [];
             $data['data_slsni']    = $this->Model_nag->modal_caridata_slsni($filter)   ?: [];
-            $data['ar_eqvidr']     = $this->Model_nag->cari_ar_eqvidr($filter)     ?? 0;
-            $data['ready_due']     = $this->Model_nag->cari_ready_due($filter)     ?? 0;
-            $data['data_ttl_ar']   = $this->Model_nag->dsb_data_total_ar($filter)  ?: [];
-            $data['ar_lokal']      = $this->Model_nag->cari_ar_lokal($filter)      ?? 0;
-            $data['ar_ekspor']     = $this->Model_nag->cari_ar_ekspor($filter)     ?? 0;
-            $data['ar_lokal_ni']   = $this->Model_nag->cari_ar_lokal_ni($filter)   ?? 0;
-            $data['ar_ekspor_ni']  = $this->Model_nag->cari_ar_ekspor_ni($filter)  ?? 0;
-            $data['ar_fob']        = $this->Model_nag->cari_ar_fob($filter)        ?? 0;
-            $data['ar_cmt']        = $this->Model_nag->cari_ar_cmt($filter)        ?? 0;
-            $data['ar_fob_ni']     = $this->Model_nag->cari_ar_fob_ni($filter)     ?? 0;
-            $data['ar_cmt_ni']     = $this->Model_nag->cari_ar_cmt_ni($filter)     ?? 0;
-            $data['filter_ar']     = $this->Model_nag->cari_filter_ar()            ?: [];
+            $data['data_ttl_ar']   = $this->Model_nag->dsb_data_total_ar($filter)      ?: [];
+            $data['filter_ar']     = $this->Model_nag->cari_filter_ar()                ?: [];
             $data['top_5_sales_name'] = $this->Model_nag->cari_top_5_sales_name($filter) ?: [];
             $data['top_5_sales_val']  = $this->Model_nag->cari_top_5_sales_val($filter)  ?: [];
-            $data['bulan_ar']      = $this->Model_nag->cari_bulan_ar()             ?? 0;
-            $data['tahun_ar']      = $this->Model_nag->cari_tahun_ar()             ?? 0;
             $data['sales_ytd_mtm'] = $this->Model_nag->cari_sales_ytd_mtm($filter) ?: [];
-            $data['overdue_aging'] = $this->Model_nag->cari_overdue_aging($filter) ?: [];
+            $data['overdue_aging'] = $this->Model_nag->cari_overdue_aging($filter)  ?: [];
 
     // Data per bulan
             for ($i = 1; $i <= 12; $i++) {
