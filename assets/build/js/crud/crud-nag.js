@@ -16284,95 +16284,92 @@ function delete_data_reff_duedate($user){
 function simpan_data_duedate() {
 
     let header = {
-        doc_number: $('#duedate_number').val(),
+        doc_number:    $('#duedate_number').val(),
         duedate_update: $('#duedate_to').val(),
-        keterangan: $('#duedate_deskripsi').val()
+        keterangan:    $('#duedate_deskripsi').val()
     };
 
-    let detail = [];
-    let invalidList = [];
-    let isValid = true;
+    let detail   = [];
+    let majuList = []; // invoice yang tanggalnya dimajukan (lebih awal dari sebelumnya)
 
-    let duedate_new = $('#duedate_to').val(); // tanggal baru (header)
+    let duedate_new = $('#duedate_to').val();
 
     $('#table-doc-duedate tbody tr').each(function () {
-
-        let row = $(this).find('td');
-
-        let no_inv = row.eq(0).text();
+        let row            = $(this).find('td');
+        let no_inv         = row.eq(0).text();
         let duedate_before = row.eq(2).text();
 
-        // convert ke format date
         let before = new Date(duedate_before);
         let after  = new Date(duedate_new);
 
-        // âŒ validasi
         if (after < before) {
-            isValid = false;
-            invalidList.push(no_inv + ' (' + duedate_before + ')');
+            majuList.push('<b>' + no_inv + '</b> (' + duedate_before + ' &rarr; ' + duedate_new + ')');
         }
 
         detail.push({
-            no_invoice: no_inv,
+            no_invoice:     no_inv,
             duedate_before: duedate_before,
-            curr: row.eq(4).text(),
-            amount: row.eq(5).text().replace(/,/g,''), 
-            keterangan: row.eq(6).text()
+            curr:           row.eq(4).text(),
+            amount:         row.eq(5).text().replace(/,/g, ''),
+            keterangan:     row.eq(6).text()
         });
-
     });
-
-    if (!isValid) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Invalid Due Date!',
-            html: 'Due Date baru tidak boleh lebih kecil dari sebelumnya:<br><br>' +
-                  invalidList.join('<br>')
-        });
-        return;
-    }
 
     if (detail.length === 0) {
         Swal.fire('Oops', 'Silakan tambahkan minimal 1 data detail!', 'warning');
         return;
     }
 
+    function _doSave() {
+        $.ajax({
+            url: 'simpan_data_duedate/',
+            method: 'POST',
+            data: { header: header, detail: detail },
+            dataType: 'json',
+            success: function (response) {
+                if (response.status === true) {
+                    Swal.fire('Sukses', response.message, 'success').then(() => {
+                        window.location.href = BASE_URL + 'arnag/list_duedate_update';
+                    });
+                } else {
+                    Swal.fire('Gagal', response.message, 'error');
+                }
+            },
+            error: function (xhr) {
+                Swal.fire('Error', 'Terjadi kesalahan saat mengirim data.', 'error');
+                console.error('Error:', xhr.responseText);
+            }
+        });
+    }
+
+    if (majuList.length > 0) {
+        // Ada tanggal yang dimajukan (dipercepat) — minta konfirmasi khusus
+        Swal.fire({
+            icon: 'warning',
+            title: 'Due Date Dimajukan!',
+            html: 'Due date berikut akan dipercepat ke tanggal lebih awal:<br><br>' +
+                  majuList.join('<br>') +
+                  '<br><br><b>Yakin ingin melanjutkan?</b>',
+            showCancelButton: true,
+            confirmButtonColor: '#e67e22',
+            confirmButtonText: 'Ya, tetap simpan',
+            cancelButtonText: 'Batal'
+        }).then(function (res) {
+            if (res.isConfirmed) _doSave();
+        });
+        return;
+    }
+
+    // Tidak ada yang dimajukan — konfirmasi biasa
     Swal.fire({
         title: 'Simpan Data?',
-        text: "Pastikan semua data sudah benar.",
+        text: 'Pastikan semua data sudah benar.',
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Ya, Simpan!',
         cancelButtonText: 'Batal'
-    }).then((result) => {
-
-        if (result.isConfirmed) {
-
-            $.ajax({
-                url: "simpan_data_duedate/",
-                method: 'POST',
-                data: {
-                    header: header,
-                    detail: detail
-                },
-                dataType: 'json',
-                success: function (response) {
-                    if (response.status === true) {
-                        Swal.fire('Sukses', response.message, 'success').then(() => {
-                            window.location.href = BASE_URL + 'arnag/list_duedate_update';
-                        });
-                    } else {
-                        Swal.fire('Gagal', response.message, 'error');
-                    }
-                },
-                error: function (xhr) {
-                    Swal.fire('Error', 'Terjadi kesalahan saat mengirim data.', 'error');
-                    console.error('Error:', xhr.responseText);
-                }
-            });
-
-        }
-
+    }).then(function (result) {
+        if (result.isConfirmed) _doSave();
     });
 }
 
