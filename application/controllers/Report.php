@@ -40,7 +40,7 @@ class Report extends CI_Controller
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
         $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
-        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $query = $this->db->query("SELECT '2022-01-01' tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
         $result = $query->row();
         $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
         $this->load->view('templates/header', $data);
@@ -99,7 +99,7 @@ class Report extends CI_Controller
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
         $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
-        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $query = $this->db->query("SELECT '2022-01-01' tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
         $result = $query->row();
         $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
         $this->load->view('templates/header', $data);
@@ -128,7 +128,7 @@ class Report extends CI_Controller
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
         $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
-        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $query = $this->db->query("SELECT '2022-01-01' tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
         $result = $query->row();
         $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
         $this->load->view('templates/header', $data);
@@ -187,7 +187,7 @@ class Report extends CI_Controller
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
         $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
-        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $query = $this->db->query("SELECT '2022-01-01' tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
         $result = $query->row();
         $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
         $this->load->view('templates/header', $data);
@@ -309,7 +309,7 @@ class Report extends CI_Controller
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
         $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
-        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $query = $this->db->query("SELECT '2022-01-01' tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
         $result = $query->row();
         $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
         $this->load->view('templates/header', $data);
@@ -369,7 +369,7 @@ class Report extends CI_Controller
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
         $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
-        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $query = $this->db->query("SELECT '2022-01-01' tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
         $result = $query->row();
         $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
         $this->load->view('templates/header', $data);
@@ -450,7 +450,7 @@ class Report extends CI_Controller
         $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
         $data['customer'] = $this->Model_nag->cari_customer();
         $data['type'] = $this->db->get('tbl_type')->result_array();
-        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $query = $this->db->query("SELECT '2022-01-01' tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
         $result = $query->row();
         $data['min_date'] = ($result->tgl_awal != null) ? $result->tgl_awal : '';
         $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
@@ -463,7 +463,7 @@ class Report extends CI_Controller
         $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
         $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
-        $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+        $query = $this->db->query("SELECT '2022-01-01' tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
         $result = $query->row();
         $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
         $this->load->view('templates/header', $data);
@@ -647,7 +647,7 @@ public function export_projection_report($id_customer = '', $from = '', $to = ''
 
         $data['title']              = 'History Projection Report';
         $data['user']               = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
-         $query = $this->db->query("SELECT tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+         $query = $this->db->query("SELECT '2022-01-01' tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
         $result = $query->row();
         $data['min_date'] = ($result->tgl_awal != null) ? $result->tgl_awal : '';
         $data['user_access_1']      = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
