@@ -160,23 +160,64 @@ class Landingpage extends CI_Controller
 
 
         if ($filter) {
-            // Scalar KPI — biarkan null agar view bisa bedakan null vs 0 dari DB
-            $data['sls_ytd_inv']   = $this->Model_nag->cari_sls_ytd_inv($filter);
-            $data['sls_cm_inv']    = $this->Model_nag->cari_sls_cm_inv($filter);
-            $data['sls_no_inv']    = $this->Model_nag->cari_sls_no_inv($filter);
-            $data['sls_cm_no_inv'] = $this->Model_nag->cari_sls_cm_no_inv($filter);
-            $data['ar_eqvidr']     = $this->Model_nag->cari_ar_eqvidr($filter);
-            $data['ready_due']     = $this->Model_nag->cari_ready_due($filter);
-            $data['ar_lokal']      = $this->Model_nag->cari_ar_lokal($filter);
-            $data['ar_ekspor']     = $this->Model_nag->cari_ar_ekspor($filter);
-            $data['ar_lokal_ni']   = $this->Model_nag->cari_ar_lokal_ni($filter);
-            $data['ar_ekspor_ni']  = $this->Model_nag->cari_ar_ekspor_ni($filter);
-            $data['ar_fob']        = $this->Model_nag->cari_ar_fob($filter);
-            $data['ar_cmt']        = $this->Model_nag->cari_ar_cmt($filter);
-            $data['ar_fob_ni']     = $this->Model_nag->cari_ar_fob_ni($filter);
-            $data['ar_cmt_ni']     = $this->Model_nag->cari_ar_cmt_ni($filter);
-            $data['bulan_ar']      = $this->Model_nag->cari_bulan_ar();
-            $data['tahun_ar']      = $this->Model_nag->cari_tahun_ar();
+            // Scalar KPI — track raw (bisa null) untuk cache logic, tapi $data pakai ?? 0 agar PHP aman
+            $kpi_keys = ['sls_ytd_inv','sls_cm_inv','sls_no_inv','sls_cm_no_inv',
+                         'ar_eqvidr','ready_due','ar_lokal','ar_ekspor',
+                         'ar_lokal_ni','ar_ekspor_ni','ar_fob','ar_cmt','ar_fob_ni','ar_cmt_ni'];
+            $kpi_raw = [];
+            $kpi_raw['sls_ytd_inv']   = $this->Model_nag->cari_sls_ytd_inv($filter);
+            $kpi_raw['sls_cm_inv']    = $this->Model_nag->cari_sls_cm_inv($filter);
+            $kpi_raw['sls_no_inv']    = $this->Model_nag->cari_sls_no_inv($filter);
+            $kpi_raw['sls_cm_no_inv'] = $this->Model_nag->cari_sls_cm_no_inv($filter);
+            $kpi_raw['ar_eqvidr']     = $this->Model_nag->cari_ar_eqvidr($filter);
+            $kpi_raw['ready_due']     = $this->Model_nag->cari_ready_due($filter);
+            $kpi_raw['ar_lokal']      = $this->Model_nag->cari_ar_lokal($filter);
+            $kpi_raw['ar_ekspor']     = $this->Model_nag->cari_ar_ekspor($filter);
+            $kpi_raw['ar_lokal_ni']   = $this->Model_nag->cari_ar_lokal_ni($filter);
+            $kpi_raw['ar_ekspor_ni']  = $this->Model_nag->cari_ar_ekspor_ni($filter);
+            $kpi_raw['ar_fob']        = $this->Model_nag->cari_ar_fob($filter);
+            $kpi_raw['ar_cmt']        = $this->Model_nag->cari_ar_cmt($filter);
+            $kpi_raw['ar_fob_ni']     = $this->Model_nag->cari_ar_fob_ni($filter);
+            $kpi_raw['ar_cmt_ni']     = $this->Model_nag->cari_ar_cmt_ni($filter);
+
+            // Baca/tulis cache DB agar semua browser konsisten
+            $this->db->query("CREATE TABLE IF NOT EXISTS tbl_kpi_cache (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                pc VARCHAR(10), key_name VARCHAR(50), value DECIMAL(30,2),
+                updated_at DATETIME,
+                UNIQUE KEY uk_pc_key (pc, key_name)
+            )");
+            foreach ($kpi_keys as $k) {
+                if (!is_null($kpi_raw[$k]) && $kpi_raw[$k] > 0) {
+                    // Data valid → simpan ke cache
+                    $this->db->query("INSERT INTO tbl_kpi_cache (pc, key_name, value, updated_at)
+                        VALUES ('$filter', '$k', '{$kpi_raw[$k]}', NOW())
+                        ON DUPLICATE KEY UPDATE value = '{$kpi_raw[$k]}', updated_at = NOW()");
+                } elseif (is_null($kpi_raw[$k])) {
+                    // Data null (clearing event) → baca dari cache
+                    $cached = $this->db->query("SELECT value FROM tbl_kpi_cache WHERE pc = '$filter' AND key_name = '$k'")->row();
+                    $kpi_raw[$k] = $cached ? $cached->value : null;
+                }
+                // $kpi_raw[$k] === 0 → biarkan 0 (memang 0 dari DB)
+            }
+
+            $data['sls_ytd_inv']   = $kpi_raw['sls_ytd_inv']   ?? 0;
+            $data['sls_cm_inv']    = $kpi_raw['sls_cm_inv']    ?? 0;
+            $data['sls_no_inv']    = $kpi_raw['sls_no_inv']    ?? 0;
+            $data['sls_cm_no_inv'] = $kpi_raw['sls_cm_no_inv'] ?? 0;
+            $data['ar_eqvidr']     = $kpi_raw['ar_eqvidr']     ?? 0;
+            $data['ready_due']     = $kpi_raw['ready_due']     ?? 0;
+            $data['ar_lokal']      = $kpi_raw['ar_lokal']      ?? 0;
+            $data['ar_ekspor']     = $kpi_raw['ar_ekspor']     ?? 0;
+            $data['ar_lokal_ni']   = $kpi_raw['ar_lokal_ni']   ?? 0;
+            $data['ar_ekspor_ni']  = $kpi_raw['ar_ekspor_ni']  ?? 0;
+            $data['ar_fob']        = $kpi_raw['ar_fob']        ?? 0;
+            $data['ar_cmt']        = $kpi_raw['ar_cmt']        ?? 0;
+            $data['ar_fob_ni']     = $kpi_raw['ar_fob_ni']     ?? 0;
+            $data['ar_cmt_ni']     = $kpi_raw['ar_cmt_ni']     ?? 0;
+            $data['kpi_raw']       = $kpi_raw;
+            $data['bulan_ar']      = $this->Model_nag->cari_bulan_ar()  ?? 0;
+            $data['tahun_ar']      = $this->Model_nag->cari_tahun_ar()  ?? 0;
             // Array data — harus array agar foreach aman
             $data['data_slsytd']   = $this->Model_nag->modal_caridata_slsytd($filter)  ?: [];
             $data['data_slscm']    = $this->Model_nag->modal_caridata_slscm($filter)   ?: [];
