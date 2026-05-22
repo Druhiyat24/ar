@@ -164,7 +164,7 @@ body { overflow-y: scroll; }
                                         <i class="fas fa-file-invoice-dollar"></i>
                                         <span>Sales YTD (Invoiced)</span>
                                     </div>
-                                    <div class="kpi-value" data-kpi-key="sls_ytd_inv" data-kpi-raw="<?= is_null($sls_ytd_inv) ? 'null' : (float)$sls_ytd_inv; ?>">IDR <?= number_format((float)$sls_ytd_inv, 2); ?></div>
+                                    <div class="kpi-value" data-kpi-key="sls_ytd_inv" data-kpi-raw="<?= (float)$sls_ytd_inv; ?>">IDR <?= number_format((float)$sls_ytd_inv, 2); ?></div>
                                 </div>
                             </div>
 
@@ -175,7 +175,7 @@ body { overflow-y: scroll; }
                                         <i class="fas fa-calendar-check"></i>
                                         <span><a href="<?= base_url('report/frm_sales_report'); ?>" target="blank">Sales Current Month (Invoiced)</a></span>
                                     </div>
-                                    <div class="kpi-value" data-kpi-key="sls_cm_inv" data-kpi-raw="<?= is_null($sls_cm_inv) ? 'null' : (float)$sls_cm_inv; ?>">IDR <?= number_format((float)$sls_cm_inv, 2); ?></div>
+                                    <div class="kpi-value" data-kpi-key="sls_cm_inv" data-kpi-raw="<?= (float)$sls_cm_inv; ?>">IDR <?= number_format((float)$sls_cm_inv, 2); ?></div>
                                 </div>
                             </div>
 
@@ -186,7 +186,7 @@ body { overflow-y: scroll; }
                                         <i class="fas fa-chart-bar"></i>
                                         <span>Sales YTD</span>
                                     </div>
-                                    <div class="kpi-value" data-kpi-key="sls_ytd_all" data-kpi-raw="<?= (is_null($sls_no_inv) && is_null($sls_ytd_inv)) ? 'null' : (float)$sls_no_inv + (float)$sls_ytd_inv; ?>">IDR <?= number_format((float)$sls_no_inv + (float)$sls_ytd_inv, 2); ?></div>
+                                    <div class="kpi-value" data-kpi-key="sls_ytd_all" data-kpi-raw="<?= (float)$sls_no_inv + (float)$sls_ytd_inv; ?>">IDR <?= number_format((float)$sls_no_inv + (float)$sls_ytd_inv, 2); ?></div>
                                 </div>
                             </div>
 
@@ -197,7 +197,7 @@ body { overflow-y: scroll; }
                                         <i class="fas fa-calendar-alt"></i>
                                         <span>Sales Current Month</span>
                                     </div>
-                                    <div class="kpi-value" data-kpi-key="sls_cm_all" data-kpi-raw="<?= (is_null($sls_cm_no_inv) && is_null($sls_cm_inv)) ? 'null' : (float)$sls_cm_no_inv + (float)$sls_cm_inv; ?>">IDR <?= number_format((float)$sls_cm_no_inv + (float)$sls_cm_inv, 2); ?></div>
+                                    <div class="kpi-value" data-kpi-key="sls_cm_all" data-kpi-raw="<?= (float)$sls_cm_no_inv + (float)$sls_cm_inv; ?>">IDR <?= number_format((float)$sls_cm_no_inv + (float)$sls_cm_inv, 2); ?></div>
                                 </div>
                             </div>
 
@@ -208,7 +208,7 @@ body { overflow-y: scroll; }
                                         <i class="fas fa-shipping-fast"></i>
                                         <span><a href="<?= base_url('arnag/frm_report_sj_not_invoice'); ?>" target="blank">Sales (Not Invoiced)</a></span>
                                     </div>
-                                    <div class="kpi-value" data-kpi-key="sls_no_inv" data-kpi-raw="<?= is_null($sls_no_inv) ? 'null' : (float)$sls_no_inv; ?>">IDR <?= number_format((float)$sls_no_inv, 2); ?></div>
+                                    <div class="kpi-value" data-kpi-key="sls_no_inv" data-kpi-raw="<?= (float)$sls_no_inv; ?>">IDR <?= number_format((float)$sls_no_inv, 2); ?></div>
                                     <div class="kpi-footer">
                                         <?php
                                             $denom  = $sls_ytd_inv ?: $sls_no_inv;
@@ -226,7 +226,7 @@ body { overflow-y: scroll; }
                                         <i class="fas fa-hand-holding-usd"></i>
                                         <span>Account Receivable</span>
                                     </div>
-                                    <div class="kpi-value" data-kpi-key="ar_eqvidr" data-kpi-raw="<?= is_null($ar_eqvidr) ? 'null' : (float)$ar_eqvidr; ?>">IDR <?= number_format((float)$ar_eqvidr, 2); ?></div>
+                                    <div class="kpi-value" data-kpi-key="ar_eqvidr" data-kpi-raw="<?= (float)$ar_eqvidr; ?>">IDR <?= number_format((float)$ar_eqvidr, 2); ?></div>
                                     <div class="kpi-footer">100.00 %</div>
                                 </div>
                             </div>
@@ -238,7 +238,7 @@ body { overflow-y: scroll; }
                                         <i class="fas fa-exclamation-circle"></i>
                                         <span><a href="<?= base_url('arnag/kartu_ar_detail'); ?>" target="blank">Overdue Receivable</a></span>
                                     </div>
-                                    <div class="kpi-value" data-kpi-key="ready_due" data-kpi-raw="<?= is_null($ready_due) ? 'null' : (float)$ready_due; ?>">IDR <?= number_format((float)$ready_due, 2); ?></div>
+                                    <div class="kpi-value" data-kpi-key="ready_due" data-kpi-raw="<?= (float)$ready_due; ?>">IDR <?= number_format((float)$ready_due, 2); ?></div>
                                     <div class="kpi-footer"><?= number_format((float)$ar_eqvidr > 0 ? ((float)$ready_due / (float)$ar_eqvidr * 100) : 0, 2); ?> %</div>
                                 </div>
                             </div>
@@ -250,7 +250,7 @@ body { overflow-y: scroll; }
                                         <i class="fas fa-check-circle"></i>
                                         <span><a href="<?= base_url('arnag/kartu_ar_detail'); ?>" target="blank">Not Due Receivable</a></span>
                                     </div>
-                                    <div class="kpi-value" data-kpi-key="not_due" data-kpi-raw="<?= is_null($ar_eqvidr) ? 'null' : (float)($ar_eqvidr - $ready_due); ?>">IDR <?= number_format((float)($ar_eqvidr - $ready_due), 2); ?></div>
+                                    <div class="kpi-value" data-kpi-key="not_due" data-kpi-raw="<?= (float)($ar_eqvidr - $ready_due); ?>">IDR <?= number_format((float)($ar_eqvidr - $ready_due), 2); ?></div>
                                     <div class="kpi-footer"><?= number_format((float)$ar_eqvidr > 0 ? (((float)$ar_eqvidr - (float)$ready_due) / (float)$ar_eqvidr * 100) : 0, 2); ?> %</div>
                                 </div>
                             </div>
@@ -772,29 +772,5 @@ body { overflow-y: scroll; }
         </div>
     </div>
 </div>
-<script>
-/* KPI Cache via localStorage
-   null = clearing event -> pakai cache terakhir
-   0    = memang 0 dari DB -> tampil 0, jangan update cache
-   >0   = valid -> simpan cache & tampil
-*/
-(function () {
-    var PC  = '<?= $selected_pc; ?>';
-    var PFX = 'kpi_' + PC + '_';
-    document.querySelectorAll('.kpi-value[data-kpi-key]').forEach(function (el) {
-        var key = PFX + el.dataset.kpiKey;
-        var raw = el.dataset.kpiRaw;
-        if (raw === 'null') {
-            var cached = localStorage.getItem(key);
-            if (cached) {
-                el.innerHTML = cached +
-                    '<div style="font-size:10px;font-weight:400;color:#e67e22;margin-top:2px;">' +
-                    '<i class="fas fa-clock"></i> last saved data</div>';
-            }
-        } else {
-            var num = parseFloat(raw);
-            if (num > 0) { localStorage.setItem(key, el.innerHTML.trim()); }
-        }
-    });
-})();
-</script>
+
+
