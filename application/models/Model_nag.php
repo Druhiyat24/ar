@@ -4415,9 +4415,10 @@ function cari_sales_ytd_mtm_pertahun($tahun, $filter)
            }elseif ($filter == 'NAK') {
             $query = $this->db->query("SELECT CONCAT(ROUND(not_due,2),',',ROUND(amt_aging_1,2),',',ROUND(amt_aging_2,2),',',ROUND(amt_aging_3,2),',',ROUND(amt_aging_4,2),',',ROUND(amt_aging_5,2),',',ROUND(amt_aging_6,2),',',ROUND(amt_aging_7,2)) eqv_idr from tbl_data_sum_ar_knitting");
         }else{
-            $query = $this->db->query("SELECT CONCAT(ROUND(not_due,2),',',ROUND(amt_aging_1,2),',',ROUND(amt_aging_2,2),',',ROUND(amt_aging_3,2),',',ROUND(amt_aging_4,2),',',ROUND(amt_aging_5,2),',',ROUND(amt_aging_6,2),',',ROUND(amt_aging_7,2)) eqv_idr from (select SUM(not_due) not_due, SUM(amt_aging_1) amt_aging_1, SUM(amt_aging_2) amt_aging_2, SUM(amt_aging_3) amt_aging_3, SUM(amt_aging_4) amt_aging_4, SUM(amt_aging_5) amt_aging_5, SUM(amt_aging_6) amt_aging_6, SUM(amt_aging_7) amt_aging_7 from (select * from tbl_data_sum_ar2
-                UNION
-                select * from tbl_data_sum_ar_knitting) a) a");
+            $query = $this->db->query("SELECT CONCAT(ROUND(not_due,2),',',ROUND(amt_aging_1,2),',',ROUND(amt_aging_2,2),',',ROUND(amt_aging_3,2),',',ROUND(amt_aging_4,2),',',ROUND(amt_aging_5,2),',',ROUND(amt_aging_6,2),',',ROUND(amt_aging_7,2)) eqv_idr from (select SUM(not_due) not_due, SUM(amt_aging_1) amt_aging_1, SUM(amt_aging_2) amt_aging_2, SUM(amt_aging_3) amt_aging_3, SUM(amt_aging_4) amt_aging_4, SUM(amt_aging_5) amt_aging_5, SUM(amt_aging_6) amt_aging_6, SUM(amt_aging_7) amt_aging_7 from (
+                select not_due, amt_aging_1, amt_aging_2, amt_aging_3, amt_aging_4, amt_aging_5, amt_aging_6, amt_aging_7 from tbl_data_sum_ar2
+                UNION ALL
+                select not_due, amt_aging_1, amt_aging_2, amt_aging_3, amt_aging_4, amt_aging_5, amt_aging_6, amt_aging_7 from tbl_data_sum_ar_knitting) a) a");
         }
 
         if ($query->result()) {  
@@ -4452,9 +4453,10 @@ function load_det_overdue($field, $filter)
    }elseif ($filter == 'NAK') {
     $hasil = $this->db->query("SELECT customer,$field as data from (select * from tbl_data_overdue_ar_knitting) a WHERE $field != 0");
 }else{
-    $hasil = $this->db->query("SELECT customer,$field as data from (select id_customer, customer, SUM(not_due) not_due, SUM(amt_aging_1) amt_aging_1, SUM(amt_aging_2) amt_aging_2, SUM(amt_aging_3) amt_aging_3, SUM(amt_aging_4) amt_aging_4, SUM(amt_aging_5) amt_aging_5, SUM(amt_aging_6) amt_aging_6, SUM(amt_aging_7) amt_aging_7 from ( select * from tbl_data_overdue_ar
-        UNION
-        select * from tbl_data_overdue_ar_knitting) a GROUP BY id_customer) a WHERE $field != 0");
+    $hasil = $this->db->query("SELECT customer,$field as data from (select id_customer, customer, SUM(not_due) not_due, SUM(amt_aging_1) amt_aging_1, SUM(amt_aging_2) amt_aging_2, SUM(amt_aging_3) amt_aging_3, SUM(amt_aging_4) amt_aging_4, SUM(amt_aging_5) amt_aging_5, SUM(amt_aging_6) amt_aging_6, SUM(amt_aging_7) amt_aging_7 from (
+        select id_customer, customer, not_due, amt_aging_1, amt_aging_2, amt_aging_3, amt_aging_4, amt_aging_5, amt_aging_6, amt_aging_7 from tbl_data_overdue_ar
+        UNION ALL
+        select id_customer, customer, not_due, amt_aging_1, amt_aging_2, amt_aging_3, amt_aging_4, amt_aging_5, amt_aging_6, amt_aging_7 from tbl_data_overdue_ar_knitting) a GROUP BY id_customer) a WHERE $field != 0");
 }
 
 return $hasil->result_array();
