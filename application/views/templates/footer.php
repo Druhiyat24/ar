@@ -83,9 +83,6 @@
 
 <script>
   const BASE_URL = "<?= base_url(); ?>";
-
-  // Disable browser caching untuk semua AJAX request
-  $.ajaxSetup({ cache: false });
 </script>
 
 <script type="text/javascript">
