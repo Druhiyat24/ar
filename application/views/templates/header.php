@@ -8,38 +8,34 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title><?= $title; ?></title>
-  <?php
-    // Naikkan versi ini setiap kali ada perubahan CSS/JS agar semua browser paksa reload
-    define('ASSET_VER', '20260522');
-    $vjs = filemtime(FCPATH . 'assets/build/js/crud/crud-nag.js');
-    $av  = ASSET_VER;
-    $au  = base_url('assets/');
-  ?>
+  <?php $v = filemtime(FCPATH . 'assets/build/js/crud/crud-nag.js'); ?>
 
   <!-- Google Font: Source Sans Pro -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
   <!-- Font Awesome Icons -->
-  <link rel="stylesheet" href="<?= $au ?>plugins/fontawesome-free/css/all.min.css?v=<?= $av ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/fontawesome-free/css/all.min.css">
+  <!-- IonIcons -->
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
   <!-- Theme style -->
-  <link rel="stylesheet" href="<?= $au ?>dist/css/adminlte.min.css?v=<?= $av ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>dist/css/adminlte.min.css">
   <!-- daterange picker -->
-  <link rel="stylesheet" href="<?= $au ?>plugins/daterangepicker/daterangepicker.css?v=<?= $av ?>">
-  <link rel="stylesheet" href="<?= $au ?>plugins/datepicker/datepicker3.css?v=<?= $av ?>">
-  <link rel="stylesheet" href="<?= $au ?>plugins/bootstrap/bootstrap-datetimepicker.min.css?v=<?= $av ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/daterangepicker/daterangepicker.css">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/datepicker/datepicker3.css">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/bootstrap/bootstrap-datetimepicker.min.css">
   <!-- SweetAlert2 -->
-  <link rel="stylesheet" href="<?= $au ?>plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css?v=<?= $av ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css">
   <!-- Toastr -->
-  <link rel="stylesheet" href="<?= $au ?>plugins/toastr/toastr.min.css?v=<?= $av ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/toastr/toastr.min.css">
   <!-- DataTables -->
-  <link rel="stylesheet" href="<?= $au ?>plugins/datatables-bs4/css/dataTables.bootstrap4.min.css?v=<?= $av ?>">
-  <link rel="stylesheet" href="<?= $au ?>plugins/datatables-responsive/css/responsive.bootstrap4.min.css?v=<?= $av ?>">
-  <link rel="stylesheet" href="<?= $au ?>plugins/datatables-buttons/css/buttons.bootstrap4.min.css?v=<?= $av ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/datatables-buttons/css/buttons.bootstrap4.min.css">
   <!-- Select2 -->
-  <link rel="stylesheet" href="<?= $au ?>plugins/select2/css/select2.min.css?v=<?= $av ?>">
-  <link rel="stylesheet" href="<?= $au ?>plugins/selectpicker/bootstrap-select.min.css?v=<?= $av ?>">
-  <link rel="stylesheet" href="<?= $au ?>plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css?v=<?= $av ?>">
-  <link rel="stylesheet" href="<?= $au ?>plugins/apexchart/apexcharts.css?v=<?= $av ?>">
-  <link rel="stylesheet" href="<?= $au ?>plugins/animate/animate.min.css?v=<?= $av ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/select2/css/select2.min.css">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/selectpicker/bootstrap-select.min.css">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/apexchart/apexcharts.css">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/animate/animate.min.css">
   <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css" /> -->
 
   <style type="text/css">
