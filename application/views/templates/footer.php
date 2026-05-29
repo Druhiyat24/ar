@@ -37,40 +37,37 @@
 <!-- jQuery -->
 <script src="<?= base_url('assets/'); ?>plugins/jquery/jquery.min.js"></script>
 <!-- Bootstrap -->
-<script src="<?= base_url('assets/'); ?>plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+<?php $av = defined('ASSET_VER') ? ASSET_VER : '1'; $au = base_url('assets/'); ?>
+<script src="<?= $au ?>plugins/bootstrap/js/bootstrap.bundle.min.js?v=<?= $av ?>"></script>
 <!-- AdminLTE -->
-<script src="<?= base_url('assets/'); ?>dist/js/adminlte.js"></script>
+<script src="<?= $au ?>dist/js/adminlte.js?v=<?= $av ?>"></script>
 <!-- SweetAlert2 -->
-<script src="<?= base_url('assets/'); ?>plugins/sweetalert2/sweetalert2.min.js"></script>
+<script src="<?= $au ?>plugins/sweetalert2/sweetalert2.min.js?v=<?= $av ?>"></script>
 <!-- Toastr -->
-<script src="<?= base_url('assets/'); ?>plugins/toastr/toastr.min.js"></script>
-<!-- DataTables  & Plugins -->
-<script src="<?= base_url('assets/'); ?>plugins/datatables/jquery.dataTables.min.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/datatables-responsive/js/dataTables.responsive.min.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/datatables-responsive/js/responsive.bootstrap4.min.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/datatables-buttons/js/dataTables.buttons.min.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/datatables-buttons/js/buttons.bootstrap4.min.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/jszip/jszip.min.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/pdfmake/pdfmake.min.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/pdfmake/vfs_fonts.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/datatables-buttons/js/buttons.html5.min.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/datatables-buttons/js/buttons.print.min.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/datatables-buttons/js/buttons.colVis.min.js"></script>
-<!-- OPTIONAL SCRIPTS -->
-<script src="<?= base_url('assets/'); ?>plugins/chart.js/Chart.min.js"></script>
-<!-- AdminLTE for demo purposes -->
-<script src="<?= base_url('assets/'); ?>dist/js/demo.js"></script>
-<!-- AdminLTE dashboard demo (This is only for demo purposes) -->
-<script src="<?= base_url('assets/'); ?>dist/js/pages/dashboard3.js"></script>
-<!-- date-range-picker -->
-<script src="<?= base_url('assets/'); ?>plugins/select2/js/select2.full.min.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/selectpicker/bootstrap-select.min.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/moment/moment.min.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/inputmask/jquery.inputmask.min.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/daterangepicker/daterangepicker.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/datepicker/bootstrap-datepicker.js"></script>
-<script src="<?= base_url('assets/'); ?>plugins/tempusdominus-bootstrap-4/js/tempusdominus-bootstrap-4.min.js"></script>
+<script src="<?= $au ?>plugins/toastr/toastr.min.js?v=<?= $av ?>"></script>
+<!-- DataTables & Plugins -->
+<script src="<?= $au ?>plugins/datatables/jquery.dataTables.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/datatables-bs4/js/dataTables.bootstrap4.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/datatables-responsive/js/dataTables.responsive.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/datatables-responsive/js/responsive.bootstrap4.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/datatables-buttons/js/dataTables.buttons.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/datatables-buttons/js/buttons.bootstrap4.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/jszip/jszip.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/pdfmake/pdfmake.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/pdfmake/vfs_fonts.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/datatables-buttons/js/buttons.html5.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/datatables-buttons/js/buttons.print.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/datatables-buttons/js/buttons.colVis.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/chart.js/Chart.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>dist/js/demo.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>dist/js/pages/dashboard3.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/select2/js/select2.full.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/selectpicker/bootstrap-select.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/moment/moment.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/inputmask/jquery.inputmask.min.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/daterangepicker/daterangepicker.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/datepicker/bootstrap-datepicker.js?v=<?= $av ?>"></script>
+<script src="<?= $au ?>plugins/tempusdominus-bootstrap-4/js/tempusdominus-bootstrap-4.min.js?v=<?= $av ?>"></script>
 <!---  crud nag --->
 <script src="<?= base_url('assets/build/js/crud/crud-nag.js') ?>?v=<?= filemtime(FCPATH . 'assets/build/js/crud/crud-nag.js') ?>"></script>
 <script src="<?= base_url('assets/build/js/crud/crud-nag-report.js') ?>?v=<?= filemtime(FCPATH . 'assets/build/js/crud/crud-nag-report.js') ?>"></script>
