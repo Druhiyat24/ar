@@ -84,6 +84,20 @@ body { overflow-y: scroll; }
     margin-bottom: 0;
 }
 
+/* ── Last Update label ── */
+.kpi-last-update {
+    text-align: center;
+    font-size: 10px;
+    color: #7986cb;
+    padding: 3px 8px 5px;
+    border-top: 1px solid rgba(0,0,0,0.05);
+}
+.kpi-last-update i { font-size: 9px; }
+
+/* ── Refresh button spin ── */
+.fa-spin-custom { animation: spin 1s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
 /* ── Prediction table ── */
 .tbl-pred th {
     background: #eef1fb;
@@ -113,6 +127,15 @@ body { overflow-y: scroll; }
     <!-- Page Header -->
     <div class="content-header">
         <div class="container-fluid">
+            <?php
+            // Format last update untuk tampilan
+            $last_update_fmt = 'Belum ada data';
+            if (!empty($last_update)) {
+                $dt = new DateTime($last_update);
+                $months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                $last_update_fmt = $dt->format('d') . ' ' . $months[(int)$dt->format('m')] . ' ' . $dt->format('Y H:i:s');
+            }
+            ?>
             <div class="row align-items-center mb-2">
                 <div class="col-sm-6">
                     <h4 class="m-0 font-weight-bold" style="color:#1a2340;">
@@ -120,7 +143,17 @@ body { overflow-y: scroll; }
                     </h4>
                 </div>
                 <div class="col-sm-6">
-                    <form id="filterForm" method="get" action="<?= base_url('landingpage'); ?>" class="form-inline justify-content-end pc-select-wrap">
+                    <div class="d-flex justify-content-end align-items-center" style="gap:10px;">
+                        <!-- Tombol Refresh Data — tampil hanya jika punya role dsb_refresh -->
+                        <?php if (!empty($can_refresh)) : ?>
+                        <button id="btn-refresh-dsb" type="button" class="btn btn-sm btn-outline-primary"
+                                onclick="refreshDashboard()"
+                                title="Refresh semua data dashboard"
+                                style="border-radius:20px; white-space:nowrap;">
+                            <i class="fas fa-sync-alt" id="icon-refresh"></i> Refresh Data
+                        </button>
+                        <?php endif; ?>
+                    <form id="filterForm" method="get" action="<?= base_url('landingpage'); ?>" class="form-inline pc-select-wrap">
                         <div class="input-group" style="max-width:260px;">
                             <div class="input-group-prepend">
                                 <span class="input-group-text" style="border-radius:20px 0 0 20px; border:1.5px solid #c5cae9; background:#f0f4ff;">
@@ -142,6 +175,7 @@ body { overflow-y: scroll; }
                             </select>
                         </div>
                     </form>
+                    </div><!-- /.d-flex -->
                 </div>
             </div>
         </div>
@@ -165,6 +199,7 @@ body { overflow-y: scroll; }
                                         <span>Sales YTD (Invoiced)</span>
                                     </div>
                                     <div class="kpi-value" data-kpi-key="sls_ytd_inv" data-kpi-raw="<?= (float)$sls_ytd_inv; ?>">IDR <?= number_format((float)$sls_ytd_inv, 2); ?></div>
+                                    <div class="kpi-last-update" id="lu_sls_ytd_inv"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
                                 </div>
                             </div>
 
@@ -176,6 +211,7 @@ body { overflow-y: scroll; }
                                         <span><a href="<?= base_url('report/frm_sales_report'); ?>" target="blank">Sales Current Month (Invoiced)</a></span>
                                     </div>
                                     <div class="kpi-value" data-kpi-key="sls_cm_inv" data-kpi-raw="<?= (float)$sls_cm_inv; ?>">IDR <?= number_format((float)$sls_cm_inv, 2); ?></div>
+                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
                                 </div>
                             </div>
 
@@ -187,6 +223,7 @@ body { overflow-y: scroll; }
                                         <span>Sales YTD</span>
                                     </div>
                                     <div class="kpi-value" data-kpi-key="sls_ytd_all" data-kpi-raw="<?= (float)$sls_no_inv + (float)$sls_ytd_inv; ?>">IDR <?= number_format((float)$sls_no_inv + (float)$sls_ytd_inv, 2); ?></div>
+                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
                                 </div>
                             </div>
 
@@ -198,6 +235,7 @@ body { overflow-y: scroll; }
                                         <span>Sales Current Month</span>
                                     </div>
                                     <div class="kpi-value" data-kpi-key="sls_cm_all" data-kpi-raw="<?= (float)$sls_cm_no_inv + (float)$sls_cm_inv; ?>">IDR <?= number_format((float)$sls_cm_no_inv + (float)$sls_cm_inv, 2); ?></div>
+                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
                                 </div>
                             </div>
 
@@ -216,6 +254,7 @@ body { overflow-y: scroll; }
                                             echo number_format($result, 2);
                                         ?> %
                                     </div>
+                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
                                 </div>
                             </div>
 
@@ -228,6 +267,7 @@ body { overflow-y: scroll; }
                                     </div>
                                     <div class="kpi-value" data-kpi-key="ar_eqvidr" data-kpi-raw="<?= (float)$ar_eqvidr; ?>">IDR <?= number_format((float)$ar_eqvidr, 2); ?></div>
                                     <div class="kpi-footer">100.00 %</div>
+                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
                                 </div>
                             </div>
 
@@ -240,6 +280,7 @@ body { overflow-y: scroll; }
                                     </div>
                                     <div class="kpi-value" data-kpi-key="ready_due" data-kpi-raw="<?= (float)$ready_due; ?>">IDR <?= number_format((float)$ready_due, 2); ?></div>
                                     <div class="kpi-footer"><?= number_format((float)$ar_eqvidr > 0 ? ((float)$ready_due / (float)$ar_eqvidr * 100) : 0, 2); ?> %</div>
+                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
                                 </div>
                             </div>
 
@@ -252,6 +293,7 @@ body { overflow-y: scroll; }
                                     </div>
                                     <div class="kpi-value" data-kpi-key="not_due" data-kpi-raw="<?= (float)($ar_eqvidr - $ready_due); ?>">IDR <?= number_format((float)($ar_eqvidr - $ready_due), 2); ?></div>
                                     <div class="kpi-footer"><?= number_format((float)$ar_eqvidr > 0 ? (((float)$ar_eqvidr - (float)$ready_due) / (float)$ar_eqvidr * 100) : 0, 2); ?> %</div>
+                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
                                 </div>
                             </div>
 
@@ -772,5 +814,62 @@ body { overflow-y: scroll; }
         </div>
     </div>
 </div>
+<script>
+function fmtDate(dt) {
+    try {
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var p = dt.split(/[- :]/);
+        return p[2]+"  "+months[parseInt(p[1])-1]+" "+p[0]+" "+p[3]+":"+p[4]+":"+p[5];
+    } catch(e) { return dt; }
+}
 
+function refreshDashboard() {
+    var btn = document.getElementById('btn-refresh-dsb');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-sync-alt fa-spin-custom" id="icon-refresh"></i> Memproses...';
+
+    Swal.fire({
+        title: 'Memperbarui Data...',
+        html: '<div style="text-align:center;padding:10px 0;"><div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;"></div><p style="font-size:13px;color:#666;margin:0;">Harap tunggu, proses ini bisa beberapa menit.</p></div>',
+        allowOutsideClick: false, allowEscapeKey: false, showConfirmButton: false
+    });
+
+    $.ajax({
+        url: '<?= base_url("landingpage/refresh_dashboard"); ?>',
+        type: 'POST', dataType: 'json', timeout: 300000,
+        success: function (res) {
+            var fmt = res.last_update ? fmtDate(res.last_update) : '-';
+            document.querySelectorAll('.kpi-last-update').forEach(function(el) {
+                el.innerHTML = '<i class="fas fa-clock"></i> ' + fmt;
+            });
+            if (res.status) {
+                Swal.fire({
+                    iconHtml: '<div style="background:linear-gradient(135deg,#43a047,#1b5e20);border-radius:50%;width:64px;height:64px;display:flex;align-items:center;justify-content:center;margin:auto;"><i class="fas fa-check" style="color:#fff;font-size:28px;"></i></div>',
+                    title: '<span style="color:#2e7d32;font-size:20px;">Data Diperbarui!</span>',
+                    html: '<div style="text-align:center;"><div style="background:#f1f8e9;border:1px solid #c8e6c9;border-radius:10px;padding:14px 18px;margin:12px 0;"><p style="margin:0;font-size:12px;color:#81c784;text-transform:uppercase;letter-spacing:1px;">Last Update</p><p style="margin:6px 0 0;font-size:18px;font-weight:700;color:#1b5e20;">' + fmt + '</p></div><p style="font-size:12px;color:#bdbdbd;margin:0;">Halaman akan dimuat ulang otomatis...</p></div>',
+                    confirmButtonText: '<i class="fas fa-sync-alt mr-1"></i> Muat Ulang Sekarang',
+                    confirmButtonColor: '#43a047',
+                    showCancelButton: true, cancelButtonText: 'Tutup', cancelButtonColor: '#9e9e9e',
+                    timer: 4000, timerProgressBar: true
+                }).then(function() { location.reload(); });
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: '<span style="color:#e65100;font-size:18px;">Gagal Memperbarui</span>',
+                    html: '<p style="font-size:13px;color:#555;">Terjadi kesalahan saat memperbarui data.<br>Silakan coba lagi atau hubungi administrator.</p>',
+                    confirmButtonText: 'Coba Lagi', confirmButtonColor: '#e65100',
+                    showCancelButton: true, cancelButtonText: 'Tutup', cancelButtonColor: '#9e9e9e'
+                }).then(function(r) { if (r.isConfirmed) refreshDashboard(); });
+            }
+        },
+        error: function () {
+            Swal.fire({ icon: 'error', title: 'Koneksi Gagal', text: 'Tidak dapat menghubungi server. Silakan coba lagi.', confirmButtonColor: '#3949ab' });
+        },
+        complete: function () {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync-alt" id="icon-refresh"></i> Refresh Data';
+        }
+    });
+}
+</script>
 

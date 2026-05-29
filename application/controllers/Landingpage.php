@@ -247,6 +247,22 @@ class Landingpage extends CI_Controller
         }
 
 
+        // Cek akses tombol Refresh Dashboard
+        $data['can_refresh'] = (bool) $this->db->query("
+            SELECT COUNT(*) AS cnt FROM tbl_user_role a
+            INNER JOIN tbl_user_access b ON a.id = b.menu_id
+            WHERE b.user = '{$this->session->userdata('username')}'
+            AND a.menu_status = 'dsb_refresh' AND a.status = 'Y'
+        ")->row()->cnt;
+
+        // Last update — baca dari kolom last_update di tbl_data_sum_ar2
+        // (kolom ini diupdate otomatis oleh MySQL Event maupun tombol Refresh)
+        $data['last_update'] = null;
+        try {
+            $ts_q = $this->db->query("SELECT last_update FROM tbl_data_sum_ar2 LIMIT 1");
+            if ($ts_q->num_rows()) $data['last_update'] = $ts_q->row()->last_update;
+        } catch (Exception $e) { /* kolom belum ditambahkan, biarkan null */ }
+
     // Tetap load view
         if (!$selected_pc) {
             $data['title'] = 'DASHBOARD';
@@ -265,6 +281,56 @@ class Landingpage extends CI_Controller
         // $this->output->enable_profiler(TRUE);
     }
 
+
+    public function refresh_dashboard()
+    {
+        if (!$this->session->userdata('username')) {
+            echo json_encode(['status' => false, 'message' => 'Unauthorized']); return;
+        }
+
+        // Validasi akses role
+        $allowed = $this->db->query("
+            SELECT COUNT(*) AS cnt FROM tbl_user_role a
+            INNER JOIN tbl_user_access b ON a.id = b.menu_id
+            WHERE b.user = '{$this->session->userdata('username')}'
+            AND a.menu_status = 'dsb_refresh' AND a.status = 'Y'
+        ")->row()->cnt;
+        if (!$allowed) {
+            echo json_encode(['status' => false, 'message' => 'Akses ditolak']); return;
+        }
+
+        $procedures = [
+            'get_data_sales', 'get_data_sum_ar', 'get_data_ar',
+            'get_data_sum_ar_knitting', 'get_data_prediction', 'update_invoice',
+            'get_data_overdue_knitting', 'get_data_ar_knitting',
+            'get_data_prediction_knitting', 'get_data_sales_knitting',
+            'get_data_dsb_ar', 'get_data_overdue', 'get_data_dsb_ar_modal'
+        ];
+
+        $failed  = [];
+        $success = [];
+        foreach ($procedures as $proc) {
+            try {
+                $this->db->query("CALL {$proc}()");
+                $success[] = $proc;
+            } catch (Exception $e) {
+                $failed[] = $proc . ': ' . $e->getMessage();
+            }
+        }
+
+        // Simpan timestamp refresh ke tbl_kpi_cache
+        $last_update = date('Y-m-d H:i:s');
+        $this->db->query("INSERT INTO tbl_kpi_cache (pc, key_name, value, updated_at)
+            VALUES ('ALL', '_last_refresh', 0, NOW())
+            ON DUPLICATE KEY UPDATE value = 0, updated_at = NOW()");
+
+        echo json_encode([
+            'status'      => empty($failed),
+            'success'     => $success,
+            'failed'      => $failed,
+            'last_update' => $last_update
+        ]);
+    }
 
     public function block_page()
     {
