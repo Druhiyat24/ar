@@ -166,7 +166,7 @@ class Landingpage extends CI_Controller
                          'ar_lokal_ni','ar_ekspor_ni','ar_fob','ar_cmt','ar_fob_ni','ar_cmt_ni'];
             $kpi_raw = [];
             $kpi_raw['sls_ytd_inv']   = $this->Model_nag->cari_sls_ytd_inv($filter);
-            $kpi_raw['sls_cm_inv']    = $this->Model_nag->cari_sls_cm_inv($filter);
+            $kpi_raw['sls_cm_inv']    = $this->Model_nag->cari_sls_cm_inv($filter) ?? 0;
             $kpi_raw['sls_no_inv']    = $this->Model_nag->cari_sls_no_inv($filter);
             $kpi_raw['sls_cm_no_inv'] = $this->Model_nag->cari_sls_cm_no_inv($filter);
             $kpi_raw['ar_eqvidr']     = $this->Model_nag->cari_ar_eqvidr($filter);
