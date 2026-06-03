@@ -811,9 +811,11 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
 
         (select IF((select id from tbl_tgl_tb where tgl_akhir = CURRENT_DATE()) != '''',(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN''),(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN'')) rate) rate) a) a order by no_invoice asc) a WHERE ((amount1 - IFNULL(bayar2,0)) - IFNULL(bayar,0)) > 0) a),
                 
-                duedate as (select b.no_invoice, b.duedate_update, b.amount from tbl_duedate_update_h a INNER JOIN tbl_duedate_update_det b on b.doc_number = a.doc_number where a.duedate_update BETWEEN ''',@start,''' and ''',@end,''' and a.status != ''CANCEL'' and b.status = ''Y'' GROUP BY b.id)
+                duedate as (select b.no_invoice, MAX(b.duedate_update) duedate_update, b.amount from tbl_duedate_update_h a INNER JOIN tbl_duedate_update_det b on b.doc_number = a.doc_number where a.status != ''CANCEL'' and b.status = ''Y'' GROUP BY b.no_invoice)
                 
                 select a.id_customer, a.customer, a.no_invoice, a.inv_date, a.shipp, a.duedate, COALESCE(b.duedate_update,a.duedate) duedate_update, top, curr, rate, total, eqv_idr, COALESCE(b.amount,total) amount, (COALESCE(b.amount,total) * rate) amount_idr, ', @cols, ' from invoice a LEFT JOIN duedate b on b.no_invoice  = a.no_invoice where COALESCE(b.duedate_update,a.duedate) BETWEEN ''',@start,''' and ''',@end,''' GROUP BY a.no_invoice')";
+
+                // a.duedate_update BETWEEN ''',@start,''' and ''',@end,''' and
 
     $this->db->query($sqlMain);
 
@@ -942,7 +944,7 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
 
         (select IF((select id from tbl_tgl_tb where tgl_akhir = CURRENT_DATE()) != '''',(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN''),(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN'')) rate) rate) a) a order by no_invoice asc) a WHERE ((amount1 - IFNULL(bayar2,0)) - IFNULL(bayar,0)) > 0) a),
                 
-                duedate as (select b.no_invoice, b.duedate_update, b.amount from tbl_duedate_update_h a INNER JOIN tbl_duedate_update_det b on b.doc_number = a.doc_number where a.duedate_update BETWEEN ''',@start,''' and ''',@end,''' and a.status != ''CANCEL'' and b.status = ''Y'' GROUP BY b.id)
+                duedate as (select b.no_invoice, MAX(b.duedate_update) duedate_update, b.amount from tbl_duedate_update_h a INNER JOIN tbl_duedate_update_det b on b.doc_number = a.doc_number where a.duedate_update BETWEEN ''',@start,''' and ''',@end,''' and a.status != ''CANCEL'' and b.status = ''Y'' GROUP BY b.no_invoice)
                 
                 select a.id_customer, a.customer, a.no_invoice, a.inv_date, a.shipp, a.duedate, COALESCE(b.duedate_update,a.duedate) duedate_update, top, curr, rate, total, eqv_idr, COALESCE(b.amount,total) amount, (COALESCE(b.amount,total) * rate) amount_idr, ', @cols, ' from invoice a LEFT JOIN duedate b on b.no_invoice  = a.no_invoice where COALESCE(b.duedate_update,a.duedate) BETWEEN ''',@start,''' and ''',@end,''' GROUP BY a.no_invoice')";
 
