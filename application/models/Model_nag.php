@@ -5534,7 +5534,9 @@ function cari_list_duedate_update($dari, $sampai)
 
 function cari_detail_duedate_update($id)
 {
-    $hasil = $this->db->query("select a.doc_number, c.no_invoice, c.sj_date, b.duedate_update, d.supplier customer, b.curr, b.amount, b.keterangan, if(b.status = 'Y','POST','CANCEL') status from tbl_duedate_update_h a INNER JOIN tbl_duedate_update_det b on a.doc_number = b.doc_number INNER JOIN tbl_book_invoice c on c.no_invoice = b.no_invoice INNER JOIN mastersupplier d on d.id_supplier = c.id_customer where a.id = '$id' ");
+    $hasil = $this->db->query("select a.doc_number, c.no_invoice, c.sj_date, b.duedate_update, d.supplier customer, b.curr, b.amount, b.keterangan, if(b.status = 'Y','POST','CANCEL') status from tbl_duedate_update_h a INNER JOIN tbl_duedate_update_det b on a.doc_number = b.doc_number INNER JOIN tbl_book_invoice c on c.no_invoice = b.no_invoice INNER JOIN mastersupplier d on d.id_supplier = c.id_customer where a.id = '$id'
+UNION
+select a.doc_number, c.no_invoice, c.sj_date, b.duedate_update, c.customer, b.curr, b.amount, b.keterangan, if(b.status = 'Y','POST','CANCEL') status from tbl_duedate_update_h a INNER JOIN tbl_duedate_update_det b on a.doc_number = b.doc_number INNER JOIN (select * from saldoawal_ar where no_invoice like '%EXIM%') c on c.no_invoice = b.no_invoice  where a.id = '$id' ");
     return $hasil->result_array();
 }
 
