@@ -480,7 +480,7 @@ class Report extends CI_Controller
     }
 
 
-public function export_projection_report($id_customer = '', $from = '', $to = '')
+public function export_projection_report($id_customer = '', $from = '', $to = '', $type = 'daily')
 {
     if (!$this->session->userdata('username')) {
         redirect('auth');
@@ -495,7 +495,7 @@ public function export_projection_report($id_customer = '', $from = '', $to = ''
     ob_start();
 
     $data["projection"] = $this->Model_report
-        ->cari_projection_report_export($id_customer, $from, $to);
+        ->cari_projection_report_export($id_customer, $from, $to, $type);
 
     $data["periode_dari_mt"]   = $from;
     $data["periode_sampai_mt"] = $to;

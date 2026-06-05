@@ -894,15 +894,16 @@ function cari_projection_report(){
 function export_projection_report(){
 
     let id_customer = $('#sr_customer').val();
-    let from = $('#filter_from').val();
-    let to   = $('#filter_to').val();
+    let from        = $('#filter_from').val();
+    let to          = $('#filter_to').val();
+    let type        = $('#filter_type').val() || 'daily';
 
     if(!from || !to){
         alert('Tanggal harus diisi!');
         return;
     }
 
-    let url = "export_projection_report/" + id_customer + "/" + from + "/" + to;
+    let url = "export_projection_report/" + id_customer + "/" + from + "/" + to + "/" + type;
 
     window.open(url, '_blank');
 }

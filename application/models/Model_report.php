@@ -705,11 +705,7 @@ function sales_report_detail_material($periode_dari_mt, $periode_sampai_mt, $id_
 private function _rate_invoice($type, $end_date = null)
 {
     $tgl = ($type === 'daily') ? date('Y-m-d') : $this->db->escape_str($end_date);
-    $sql = "SELECT COALESCE(
-        (SELECT rate FROM masterrate WHERE v_codecurr = 'HARIAN' AND tanggal = '$tgl'),
-        (SELECT rate FROM masterrate WHERE v_codecurr = 'HARIAN' AND tanggal < '$tgl' ORDER BY tanggal DESC LIMIT 1)
-    ) AS rate";
-    $r = $this->db->query($sql)->row();
+    $r   = $this->db->query("SELECT rate FROM masterrate WHERE v_codecurr = 'HARIAN' AND tanggal = '$tgl' LIMIT 1")->row();
     return ($r && $r->rate) ? (float)$r->rate : 1;
 }
 
@@ -717,11 +713,7 @@ private function _rate_invoice($type, $end_date = null)
 private function _rate_dn($type, $end_date = null)
 {
     $tgl = ($type === 'daily') ? date('Y-m-d') : $this->db->escape_str($end_date);
-    $sql = "SELECT COALESCE(
-        (SELECT rate FROM ap_masterrate WHERE v_codecurr = 'HARIAN' AND tanggal = '$tgl'),
-        (SELECT rate FROM ap_masterrate WHERE v_codecurr = 'HARIAN' AND tanggal < '$tgl' ORDER BY tanggal DESC LIMIT 1)
-    ) AS rate";
-    $r = $this->db->query($sql)->row();
+    $r   = $this->db->query("SELECT rate FROM ap_masterrate WHERE v_codecurr = 'HARIAN' AND tanggal = '$tgl' LIMIT 1")->row();
     return ($r && $r->rate) ? (float)$r->rate : 1;
 }
 
@@ -998,16 +990,25 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
                 
                 select a.id_customer, a.customer, a.no_invoice, a.inv_date, a.shipp, a.duedate, COALESCE(b.duedate_update,a.duedate) duedate_update, top, curr, rate, total, eqv_idr, COALESCE(b.amount,total) amount, (COALESCE(b.amount,total) * rate) amount_idr, ', @cols, ' from invoice a LEFT JOIN duedate b on b.no_invoice  = a.no_invoice where COALESCE(b.duedate_update,a.duedate) BETWEEN ''',@start,''' and ''',@end,''' GROUP BY a.no_invoice')";
 
+    // Inject rate sesuai type ke sqlMain export
+    $sqlMain = str_replace(
+        "(select IF((select id from tbl_tgl_tb where tgl_akhir = CURRENT_DATE()) != '''',(select rate from masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN''),(select rate from masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''PAJAK'')) rate) rt",
+        "(SELECT " . $rate_inv . " rate) rt",
+        $sqlMain
+    );
+    $sqlMain = str_replace(
+        "(select IF((select id from tbl_tgl_tb where tgl_akhir = CURRENT_DATE()) != '''',(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN''),(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN'')) rate) rate)",
+        "(SELECT " . $rate_dn . " rate) rate)",
+        $sqlMain
+    );
+
     $this->db->query($sqlMain);
 
+    $getSql = $this->db->query("SELECT @sql AS sqlku")->row_array();
+    $sqlFix = $getSql['sqlku'];
+    $query  = $this->db->query($sqlFix);
 
-$getSql = $this->db->query("SELECT @sql AS sqlku")->row_array();
-
-$sqlFix = $getSql['sqlku'];
-
-$query = $this->db->query($sqlFix);
-
-return $query->result_array();
+    return $query->result_array();
 }
 
 
