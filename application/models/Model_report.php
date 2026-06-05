@@ -704,7 +704,16 @@ function sales_report_detail_material($periode_dari_mt, $periode_sampai_mt, $id_
 // Fallback: rate HARIAN terdekat sebelum tanggal referensi jika belum diinput
 private function _rate_invoice($type, $end_date = null)
 {
-    $tgl = ($type === 'daily') ? date('Y-m-d') : $this->db->escape_str($end_date);
+    if ($type === 'daily') {
+        $tgl = date('Y-m-d');
+    } elseif ($type === 'monthly') {
+        // Akhir bulan SEBELUM periode filter (bukan akhir bulan filter itu sendiri)
+        $tgl = date('Y-m-t', strtotime($end_date . ' -1 month'));
+    } else {
+        // weekly — hari Jumat akhir periode
+        $tgl = $end_date;
+    }
+    $tgl = $this->db->escape_str($tgl);
     $r   = $this->db->query("SELECT rate FROM masterrate WHERE v_codecurr = 'HARIAN' AND tanggal = '$tgl' LIMIT 1")->row();
     return ($r && $r->rate) ? (float)$r->rate : 1;
 }
@@ -712,7 +721,14 @@ private function _rate_invoice($type, $end_date = null)
 // ── Helper: ambil rate HARIAN debit note dari ap_masterrate berdasarkan type ──
 private function _rate_dn($type, $end_date = null)
 {
-    $tgl = ($type === 'daily') ? date('Y-m-d') : $this->db->escape_str($end_date);
+    if ($type === 'daily') {
+        $tgl = date('Y-m-d');
+    } elseif ($type === 'monthly') {
+        $tgl = date('Y-m-t', strtotime($end_date . ' -1 month'));
+    } else {
+        $tgl = $end_date;
+    }
+    $tgl = $this->db->escape_str($tgl);
     $r   = $this->db->query("SELECT rate FROM ap_masterrate WHERE v_codecurr = 'HARIAN' AND tanggal = '$tgl' LIMIT 1")->row();
     return ($r && $r->rate) ? (float)$r->rate : 1;
 }
