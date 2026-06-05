@@ -1052,8 +1052,8 @@ public function save_history_projection_report($id_customer, $from, $to, $create
         'created_at'     => date('Y-m-d H:i:s'),
     ]);
 
-    // 3. INSERT...SELECT detail dari hasil projection
-    $rows = $this->cari_projection_report_export($id_customer, $from, $to);
+    // 3. INSERT...SELECT detail dari hasil projection (pakai rate sesuai type)
+    $rows = $this->cari_projection_report_export($id_customer, $from, $to, $type);
 
     if (!empty($rows)) {
         $batch = [];
