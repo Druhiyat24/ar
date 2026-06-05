@@ -16328,7 +16328,9 @@ function simpan_data_duedate() {
             dataType: 'json',
             success: function (response) {
                 if (response.status === true) {
-                    Swal.fire('Sukses', response.message, 'success').then(() => {
+                    var msg = response.message;
+                    if (response.doc_number) msg += '<br><small>No. Dokumen: <b>' + response.doc_number + '</b></small>';
+                    Swal.fire({ icon: 'success', title: 'Sukses', html: msg }).then(() => {
                         window.location.href = BASE_URL + 'arnag/list_duedate_update';
                     });
                 } else {

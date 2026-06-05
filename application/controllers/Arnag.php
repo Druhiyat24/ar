@@ -4134,42 +4134,48 @@ public function simpan_data_duedate()
     $header = $this->input->post('header');
     $detail = $this->input->post('detail');
 
+    // Advisory lock — cegah 2 user generate nomor bersamaan (timeout 10 detik)
+    $this->db->query("DO GET_LOCK('duedate_update_gen', 10)");
+
+    // Generate nomor fresh saat save (bukan dari form) agar tidak bentrok
+    $doc_number = $this->Model_nag->get_kode_duedate_update();
+
     $this->db->trans_begin();
 
-
     $data_h = [
-        'doc_number'      => $header['doc_number'],
-        'duedate_update'  => $header['duedate_update'],
-        'keterangan'      => $header['keterangan'],
-        'status'          => 'POST',
-        'created_by'      => $this->session->userdata('username'),
-        'created_date'    => date('Y-m-d H:i:s'),
-        'cancel_by'       => null,
-        'cancel_date'     => null
+        'doc_number'   => $doc_number,
+        'duedate_update' => $header['duedate_update'],
+        'keterangan'   => $header['keterangan'],
+        'status'       => 'POST',
+        'created_by'   => $this->session->userdata('username'),
+        'created_date' => date('Y-m-d H:i:s'),
+        'cancel_by'    => null,
+        'cancel_date'  => null
     ];
 
     $this->db->insert('tbl_duedate_update_h', $data_h);
 
-
     foreach ($detail as $dt) {
         $data_d = [
-            'doc_number'        => $header['doc_number'],
-            'no_invoice'        => $dt['no_invoice'],
-            'duedate_update'    => $header['duedate_update'],
-            'curr'              => $dt['curr'],
-            'amount'            => $dt['amount'],
-            'keterangan'        => $dt['keterangan'],
-            'status'            => 'Y'
+            'doc_number'     => $doc_number,
+            'no_invoice'     => $dt['no_invoice'],
+            'duedate_update' => $header['duedate_update'],
+            'curr'           => $dt['curr'],
+            'amount'         => $dt['amount'],
+            'keterangan'     => $dt['keterangan'],
+            'status'         => 'Y'
         ];
         $this->db->insert('tbl_duedate_update_det', $data_d);
     }
 
     if ($this->db->trans_status() === FALSE) {
         $this->db->trans_rollback();
+        $this->db->query("DO RELEASE_LOCK('duedate_update_gen')");
         echo json_encode(['status' => false, 'message' => 'Gagal simpan data!']);
     } else {
         $this->db->trans_commit();
-        echo json_encode(['status' => true, 'message' => 'Berhasil simpan data!']);
+        $this->db->query("DO RELEASE_LOCK('duedate_update_gen')");
+        echo json_encode(['status' => true, 'message' => 'Berhasil simpan data!', 'doc_number' => $doc_number]);
     }
 }
 
