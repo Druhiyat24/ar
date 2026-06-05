@@ -761,14 +761,54 @@ function cari_projection_report(){
     $('#table-projection-report tbody tr').remove();
 
     var id_customer = $('#sr_customer').val();
-    var from = $('#filter_from').val();
-    var to = $('#filter_to').val();  
-    console.log(id_customer, from, to);
+    var from        = $('#filter_from').val();
+    var to          = $('#filter_to').val();
+    var type        = $('#filter_type').val() || 'daily';
+
+    // ── Validasi tanggal sesuai type ──
+    if (from && to) {
+        var dFrom = new Date(from + 'T00:00:00');
+        var dTo   = new Date(to   + 'T00:00:00');
+        var diffDays = Math.round((dTo - dFrom) / (1000 * 60 * 60 * 24));
+
+        if (type === 'weekly') {
+            // Harus Sabtu s/d Jumat (7 hari, diff = 6)
+            var isSat  = dFrom.getDay() === 6; // Saturday
+            var isFri  = dTo.getDay()   === 5; // Friday
+            var is7day = diffDays === 6;
+            if (!isSat || !isFri || !is7day) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Invalid Date Range',
+                    html: 'Weekly type requires a <b>Saturday to Friday</b> range (exactly 7 days).<br>' +
+                          '<small class="text-muted">From must be Saturday, To must be Friday.</small>',
+                    confirmButtonColor: '#3949ab'
+                });
+                return;
+            }
+        } else if (type === 'monthly') {
+            // Harus hari pertama s/d hari terakhir bulan yang sama
+            var isFirstDay = dFrom.getDate() === 1;
+            var sameMonth  = dFrom.getMonth()     === dTo.getMonth() &&
+                             dFrom.getFullYear()  === dTo.getFullYear();
+            var lastDay    = new Date(dTo.getFullYear(), dTo.getMonth() + 1, 0).getDate();
+            var isLastDay  = dTo.getDate() === lastDay;
+            if (!isFirstDay || !sameMonth || !isLastDay) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Invalid Date Range',
+                    html: 'Monthly type requires a <b>full month</b> range (1st to last day of the same month).',
+                    confirmButtonColor: '#3949ab'
+                });
+                return;
+            }
+        }
+    }
 
     let totalHari = renderProjectionHeader(from, to);
 
-    $.ajax({        
-        url: "cari_projection_report/" + id_customer + "/" + from + "/" + to + "/",                  
+    $.ajax({
+        url: "cari_projection_report/" + id_customer + "/" + from + "/" + to + "/" + type + "/",                  
         type: "GET",
         dataType: "JSON",
         success: function (response) {

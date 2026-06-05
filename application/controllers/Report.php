@@ -473,9 +473,9 @@ class Report extends CI_Controller
     }
 
 
-    public function cari_projection_report($id_customer, $dt_dari, $dt_sampai)
+    public function cari_projection_report($id_customer, $dt_dari, $dt_sampai, $type = 'daily')
     {
-        $data =  $this->Model_report->cari_projection_report($id_customer, $dt_dari, $dt_sampai);
+        $data = $this->Model_report->cari_projection_report($id_customer, $dt_dari, $dt_sampai, $type);
         echo json_encode($data);
     }
 

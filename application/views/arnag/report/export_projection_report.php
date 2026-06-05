@@ -35,7 +35,7 @@ foreach ($period as $dt) {
         table{
             border-collapse: collapse;
             width: 100%;
-            font-family: Arial;
+            font-family: Calibri;
             font-size: 11pt;
         }
 
@@ -50,13 +50,13 @@ foreach ($period as $dt) {
         }
 
         .header-title{
-            font-family: Arial;
+            font-family: Calibri;
             font-size: 12pt;
             font-weight: bold;
         }
 
         .header-title-sub{
-            font-family: Arial;
+            font-family: Calibri;
             font-size: 11pt;
             font-weight: bold;
         }

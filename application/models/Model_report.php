@@ -697,10 +697,42 @@ function sales_report_detail_material($periode_dari_mt, $periode_sampai_mt, $id_
 }
 
 
-public function cari_projection_report($id_customer, $start, $end)
+// ── Helper: ambil rate HARIAN invoice dari masterrate berdasarkan type ──
+// Daily   : kurs HARIAN hari ini
+// Weekly  : kurs HARIAN di $end_date (= Jumat akhir periode)
+// Monthly : kurs HARIAN di $end_date (= akhir bulan periode)
+// Fallback: rate HARIAN terdekat sebelum tanggal referensi jika belum diinput
+private function _rate_invoice($type, $end_date = null)
+{
+    $tgl = ($type === 'daily') ? date('Y-m-d') : $this->db->escape_str($end_date);
+    $sql = "SELECT COALESCE(
+        (SELECT rate FROM masterrate WHERE v_codecurr = 'HARIAN' AND tanggal = '$tgl'),
+        (SELECT rate FROM masterrate WHERE v_codecurr = 'HARIAN' AND tanggal < '$tgl' ORDER BY tanggal DESC LIMIT 1)
+    ) AS rate";
+    $r = $this->db->query($sql)->row();
+    return ($r && $r->rate) ? (float)$r->rate : 1;
+}
+
+// ── Helper: ambil rate HARIAN debit note dari ap_masterrate berdasarkan type ──
+private function _rate_dn($type, $end_date = null)
+{
+    $tgl = ($type === 'daily') ? date('Y-m-d') : $this->db->escape_str($end_date);
+    $sql = "SELECT COALESCE(
+        (SELECT rate FROM ap_masterrate WHERE v_codecurr = 'HARIAN' AND tanggal = '$tgl'),
+        (SELECT rate FROM ap_masterrate WHERE v_codecurr = 'HARIAN' AND tanggal < '$tgl' ORDER BY tanggal DESC LIMIT 1)
+    ) AS rate";
+    $r = $this->db->query($sql)->row();
+    return ($r && $r->rate) ? (float)$r->rate : 1;
+}
+
+public function cari_projection_report($id_customer, $start, $end, $type = 'daily')
 {
     // supaya GROUP_CONCAT panjang
     $this->db->query("SET SESSION group_concat_max_len = 1000000");
+
+    // Ambil rate sesuai type — $end sebagai tanggal referensi untuk weekly/monthly
+    $rate_inv = $this->_rate_invoice($type, $end);
+    $rate_dn  = $this->_rate_dn($type, $end);
 
     // set parameter
     $this->db->query("SET @start = '$start'");
@@ -817,6 +849,20 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
 
                 // a.duedate_update BETWEEN ''',@start,''' and ''',@end,''' and
 
+    // Inject nilai rate yang sudah dihitung berdasarkan type (daily/weekly/monthly)
+    // Ganti subquery rate invoice → literal nilai PHP
+    $sqlMain = str_replace(
+        "(select IF((select id from tbl_tgl_tb where tgl_akhir = CURRENT_DATE()) != '''',(select rate from masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN''),(select rate from masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''PAJAK'')) rate) rt",
+        "(SELECT " . $rate_inv . " rate) rt",
+        $sqlMain
+    );
+    // Ganti subquery rate debit note → literal nilai PHP (ap_masterrate)
+    $sqlMain = str_replace(
+        "(select IF((select id from tbl_tgl_tb where tgl_akhir = CURRENT_DATE()) != '''',(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN''),(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN'')) rate) rate)",
+        "(SELECT " . $rate_dn . " rate) rate)",
+        $sqlMain
+    );
+
     $this->db->query($sqlMain);
 
     // =========================
@@ -830,10 +876,14 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
 }
 
 
-public function cari_projection_report_export($id_customer, $start, $end)
+public function cari_projection_report_export($id_customer, $start, $end, $type = 'daily')
 {
     // supaya GROUP_CONCAT panjang
     $this->db->query("SET SESSION group_concat_max_len = 1000000");
+
+    // Ambil rate sesuai type — $end sebagai tanggal referensi untuk weekly/monthly
+    $rate_inv = $this->_rate_invoice($type, $end);
+    $rate_dn  = $this->_rate_dn($type, $end);
 
     // set parameter
     $this->db->query("SET @start = '$start'");
