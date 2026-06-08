@@ -718,13 +718,21 @@ private function _rate_invoice($type, $end_date = null)
     return ($r && $r->rate) ? (float)$r->rate : 1;
 }
 
-// ── Helper: ganti batas atas CURRENT_DATE() pada query invoice (sj_date/tgl_dn)
-// dan alokasi/pembayaran (tgl_alk) dengan $end — supaya data yang ditarik
-// mengikuti tanggal akhir periode filter, bukan tanggal hari ini.
+// ── Helper: ganti acuan CURRENT_DATE() pada query invoice (sj_date/tgl_dn)
+// dan alokasi/pembayaran (tgl_alk) supaya data yang ditarik mengikuti periode
+// filter ($start/$end), bukan tanggal hari ini:
+//   - sj_date / tgl_dn  → batas atas pakai $end
+//   - tgl_alk           → pakai $start (tgl_alk < $start)
+// Hanya berlaku untuk type weekly & monthly — daily tetap pakai CURRENT_DATE().
 // Bagian rate, aging, readydue, dll TIDAK ikut diganti (tetap CURRENT_DATE()).
-private function _apply_end_date_filter($sql, $end)
+private function _apply_end_date_filter($sql, $start, $end, $type)
 {
-    $end_lit = "''" . $this->db->escape_str($end) . "''";
+    if ($type === 'daily') {
+        return $sql;
+    }
+
+    $start_lit = "''" . $this->db->escape_str($start) . "''";
+    $end_lit   = "''" . $this->db->escape_str($end) . "''";
 
     $sql = str_replace(
         "sj_date between ''2022-05-01'' and CURRENT_DATE()",
@@ -738,12 +746,12 @@ private function _apply_end_date_filter($sql, $end)
     );
     $sql = str_replace(
         "tgl_alk between CURRENT_DATE() and CURRENT_DATE()",
-        "tgl_alk between " . $end_lit . " and " . $end_lit,
+        "tgl_alk < " . $start_lit,
         $sql
     );
     $sql = str_replace(
         "tgl_alk < CURRENT_DATE()",
-        "tgl_alk < " . $end_lit,
+        "tgl_alk < ''2000-01-01''",
         $sql
     );
 
@@ -882,7 +890,7 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
         (select no_dn dnno,GROUP_CONCAT(DISTINCT supplier SEPARATOR '' | '') supplier from tbl_debitnote_det where supplier != ''-'' AND supplier != '''' GROUP BY no_dn
             ) l_supp on l_supp.dnno = inv.no_invoice JOIN
 
-        (select IF((select id from tbl_tgl_tb where tgl_akhir = CURRENT_DATE()) != '''',(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN''),(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN'')) rate) rate) a) a order by no_invoice asc) a WHERE ((amount1 - IFNULL(bayar2,0)) - IFNULL(bayar,0)) > 0) a),
+        (select IF((select id from tbl_tgl_tb where tgl_akhir = CURRENT_DATE()) != '''',(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN''),(select rate from ap_masterrate where tanggal = CURRENT_DATE() and v_codecurr = ''HARIAN'')) rate) rate) a) a order by no_invoice asc) a ) a),
                 
                 duedate as (select b.no_invoice, MAX(b.duedate_update) duedate_update, b.amount from tbl_duedate_update_h a INNER JOIN tbl_duedate_update_det b on b.doc_number = a.doc_number where a.status != ''CANCEL'' and b.status = ''Y'' GROUP BY b.no_invoice)
                 
@@ -904,9 +912,9 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
         $sqlMain
     );
 
-    // Ganti batas atas CURRENT_DATE() pada query invoice (sj_date/tgl_dn) dan
-    // alokasi/pembayaran (tgl_alk) supaya data yang ditarik mengikuti $end periode filter.
-    $sqlMain = $this->_apply_end_date_filter($sqlMain, $end);
+    // Ganti acuan CURRENT_DATE() pada query invoice (sj_date/tgl_dn) dan
+    // alokasi/pembayaran (tgl_alk) supaya data yang ditarik mengikuti periode filter.
+    $sqlMain = $this->_apply_end_date_filter($sqlMain, $start, $end, $type);
 
     $this->db->query($sqlMain);
 
@@ -1055,9 +1063,9 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
         $sqlMain
     );
 
-    // Ganti batas atas CURRENT_DATE() pada query invoice (sj_date/tgl_dn) dan
-    // alokasi/pembayaran (tgl_alk) supaya data yang ditarik mengikuti $end periode filter.
-    $sqlMain = $this->_apply_end_date_filter($sqlMain, $end);
+    // Ganti acuan CURRENT_DATE() pada query invoice (sj_date/tgl_dn) dan
+    // alokasi/pembayaran (tgl_alk) supaya data yang ditarik mengikuti periode filter.
+    $sqlMain = $this->_apply_end_date_filter($sqlMain, $start, $end, $type);
 
     $this->db->query($sqlMain);
 
