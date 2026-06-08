@@ -718,6 +718,38 @@ private function _rate_invoice($type, $end_date = null)
     return ($r && $r->rate) ? (float)$r->rate : 1;
 }
 
+// ── Helper: ganti batas atas CURRENT_DATE() pada query invoice (sj_date/tgl_dn)
+// dan alokasi/pembayaran (tgl_alk) dengan $end — supaya data yang ditarik
+// mengikuti tanggal akhir periode filter, bukan tanggal hari ini.
+// Bagian rate, aging, readydue, dll TIDAK ikut diganti (tetap CURRENT_DATE()).
+private function _apply_end_date_filter($sql, $end)
+{
+    $end_lit = "''" . $this->db->escape_str($end) . "''";
+
+    $sql = str_replace(
+        "sj_date between ''2022-05-01'' and CURRENT_DATE()",
+        "sj_date between ''2022-05-01'' and " . $end_lit,
+        $sql
+    );
+    $sql = str_replace(
+        "tgl_dn between ''2022-05-01'' and CURRENT_DATE()",
+        "tgl_dn between ''2022-05-01'' and " . $end_lit,
+        $sql
+    );
+    $sql = str_replace(
+        "tgl_alk between CURRENT_DATE() and CURRENT_DATE()",
+        "tgl_alk between " . $end_lit . " and " . $end_lit,
+        $sql
+    );
+    $sql = str_replace(
+        "tgl_alk < CURRENT_DATE()",
+        "tgl_alk < " . $end_lit,
+        $sql
+    );
+
+    return $sql;
+}
+
 // ── Helper: ambil rate HARIAN debit note dari ap_masterrate berdasarkan type ──
 private function _rate_dn($type, $end_date = null)
 {
@@ -872,6 +904,10 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
         $sqlMain
     );
 
+    // Ganti batas atas CURRENT_DATE() pada query invoice (sj_date/tgl_dn) dan
+    // alokasi/pembayaran (tgl_alk) supaya data yang ditarik mengikuti $end periode filter.
+    $sqlMain = $this->_apply_end_date_filter($sqlMain, $end);
+
     $this->db->query($sqlMain);
 
     // =========================
@@ -1018,6 +1054,10 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
         "(SELECT " . $rate_dn . " rate) rate)",
         $sqlMain
     );
+
+    // Ganti batas atas CURRENT_DATE() pada query invoice (sj_date/tgl_dn) dan
+    // alokasi/pembayaran (tgl_alk) supaya data yang ditarik mengikuti $end periode filter.
+    $sqlMain = $this->_apply_end_date_filter($sqlMain, $end);
 
     $this->db->query($sqlMain);
 
