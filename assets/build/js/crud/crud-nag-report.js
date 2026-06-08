@@ -772,16 +772,16 @@ function cari_projection_report(){
         var diffDays = Math.round((dTo - dFrom) / (1000 * 60 * 60 * 24));
 
         if (type === 'weekly') {
-            // Harus Sabtu s/d Jumat (7 hari, diff = 6)
-            var isSat  = dFrom.getDay() === 6; // Saturday
-            var isFri  = dTo.getDay()   === 5; // Friday
+            // Harus Minggu s/d Sabtu (7 hari, diff = 6)
+            var isSun  = dFrom.getDay() === 0; // Sunday
+            var isSab  = dTo.getDay()   === 6; // Saturday
             var is7day = diffDays === 6;
-            if (!isSat || !isFri || !is7day) {
+            if (!isSun || !isSab || !is7day) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Invalid Date Range',
-                    html: 'Weekly type requires a <b>Saturday to Friday</b> range (exactly 7 days).<br>' +
-                          '<small class="text-muted">From must be Saturday, To must be Friday.</small>',
+                    html: 'Weekly type requires a <b>Sunday to Saturday</b> range (exactly 7 days).<br>' +
+                          '<small class="text-muted">From must be Sunday, To must be Saturday.</small>',
                     confirmButtonColor: '#3949ab'
                 });
                 return;
