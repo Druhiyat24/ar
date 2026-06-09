@@ -2396,7 +2396,7 @@ function group_curr_nb($id)
 
 function group_user($id)
 {
-    $hasil = $this->db->query("Select concat(UCASE(left(a.nama,1)),LCASE(SUBSTRING(a.nama,2))) as nama from tbl_log a inner join tbl_book_invoice b on b.no_invoice = a.doc_number where a.activity = 'Create invoice' and b.id = '$id' ");
+    $hasil = $this->db->query("Select concat(UCASE(left(a.nama,1)),LCASE(SUBSTRING(a.nama,2))) as nama, DATE_FORMAT(tanggal_input,'%Y-%m-%d') tgl_input from tbl_log a inner join tbl_book_invoice b on b.no_invoice = a.doc_number where a.activity = 'Create invoice' and b.id = '$id' ");
     return $hasil->row_array();
 }
 
