@@ -499,6 +499,7 @@ CSS HEADER
 
 	<!-- <div style="margin-bottom: 2.54cm;"> -->
 	<div style="margin-bottom: 2.54cm; page-break-inside: avoid;">
+		<?php if ($group_user['tgl_input'] >= '2026-06-09') { ?>
 		<table style="page-break-inside: avoid;" cellpadding="0" cellspacing="0" border="1" width="600px">
 			<tr>
 				<th style="font-size: 11px; width: 200px">Created By : </th>
@@ -531,22 +532,60 @@ CSS HEADER
 				<td class="td1">&nbsp; </td>
 			</tr>
 			<tr style="border-collapse: collapse; border-top: none;">
-				<!-- <td style="font-size:12px;text-align:center;text-decoration:underline">(<?= $username ?>) </td>			
-			<td style="font-size:12px;text-align:center">(________________________) </td>
-			<td style="font-size:12px;text-align:center">(________________________) </td> -->
-				<!--  -->
-				<td style="font-size:12px;text-align:center;text-decoration:underline">(<?= "Frisca" ?>)</td>
+				<td style="font-size:12px;text-align:center;text-decoration:underline">(<?= $group_user['nama']; ?>)</td>
+				<td style="font-size:12px;text-align:center;text-decoration:underline">(<?= "Putrie" ?>)</td>
 				<td style="font-size:12px;text-align:center;text-decoration:underline">(<?= "Willy Fernandez" ?>)</td>
-				<!-- <td style="font-size:12px;text-align:center;text-decoration:underline">(<?= "Willy Fernandez" ?>)</td> -->
+			</tr>
+			<tr>
+				<td style="text-align:center;font-size:12px">AR Staff</td>
+				<td style="text-align:center;font-size:12px">AR Supervisor</td>
+				<td style="text-align:center;font-size:12px">Finance Manager</td>
+			</tr>
+		</table>
+		<?php }else { ?>
+			<table style="page-break-inside: avoid;" cellpadding="0" cellspacing="0" border="1" width="600px">
+			<tr>
+				<th style="font-size: 11px; width: 200px">Created By : </th>
+				<th style="font-size: 11px; width: 200px">Checked By : </th>
+				<th style="font-size: 11px; width: 200px">Approved By : </th>
+			</tr>
+			<tr>
+				<td class="td1">&nbsp;</td>
+				<td class="td1">&nbsp;</td>
+				<td class="td1">&nbsp;</td>
+			</tr>
+			<tr>
+				<td class="td1">&nbsp;</td>
+				<td class="td1">&nbsp;</td>
+				<td class="td1">&nbsp; </td>
+			</tr>
+			<tr>
+				<td class="td1">&nbsp;</td>
+				<td class="td1">&nbsp;</td>
+				<td class="td1">&nbsp; </td>
+			</tr>
+			<tr>
+				<td class="td1">&nbsp;</td>
+				<td class="td1">&nbsp;</td>
+				<td class="td1">&nbsp; </td>
+			</tr>
+			<tr style="border-bottom: none;">
+				<td class="td1">&nbsp;</td>
+				<td class="td1">&nbsp;</td>
+				<td class="td1">&nbsp; </td>
+			</tr>
+			<tr style="border-collapse: collapse; border-top: none;">
+				<td style="font-size:12px;text-align:center;text-decoration:underline">(<?= $group_user['nama']; ?>)</td>
+				<td style="font-size:12px;text-align:center;text-decoration:underline">(<?= "Willy Fernandez" ?>)</td>
 				<td style="font-size:12px;text-align:center;text-decoration:underline">(<?= "Syenni Santosa" ?>)</td>
 			</tr>
 			<tr>
 				<td style="text-align:center;font-size:12px">AR Staff</td>
 				<td style="text-align:center;font-size:12px">Finance Manager</td>
-				<!-- <td style="text-align:center;font-size:12px">Finance Accounting Manager</td> -->
 				<td style="text-align:center;font-size:12px">Director</td>
 			</tr>
 		</table>
+		<?php } ?>
 
 		<br />
 

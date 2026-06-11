@@ -2079,6 +2079,7 @@ public function report_invoice4($id)
     $data['group_bppb_number'] = $this->Model_nag->group_bppb_number_nb($id);
     $data['group_so_number'] = $this->Model_nag->group_so_number_nb($id);
     $data['group_curr'] = $this->Model_nag->group_curr_nb($id);
+    $data['group_user'] = $this->Model_nag->group_user_nb($id);
         //
     $html = $this->load->view('arnag/reportinvoice4', $data, true);
     $mpdf->setFooter('{PAGENO} / {nbpg}');

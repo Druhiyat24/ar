@@ -2349,6 +2349,12 @@ function report_invoice_nb($id)
     return $hasil->row_array();
 }
 
+function group_user_nb($id)
+{
+    $hasil = $this->db->query("Select concat(UCASE(left(a.nama,1)),LCASE(SUBSTRING(a.nama,2))) as nama, DATE_FORMAT(tanggal_input,'%Y-%m-%d') tgl_input from tbl_log a inner join tbl_invoice_nb b on b.no_inv = a.doc_number where a.activity = 'Create invoice manual' and b.id = '$id' ");
+    return $hasil->row_array();
+}
+
 function report_invoice_detail_nb($id)
 {
     $hasil = $this->db->query("SELECT a.no_style as styleno, a.prod_grup as product_group,a.prod_item as  product_item, a.color, a.size, a.qty, format(round(a.unit_price,2),2) unit_price,a.diskon as disc, FORMAT(a.total, 2) AS total_price, a.uom, a.curr, a.id_bppb
@@ -2399,6 +2405,8 @@ function group_user($id)
     $hasil = $this->db->query("Select concat(UCASE(left(a.nama,1)),LCASE(SUBSTRING(a.nama,2))) as nama, DATE_FORMAT(tanggal_input,'%Y-%m-%d') tgl_input from tbl_log a inner join tbl_book_invoice b on b.no_invoice = a.doc_number where a.activity = 'Create invoice' and b.id = '$id' ");
     return $hasil->row_array();
 }
+
+
 
 function simpan_invoice_nb_pot($data)
 {
