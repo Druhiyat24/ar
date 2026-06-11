@@ -727,7 +727,7 @@ private function _rate_invoice($type, $end_date = null)
 // Bagian rate, aging, readydue, dll TIDAK ikut diganti (tetap CURRENT_DATE()).
 private function _apply_end_date_filter($sql, $start, $end, $type)
 {
-    if ($type === 'daily') {
+    if ($type === 'daily' || $type === 'weekly') {
         return $sql;
     }
 
