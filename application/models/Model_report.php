@@ -711,7 +711,7 @@ private function _rate_invoice($type, $end_date = null)
         $tgl = date('Y-m-t', strtotime($end_date . ' -1 month'));
     } else {
         // weekly — periode Minggu s/d Sabtu, rate diambil dari Jumat (sehari sebelum $end_date)
-        $tgl = date('Y-m-d', strtotime($end_date . ' -1 day'));
+        $tgl = date('Y-m-d', strtotime($end_date . ' -8 day'));
     }
     $tgl = $this->db->escape_str($tgl);
     $r   = $this->db->query("SELECT rate FROM masterrate WHERE v_codecurr = 'HARIAN' AND tanggal = '$tgl' LIMIT 1")->row();
@@ -767,7 +767,7 @@ private function _rate_dn($type, $end_date = null)
         $tgl = date('Y-m-t', strtotime($end_date . ' -1 month'));
     } else {
         // weekly — periode Minggu s/d Sabtu, rate diambil dari Jumat (sehari sebelum $end_date)
-        $tgl = date('Y-m-d', strtotime($end_date . ' -1 day'));
+        $tgl = date('Y-m-d', strtotime($end_date . ' -8 day'));
     }
     $tgl = $this->db->escape_str($tgl);
     $r   = $this->db->query("SELECT rate FROM ap_masterrate WHERE v_codecurr = 'HARIAN' AND tanggal = '$tgl' LIMIT 1")->row();
