@@ -499,6 +499,8 @@ public function simpan_booking_invoice()
             //Tidak terdapat nomor invoice yang sama, lanjut input data
         $status = "DRAFT";
         $date = date('Y-m-d');
+        $created_by = $this->session->userdata('username');
+        $created_dated = date('Y-m-d H:i:s');
         $data = [
             'no_invoice'   => $this->input->post('id_inv'),
             'id_customer'  => $this->input->post('id_cust'),
@@ -510,7 +512,9 @@ public function simpan_booking_invoice()
             'doc_type'    => $this->input->post('type_doc'),
             'doc_number'  => $this->input->post('type_doc_number'),
             'profit_center'  => $this->input->post('mdl_pc'),
-            'reff_number'  => $this->input->post('reff_num')
+            'reff_number'  => $this->input->post('reff_num'),
+            'booking_by' => $created_by,
+            'booking_date'       => $created_dated
         ];
         $this->Model_nag->simpan_booking_invoice($data, 'tbl_book_invoice');
             // Simpan Log
@@ -671,7 +675,9 @@ public function update_invoice_header()
     $type_so = $this->input->post('type_so');
     $no_coa = $this->input->post('no_coa_deb');
     $nama_coa = $this->input->post('nama_coa_deb');
-    $this->Model_nag->update_status_invoice($id_inv, $pph, $tanggal_input, $id_top, $id_bank, $type_so, $no_coa, $nama_coa);
+    $created_by = $this->session->userdata('username');
+    $created_date = date('Y-m-d H:i:s');
+    $this->Model_nag->update_status_invoice($id_inv, $pph, $tanggal_input, $id_top, $id_bank, $type_so, $no_coa, $nama_coa, $created_by, $created_date);
         // Simpan Log
     $activity   = "Create invoice";
     $doc_number = $no_inv;
@@ -1035,7 +1041,9 @@ public function cari_debitnote_second_approv($dt_dari_inv, $dt_sampai_inv, $prof
 public function approve_invoice()
 {
     $id = $this->input->post('id_inv');
-    $this->Model_nag->approve_invoice($id);
+    $created_by = $this->session->userdata('username');
+    $created_date = date('Y-m-d H:i:s');
+    $this->Model_nag->approve_invoice($id, $created_by, $created_date);
 }
 
     //ubah september
@@ -1055,7 +1063,9 @@ public function approve_debitnote()
 public function approve_invoice_second()
 {
     $id = $this->input->post('id_inv');
-    $this->Model_nag->approve_invoice_second($id);
+    $created_by = $this->session->userdata('username');
+    $created_date = date('Y-m-d H:i:s');
+    $this->Model_nag->approve_invoice_second($id, $created_by, $created_date);
 }
 
 public function approve_profinvoice_second()

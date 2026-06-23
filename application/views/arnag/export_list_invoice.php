@@ -132,6 +132,18 @@ CSS HEADER
                 Status
             </th>
             <th>
+                First Approval Name
+            </th>
+            <th>
+                First Approval Date
+            </th>
+            <th>
+                Second Approval Name
+            </th>
+            <th>
+                Second Approval Date
+            </th>
+            <th>
                 Amount
             </th>
         </tr>
@@ -164,6 +176,19 @@ CSS HEADER
                 </td>
                 <td align="center">
                     <?= $dli['status']; ?>
+                </td>
+
+                <td align="center">
+                    <?= $dli['first_approve_by']; ?>
+                </td>
+                <td align="center">
+                    <?= $dli['first_approve_date']; ?>
+                </td>
+                <td align="center">
+                    <?= $dli['second_approve_by']; ?>
+                </td>
+                <td align="center">
+                    <?= $dli['second_approve_date']; ?>
                 </td>
                 <td align="right">
                     <?= $dli['amount']; ?>
