@@ -1044,7 +1044,9 @@ public function approve_invoice()
     $created_by = $this->session->userdata('username');
     $created_date = date('Y-m-d H:i:s');
     $result = $this->Model_nag->approve_invoice($id, $created_by, $created_date);
-    echo json_encode(['status' => (bool)$result]);
+    $q = $this->db->query("SELECT no_invoice FROM tbl_book_invoice WHERE id = '$id'");
+    $no_doc = ($q->row() && $q->row()->no_invoice) ? $q->row()->no_invoice : null;
+    echo json_encode(['status' => (bool)$result, 'no_doc' => $no_doc]);
 }
 
     //ubah september
@@ -1059,7 +1061,9 @@ public function approve_debitnote()
 {
     $id = $this->input->post('id_inv');
     $result = $this->Model_nag->approve_debitnote($id);
-    echo json_encode(['status' => (bool)$result]);
+    $q = $this->db->query("SELECT no_dn FROM tbl_debitnote_h WHERE id = '$id'");
+    $no_doc = ($q->row() && $q->row()->no_dn) ? $q->row()->no_dn : null;
+    echo json_encode(['status' => (bool)$result, 'no_doc' => $no_doc]);
 }
 
 public function approve_invoice_second()
@@ -1068,6 +1072,18 @@ public function approve_invoice_second()
     $created_by = $this->session->userdata('username');
     $created_date = date('Y-m-d H:i:s');
     $this->Model_nag->approve_invoice_second($id, $created_by, $created_date);
+
+    // affected_rows() dari query INSERT terakhir yang dijalankan model (tbl_list_journal atau sb_list_journal)
+    $jurnal_rows = $this->db->affected_rows();
+    $q = $this->db->query("SELECT no_invoice FROM tbl_book_invoice WHERE id = '$id'");
+    $no_doc = ($q->row() && $q->row()->no_invoice) ? $q->row()->no_invoice : null;
+
+    if ($jurnal_rows == 0) {
+        $this->db->query("UPDATE tbl_book_invoice SET status = 'FIRST APPROVED', second_approve_by = NULL, second_approve_date = NULL WHERE id = '$id'");
+        echo json_encode(['status' => false, 'reason' => 'jurnal_kosong', 'no_doc' => $no_doc]);
+    } else {
+        echo json_encode(['status' => true, 'no_doc' => $no_doc]);
+    }
 }
 
 public function approve_profinvoice_second()
@@ -1079,7 +1095,10 @@ public function approve_profinvoice_second()
 public function approve_debitnote_second()
 {
     $id = $this->input->post('id_inv');
-    $this->Model_nag->approve_debitnote_second($id);
+    $result = $this->Model_nag->approve_debitnote_second($id);
+    $q = $this->db->query("SELECT no_dn FROM tbl_debitnote_h WHERE id = '$id'");
+    $no_doc = ($q->row() && $q->row()->no_dn) ? $q->row()->no_dn : null;
+    echo json_encode(['status' => (bool)$result, 'no_doc' => $no_doc]);
 }
 
     //Due Date Update
@@ -2655,13 +2674,18 @@ public function approve_invoice_manual()
 {
     $id = $this->input->post('id_inv');
     $result = $this->Model_nag->approve_invoice_manual($id);
-    echo json_encode(['status' => (bool)$result]);
+    $q = $this->db->query("SELECT no_inv FROM tbl_invoice_nb WHERE id = '$id'");
+    $no_doc = ($q->row() && $q->row()->no_inv) ? $q->row()->no_inv : null;
+    echo json_encode(['status' => (bool)$result, 'no_doc' => $no_doc]);
 }
 
 public function approve_invoice_manual_second()
 {
     $id = $this->input->post('id_inv');
-    $this->Model_nag->approve_invoice_manual_second($id);
+    $result = $this->Model_nag->approve_invoice_manual_second($id);
+    $q = $this->db->query("SELECT no_inv FROM tbl_invoice_nb WHERE id = '$id'");
+    $no_doc = ($q->row() && $q->row()->no_inv) ? $q->row()->no_inv : null;
+    echo json_encode(['status' => (bool)$result, 'no_doc' => $no_doc]);
 }
 
 public function reverse_invoice()

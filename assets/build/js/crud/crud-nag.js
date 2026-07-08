@@ -119,11 +119,22 @@ $(document).ready(function () {
 	});	
 });
 
-function muncul_pesan() { 
+function muncul_pesan() {
 	Toast.fire({
 		icon: 'error',
 		title: 'Sory!!!, File Tidak Bisa di Update'
 	})
+}
+
+function _buildFailedList(results) {
+	var items = results.filter(function(r){ return !r.success; });
+	if (!items.length) return '';
+	var li = items.map(function(r){
+		var label = r.no_doc || '(ID. #' + r.id + ')';
+		var note  = r.reason === 'jurnal_kosong' ? ' <small style="color:#999">(jurnal kosong)</small>' : '';
+		return '<li>' + label + note + '</li>';
+	}).join('');
+	return '<ul style="text-align:left;max-height:160px;overflow-y:auto;margin:6px 0 0;padding-left:20px;">' + li + '</ul>';
 }
 
 function message_validation(title){ 
@@ -3404,20 +3415,27 @@ function cari_debitnote_post(){
 	}
 
 function approve_invoice_second(){
-	var cek_inv = document.getElementsByName("pilih_inv_approv");
-	for (var i = 0; i < cek_inv.length; i++) {
-		if (cek_inv[i].checked) {
-			var formData = { "id_inv": cek_inv[i].value };
-			$.ajax({
-				url: "approve_invoice_second/",
-				type: "POST",
-				data: formData,
-				dataType: "JSON",
-				error: function (jqXHR) { msg = 'Error Update Invoice ' + jqXHR.text; }
-			});
-			$('#modal-approve-invoice').modal('hide');
+	var promises = [];
+	document.getElementsByName("pilih_inv_approv").forEach(function(cek) {
+		if (cek.checked) {
+			var id = cek.value;
+			promises.push(new Promise(function(resolve) {
+				$.ajax({
+					url: "approve_invoice_second/",
+					type: "POST",
+					data: { "id_inv": id },
+					dataType: "JSON",
+					success: function(data) {
+						resolve({ id: id, success: !!(data && data.status), reason: (data && data.reason) || '', no_doc: (data && data.no_doc) || null });
+					},
+					error: function() {
+						resolve({ id: id, success: false, reason: 'error', no_doc: null });
+					}
+				});
+			}));
 		}
-	}
+	});
+	return Promise.all(promises);
 }
 
 function approve_profinvoice_second(){
@@ -3438,43 +3456,206 @@ function approve_profinvoice_second(){
 }
 
 function approve_debitnote_second(){
-	var cek_inv = document.getElementsByName("pilih_debitnote_approv");
-	for (var i = 0; i < cek_inv.length; i++) {
-		if (cek_inv[i].checked) {
-			var formData = { "id_inv": cek_inv[i].value };
-			$.ajax({
-				url: "approve_debitnote_second/",
-				type: "POST",
-				data: formData,
-				dataType: "JSON",
-				error: function (jqXHR) { msg = 'Error Update ' + jqXHR.text; }
-			});
-			$('#modal-approve-debitnote').modal('hide');
+	var promises = [];
+	document.getElementsByName("pilih_debitnote_approv").forEach(function(cek) {
+		if (cek.checked) {
+			var id = cek.value;
+			promises.push(new Promise(function(resolve) {
+				$.ajax({
+					url: "approve_debitnote_second/",
+					type: "POST",
+					data: { "id_inv": id },
+					dataType: "JSON",
+					success: function(data) {
+						resolve({ id: id, success: !!(data && data.status), no_doc: (data && data.no_doc) || null });
+					},
+					error: function() {
+						resolve({ id: id, success: false, no_doc: null });
+					}
+				});
+			}));
 		}
-	}
+	});
+	return Promise.all(promises);
 }
 
 function approve_invoice_manual_second(){
-	var cek_inv = document.getElementsByName("pilih_inv_mnl_approv");
-	for (var i = 0; i < cek_inv.length; i++) {
-		if (cek_inv[i].checked) {
-			var formData = { "id_inv": cek_inv[i].value };
-			$.ajax({
-				url: "approve_invoice_manual_second/",
-				type: "POST",
-				data: formData,
-				dataType: "JSON",
-				error: function (jqXHR) { msg = 'Error Update ' + jqXHR.text; }
-			});
-			$('#modal-approve-invoice-manual').modal('hide');
+	var promises = [];
+	document.getElementsByName("pilih_inv_mnl_approv").forEach(function(cek) {
+		if (cek.checked) {
+			var id = cek.value;
+			promises.push(new Promise(function(resolve) {
+				$.ajax({
+					url: "approve_invoice_manual_second/",
+					type: "POST",
+					data: { "id_inv": id },
+					dataType: "JSON",
+					success: function(data) {
+						resolve({ id: id, success: !!(data && data.status), no_doc: (data && data.no_doc) || null });
+					},
+					error: function() {
+						resolve({ id: id, success: false, no_doc: null });
+					}
+				});
+			}));
 		}
+	});
+	return Promise.all(promises);
+}
+
+function modal_show_approve_debitnote_second() {
+	var checked = document.querySelectorAll('input[name="pilih_debitnote_approv"]:checked');
+	if (checked.length === 0) {
+		Swal.fire({ icon: 'info', title: 'Belum Ada yang Dipilih', text: 'Silakan pilih debit note terlebih dahulu.', confirmButtonText: 'OK' });
+		return;
 	}
+	Swal.fire({
+		icon: 'question', title: 'Konfirmasi Approve',
+		html: 'Anda akan approve <b>' + checked.length + ' dokumen debit note</b>.<br>Lanjutkan?',
+		confirmButtonText: 'Ya, Approve', confirmButtonColor: '#3085d6',
+		showCancelButton: true, cancelButtonText: 'Batal'
+	}).then(function(result) {
+		if (result.isConfirmed) { refresh_dn_second(); }
+	});
+}
+
+function modal_show_approve_invoice_manual_second() {
+	var checked = document.querySelectorAll('input[name="pilih_inv_mnl_approv"]:checked');
+	if (checked.length === 0) {
+		Swal.fire({ icon: 'info', title: 'Belum Ada yang Dipilih', text: 'Silakan pilih invoice terlebih dahulu.', confirmButtonText: 'OK' });
+		return;
+	}
+	Swal.fire({
+		icon: 'question', title: 'Konfirmasi Approve',
+		html: 'Anda akan approve <b>' + checked.length + ' dokumen invoice</b>.<br>Lanjutkan?',
+		confirmButtonText: 'Ya, Approve', confirmButtonColor: '#3085d6',
+		showCancelButton: true, cancelButtonText: 'Batal'
+	}).then(function(result) {
+		if (result.isConfirmed) { refresh_manual_second(); }
+	});
+}
+
+function modal_show_approve_invoice_second() {
+	var checked = document.querySelectorAll('input[name="pilih_inv_approv"]:checked');
+	if (checked.length === 0) {
+		Swal.fire({
+			icon: 'info',
+			title: 'Belum Ada yang Dipilih',
+			text: 'Silakan pilih invoice terlebih dahulu.',
+			confirmButtonText: 'OK'
+		});
+		return;
+	}
+	Swal.fire({
+		icon: 'question',
+		title: 'Konfirmasi Approve',
+		html: 'Anda akan approve <b>' + checked.length + ' dokumen invoice</b>.<br>Lanjutkan?',
+		confirmButtonText: 'Ya, Approve',
+		confirmButtonColor: '#3085d6',
+		showCancelButton: true,
+		cancelButtonText: 'Batal'
+	}).then(function(result) {
+		if (result.isConfirmed) { refresh_second(); }
+	});
 }
 
 async function refresh_second(){
-	await approve_invoice_second();
-	alert("Invoice Secondary Approved successfully");
-	cari_invoice_second_approv();
+	Swal.fire({
+		title: 'Sedang memproses...',
+		html: 'Mohon tunggu, sedang approve invoice.',
+		allowOutsideClick: false,
+		allowEscapeKey: false,
+		didOpen: function() { Swal.showLoading(); }
+	});
+
+	var results = await approve_invoice_second();
+	var berhasil = results.filter(function(r){ return r.success; }).length;
+	var gagal    = results.filter(function(r){ return !r.success; }).length;
+	var jurnal_kosong = results.filter(function(r){ return !r.success && r.reason === 'jurnal_kosong'; }).length;
+
+	if (gagal > 0) {
+		window._failedInvoiceSecondIds = results.filter(function(r){ return !r.success; });
+		Swal.fire({
+			icon: 'warning',
+			title: 'Sebagian Gagal',
+			html: 'Berhasil: <b>' + berhasil + ' invoice</b><br>Gagal: <b style="color:#c0392b">' + gagal + ' invoice</b>',
+			confirmButtonText: 'Tutup',
+			showDenyButton: true,
+			denyButtonText: 'Coba Lagi',
+			denyButtonColor: '#e74c3c'
+		}).then(function(result) {
+			if (result.isDenied) { retry_approve_invoice_second(); }
+		});
+	} else {
+		window._failedInvoiceSecondIds = [];
+		Swal.fire({
+			icon: 'success',
+			title: 'Berhasil',
+			text: berhasil + ' invoice berhasil di-approve.',
+			timer: 2000,
+			showConfirmButton: false
+		});
+		cari_invoice_second_approv();
+	}
+}
+
+async function retry_approve_invoice_second(){
+	var items = window._failedInvoiceSecondIds || [];
+	if (!items.length) return;
+
+	Swal.fire({
+		title: 'Sedang memproses ulang...',
+		html: 'Mohon tunggu, sedang approve ulang <b>' + items.length + ' invoice</b>.',
+		allowOutsideClick: false,
+		allowEscapeKey: false,
+		didOpen: function() { Swal.showLoading(); }
+	});
+
+	var promises = items.map(function(item) {
+		return new Promise(function(resolve) {
+			$.ajax({
+				url: "approve_invoice_second/",
+				type: "POST",
+				data: { "id_inv": item.id },
+				dataType: "JSON",
+				success: function(data) {
+					resolve({ id: item.id, success: !!(data && data.status), reason: (data && data.reason) || '', no_doc: (data && data.no_doc) || item.no_doc });
+				},
+				error: function() {
+					resolve({ id: item.id, success: false, reason: 'error', no_doc: item.no_doc });
+				}
+			});
+		});
+	});
+
+	var results = await Promise.all(promises);
+	var berhasil = results.filter(function(r){ return r.success; }).length;
+	var gagal    = results.filter(function(r){ return !r.success; }).length;
+
+	if (gagal > 0) {
+		window._failedInvoiceSecondIds = results.filter(function(r){ return !r.success; });
+		Swal.fire({
+			icon: 'warning',
+			title: 'Masih Ada yang Gagal',
+			html: 'Berhasil: <b>' + berhasil + ' invoice</b><br>Gagal: <b style="color:#c0392b">' + gagal + ' invoice</b>',
+			confirmButtonText: 'Tutup',
+			showDenyButton: true,
+			denyButtonText: 'Coba Lagi',
+			denyButtonColor: '#e74c3c'
+		}).then(function(result) {
+			if (result.isDenied) { retry_approve_invoice_second(); }
+		});
+	} else {
+		window._failedInvoiceSecondIds = [];
+		Swal.fire({
+			icon: 'success',
+			title: 'Semua Berhasil',
+			text: berhasil + ' invoice berhasil di-approve.',
+			timer: 2000,
+			showConfirmButton: false
+		});
+		cari_invoice_second_approv();
+	}
 }
 
 async function refresh_pi_second(){
@@ -3484,15 +3665,121 @@ async function refresh_pi_second(){
 }
 
 async function refresh_dn_second(){
-	await approve_debitnote_second();
-	alert("Debit Note Secondary Approved successfully");
-	cari_debitnote_second_approv();
+	Swal.fire({
+		title: 'Sedang memproses...',
+		html: 'Mohon tunggu, sedang approve debit note.',
+		allowOutsideClick: false, allowEscapeKey: false,
+		didOpen: function() { Swal.showLoading(); }
+	});
+	var results = await approve_debitnote_second();
+	var berhasil = results.filter(function(r){ return r.success; }).length;
+	var gagal    = results.filter(function(r){ return !r.success; }).length;
+	if (gagal > 0) {
+		window._failedDebitNoteSecondIds = results.filter(function(r){ return !r.success; });
+		Swal.fire({
+			icon: 'warning', title: 'Sebagian Gagal',
+			html: 'Berhasil: <b>' + berhasil + ' debit note</b><br>Gagal: <b style="color:#c0392b">' + gagal + ' debit note</b>',
+			confirmButtonText: 'Tutup', showDenyButton: true, denyButtonText: 'Coba Lagi', denyButtonColor: '#e74c3c'
+		}).then(function(result) { if (result.isDenied) { retry_approve_debitnote_second(); } });
+	} else {
+		window._failedDebitNoteSecondIds = [];
+		Swal.fire({ icon: 'success', title: 'Berhasil', text: berhasil + ' debit note berhasil di-approve.', timer: 2000, showConfirmButton: false });
+		cari_debitnote_second_approv();
+	}
+}
+
+async function retry_approve_debitnote_second(){
+	var items = window._failedDebitNoteSecondIds || [];
+	if (!items.length) return;
+	Swal.fire({
+		title: 'Sedang memproses ulang...',
+		html: 'Mohon tunggu, sedang approve ulang <b>' + items.length + ' debit note</b>.',
+		allowOutsideClick: false, allowEscapeKey: false,
+		didOpen: function() { Swal.showLoading(); }
+	});
+	var promises = items.map(function(item) {
+		return new Promise(function(resolve) {
+			$.ajax({
+				url: "approve_debitnote_second/", type: "POST", data: { "id_inv": item.id }, dataType: "JSON",
+				success: function(data) { resolve({ id: item.id, success: !!(data && data.status), no_doc: (data && data.no_doc) || item.no_doc }); },
+				error: function() { resolve({ id: item.id, success: false, no_doc: item.no_doc }); }
+			});
+		});
+	});
+	var results = await Promise.all(promises);
+	var berhasil = results.filter(function(r){ return r.success; }).length;
+	var gagal    = results.filter(function(r){ return !r.success; }).length;
+	if (gagal > 0) {
+		window._failedDebitNoteSecondIds = results.filter(function(r){ return !r.success; });
+		Swal.fire({
+			icon: 'warning', title: 'Masih Ada yang Gagal',
+			html: 'Berhasil: <b>' + berhasil + ' debit note</b><br>Gagal: <b style="color:#c0392b">' + gagal + ' debit note</b>',
+			confirmButtonText: 'Tutup', showDenyButton: true, denyButtonText: 'Coba Lagi', denyButtonColor: '#e74c3c'
+		}).then(function(result) { if (result.isDenied) { retry_approve_debitnote_second(); } });
+	} else {
+		window._failedDebitNoteSecondIds = [];
+		Swal.fire({ icon: 'success', title: 'Semua Berhasil', text: berhasil + ' debit note berhasil di-approve.', timer: 2000, showConfirmButton: false });
+		cari_debitnote_second_approv();
+	}
 }
 
 async function refresh_manual_second(){
-	await approve_invoice_manual_second();
-	alert("Invoice Manual Secondary Approved successfully");
-	cari_invoice_manual_second_approv();
+	Swal.fire({
+		title: 'Sedang memproses...',
+		html: 'Mohon tunggu, sedang approve invoice manual.',
+		allowOutsideClick: false, allowEscapeKey: false,
+		didOpen: function() { Swal.showLoading(); }
+	});
+	var results = await approve_invoice_manual_second();
+	var berhasil = results.filter(function(r){ return r.success; }).length;
+	var gagal    = results.filter(function(r){ return !r.success; }).length;
+	if (gagal > 0) {
+		window._failedInvoiceManualSecondIds = results.filter(function(r){ return !r.success; });
+		Swal.fire({
+			icon: 'warning', title: 'Sebagian Gagal',
+			html: 'Berhasil: <b>' + berhasil + ' invoice</b><br>Gagal: <b style="color:#c0392b">' + gagal + ' invoice</b>',
+			confirmButtonText: 'Tutup', showDenyButton: true, denyButtonText: 'Coba Lagi', denyButtonColor: '#e74c3c'
+		}).then(function(result) { if (result.isDenied) { retry_approve_invoice_manual_second(); } });
+	} else {
+		window._failedInvoiceManualSecondIds = [];
+		Swal.fire({ icon: 'success', title: 'Berhasil', text: berhasil + ' invoice berhasil di-approve.', timer: 2000, showConfirmButton: false });
+		cari_invoice_manual_second_approv();
+	}
+}
+
+async function retry_approve_invoice_manual_second(){
+	var items = window._failedInvoiceManualSecondIds || [];
+	if (!items.length) return;
+	Swal.fire({
+		title: 'Sedang memproses ulang...',
+		html: 'Mohon tunggu, sedang approve ulang <b>' + items.length + ' invoice</b>.',
+		allowOutsideClick: false, allowEscapeKey: false,
+		didOpen: function() { Swal.showLoading(); }
+	});
+	var promises = items.map(function(item) {
+		return new Promise(function(resolve) {
+			$.ajax({
+				url: "approve_invoice_manual_second/", type: "POST", data: { "id_inv": item.id }, dataType: "JSON",
+				success: function(data) { resolve({ id: item.id, success: !!(data && data.status), no_doc: (data && data.no_doc) || item.no_doc }); },
+				error: function() { resolve({ id: item.id, success: false, no_doc: item.no_doc }); }
+			});
+		});
+	});
+	var results = await Promise.all(promises);
+	var berhasil = results.filter(function(r){ return r.success; }).length;
+	var gagal    = results.filter(function(r){ return !r.success; }).length;
+	if (gagal > 0) {
+		window._failedInvoiceManualSecondIds = results.filter(function(r){ return !r.success; });
+		Swal.fire({
+			icon: 'warning', title: 'Masih Ada yang Gagal',
+			html: 'Berhasil: <b>' + berhasil + ' invoice</b><br>Gagal: <b style="color:#c0392b">' + gagal + ' invoice</b>',
+			confirmButtonText: 'Tutup', showDenyButton: true, denyButtonText: 'Coba Lagi', denyButtonColor: '#e74c3c'
+		}).then(function(result) { if (result.isDenied) { retry_approve_invoice_manual_second(); } });
+	} else {
+		window._failedInvoiceManualSecondIds = [];
+		Swal.fire({ icon: 'success', title: 'Semua Berhasil', text: berhasil + ' invoice berhasil di-approve.', timer: 2000, showConfirmButton: false });
+		cari_invoice_manual_second_approv();
+	}
 }
 
 function cari_invoice_second_approv(){
@@ -3734,10 +4021,10 @@ function modal_show_approve_debitnote() {
 						data: { "id_inv": id },
 						dataType: "JSON",
 						success: function(data) {
-							resolve({ id: id, success: !!(data && data.status) });
+							resolve({ id: id, success: !!(data && data.status), no_doc: (data && data.no_doc) || null });
 						},
 						error: function() {
-							resolve({ id: id, success: false });
+							resolve({ id: id, success: false, no_doc: null });
 						}
 					});
 				}));
@@ -3804,10 +4091,10 @@ function approve_debitnote(){
 					data: { "id_inv": id },
 					dataType: "JSON",
 					success: function(data) {
-						resolve({ id: id, success: !!(data && data.status) });
+						resolve({ id: id, success: !!(data && data.status), no_doc: (data && data.no_doc) || null });
 					},
 					error: function() {
-						resolve({ id: id, success: false });
+						resolve({ id: id, success: false, no_doc: null });
 					}
 				});
 			}));
@@ -3830,7 +4117,7 @@ async function refresh(){
 	var gagal    = results.filter(function(r){ return !r.success; }).length;
 
 	if (gagal > 0) {
-		window._failedInvoiceIds = results.filter(function(r){ return !r.success; }).map(function(r){ return r.id; });
+		window._failedInvoiceIds = results.filter(function(r){ return !r.success; });
 		Swal.fire({
 			icon: 'warning',
 			title: 'Sebagian Gagal',
@@ -3856,29 +4143,29 @@ async function refresh(){
 }
 
 async function retry_approve_invoice(){
-	var ids = window._failedInvoiceIds || [];
-	if (!ids.length) return;
+	var items = window._failedInvoiceIds || [];
+	if (!items.length) return;
 
 	Swal.fire({
 		title: 'Sedang memproses ulang...',
-		html: 'Mohon tunggu, sedang approve ulang <b>' + ids.length + ' invoice</b>.',
+		html: 'Mohon tunggu, sedang approve ulang <b>' + items.length + ' invoice</b>.',
 		allowOutsideClick: false,
 		allowEscapeKey: false,
 		didOpen: function() { Swal.showLoading(); }
 	});
 
-	var promises = ids.map(function(id) {
+	var promises = items.map(function(item) {
 		return new Promise(function(resolve) {
 			$.ajax({
 				url: "approve_invoice/",
 				type: "POST",
-				data: { "id_inv": id },
+				data: { "id_inv": item.id },
 				dataType: "JSON",
 				success: function(data) {
-					resolve({ id: id, success: !!(data && data.status) });
+					resolve({ id: item.id, success: !!(data && data.status), no_doc: (data && data.no_doc) || item.no_doc });
 				},
 				error: function() {
-					resolve({ id: id, success: false });
+					resolve({ id: item.id, success: false, no_doc: item.no_doc });
 				}
 			});
 		});
@@ -3889,7 +4176,7 @@ async function retry_approve_invoice(){
 	var gagal    = results.filter(function(r){ return !r.success; }).length;
 
 	if (gagal > 0) {
-		window._failedInvoiceIds = results.filter(function(r){ return !r.success; }).map(function(r){ return r.id; });
+		window._failedInvoiceIds = results.filter(function(r){ return !r.success; });
 		Swal.fire({
 			icon: 'warning',
 			title: 'Masih Ada yang Gagal',
@@ -3946,7 +4233,7 @@ async function refresh_dn(){
 	var gagal    = results.filter(function(r){ return !r.success; }).length;
 
 	if (gagal > 0) {
-		window._failedDebitNoteIds = results.filter(function(r){ return !r.success; }).map(function(r){ return r.id; });
+		window._failedDebitNoteIds = results.filter(function(r){ return !r.success; });
 		Swal.fire({
 			icon: 'warning',
 			title: 'Sebagian Gagal',
@@ -3972,29 +4259,29 @@ async function refresh_dn(){
 }
 
 async function retry_approve_debitnote(){
-	var ids = window._failedDebitNoteIds || [];
-	if (!ids.length) return;
+	var items = window._failedDebitNoteIds || [];
+	if (!items.length) return;
 
 	Swal.fire({
 		title: 'Sedang memproses ulang...',
-		html: 'Mohon tunggu, sedang approve ulang <b>' + ids.length + ' debit note</b>.',
+		html: 'Mohon tunggu, sedang approve ulang <b>' + items.length + ' debit note</b>.',
 		allowOutsideClick: false,
 		allowEscapeKey: false,
 		didOpen: function() { Swal.showLoading(); }
 	});
 
-	var promises = ids.map(function(id) {
+	var promises = items.map(function(item) {
 		return new Promise(function(resolve) {
 			$.ajax({
 				url: "approve_debitnote/",
 				type: "POST",
-				data: { "id_inv": id },
+				data: { "id_inv": item.id },
 				dataType: "JSON",
 				success: function(data) {
-					resolve({ id: id, success: !!(data && data.status) });
+					resolve({ id: item.id, success: !!(data && data.status), no_doc: (data && data.no_doc) || item.no_doc });
 				},
 				error: function() {
-					resolve({ id: id, success: false });
+					resolve({ id: item.id, success: false, no_doc: item.no_doc });
 				}
 			});
 		});
@@ -4005,7 +4292,7 @@ async function retry_approve_debitnote(){
 	var gagal    = results.filter(function(r){ return !r.success; }).length;
 
 	if (gagal > 0) {
-		window._failedDebitNoteIds = results.filter(function(r){ return !r.success; }).map(function(r){ return r.id; });
+		window._failedDebitNoteIds = results.filter(function(r){ return !r.success; });
 		Swal.fire({
 			icon: 'warning',
 			title: 'Masih Ada yang Gagal',
@@ -12216,10 +12503,10 @@ function cari_invoice_manual_second_approv(){
 						data: { "id_inv": id },
 						dataType: "JSON",
 						success: function(data) {
-							resolve({ id: id, success: !!(data && data.status) });
+							resolve({ id: id, success: !!(data && data.status), no_doc: (data && data.no_doc) || null });
 						},
 						error: function() {
-							resolve({ id: id, success: false });
+							resolve({ id: id, success: false, no_doc: null });
 						}
 					});
 				}));
@@ -12242,7 +12529,7 @@ async function refresh_manual(){
 	var gagal    = results.filter(function(r){ return !r.success; }).length;
 
 	if (gagal > 0) {
-		window._failedInvoiceManualIds = results.filter(function(r){ return !r.success; }).map(function(r){ return r.id; });
+		window._failedInvoiceManualIds = results.filter(function(r){ return !r.success; });
 		Swal.fire({
 			icon: 'warning',
 			title: 'Sebagian Gagal',
@@ -12268,29 +12555,29 @@ async function refresh_manual(){
 }
 
 async function retry_approve_invoice_manual(){
-	var ids = window._failedInvoiceManualIds || [];
-	if (!ids.length) return;
+	var items = window._failedInvoiceManualIds || [];
+	if (!items.length) return;
 
 	Swal.fire({
 		title: 'Sedang memproses ulang...',
-		html: 'Mohon tunggu, sedang approve ulang <b>' + ids.length + ' invoice</b>.',
+		html: 'Mohon tunggu, sedang approve ulang <b>' + items.length + ' invoice</b>.',
 		allowOutsideClick: false,
 		allowEscapeKey: false,
 		didOpen: function() { Swal.showLoading(); }
 	});
 
-	var promises = ids.map(function(id) {
+	var promises = items.map(function(item) {
 		return new Promise(function(resolve) {
 			$.ajax({
 				url: "approve_invoice_manual/",
 				type: "POST",
-				data: { "id_inv": id },
+				data: { "id_inv": item.id },
 				dataType: "JSON",
 				success: function(data) {
-					resolve({ id: id, success: !!(data && data.status) });
+					resolve({ id: item.id, success: !!(data && data.status), no_doc: (data && data.no_doc) || item.no_doc });
 				},
 				error: function() {
-					resolve({ id: id, success: false });
+					resolve({ id: item.id, success: false, no_doc: item.no_doc });
 				}
 			});
 		});
@@ -12301,7 +12588,7 @@ async function retry_approve_invoice_manual(){
 	var gagal    = results.filter(function(r){ return !r.success; }).length;
 
 	if (gagal > 0) {
-		window._failedInvoiceManualIds = results.filter(function(r){ return !r.success; }).map(function(r){ return r.id; });
+		window._failedInvoiceManualIds = results.filter(function(r){ return !r.success; });
 		Swal.fire({
 			icon: 'warning',
 			title: 'Masih Ada yang Gagal',

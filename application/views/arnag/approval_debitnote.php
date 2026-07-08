@@ -99,7 +99,7 @@
                 <div class="card-header">
                     <div class="row">
                         <div class="col-md-4">
-                            <button type="button" id="approv_inv" name="approv_inv" class="btn btn-warning" onclick="modal_show_approve_debitnote()"><i class="fa fa-stamp"></i> Approved</button>
+                            <button type="button" id="approv_inv" name="approv_inv" class="btn btn-warning" onclick="modal_show_approve_debitnote_second()"><i class="fa fa-stamp"></i> Approved</button>
                         </div>
                     </div>
                 </div>
