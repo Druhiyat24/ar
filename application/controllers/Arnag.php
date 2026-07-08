@@ -1043,7 +1043,8 @@ public function approve_invoice()
     $id = $this->input->post('id_inv');
     $created_by = $this->session->userdata('username');
     $created_date = date('Y-m-d H:i:s');
-    $this->Model_nag->approve_invoice($id, $created_by, $created_date);
+    $result = $this->Model_nag->approve_invoice($id, $created_by, $created_date);
+    echo json_encode(['status' => (bool)$result]);
 }
 
     //ubah september
@@ -1057,7 +1058,8 @@ public function approve_profinvoice()
 public function approve_debitnote()
 {
     $id = $this->input->post('id_inv');
-    $this->Model_nag->approve_debitnote($id);
+    $result = $this->Model_nag->approve_debitnote($id);
+    echo json_encode(['status' => (bool)$result]);
 }
 
 public function approve_invoice_second()
@@ -2652,7 +2654,8 @@ public function cari_invoice_manual_second_approv($dt_dari_inv, $dt_sampai_inv)
 public function approve_invoice_manual()
 {
     $id = $this->input->post('id_inv');
-    $this->Model_nag->approve_invoice_manual($id);
+    $result = $this->Model_nag->approve_invoice_manual($id);
+    echo json_encode(['status' => (bool)$result]);
 }
 
 public function approve_invoice_manual_second()
