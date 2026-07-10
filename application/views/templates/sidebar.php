@@ -10,6 +10,22 @@
 
     <!-- Right navbar links -->
     <ul class="navbar-nav ml-auto">
+        <li class="nav-item dropdown">
+            <a class="nav-link" data-toggle="dropdown" href="#" id="notifBellBtn">
+                <i class="far fa-bell"></i>
+                <span class="badge badge-danger navbar-badge" id="notifBadge" style="display:none;">0</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+                <span class="dropdown-item dropdown-header">Recent Changes</span>
+                <div class="dropdown-item" style="padding-top:4px;padding-bottom:4px;">
+                    <input type="text" id="notifSearch" class="form-control form-control-sm" placeholder="Search activity, doc number, user..." autocomplete="off">
+                </div>
+                <div class="dropdown-divider"></div>
+                <div id="notifList" style="max-height:320px;overflow-y:auto;">
+                    <span class="dropdown-item text-center text-muted" style="font-size:12px;">Loading...</span>
+                </div>
+            </div>
+        </li>
         <li class="nav-item">
             <a href="<?= base_url('/landingpage'); ?>"  class="nav-link" >
                 <i class="fa fa-home" aria-hidden="true"></i>
@@ -527,4 +543,151 @@
 <aside class="control-sidebar control-sidebar-dark">
     <!-- Control sidebar content goes here -->
 </aside>
+
+<script>
+(function() {
+    var LS_KEY = 'dsb_notif_last_seen_id';
+    var lastSeenId    = parseInt(localStorage.getItem(LS_KEY) || '0', 10);
+    var latestKnownId = lastSeenId;
+    var unreadCount   = 0;
+    var isFirstVisit  = (lastSeenId === 0);
+
+    var notifBadge  = document.getElementById('notifBadge');
+    var notifList   = document.getElementById('notifList');
+    var notifBtn    = document.getElementById('notifBellBtn');
+    var notifSearch = document.getElementById('notifSearch');
+    if (!notifBadge || !notifList || !notifBtn) return;
+
+    function fmtTime(dt) {
+        try {
+            var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            var p = dt.split(/[- :]/);
+            return p[2] + ' ' + months[parseInt(p[1], 10) - 1] + ' ' + p[0];
+        } catch (e) { return dt; }
+    }
+
+    function rowHtml(r) {
+        return '<div class="dropdown-item" style="white-space:normal;font-size:12px;border-bottom:1px solid #f0f0f0;">' +
+            '<div><b>' + (r.activity || '-') + '</b> &mdash; ' + (r.doc_number || '-') + '</div>' +
+            '<div class="text-muted" style="font-size:11px;">' + (r.nama || '-') + ' &middot; ' + fmtTime(r.tanggal_input) + '</div>' +
+            '</div>';
+    }
+
+    function renderList(rows, emptyMessage) {
+        if (!rows.length) {
+            notifList.innerHTML = '<span class="dropdown-item text-center text-muted" style="font-size:12px;">' + emptyMessage + '</span>';
+            return;
+        }
+        notifList.innerHTML = rows.map(rowHtml).join('');
+    }
+
+    // Daftar normal (terbaru + live update lewat SSE), dicache terpisah dari hasil search
+    // supaya waktu kotak search dikosongkan kita bisa balik tanpa fetch ulang.
+    var normalRows  = [];
+    var searchMode  = false;
+    var searchTimer = null;
+
+    function renderInitial(rows) {
+        normalRows = rows;
+        renderList(normalRows, 'No changes yet.');
+    }
+
+    function prependRows(rows) {
+        normalRows = rows.concat(normalRows).slice(0, 50);
+        if (!searchMode) renderList(normalRows, 'No changes yet.');
+    }
+
+    function runSearch(q) {
+        notifList.innerHTML = '<span class="dropdown-item text-center text-muted" style="font-size:12px;">Searching...</span>';
+        fetch('<?= base_url("landingpage/notif_search"); ?>?q=' + encodeURIComponent(q))
+            .then(function(res) { return res.json(); })
+            .then(function(res) {
+                if (!res.status) return;
+                renderList(res.data, 'No matching results.');
+            })
+            .catch(function() {
+                notifList.innerHTML = '<span class="dropdown-item text-center text-muted" style="font-size:12px;">Search failed.</span>';
+            });
+    }
+
+    if (notifSearch) {
+        notifSearch.addEventListener('click', function(e) { e.stopPropagation(); });
+        notifSearch.addEventListener('input', function() {
+            var q = this.value.trim();
+            clearTimeout(searchTimer);
+            if (!q) {
+                searchMode = false;
+                renderList(normalRows, 'No changes yet.');
+                return;
+            }
+            searchTimer = setTimeout(function() {
+                searchMode = true;
+                runSearch(q);
+            }, 300);
+        });
+    }
+
+    function updateBadge() {
+        if (unreadCount > 0) {
+            notifBadge.style.display = 'inline-block';
+            notifBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+        } else {
+            notifBadge.style.display = 'none';
+        }
+    }
+
+    fetch('<?= base_url("landingpage/notif_list"); ?>?since_id=' + lastSeenId)
+        .then(function(res) { return res.json(); })
+        .then(function(res) {
+            if (!res.status) return;
+            renderInitial(res.data);
+            if (res.data.length) {
+                latestKnownId = Math.max.apply(null, res.data.map(function(r) { return parseInt(r.id, 10); }));
+            }
+            if (isFirstVisit) {
+                lastSeenId = latestKnownId;
+                localStorage.setItem(LS_KEY, lastSeenId);
+            } else {
+                unreadCount = res.unread;
+                updateBadge();
+            }
+            connectStream();
+        })
+        .catch(function() {
+            notifList.innerHTML = '<span class="dropdown-item text-center text-muted" style="font-size:12px;">Failed to load notifications.</span>';
+            connectStream();
+        });
+
+    notifBtn.addEventListener('click', function() {
+        if (latestKnownId > lastSeenId) {
+            lastSeenId = latestKnownId;
+            localStorage.setItem(LS_KEY, lastSeenId);
+        }
+        unreadCount = 0;
+        updateBadge();
+        if (notifSearch) {
+            notifSearch.value = '';
+            clearTimeout(searchTimer);
+            searchMode = false;
+            renderList(normalRows, 'No changes yet.');
+        }
+    });
+
+    function connectStream() {
+        if (!window.EventSource) return;
+        var es = new EventSource('<?= base_url("landingpage/notif_stream"); ?>?since_id=' + latestKnownId);
+        es.onmessage = function(ev) {
+            try {
+                var payload = JSON.parse(ev.data);
+                if (payload.rows && payload.rows.length) {
+                    prependRows(payload.rows);
+                    latestKnownId = payload.last_id;
+                    unreadCount += payload.rows.length;
+                    updateBadge();
+                }
+            } catch (e) {}
+        };
+    }
+})();
+</script>
 <!-- /.control-sidebar -->

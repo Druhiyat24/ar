@@ -159,93 +159,56 @@ class Landingpage extends CI_Controller
         }
 
 
+        // Default values for chart variables (overridden below when filter is set)
+        $data['ar_lokal'] = 0; $data['ar_ekspor'] = 0;
+        $data['ar_lokal_ni'] = 0; $data['ar_ekspor_ni'] = 0;
+        $data['ar_fob'] = 0; $data['ar_cmt'] = 0;
+        $data['ar_fob_ni'] = 0; $data['ar_cmt_ni'] = 0;
+
         if ($filter) {
-            // Scalar KPI — track raw (bisa null) untuk cache logic, tapi $data pakai ?? 0 agar PHP aman
-            $kpi_keys = ['sls_ytd_inv','sls_cm_inv','sls_no_inv','sls_cm_no_inv',
-                         'ar_eqvidr','ready_due','ar_lokal','ar_ekspor',
-                         'ar_lokal_ni','ar_ekspor_ni','ar_fob','ar_cmt','ar_fob_ni','ar_cmt_ni'];
-            $kpi_raw = [];
-            $kpi_raw['sls_ytd_inv']   = $this->Model_nag->cari_sls_ytd_inv($filter);
-            $kpi_raw['sls_cm_inv']    = $this->Model_nag->cari_sls_cm_inv($filter) ?? 0;
-            $kpi_raw['sls_no_inv']    = $this->Model_nag->cari_sls_no_inv($filter);
-            $kpi_raw['sls_cm_no_inv'] = $this->Model_nag->cari_sls_cm_no_inv($filter);
-            $kpi_raw['ar_eqvidr']     = $this->Model_nag->cari_ar_eqvidr($filter);
-            $kpi_raw['ready_due']     = $this->Model_nag->cari_ready_due($filter);
-            $kpi_raw['ar_lokal']      = $this->Model_nag->cari_ar_lokal($filter);
-            $kpi_raw['ar_ekspor']     = $this->Model_nag->cari_ar_ekspor($filter);
-            $kpi_raw['ar_lokal_ni']   = $this->Model_nag->cari_ar_lokal_ni($filter);
-            $kpi_raw['ar_ekspor_ni']  = $this->Model_nag->cari_ar_ekspor_ni($filter);
-            $kpi_raw['ar_fob']        = $this->Model_nag->cari_ar_fob($filter);
-            $kpi_raw['ar_cmt']        = $this->Model_nag->cari_ar_cmt($filter);
-            $kpi_raw['ar_fob_ni']     = $this->Model_nag->cari_ar_fob_ni($filter);
-            $kpi_raw['ar_cmt_ni']     = $this->Model_nag->cari_ar_cmt_ni($filter);
+            // Scalar KPI dari ar_dashboard
+            $data['sls_ytd_inv']   = $this->Model_nag->dsb_ar_total('sales_ytd_invoiced',    'total',           $filter);
+            $data['sls_cm_inv']    = $this->Model_nag->dsb_ar_total('sales_cm_invoiced',     'total',           $filter);
+            $data['sls_no_inv']    = $this->Model_nag->dsb_ar_total('sales_ytd_not_invoiced','total',           $filter);
+            $data['sls_cm_no_inv'] = $this->Model_nag->dsb_ar_total('sales_cm_not_invoiced', 'total',           $filter);
+            $data['ar_eqvidr']     = $this->Model_nag->dsb_ar_total('receivable',            'total_idr',       $filter);
+            $data['ready_due']     = $this->Model_nag->dsb_ar_total('receivable',            'total_ready_due', $filter);
 
-            // Baca/tulis cache DB agar semua browser konsisten
-            $this->db->query("CREATE TABLE IF NOT EXISTS tbl_kpi_cache (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                pc VARCHAR(10), key_name VARCHAR(50), value DECIMAL(30,2),
-                updated_at DATETIME,
-                UNIQUE KEY uk_pc_key (pc, key_name)
-            )");
-            foreach ($kpi_keys as $k) {
-                if (!is_null($kpi_raw[$k]) && $kpi_raw[$k] > 0) {
-                    // Data valid → simpan ke cache
-                    $this->db->query("INSERT INTO tbl_kpi_cache (pc, key_name, value, updated_at)
-                        VALUES ('$filter', '$k', '{$kpi_raw[$k]}', NOW())
-                        ON DUPLICATE KEY UPDATE value = '{$kpi_raw[$k]}', updated_at = NOW()");
-                } elseif (is_null($kpi_raw[$k])) {
-                    // Data null (clearing event) → baca dari cache
-                    $cached = $this->db->query("SELECT value FROM tbl_kpi_cache WHERE pc = '$filter' AND key_name = '$k'")->row();
-                    $kpi_raw[$k] = $cached ? $cached->value : null;
-                }
-                // $kpi_raw[$k] === 0 → biarkan 0 (memang 0 dari DB)
-            }
+            // Chart: Sales Value By Destination & By Order Type — dari ar_dashboard
+            $data['ar_lokal']     = $this->Model_nag->dsb_ar_total('ar_lokal',     'total', $filter);
+            $data['ar_ekspor']    = $this->Model_nag->dsb_ar_total('ar_ekspor',    'total', $filter);
+            $data['ar_lokal_ni']  = $this->Model_nag->dsb_ar_total('ar_lokal_ni',  'total', $filter);
+            $data['ar_ekspor_ni'] = $this->Model_nag->dsb_ar_total('ar_ekspor_ni', 'total', $filter);
+            $data['ar_fob']       = $this->Model_nag->dsb_ar_total('ar_fob',       'total', $filter);
+            $data['ar_cmt']       = $this->Model_nag->dsb_ar_total('ar_cmt',       'total', $filter);
+            $data['ar_fob_ni']    = $this->Model_nag->dsb_ar_total('ar_fob_ni',    'total', $filter);
+            $data['ar_cmt_ni']    = $this->Model_nag->dsb_ar_total('ar_cmt_ni',    'total', $filter);
 
-            $data['sls_ytd_inv']   = $kpi_raw['sls_ytd_inv']   ?? 0;
-            $data['sls_cm_inv']    = $kpi_raw['sls_cm_inv']    ?? 0;
-            $data['sls_no_inv']    = $kpi_raw['sls_no_inv']    ?? 0;
-            $data['sls_cm_no_inv'] = $kpi_raw['sls_cm_no_inv'] ?? 0;
-            $data['ar_eqvidr']     = $kpi_raw['ar_eqvidr']     ?? 0;
-            $data['ready_due']     = $kpi_raw['ready_due']     ?? 0;
-            $data['ar_lokal']      = $kpi_raw['ar_lokal']      ?? 0;
-            $data['ar_ekspor']     = $kpi_raw['ar_ekspor']     ?? 0;
-            $data['ar_lokal_ni']   = $kpi_raw['ar_lokal_ni']   ?? 0;
-            $data['ar_ekspor_ni']  = $kpi_raw['ar_ekspor_ni']  ?? 0;
-            $data['ar_fob']        = $kpi_raw['ar_fob']        ?? 0;
-            $data['ar_cmt']        = $kpi_raw['ar_cmt']        ?? 0;
-            $data['ar_fob_ni']     = $kpi_raw['ar_fob_ni']     ?? 0;
-            $data['ar_cmt_ni']     = $kpi_raw['ar_cmt_ni']     ?? 0;
-            $data['kpi_raw']       = $kpi_raw;
-            $data['bulan_ar']      = $this->Model_nag->cari_bulan_ar()  ?? 0;
-            $data['tahun_ar']      = $this->Model_nag->cari_tahun_ar()  ?? 0;
-            // Array data — harus array agar foreach aman
-            $data['data_slsytd']   = $this->Model_nag->modal_caridata_slsytd($filter)  ?: [];
-            $data['data_slscm']    = $this->Model_nag->modal_caridata_slscm($filter)   ?: [];
-            $data['data_slsytd2']  = $this->Model_nag->modal_caridata_slsytd2($filter) ?: [];
-            $data['data_slscm2']   = $this->Model_nag->modal_caridata_slscm2($filter)  ?: [];
-            $data['data_slsni']    = $this->Model_nag->modal_caridata_slsni($filter)   ?: [];
-            $data['data_ttl_ar']   = $this->Model_nag->dsb_data_total_ar($filter)      ?: [];
-            $data['filter_ar']     = $this->Model_nag->cari_filter_ar()                ?: [];
+            // Modal detail dari ar_dashboard
+            $data['data_slsytd']  = $this->Model_nag->dsb_ar_detail_sales('sales_ytd_invoiced',    $filter) ?: [];
+            $data['data_slscm']   = $this->Model_nag->dsb_ar_detail_sales('sales_cm_invoiced',     $filter) ?: [];
+            $data['data_slsni']   = $this->Model_nag->dsb_ar_detail_sales('sales_ytd_not_invoiced',$filter) ?: [];
+            $data['data_slsytd2'] = $this->Model_nag->dsb_ar_detail_combined('sales_ytd_invoiced','sales_ytd_not_invoiced',$filter) ?: [];
+            $data['data_slscm2']  = $this->Model_nag->dsb_ar_detail_combined('sales_cm_invoiced','sales_cm_not_invoiced',  $filter) ?: [];
+            $data['data_ttl_ar']  = $this->Model_nag->dsb_ar_detail_receivable($filter) ?: [];
+
+            $data['bulan_ar']     = $this->Model_nag->cari_bulan_ar()  ?? 0;
+            $data['tahun_ar']     = $this->Model_nag->cari_tahun_ar()  ?? 0;
+            $data['filter_ar']    = $this->Model_nag->cari_filter_ar() ?: [];
             $data['top_5_sales_name'] = $this->Model_nag->cari_top_5_sales_name($filter) ?: [];
             $data['top_5_sales_val']  = $this->Model_nag->cari_top_5_sales_val($filter)  ?: [];
-            $data['sales_ytd_mtm'] = $this->Model_nag->cari_sales_ytd_mtm($filter) ?: [];
-            $data['overdue_aging'] = $this->Model_nag->cari_overdue_aging($filter)  ?: [];
+            $data['sales_ytd_mtm']    = $this->Model_nag->cari_sales_ytd_mtm($filter) ?: [];
+            $data['overdue_aging']    = $this->Model_nag->cari_overdue_aging($filter)  ?: [];
 
-    // Data per bulan
+            $tahun_ini = date('Y');
             for ($i = 1; $i <= 12; $i++) {
                 $bln = str_pad($i, 2, '0', STR_PAD_LEFT);
-                $data["top_5_sales_name_$bln"] = $this->Model_nag->cari_top_5_sales_namefil($bln, '2025', $filter);
-                $data["top_5_sales_val_$bln"] = $this->Model_nag->cari_top_5_sales_valfil($bln, '2025', $filter);
+                $data["top_5_sales_name_$bln"] = $this->Model_nag->cari_top_5_sales_namefil($bln, $tahun_ini, $filter);
+                $data["top_5_sales_val_$bln"]  = $this->Model_nag->cari_top_5_sales_valfil($bln, $tahun_ini, $filter);
             }
 
-    // Prediksi mingguan
-            // $data['pred_week1'] = $this->Model_nag->cari_pred_week1();
-            // $data['pred_week2'] = $this->Model_nag->cari_pred_week2();
-            // $data['pred_week3'] = $this->Model_nag->cari_pred_week3();
-            // $data['pred_week4'] = $this->Model_nag->cari_pred_week4();
             $data['data_pred'] = $this->Model_nag->load_prediksi($filter);
         }
-
 
         // Cek akses tombol Refresh Dashboard
         $data['can_refresh'] = (bool) $this->db->query("
@@ -255,13 +218,8 @@ class Landingpage extends CI_Controller
             AND a.menu_status = 'dsb_refresh' AND a.status = 'Y'
         ")->row()->cnt;
 
-        // Last update — baca dari kolom last_update di tbl_data_sum_ar2
-        // (kolom ini diupdate otomatis oleh MySQL Event maupun tombol Refresh)
-        $data['last_update'] = null;
-        try {
-            $ts_q = $this->db->query("SELECT last_update FROM tbl_data_sum_ar2 LIMIT 1");
-            if ($ts_q->num_rows()) $data['last_update'] = $ts_q->row()->last_update;
-        } catch (Exception $e) { /* kolom belum ditambahkan, biarkan null */ }
+        // Last update dari ar_dashboard
+        $data['last_update'] = $this->Model_nag->dsb_ar_last_update();
 
     // Tetap load view
         if (!$selected_pc) {
@@ -299,12 +257,16 @@ class Landingpage extends CI_Controller
             echo json_encode(['status' => false, 'message' => 'Akses ditolak']); return;
         }
 
+        // $procedures = [
+        //     'get_data_sales', 'get_data_sum_ar', 'get_data_ar',
+        //     'get_data_sum_ar_knitting', 'get_data_prediction', 'update_invoice',
+        //     'get_data_overdue_knitting', 'get_data_ar_knitting',
+        //     'get_data_prediction_knitting', 'get_data_sales_knitting',
+        //     'get_data_dsb_ar', 'get_data_overdue', 'get_data_dsb_ar_modal'
+        // ];
+
         $procedures = [
-            'get_data_sales', 'get_data_sum_ar', 'get_data_ar',
-            'get_data_sum_ar_knitting', 'get_data_prediction', 'update_invoice',
-            'get_data_overdue_knitting', 'get_data_ar_knitting',
-            'get_data_prediction_knitting', 'get_data_sales_knitting',
-            'get_data_dsb_ar', 'get_data_overdue', 'get_data_dsb_ar_modal'
+            'ar_get_data_dashboard'
         ];
 
         $failed  = [];
@@ -330,6 +292,97 @@ class Landingpage extends CI_Controller
             'failed'      => $failed,
             'last_update' => $last_update
         ]);
+    }
+
+    public function dashboard_log()
+    {
+        if (!$this->session->userdata('username')) {
+            echo json_encode(['status' => false]); return;
+        }
+        $filter    = $this->input->post('pc')     ?: 'ALL';
+        $date_from = $this->input->post('dari')   ?: date('Y-m-d');
+        $date_to   = $this->input->post('sampai') ?: date('Y-m-d');
+        $rows = $this->Model_nag->dsb_ar_log_summary($filter, $date_from, $date_to);
+        echo json_encode(['status' => true, 'data' => $rows]);
+    }
+
+    public function dashboard_log_detail()
+    {
+        if (!$this->session->userdata('username')) {
+            echo json_encode(['status' => false]); return;
+        }
+        $filter   = $this->input->post('pc')       ?: 'ALL';
+        $run_time = $this->input->post('run_time') ?: '';
+        $col_key  = $this->input->post('col_key')  ?: '';
+        $rows = $this->Model_nag->dsb_ar_log_detail($filter, $run_time, $col_key);
+        echo json_encode(['status' => true, 'data' => $rows]);
+    }
+
+    // Daftar perubahan terbaru (untuk isi dropdown lonceng notifikasi) + jumlah belum dibaca
+    public function notif_list()
+    {
+        if (!$this->session->userdata('username')) {
+            echo json_encode(['status' => false]); return;
+        }
+        $since_id = (int) ($this->input->get('since_id') ?: 0);
+        $rows   = $this->Model_nag->get_dashboard_activity_log(0, 50);
+        $unread = $this->Model_nag->count_dashboard_activity_log($since_id);
+        echo json_encode(['status' => true, 'data' => $rows, 'unread' => $unread]);
+    }
+
+    // Cari di seluruh histori tbl_log (dipanggil dari kotak search lonceng notifikasi)
+    public function notif_search()
+    {
+        if (!$this->session->userdata('username')) {
+            echo json_encode(['status' => false]); return;
+        }
+        $keyword = trim($this->input->get('q') ?: '');
+        if ($keyword === '') {
+            echo json_encode(['status' => true, 'data' => []]); return;
+        }
+        $rows = $this->Model_nag->search_dashboard_activity_log($keyword, 50);
+        echo json_encode(['status' => true, 'data' => $rows]);
+    }
+
+    // SSE: dorong perubahan baru ke browser tanpa perlu polling manual
+    public function notif_stream()
+    {
+        if (!$this->session->userdata('username')) {
+            http_response_code(403); return;
+        }
+
+        header('Content-Type: text/event-stream');
+        header('Cache-Control: no-cache');
+        header('X-Accel-Buffering: no');
+        session_write_close();
+        set_time_limit(0);
+        ignore_user_abort(true);
+        while (ob_get_level() > 0) { ob_end_clean(); }
+
+        $last_id = (int) ($this->input->get('since_id') ?: $this->Model_nag->max_dashboard_activity_log_id());
+        $started = time();
+
+        while (true) {
+            if (connection_aborted()) break;
+
+            // Putuskan tiap 5 menit — browser (EventSource) akan otomatis reconnect
+            if (time() - $started > 300) {
+                echo "event: retry\ndata: {}\n\n";
+                flush();
+                break;
+            }
+
+            $rows = $this->Model_nag->get_dashboard_activity_log($last_id, 50);
+            if (!empty($rows)) {
+                $ids     = array_column($rows, 'id');
+                $last_id = max($ids);
+                echo 'data: ' . json_encode(['rows' => $rows, 'last_id' => $last_id]) . "\n\n";
+            } else {
+                echo "event: ping\ndata: {}\n\n";
+            }
+            flush();
+            sleep(5);
+        }
     }
 
     public function block_page()

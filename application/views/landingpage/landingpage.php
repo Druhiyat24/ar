@@ -93,6 +93,16 @@ body { overflow-y: scroll; }
     border-top: 1px solid rgba(0,0,0,0.05);
 }
 .kpi-last-update i { font-size: 9px; }
+.kpi-log-btn {
+    display: inline-block;
+    margin-left: 6px;
+    cursor: pointer;
+    color: #9fa8da;
+    opacity: 0.7;
+    transition: opacity .15s, color .15s;
+}
+.kpi-log-btn:hover { opacity: 1; color: #3949ab; }
+.kpi-log-btn i { font-size: 10px; }
 
 /* ── Refresh button spin ── */
 .fa-spin-custom { animation: spin 1s linear infinite; }
@@ -199,7 +209,7 @@ body { overflow-y: scroll; }
                                         <span>Sales YTD (Invoiced)</span>
                                     </div>
                                     <div class="kpi-value" data-kpi-key="sls_ytd_inv" data-kpi-raw="<?= (float)$sls_ytd_inv; ?>">IDR <?= number_format((float)$sls_ytd_inv, 2); ?></div>
-                                    <div class="kpi-last-update" id="lu_sls_ytd_inv"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
+                                    <div class="kpi-last-update" id="lu_sls_ytd_inv"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?> <span class="kpi-log-btn" onclick="event.stopPropagation();showKpiLog('sls_ytd_inv','Sales YTD Invoiced')" title="Lihat log perubahan"><i class="fas fa-history"></i></span></div>
                                 </div>
                             </div>
 
@@ -211,7 +221,7 @@ body { overflow-y: scroll; }
                                         <span><a href="<?= base_url('report/frm_sales_report'); ?>" target="blank">Sales Current Month (Invoiced)</a></span>
                                     </div>
                                     <div class="kpi-value" data-kpi-key="sls_cm_inv" data-kpi-raw="<?= (float)$sls_cm_inv; ?>">IDR <?= number_format((float)$sls_cm_inv, 2); ?></div>
-                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
+                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?> <span class="kpi-log-btn" onclick="event.stopPropagation();showKpiLog('sls_cm_inv','Sales CM Invoiced')" title="Lihat log perubahan"><i class="fas fa-history"></i></span></div>
                                 </div>
                             </div>
 
@@ -223,7 +233,7 @@ body { overflow-y: scroll; }
                                         <span>Sales YTD</span>
                                     </div>
                                     <div class="kpi-value" data-kpi-key="sls_ytd_all" data-kpi-raw="<?= (float)$sls_no_inv + (float)$sls_ytd_inv; ?>">IDR <?= number_format((float)$sls_no_inv + (float)$sls_ytd_inv, 2); ?></div>
-                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
+                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?> <span class="kpi-log-btn" onclick="event.stopPropagation();showKpiLog('sls_ytd_all','Sales YTD (All)')" title="Lihat log perubahan"><i class="fas fa-history"></i></span></div>
                                 </div>
                             </div>
 
@@ -235,7 +245,7 @@ body { overflow-y: scroll; }
                                         <span>Sales Current Month</span>
                                     </div>
                                     <div class="kpi-value" data-kpi-key="sls_cm_all" data-kpi-raw="<?= (float)$sls_cm_no_inv + (float)$sls_cm_inv; ?>">IDR <?= number_format((float)$sls_cm_no_inv + (float)$sls_cm_inv, 2); ?></div>
-                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
+                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?> <span class="kpi-log-btn" onclick="event.stopPropagation();showKpiLog('sls_cm_all','Sales CM (All)')" title="Lihat log perubahan"><i class="fas fa-history"></i></span></div>
                                 </div>
                             </div>
 
@@ -254,7 +264,7 @@ body { overflow-y: scroll; }
                                             echo number_format($result, 2);
                                         ?> %
                                     </div>
-                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
+                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?> <span class="kpi-log-btn" onclick="event.stopPropagation();showKpiLog('sls_no_inv','Sales Not Invoiced')" title="Lihat log perubahan"><i class="fas fa-history"></i></span></div>
                                 </div>
                             </div>
 
@@ -267,7 +277,7 @@ body { overflow-y: scroll; }
                                     </div>
                                     <div class="kpi-value" data-kpi-key="ar_eqvidr" data-kpi-raw="<?= (float)$ar_eqvidr; ?>">IDR <?= number_format((float)$ar_eqvidr, 2); ?></div>
                                     <div class="kpi-footer">100.00 %</div>
-                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
+                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?> <span class="kpi-log-btn" onclick="event.stopPropagation();showKpiLog('ar_idr','Account Receivable')" title="Lihat log perubahan"><i class="fas fa-history"></i></span></div>
                                 </div>
                             </div>
 
@@ -280,7 +290,7 @@ body { overflow-y: scroll; }
                                     </div>
                                     <div class="kpi-value" data-kpi-key="ready_due" data-kpi-raw="<?= (float)$ready_due; ?>">IDR <?= number_format((float)$ready_due, 2); ?></div>
                                     <div class="kpi-footer"><?= number_format((float)$ar_eqvidr > 0 ? ((float)$ready_due / (float)$ar_eqvidr * 100) : 0, 2); ?> %</div>
-                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
+                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?> <span class="kpi-log-btn" onclick="event.stopPropagation();showKpiLog('ready_due','Overdue Receivable')" title="Lihat log perubahan"><i class="fas fa-history"></i></span></div>
                                 </div>
                             </div>
 
@@ -293,7 +303,7 @@ body { overflow-y: scroll; }
                                     </div>
                                     <div class="kpi-value" data-kpi-key="not_due" data-kpi-raw="<?= (float)($ar_eqvidr - $ready_due); ?>">IDR <?= number_format((float)($ar_eqvidr - $ready_due), 2); ?></div>
                                     <div class="kpi-footer"><?= number_format((float)$ar_eqvidr > 0 ? (((float)$ar_eqvidr - (float)$ready_due) / (float)$ar_eqvidr * 100) : 0, 2); ?> %</div>
-                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?></div>
+                                    <div class="kpi-last-update"><i class="fas fa-clock"></i> <?= $last_update_fmt; ?> <span class="kpi-log-btn" onclick="event.stopPropagation();showKpiLog('not_due','Not Due Receivable')" title="Lihat log perubahan"><i class="fas fa-history"></i></span></div>
                                 </div>
                             </div>
 
@@ -493,9 +503,9 @@ body { overflow-y: scroll; }
             </div>
             <div class="modal-body">
                 <div class="table-responsive" style="height:400px">
-                    <table class="table table-striped table-head-fixed text-nowrap">
+                    <table id="tbl_slsytd" class="table table-striped table-head-fixed text-nowrap">
                         <thead>
-                            <tr><th>Customer</th><th class="text-right">Qty</th><th class="text-right">Avg Sales Price</th><th class="text-right">Total Value</th></tr>
+                            <tr><th>Customer</th><th class="text-right">Qty</th><th>Unit</th><th class="text-right">Curr</th><th class="text-right">Avg Sales Price</th><th class="text-right">Total Value</th></tr>
                         </thead>
                         <tbody>
                             <?php $ttl_qty = 0; $ttl_total = 0; ?>
@@ -503,16 +513,18 @@ body { overflow-y: scroll; }
                                 <?php foreach ($data_slsytd as $dsy): $ttl_qty += $dsy['qty']; $ttl_total += $dsy['total']; ?>
                                     <tr>
                                         <td><?= $dsy['customer']; ?></td>
-                                        <td class="text-right"><?= $dsy['qty2']; ?></td>
-                                        <td class="text-right">IDR <?= number_format(($dsy['total'] / $dsy['qty']), 2); ?></td>
-                                        <td class="text-right"><?= $dsy['total2']; ?></td>
+                                        <td class="text-right"><?= ($dsy['uom'] == 'PCS') ? number_format($dsy['qty'], 0) : number_format($dsy['qty'], 2); ?></td>
+                                        <td><?= $dsy['uom']; ?></td>
+                                        <td class="text-right">IDR</td>
+                                        <td class="text-right"><?= number_format($dsy['avg_price'], 2); ?></td>
+                                        <td class="text-right"><?= number_format($dsy['total'], 2); ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                                 <tr class="font-weight-bold bg-light">
-                                    <td>Total</td><td class="text-right"><?= number_format($ttl_qty, 2); ?></td><td></td><td class="text-right">IDR <?= number_format($ttl_total, 2); ?></td>
+                                    <td>Total</td><td class="text-right"><?= number_format($ttl_qty, 2); ?></td><td></td><td class="text-right">IDR</td><td></td><td class="text-right"><?= number_format($ttl_total, 2); ?></td>
                                 </tr>
                             <?php else: ?>
-                                <tr><td colspan="4" class="text-center text-muted">No Data Available</td></tr>
+                                <tr><td colspan="6" class="text-center text-muted">No Data Available</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -532,9 +544,9 @@ body { overflow-y: scroll; }
             </div>
             <div class="modal-body">
                 <div class="table-responsive" style="height:400px">
-                    <table class="table table-striped table-head-fixed text-nowrap">
+                    <table id="tbl_slscm" class="table table-striped table-head-fixed text-nowrap">
                         <thead>
-                            <tr><th>Customer</th><th class="text-right">Qty</th><th class="text-right">Avg Sales Price</th><th class="text-right">Total Value</th></tr>
+                            <tr><th>Customer</th><th class="text-right">Qty</th><th>Unit</th><th class="text-right">Curr</th><th class="text-right">Avg Sales Price</th><th class="text-right">Total Value</th></tr>
                         </thead>
                         <tbody>
                             <?php $ttl_qty = 0; $ttl_total = 0; ?>
@@ -542,16 +554,18 @@ body { overflow-y: scroll; }
                                 <?php foreach ($data_slscm as $dsc): $ttl_qty += $dsc['qty']; $ttl_total += $dsc['total']; ?>
                                     <tr>
                                         <td><?= $dsc['customer']; ?></td>
-                                        <td class="text-right"><?= $dsc['qty2']; ?></td>
-                                        <td class="text-right">IDR <?= number_format(($dsc['total'] / $dsc['qty']), 2); ?></td>
-                                        <td class="text-right"><?= $dsc['total2']; ?></td>
+                                        <td class="text-right"><?= ($dsc['uom'] == 'PCS') ? number_format($dsc['qty'], 0) : number_format($dsc['qty'], 2); ?></td>
+                                        <td><?= $dsc['uom']; ?></td>
+                                        <td class="text-right">IDR</td>
+                                        <td class="text-right"><?= number_format($dsc['avg_price'], 2); ?></td>
+                                        <td class="text-right"><?= number_format($dsc['total'], 2); ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                                 <tr class="font-weight-bold bg-light">
-                                    <td>Total</td><td class="text-right"><?= number_format($ttl_qty, 2); ?></td><td></td><td class="text-right">IDR <?= number_format($ttl_total, 2); ?></td>
+                                    <td>Total</td><td class="text-right"><?= number_format($ttl_qty, 2); ?></td><td></td><td class="text-right">IDR</td><td></td><td class="text-right"><?= number_format($ttl_total, 2); ?></td>
                                 </tr>
                             <?php else: ?>
-                                <tr><td colspan="4" class="text-center text-muted">No Data Available</td></tr>
+                                <tr><td colspan="6" class="text-center text-muted">No Data Available</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -571,25 +585,29 @@ body { overflow-y: scroll; }
             </div>
             <div class="modal-body">
                 <div class="table-responsive" style="height:400px">
-                    <table class="table table-striped table-head-fixed text-nowrap">
+                    <table id="tbl_slsytd2" class="table table-striped table-head-fixed text-nowrap">
                         <thead>
-                            <tr><th>Customer</th><th class="text-right">Qty</th><th class="text-right">Avg Sales Price</th><th class="text-right">Total Value</th></tr>
+                            <tr><th>Customer</th><th class="text-right">Qty</th><th>Unit</th><th class="text-right">Curr</th><th class="text-right">Avg Sales Price</th><th class="text-right">Total Value</th></tr>
                         </thead>
                         <tbody>
                             <?php $ttl_qty = 0; $ttl_total = 0; ?>
                             <?php foreach ($data_slsytd2 as $dsy2): $ttl_qty += $dsy2['qty']; $ttl_total += $dsy2['total']; ?>
                                 <tr>
                                     <td><?= $dsy2['customer']; ?></td>
-                                    <td class="text-right"><?= $dsy2['qty2']; ?></td>
-                                    <td class="text-right">IDR <?= number_format(($dsy2['total'] / $dsy2['qty']), 2); ?></td>
-                                    <td class="text-right"><?= $dsy2['total2']; ?></td>
+                                    <td class="text-right"><?= ($dsy2['uom'] == 'PCS') ? number_format($dsy2['qty'], 0) : number_format($dsy2['qty'], 2); ?></td>
+                                    <td><?= $dsy2['uom']; ?></td>
+                                    <td class="text-right">IDR</td>
+                                    <td class="text-right"><?= number_format($dsy2['avg_price'], 2); ?></td>
+                                    <td class="text-right"><?= number_format($dsy2['total'], 2); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                             <tr class="font-weight-bold bg-light">
                                 <td>Total</td>
-                                <td class="text-right"><?= number_format($ttl_qty, 2); ?> <?= ($selected_pc == 'NAK') ? 'Kilogram' : 'PCS'; ?></td>
+                                <td class="text-right"><?= number_format($ttl_qty, 2); ?></td>
+                                <td><?= ($selected_pc == 'NAK') ? 'Kilogram' : 'PCS'; ?></td>
+                                <td class="text-right">IDR</td>
                                 <td></td>
-                                <td class="text-right">IDR <?= number_format($ttl_total, 2); ?></td>
+                                <td class="text-right"><?= number_format($ttl_total, 2); ?></td>
                             </tr>
                         </tbody>
                     </table>
@@ -609,25 +627,29 @@ body { overflow-y: scroll; }
             </div>
             <div class="modal-body">
                 <div class="table-responsive" style="height:400px">
-                    <table class="table table-striped table-head-fixed text-nowrap">
+                    <table id="tbl_slsni" class="table table-striped table-head-fixed text-nowrap">
                         <thead>
-                            <tr><th>Customer</th><th class="text-right">Qty</th><th class="text-right">Avg Sales Price</th><th class="text-right">Total Value</th></tr>
+                            <tr><th>Customer</th><th class="text-right">Qty</th><th>Unit</th><th class="text-right">Curr</th><th class="text-right">Avg Sales Price</th><th class="text-right">Total Value</th></tr>
                         </thead>
                         <tbody>
                             <?php $ttl_qty = 0; $ttl_total = 0; ?>
                             <?php foreach ($data_slsni as $sni): $ttl_qty += $sni['qty']; $ttl_total += $sni['total']; ?>
                                 <tr>
                                     <td><?= $sni['customer']; ?></td>
-                                    <td class="text-right"><?= $sni['qty2']; ?></td>
-                                    <td class="text-right">IDR <?= number_format(($sni['total'] / $sni['qty']), 2); ?></td>
-                                    <td class="text-right"><?= $sni['total2']; ?></td>
+                                    <td class="text-right"><?= ($sni['uom'] == 'PCS') ? number_format($sni['qty'], 0) : number_format($sni['qty'], 2); ?></td>
+                                    <td><?= $sni['uom']; ?></td>
+                                    <td class="text-right">IDR</td>
+                                    <td class="text-right"><?= number_format($sni['avg_price'], 2); ?></td>
+                                    <td class="text-right"><?= number_format($sni['total'], 2); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                             <tr class="font-weight-bold bg-light">
                                 <td>Total</td>
-                                <td class="text-right"><?= number_format($ttl_qty, 2); ?> <?= ($selected_pc == 'NAK') ? 'Kilogram' : 'PCS'; ?></td>
+                                <td class="text-right"><?= number_format($ttl_qty, 2); ?></td>
+                                <td><?= ($selected_pc == 'NAK') ? 'Kilogram' : 'PCS'; ?></td>
+                                <td class="text-right">IDR</td>
                                 <td></td>
-                                <td class="text-right">IDR <?= number_format($ttl_total, 2); ?></td>
+                                <td class="text-right"><?= number_format($ttl_total, 2); ?></td>
                             </tr>
                         </tbody>
                     </table>
@@ -647,25 +669,29 @@ body { overflow-y: scroll; }
             </div>
             <div class="modal-body">
                 <div class="table-responsive" style="height:400px">
-                    <table class="table table-striped table-head-fixed text-nowrap">
+                    <table id="tbl_slscm2" class="table table-striped table-head-fixed text-nowrap">
                         <thead>
-                            <tr><th>Customer</th><th class="text-right">Qty</th><th class="text-right">Avg Sales Price</th><th class="text-right">Total Value</th></tr>
+                            <tr><th>Customer</th><th class="text-right">Qty</th><th>Unit</th><th class="text-right">Curr</th><th class="text-right">Avg Sales Price</th><th class="text-right">Total Value</th></tr>
                         </thead>
                         <tbody>
                             <?php $ttl_qty = 0; $ttl_total = 0; ?>
                             <?php foreach ($data_slscm2 as $dsc2): $ttl_qty += $dsc2['qty']; $ttl_total += $dsc2['total']; ?>
                                 <tr>
                                     <td><?= $dsc2['customer']; ?></td>
-                                    <td class="text-right"><?= $dsc2['qty2']; ?></td>
-                                    <td class="text-right">IDR <?= number_format(($dsc2['total'] / $dsc2['qty']), 2); ?></td>
-                                    <td class="text-right"><?= $dsc2['total2']; ?></td>
+                                    <td class="text-right"><?= ($dsc2['uom'] == 'PCS') ? number_format($dsc2['qty'], 0) : number_format($dsc2['qty'], 2); ?></td>
+                                    <td><?= $dsc2['uom']; ?></td>
+                                    <td class="text-right">IDR</td>
+                                    <td class="text-right"><?= number_format($dsc2['avg_price'], 2); ?></td>
+                                    <td class="text-right"><?= number_format($dsc2['total'], 2); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                             <tr class="font-weight-bold bg-light">
                                 <td>Total</td>
-                                <td class="text-right"><?= number_format($ttl_qty, 2); ?> <?= ($selected_pc == 'NAK') ? 'Kilogram' : 'PCS'; ?></td>
+                                <td class="text-right"><?= number_format($ttl_qty, 2); ?></td>
+                                <td><?= ($selected_pc == 'NAK') ? 'Kilogram' : 'PCS'; ?></td>
+                                <td class="text-right">IDR</td>
                                 <td></td>
-                                <td class="text-right">IDR <?= number_format($ttl_total, 2); ?></td>
+                                <td class="text-right"><?= number_format($ttl_total, 2); ?></td>
                             </tr>
                         </tbody>
                     </table>
@@ -711,7 +737,7 @@ body { overflow-y: scroll; }
             </div>
             <div class="modal-body">
                 <div class="table-responsive" style="height:400px">
-                    <table class="table table-striped table-head-fixed text-nowrap">
+                    <table id="tbl_total_ar" class="table table-striped table-head-fixed text-nowrap">
                         <thead>
                             <tr><th>Type Shipment</th><th>Customer</th><th class="text-right">Curr</th><th class="text-right">Total</th><th class="text-right">Equivalent IDR</th></tr>
                         </thead>
@@ -749,7 +775,7 @@ body { overflow-y: scroll; }
             </div>
             <div class="modal-body">
                 <div class="table-responsive" style="height:400px">
-                    <table class="table table-striped table-head-fixed text-nowrap">
+                    <table id="tbl_overdue" class="table table-striped table-head-fixed text-nowrap">
                         <thead>
                             <tr><th>Type Shipment</th><th>Customer</th><th class="text-right">Curr</th><th class="text-right">Total</th></tr>
                         </thead>
@@ -787,7 +813,7 @@ body { overflow-y: scroll; }
             </div>
             <div class="modal-body">
                 <div class="table-responsive" style="height:400px">
-                    <table class="table table-striped table-head-fixed text-nowrap">
+                    <table id="tbl_notdue" class="table table-striped table-head-fixed text-nowrap">
                         <thead>
                             <tr><th>Type Shipment</th><th>Customer</th><th class="text-right">Curr</th><th class="text-right">Total</th></tr>
                         </thead>
@@ -814,6 +840,23 @@ body { overflow-y: scroll; }
         </div>
     </div>
 </div>
+
+<!-- Log History Modal -->
+<div class="modal fade" id="modal_kpi_log" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header text-white" style="background:#3949ab;">
+                <h5 class="modal-title" id="log_modal_title"><i class="fas fa-history mr-2"></i>Log History</h5>
+                <button id="btn_log_export" class="btn btn-sm btn-light mr-2" style="padding:2px 7px;font-size:11px;opacity:0.75;display:none;" title="Export Excel"><i class="fas fa-file-excel text-success"></i></button>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body" style="min-height:200px;">
+                <div id="log-kpi-wrap"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function fmtDate(dt) {
     try {
@@ -821,6 +864,368 @@ function fmtDate(dt) {
         var p = dt.split(/[- :]/);
         return p[2]+"  "+months[parseInt(p[1])-1]+" "+p[0]+" "+p[3]+":"+p[4]+":"+p[5];
     } catch(e) { return dt; }
+}
+
+// Label tiap kolom KPI untuk tampilan log
+var _kpiLogMeta = {
+    'sls_ytd_inv': 'Sales YTD Invoiced',
+    'sls_cm_inv':  'Sales CM Invoiced',
+    'sls_ytd_all': 'Sales YTD (All)',
+    'sls_cm_all':  'Sales CM (All)',
+    'sls_no_inv':  'Sales Not Invoiced',
+    'ar_idr':      'Account Receivable (IDR)',
+    'ready_due':   'Overdue Receivable',
+    'not_due':     'Not Due Receivable'
+};
+
+// Semua kolom untuk tampilan detail
+var _kpiAllCols = [
+    { key: 'sls_ytd_inv', label: 'Sales YTD Inv' },
+    { key: 'sls_cm_inv',  label: 'Sales CM Inv' },
+    { key: 'sls_ytd_all', label: 'Sales YTD All' },
+    { key: 'sls_cm_all',  label: 'Sales CM All' },
+    { key: 'sls_no_inv',  label: 'Not Invoiced' },
+    { key: 'ar_idr',      label: 'AR IDR' },
+    { key: 'ready_due',   label: 'Ready Due' },
+    { key: 'not_due',     label: 'Not Due' }
+];
+
+function _computeRow(r) {
+    r.sls_ytd_all = (parseFloat(r.sls_ytd_inv||0) + parseFloat(r.sls_no_inv||0)).toFixed(2);
+    r.sls_cm_all  = (parseFloat(r.sls_cm_inv||0)  + parseFloat(r.sls_cm_no_inv||0)).toFixed(2);
+    r.not_due     = (parseFloat(r.ar_idr||0) - parseFloat(r.ready_due||0)).toFixed(2);
+    return r;
+}
+
+function _fmt(n) {
+    return parseFloat(n || 0).toLocaleString('id-ID', {minimumFractionDigits:0, maximumFractionDigits:0});
+}
+
+function _logShowListView() {
+    var today = new Date().toISOString().slice(0,10);
+    document.getElementById('log_modal_title').innerHTML = '<i class="fas fa-history mr-2"></i>Log History &mdash; ' + (window._logColLabel || '');
+    document.getElementById('btn_log_export').style.display = 'none';
+    document.getElementById('log-kpi-wrap').innerHTML =
+        '<div class="d-flex align-items-center flex-wrap mb-3" style="gap:8px;">' +
+        '<label class="mb-0">From:</label>' +
+        '<input type="date" id="log_dari" value="' + today + '" class="form-control form-control-sm" style="width:auto;">' +
+        '<label class="mb-0 ml-1">To:</label>' +
+        '<input type="date" id="log_sampai" value="' + today + '" class="form-control form-control-sm" style="width:auto;">' +
+        '<button onclick="loadKpiLog()" class="btn btn-sm btn-primary ml-1">Show</button>' +
+        '</div>' +
+        '<div id="log-list-area" class="table-responsive" style="max-height:400px;overflow-y:auto;font-size:12px;">' +
+        '<p style="color:#aaa;text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Loading...</p>' +
+        '</div>';
+}
+
+function showKpiLog(colKey) {
+    var pc       = document.getElementById('dsb_pc') ? document.getElementById('dsb_pc').value : '<?= $selected_pc ?: 'ALL'; ?>';
+    var colLabel = _kpiLogMeta[colKey] || colKey;
+    window._logKpiPc     = pc;
+    window._logColKey    = colKey;
+    window._logColLabel  = colLabel;
+    window._logAllRows     = [];
+    window._logDisplayRows = [];
+    _logShowListView();
+    $('#modal_kpi_log').modal('show');
+    loadKpiLog();
+}
+
+function loadKpiLog() {
+    var dari    = document.getElementById('log_dari')    ? document.getElementById('log_dari').value    : '';
+    var sampai  = document.getElementById('log_sampai')  ? document.getElementById('log_sampai').value  : '';
+    var area    = document.getElementById('log-list-area');
+    if (!area) return;
+    area.innerHTML = '<p style="color:#aaa;text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Loading...</p>';
+
+    $.ajax({
+        url: '<?= base_url("landingpage/dashboard_log"); ?>',
+        type: 'POST', dataType: 'json',
+        data: { pc: window._logKpiPc || 'ALL', dari: dari, sampai: sampai },
+        success: function(res) {
+            if (!res.status || !res.data.length) {
+                area.innerHTML = '<p style="color:#aaa;text-align:center;padding:20px;">No log data for this filter.</p>';
+                window._logAllRows = [];
+                window._logDisplayRows = [];
+                return;
+            }
+            window._logAllRows = res.data.map(_computeRow);
+            renderKpiLogList();
+        },
+        error: function() {
+            area.innerHTML = '<p style="color:#e74c3c;text-align:center;padding:20px;">Failed to load log.</p>';
+        }
+    });
+}
+
+var _pcName = { 'NAG': 'Nirwana Alabare Garment', 'NAK': 'Nirwana Alabare Knitting' };
+
+// Latar lembut: hijau kalau naik, merah kalau turun
+function _deltaStyle(delta) {
+    if (delta > 0) return 'background:#e8f5e9;color:#2e7d32;';
+    if (delta < 0) return 'background:#ffebee;color:#c62828;';
+    return '';
+}
+
+// Sembunyikan baris log yang nilainya sama beruntun (per profit center),
+// hanya tampilkan baris TERBARU dari tiap kelompok nilai yang sama.
+function _dedupLogRows(rows, colKey) {
+    var groups = {};
+    rows.forEach(function(r) {
+        var pc = r.profit_center;
+        if (!groups[pc]) groups[pc] = [];
+        groups[pc].push(r);
+    });
+    var kept = [];
+    Object.keys(groups).forEach(function(pc) {
+        var list = groups[pc].slice().sort(function(a, b) {
+            return a.run_time < b.run_time ? -1 : (a.run_time > b.run_time ? 1 : 0);
+        });
+        var prevKept = null;
+        list.forEach(function(r, i) {
+            var curVal  = parseFloat(r[colKey] || 0).toFixed(2);
+            var isLast  = (i === list.length - 1);
+            var nextVal = isLast ? null : parseFloat(list[i + 1][colKey] || 0).toFixed(2);
+            var keepThis = isLast || nextVal !== curVal;
+            if (keepThis) {
+                r._prevRunTime = prevKept ? prevKept.run_time : null;
+                r._prevVal     = prevKept ? parseFloat(prevKept[colKey] || 0) : null;
+                kept.push(r);
+                prevKept = r;
+            }
+        });
+    });
+    kept.sort(function(a, b) {
+        return a.run_time < b.run_time ? 1 : (a.run_time > b.run_time ? -1 : 0);
+    });
+    return kept;
+}
+
+function renderKpiLogList() {
+    var area   = document.getElementById('log-list-area');
+    var colKey = window._logColKey;
+    var rows   = window._logAllRows;
+    if (!area || !rows.length) return;
+
+    var dispRows = _dedupLogRows(rows, colKey);
+    window._logDisplayRows = dispRows;
+
+    var html = '<table id="tbl_log_history" class="table table-striped table-head-fixed text-nowrap" style="width:100%;font-size:12px;">' +
+        '<thead><tr>' +
+        '<th>Time</th>' +
+        '<th>Profit Center</th>' +
+        '<th class="text-right">' + (window._logColLabel || colKey) + '</th>' +
+        '<th style="width:36px;"></th>' +
+        '</tr></thead><tbody>';
+
+    dispRows.forEach(function(r) {
+        var val      = _fmt(r[colKey]);
+        var pcLabel  = _pcName[r.profit_center] || r.profit_center;
+        var prevArg  = r._prevRunTime ? "'" + r._prevRunTime.replace(/'/g,"\\'") + "'" : 'null';
+        var delta    = (r._prevVal !== null && r._prevVal !== undefined) ? (parseFloat(r[colKey] || 0) - r._prevVal) : 0;
+        var rowStyle = r._prevRunTime ? _deltaStyle(delta) : '';
+        html += '<tr style="' + rowStyle + '">' +
+            '<td style="white-space:nowrap;">' + r.run_time + '</td>' +
+            '<td>' + pcLabel + '</td>' +
+            '<td class="text-right font-weight-bold">IDR ' + val + '</td>' +
+            '<td class="text-center">' +
+            '<span onclick="showKpiLogDetail(\'' + r.run_time.replace(/'/g,"\\'") + '\',\'' + r.profit_center + '\',' + prevArg + ')" ' +
+            'style="cursor:pointer;color:#3949ab;font-size:13px;" title="View detail per buyer">' +
+            '<i class="fas fa-search-plus"></i></span></td>' +
+            '</tr>';
+    });
+    html += '</tbody></table>';
+    area.innerHTML = html;
+}
+
+function exportLogDetailXLS() {
+    var fname = 'Log_Detail_' + (window._logColLabel || 'KPI').replace(/\s+/g,'_');
+    exportTableXLS('tbl_log_detail', fname);
+}
+
+function exportTableXLS(tableId, filename) {
+    var tbl = document.getElementById(tableId);
+    if (!tbl) { alert('Tabel tidak ditemukan.'); return; }
+    var uri  = 'data:application/vnd.ms-excel;charset=utf-8,';
+    var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' +
+               '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>' + filename + '</x:Name>' +
+               '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>' +
+               '<body><table border="1">' + tbl.innerHTML + '</table></body></html>';
+    var blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href   = url;
+    a.download = filename + '.xls';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function backToLogList() {
+    _logShowListView();
+    if (window._logAllRows && window._logAllRows.length) renderKpiLogList();
+}
+
+function showKpiLogDetail(runTime, pc, prevRunTime) {
+    var colKey   = window._logColKey  || '';
+    var colLabel = window._logColLabel || colKey;
+    var pcLabel  = (pc === 'ALL') ? 'All Profit Centers' : (_pcName[pc] || pc);
+
+    // Switch modal to detail view — export hanya tersedia di sini, bukan di list history
+    document.getElementById('log_modal_title').innerHTML =
+        '<i class="fas fa-search-plus mr-2"></i>' + colLabel + ' &nbsp;&middot;&nbsp; ' + runTime;
+    var btnExport = document.getElementById('btn_log_export');
+    btnExport.style.display = 'inline-block';
+    btnExport.onclick = exportLogDetailXLS;
+    document.getElementById('log-kpi-wrap').innerHTML =
+        '<button onclick="backToLogList()" class="btn btn-sm btn-secondary mb-3" style="font-size:12px;">' +
+        '<i class="fas fa-arrow-left mr-1"></i> Back</button>' +
+        '<div class="text-muted mb-2" style="font-size:11px;"><b>' + pcLabel + '</b>' +
+        (prevRunTime
+            ? ' &nbsp;&middot;&nbsp; Compared to: <b>' + prevRunTime + '</b>'
+            : ' &nbsp;&middot;&nbsp; <i>First entry, no comparison available</i>') +
+        '</div>' +
+        '<div class="table-responsive" id="log-detail-area" style="max-height:400px;overflow-y:auto;">' +
+        '<p style="color:#aaa;text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Loading...</p>' +
+        '</div>';
+
+    var reqCurrent = $.ajax({
+        url: '<?= base_url("landingpage/dashboard_log_detail"); ?>',
+        type: 'POST', dataType: 'json',
+        data: { pc: pc, run_time: runTime, col_key: colKey }
+    });
+
+    if (prevRunTime) {
+        var reqPrev = $.ajax({
+            url: '<?= base_url("landingpage/dashboard_log_detail"); ?>',
+            type: 'POST', dataType: 'json',
+            data: { pc: pc, run_time: prevRunTime, col_key: colKey }
+        });
+        $.when(reqCurrent, reqPrev).done(function(curArgs, prevArgs) {
+            _renderLogDetailCompare(curArgs[0], prevArgs[0]);
+        }).fail(_logDetailError);
+    } else {
+        reqCurrent.done(function(res) {
+            _renderLogDetailCompare(res, null);
+        }).fail(_logDetailError);
+    }
+}
+
+function _logDetailError() {
+    var area = document.getElementById('log-detail-area');
+    if (area) area.innerHTML = '<p style="color:#e74c3c;text-align:center;padding:20px;">Failed to load data.</p>';
+}
+
+function _renderLogDetailCompare(curRes, prevRes) {
+    var area = document.getElementById('log-detail-area');
+    if (!area) return;
+    if (!curRes.status || !curRes.data.length) {
+        area.innerHTML = '<p style="color:#aaa;text-align:center;padding:20px;">No data.</p>';
+        return;
+    }
+    var colKey  = window._logColKey || '';
+    var isAR    = (colKey === 'ar_idr' || colKey === 'ready_due' || colKey === 'not_due');
+    var hasPrev = !!(prevRes && prevRes.status && prevRes.data.length);
+
+    var fmtNum = function(n) {
+        return parseFloat(n||0).toLocaleString('id-ID', {minimumFractionDigits:2, maximumFractionDigits:2});
+    };
+    var fmtQtyNum = function(qty, uom) {
+        var q = parseFloat(qty || 0);
+        return (uom === 'PCS')
+            ? q.toLocaleString('id-ID', {minimumFractionDigits:0, maximumFractionDigits:0})
+            : q.toLocaleString('id-ID', {minimumFractionDigits:2, maximumFractionDigits:2});
+    };
+    var fmtDeltaText = function(n) {
+        var v    = parseFloat(n||0);
+        var sign = v > 0 ? '+' : '';
+        return sign + fmtNum(v);
+    };
+
+    var prevMap = {};
+    if (hasPrev) {
+        prevRes.data.forEach(function(r) {
+            prevMap[(r.customer||'') + '|' + (r.uom||'')] = r;
+        });
+    }
+
+    var html = '<table id="tbl_log_detail" class="table table-striped table-head-fixed text-nowrap" style="width:100%;font-size:12px;"><thead><tr>';
+
+    if (isAR) {
+        var arField = colKey === 'ar_idr' ? 'total_idr' : (colKey === 'ready_due' ? 'total_ready_due' : 'total_not_due');
+        var showIdr = (colKey === 'ar_idr');
+        html += '<th>Customer</th><th class="text-right">Curr</th>' +
+            (hasPrev ? '<th class="text-right">Previous</th>' : '') +
+            '<th class="text-right">Total</th>' +
+            (hasPrev ? '<th class="text-right">Difference</th>' : '') +
+            (showIdr ? '<th class="text-right">Equivalent IDR</th>' : '') +
+            '</tr></thead><tbody>';
+        var ttlAmt = 0, ttlIdr = 0, ttlPrev = 0;
+        curRes.data.forEach(function(r) {
+            var amt      = parseFloat(r[arField] || 0);
+            var idr      = parseFloat(r.total_idr || 0);
+            var prevRow  = prevMap[(r.customer||'') + '|' + (r.uom||'')];
+            var prevAmt  = prevRow ? parseFloat(prevRow[arField] || 0) : 0;
+            var rowStyle = hasPrev ? _deltaStyle(amt - prevAmt) : '';
+            ttlAmt += amt;
+            if (showIdr) ttlIdr += idr;
+            if (hasPrev) ttlPrev += prevAmt;
+            html += '<tr style="' + rowStyle + '"><td>' + (r.customer || '-') + '</td>' +
+                '<td class="text-right">IDR</td>' +
+                (hasPrev ? '<td class="text-right">' + fmtNum(prevAmt) + '</td>' : '') +
+                '<td class="text-right">' + fmtNum(amt) + '</td>' +
+                (hasPrev ? '<td class="text-right">' + fmtDeltaText(amt - prevAmt) + '</td>' : '') +
+                (showIdr ? '<td class="text-right">' + fmtNum(idr) + '</td>' : '') +
+                '</tr>';
+        });
+        var totalStyle = hasPrev ? _deltaStyle(ttlAmt - ttlPrev) : 'background:#f8f9fa;';
+        html += '<tr class="font-weight-bold" style="' + totalStyle + '">' +
+            '<td colspan="2">Total</td>' +
+            (hasPrev ? '<td class="text-right">' + fmtNum(ttlPrev) + '</td>' : '') +
+            '<td class="text-right">' + fmtNum(ttlAmt) + '</td>' +
+            (hasPrev ? '<td class="text-right">' + fmtDeltaText(ttlAmt - ttlPrev) + '</td>' : '') +
+            (showIdr ? '<td class="text-right">' + fmtNum(ttlIdr) + '</td>' : '') +
+            '</tr>';
+    } else {
+        html += '<th>Customer</th><th class="text-right">Qty</th><th>Unit</th>' +
+            '<th class="text-right">Curr</th><th class="text-right">Avg Sales Price</th>' +
+            (hasPrev ? '<th class="text-right">Previous</th>' : '') +
+            '<th class="text-right">Total Value</th>' +
+            (hasPrev ? '<th class="text-right">Difference</th>' : '') +
+            '</tr></thead><tbody>';
+        var ttlQty = 0, ttlTotal = 0, ttlTotalPrev = 0;
+        curRes.data.forEach(function(r) {
+            var qty       = parseFloat(r.qty   || 0);
+            var total     = parseFloat(r.total || 0);
+            var prevRow   = prevMap[(r.customer||'') + '|' + (r.uom||'')];
+            var prevTotal = prevRow ? parseFloat(prevRow.total || 0) : 0;
+            var rowStyle  = hasPrev ? _deltaStyle(total - prevTotal) : '';
+            ttlQty   += qty;
+            ttlTotal += total;
+            if (hasPrev) ttlTotalPrev += prevTotal;
+            html += '<tr style="' + rowStyle + '"><td>' + (r.customer || '-') + '</td>' +
+                '<td class="text-right">' + fmtQtyNum(qty, r.uom) + '</td>' +
+                '<td>' + (r.uom || '') + '</td>' +
+                '<td class="text-right">IDR</td>' +
+                '<td class="text-right">' + fmtNum(r.avg_price) + '</td>' +
+                (hasPrev ? '<td class="text-right">' + fmtNum(prevTotal) + '</td>' : '') +
+                '<td class="text-right">' + fmtNum(total) + '</td>' +
+                (hasPrev ? '<td class="text-right">' + fmtDeltaText(total - prevTotal) + '</td>' : '') +
+                '</tr>';
+        });
+        var totalStyle = hasPrev ? _deltaStyle(ttlTotal - ttlTotalPrev) : 'background:#f8f9fa;';
+        html += '<tr class="font-weight-bold" style="' + totalStyle + '">' +
+            '<td>Total</td>' +
+            '<td class="text-right">' + ttlQty.toLocaleString('id-ID', {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>' +
+            '<td></td><td class="text-right">IDR</td><td></td>' +
+            (hasPrev ? '<td class="text-right">' + fmtNum(ttlTotalPrev) + '</td>' : '') +
+            '<td class="text-right">' + fmtNum(ttlTotal) + '</td>' +
+            (hasPrev ? '<td class="text-right">' + fmtDeltaText(ttlTotal - ttlTotalPrev) + '</td>' : '') +
+            '</tr>';
+    }
+    html += '</tbody></table>';
+    area.innerHTML = html;
 }
 
 function refreshDashboard() {

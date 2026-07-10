@@ -3905,201 +3905,6 @@ function cari_ready_due($filter)
 }
 
 
-function cari_ar_lokal($filter)
-{
-
-    if ($filter == 'NAG') {
-     $where = "and a.profit_center = 'NAG'";
-     $query = $this->db->query("SELECT Coalesce(sum(eqv_idr),0) eqv_idr from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,total from tbl_book_invoice a inner join tbl_invoice_pot b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.shipp = 'Local' and a.id_type = '1' and a.status IN ('APPROVED','POST','FIRST APPROVED','SECOND APPROVED') $where and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date) a");
- }elseif ($filter == 'NAK') {
-    $where = "and a.profit_center = 'NAK'";
-    $query = $this->db->query("SELECT Coalesce(sum(eqv_idr),0) eqv_idr from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,grand_total total from tbl_book_invoice a inner join tbl_invoice_pot_knitting b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.shipp = 'Local' and a.id_type = '1' and a.status IN ('APPROVED','POST','FIRST APPROVED','SECOND APPROVED') $where and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date) a");
-}else{
-    $where = "";
-    $query = $this->db->query("SELECT Coalesce(sum(eqv_idr),0) eqv_idr from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,total from tbl_book_invoice a inner join tbl_invoice_pot b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.shipp = 'Local' and a.id_type = '1' and a.status IN ('APPROVED','POST','FIRST APPROVED','SECOND APPROVED') and a.profit_center = 'NAG' and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()
-        UNION 
-        select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,grand_total total from tbl_book_invoice a inner join tbl_invoice_pot_knitting b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.shipp = 'Local' and a.id_type = '1' and a.status IN ('APPROVED','POST','FIRST APPROVED','SECOND APPROVED') and a.profit_center = 'NAK' and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date) a");
-}
-
-foreach ($query->result() as $data) {
-    $hasil = ($data->eqv_idr);
-}
-
-return $hasil;
-}
-
-function cari_ar_lokal_ni($filter)
-{
-    if ($filter == 'NAG') {
-        $where = "and profit_center = 'NAG'";
-    }elseif ($filter == 'NAK') {
-        $where = "and profit_center = 'NAK'";
-    }else{
-        $where = "";
-    }
-
-    $query = $this->db->query("SELECT sum(total) eqv_idr from tbl_data_dsb_ar where jenis_data = 'ar_lokal_ni' $where");
-    
-    foreach ($query->result() as $data) {
-        $hasil = ($data->eqv_idr);
-    }
-
-    return $hasil;
-}
-
-
-function cari_ar_ekspor($filter)
-{
-    if ($filter == 'NAG') {
-       $where = "and a.profit_center = 'NAG'";
-       $query = $this->db->query("SELECT Coalesce(sum(eqv_idr),0) eqv_idr from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,total from tbl_book_invoice a inner join tbl_invoice_pot b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.shipp = 'Export' and a.id_type = '1' and a.status IN ('APPROVED','POST','FIRST APPROVED','SECOND APPROVED') $where and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date) a");
-   }elseif ($filter == 'NAK') {
-    $where = "and a.profit_center = 'NAK'";
-    $query = $this->db->query("SELECT Coalesce(sum(eqv_idr),0) eqv_idr from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,grand_total total from tbl_book_invoice a inner join tbl_invoice_pot_knitting b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.shipp = 'Export' and a.id_type = '1' and a.status IN ('APPROVED','POST','FIRST APPROVED','SECOND APPROVED') $where and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date) a");
-}else{
-    $where = "";
-    $query = $this->db->query("SELECT Coalesce(sum(eqv_idr),0) eqv_idr from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,total from tbl_book_invoice a inner join tbl_invoice_pot b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.shipp = 'Export' and a.id_type = '1' and a.status IN ('APPROVED','POST','FIRST APPROVED','SECOND APPROVED') and a.profit_center = 'NAG' and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()
-        UNION
-        select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,grand_total total from tbl_book_invoice a inner join tbl_invoice_pot_knitting b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.shipp = 'Export' and a.id_type = '1' and a.status IN ('APPROVED','POST','FIRST APPROVED','SECOND APPROVED') and a.profit_center = 'NAK' and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date) a");
-}
-
-foreach ($query->result() as $data) {
-    $hasil = ($data->eqv_idr);
-}
-
-return $hasil;
-}
-
-function cari_ar_ekspor_ni($filter)
-{
-    // $query = $this->db->query("SELECT Coalesce(sum(eqv_idr),0) eqv_idr from (SELECT bppbdate,curr,total_price,IF(curr = 'USD',rate,1) rate, round((total_price * IF(curr = 'USD',rate,1)),2) eqv_idr, area from (SELECT if(f.area = 'I','Export','Local') area,f.supplier,a.so_no AS no_so, c.bppbno AS sj, c.bppbdate, c.bppbno_int AS shipping_number, d.kpno AS ws,  
-    //     d.styleno, e.product_group, e.product_item, b.color, b.size,  
-    //     c.curr, c.unit AS uom, c.qty, Round(b.price,4) AS unit_price,  
-    //     ROUND(c.qty * Round(b.price,4), 4) AS total_price,  b.id_so, c.id AS id_bppb,if(c.grade = 'GRADE A','A','B') as grade
-    //     FROM so AS a INNER JOIN 
-    //     so_det AS b ON a.id = b.id_so INNER JOIN 
-    //     bppb AS c ON b.id = c.id_so_det INNER JOIN 
-    //     act_costing AS d ON a.id_cost = d.id INNER JOIN 
-    //     masterproduct AS e ON d.id_product = e.id INNER JOIN
-    //     mastersupplier f on f.Id_Supplier = c.id_supplier
-    //     WHERE c.not_sales is null and c.id_supplier != '1038' AND (ISNULL(c.stat_inv) OR c.stat_inv = '' or c.stat_inv='0') and c.confirm = 'Y' and c.cancel = 'N' and LEFT(c.bppbno_int,2) = 'FG' and c.bppbdate BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE() ) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.bppbdate) a where a.area = 'Export'");
-
-    if ($filter == 'NAG') {
-        $where = "and profit_center = 'NAG'";
-    }elseif ($filter == 'NAK') {
-        $where = "and profit_center = 'NAK'";
-    }else{
-        $where = "";
-    }
-
-    $query = $this->db->query("SELECT sum(total) eqv_idr from tbl_data_dsb_ar where jenis_data = 'ar_ekspor_ni' $where");
-
-    foreach ($query->result() as $data) {
-        $hasil = ($data->eqv_idr);
-    }
-
-    return $hasil;
-}
-
-
-function cari_ar_fob($filter)
-{
-    if ($filter == 'NAG') {
-     $where = "and a.profit_center = 'NAG'";
-     $query = $this->db->query("SELECT Coalesce(sum(eqv_idr),0) eqv_idr from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,total from tbl_book_invoice a inner join tbl_invoice_pot b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.type_so = 'FOB' and a.id_type = '1' and a.status = 'APPROVED' $where and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date) a");
- }elseif ($filter == 'NAK') {
-    $where = "and a.profit_center = 'NAK'";
-    $query = $this->db->query("SELECT Coalesce(sum(eqv_idr),0) eqv_idr from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,grand_total total from tbl_book_invoice a inner join tbl_invoice_pot_knitting b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.type_so = 'FOB' and a.id_type = '1' and a.status = 'APPROVED' $where and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date) a");
-}else{
-    $where = "";
-    $query = $this->db->query("SELECT Coalesce(sum(eqv_idr),0) eqv_idr from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,total from tbl_book_invoice a inner join tbl_invoice_pot b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.type_so = 'FOB' and a.id_type = '1' and a.status = 'APPROVED' and a.profit_center = 'NAG' and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()
-        UNION
-        select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,grand_total total from tbl_book_invoice a inner join tbl_invoice_pot_knitting b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.type_so = 'FOB' and a.id_type = '1' and a.status = 'APPROVED' and a.profit_center = 'NAK' and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date) a");
-}
-
-foreach ($query->result() as $data) {
-    $hasil = ($data->eqv_idr);
-}
-
-return $hasil;
-}
-
-function cari_ar_fob_ni($filter)
-{
-
-    if ($filter == 'NAG') {
-        $where = "and profit_center = 'NAG'";
-    }elseif ($filter == 'NAK') {
-        $where = "and profit_center = 'NAK'";
-    }else{
-        $where = "";
-    }
-
-    $query = $this->db->query("SELECT sum(total) eqv_idr from tbl_data_dsb_ar where jenis_data = 'ar_fob_ni' $where");
-
-    foreach ($query->result() as $data) {
-        $hasil = ($data->eqv_idr);
-    }
-
-    return $hasil;
-}
-
-
-function cari_ar_cmt($filter)
-{
-
-    if ($filter == 'NAG') {
-       $where = "and a.profit_center = 'NAG'";
-       $query = $this->db->query("SELECT Coalesce(sum(eqv_idr),0) eqv_idr from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,total from tbl_book_invoice a inner join tbl_invoice_pot b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.type_so = 'CMT' and a.id_type = '1' and a.status = 'APPROVED' $where and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date) a");
-   }elseif ($filter == 'NAK') {
-    $where = "and a.profit_center = 'NAK'";
-    $query = $this->db->query("SELECT Coalesce(sum(eqv_idr),0) eqv_idr from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,grand_total total from tbl_book_invoice a inner join tbl_invoice_pot_knitting b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.type_so = 'CMT' and a.id_type = '1' and a.status = 'APPROVED' $where and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date) a");
-}else{
-    $where = "";
-    $query = $this->db->query("SELECT Coalesce(sum(eqv_idr),0) eqv_idr from (select id_customer,customer,no_invoice,sj_date,id_type,curr,IF(curr = 'USD',rate,1) rate,total, round((total * IF(curr = 'USD',rate,1)),2) eqv_idr from (select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,total from tbl_book_invoice a inner join tbl_invoice_pot b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.type_so = 'CMT' and a.id_type = '1' and a.status = 'APPROVED' and a.profit_center = 'NAG' and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()
-        UNION 
-        select a.id_customer,a.status,a.id,c.Supplier customer,a.no_invoice,a.sj_date,a.id_type,a.curr,grand_total total from tbl_book_invoice a inner join tbl_invoice_pot_knitting b on b.id_book_invoice = a.id inner join mastersupplier c on c.Id_Supplier = a.id_customer where a.type_so = 'CMT' and a.id_type = '1' and a.status = 'APPROVED' and a.profit_center = 'NAK' and a.sj_date BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE()) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.sj_date) a");
-}
-
-foreach ($query->result() as $data) {
-    $hasil = ($data->eqv_idr);
-}
-
-return $hasil;
-}
-
-function cari_ar_cmt_ni($filter)
-{
-    // $query = $this->db->query("SELECT Coalesce(sum(eqv_idr),0) eqv_idr from (SELECT bppbdate,curr,total_price,IF(curr = 'USD',rate,1) rate, round((total_price * IF(curr = 'USD',rate,1)),2) eqv_idr, area, jns_so from (SELECT jns_so,if(f.area = 'I','Export','Local') area,f.supplier,a.so_no AS no_so, c.bppbno AS sj, c.bppbdate, c.bppbno_int AS shipping_number, d.kpno AS ws,  
-    //     d.styleno, e.product_group, e.product_item, b.color, b.size,  
-    //     c.curr, c.unit AS uom, c.qty, Round(b.price,4) AS unit_price,  
-    //     ROUND(c.qty * Round(b.price,4), 4) AS total_price,  b.id_so, c.id AS id_bppb,if(c.grade = 'GRADE A','A','B') as grade
-    //     FROM so AS a INNER JOIN 
-    //     so_det AS b ON a.id = b.id_so INNER JOIN 
-    //     bppb AS c ON b.id = c.id_so_det INNER JOIN 
-    //     act_costing AS d ON a.id_cost = d.id INNER JOIN 
-    //     masterproduct AS e ON d.id_product = e.id INNER JOIN
-    //     mastersupplier f on f.Id_Supplier = c.id_supplier
-    //     WHERE c.not_sales is null and c.id_supplier != '1038' AND (ISNULL(c.stat_inv) OR c.stat_inv = '' or c.stat_inv='0') and c.confirm = 'Y' and c.cancel = 'N' and LEFT(c.bppbno_int,2) = 'FG' and c.bppbdate BETWEEN CONCAT(DATE_FORMAT(CURRENT_DATE,'%Y'),'-01-','01') and CURRENT_DATE() ) a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.bppbdate) a where a.jns_so = 'CMT'");
-
-    if ($filter == 'NAG') {
-        $where = "and profit_center = 'NAG'";
-    }elseif ($filter == 'NAK') {
-        $where = "and profit_center = 'NAK'";
-    }else{
-        $where = "";
-    }
-
-    $query = $this->db->query("SELECT sum(total) eqv_idr from tbl_data_dsb_ar where jenis_data = 'ar_cmt_ni' $where");
-
-    foreach ($query->result() as $data) {
-        $hasil = ($data->eqv_idr);
-    }
-
-    return $hasil;
-}
-
-
 function cari_filter_ar()
 {
     $hasil = $this->db->query("SELECT DISTINCT name_fil,val_fil FROM tbl_fil_dsb_ar WHERE status = 'dsb1' ");
@@ -4120,14 +3925,19 @@ function cari_tahun_ar()
 
 function cari_top_5_sales_name($filter)
 {
-    if ($filter == 'NAG') {
-        $query = $this->db->query("SELECT GROUP_CONCAT(concat('''',customer,'''')) customer from (select customer, ROUND(eqv_idr,2) eqv_idr from (select customer,sum(eqv_idr) eqv_idr from tbl_data_sales GROUP BY id_customer) a order by a.eqv_idr desc limit 5) a");
-    }elseif ($filter == 'NAK') {
-        $query = $this->db->query("SELECT GROUP_CONCAT(concat('''',customer,'''')) customer from (select customer, ROUND(eqv_idr,2) eqv_idr from (select customer,sum(eqv_idr) eqv_idr from tbl_data_sales_knitting GROUP BY id_customer) a order by a.eqv_idr desc limit 5) a");
-    }else{
-        $query = $this->db->query("SELECT GROUP_CONCAT(concat('''',customer,'''')) customer from (select customer, ROUND(sum(eqv_idr),2) eqv_idr from ((select customer,sum(eqv_idr) eqv_idr from tbl_data_sales GROUP BY id_customer) UNION (select customer,sum(eqv_idr) eqv_idr from tbl_data_sales_knitting GROUP BY id_customer)) a group by customer order by a.eqv_idr desc limit 5) a");
-    }
-
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+    $tahun_esc = $this->db->escape(date('Y') . '-%');
+    $query = $this->db->query("
+        SELECT GROUP_CONCAT(concat('''',customer,'''')) customer
+        FROM (
+            SELECT customer, ROUND(SUM(total),2) eqv_idr
+            FROM ar_dashboard
+            WHERE type = 'top_buyer_by_sales_value' AND profit_center $pc AND periode LIKE $tahun_esc
+            GROUP BY customer
+            ORDER BY eqv_idr DESC
+            LIMIT 5
+        ) a
+    ");
 
     foreach ($query->result() as $data) {
         $hasil = ($data->customer);
@@ -4138,13 +3948,19 @@ function cari_top_5_sales_name($filter)
 
 function cari_top_5_sales_val($filter)
 {
-    if ($filter == 'NAG') {
-        $query = $this->db->query("SELECT GROUP_CONCAT(eqv_idr) eqv_idr from (select customer, ROUND(eqv_idr,2) eqv_idr from (select customer,sum(eqv_idr) eqv_idr from tbl_data_sales GROUP BY id_customer) a order by a.eqv_idr desc limit 5) a");
-    }elseif ($filter == 'NAK') {
-        $query = $this->db->query("SELECT GROUP_CONCAT(eqv_idr) eqv_idr from (select customer, ROUND(eqv_idr,2) eqv_idr from (select customer,sum(eqv_idr) eqv_idr from tbl_data_sales_knitting GROUP BY id_customer) a order by a.eqv_idr desc limit 5) a");
-    }else{
-        $query = $this->db->query("SELECT GROUP_CONCAT(eqv_idr) eqv_idr from (select customer, ROUND(sum(eqv_idr),2) eqv_idr from ((select customer,sum(eqv_idr) eqv_idr from tbl_data_sales GROUP BY id_customer) UNION (select customer,sum(eqv_idr) eqv_idr from tbl_data_sales_knitting GROUP BY id_customer)) a group by customer order by a.eqv_idr desc limit 5) a");
-    }
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+    $tahun_esc = $this->db->escape(date('Y') . '-%');
+    $query = $this->db->query("
+        SELECT GROUP_CONCAT(eqv_idr) eqv_idr
+        FROM (
+            SELECT customer, ROUND(SUM(total),2) eqv_idr
+            FROM ar_dashboard
+            WHERE type = 'top_buyer_by_sales_value' AND profit_center $pc AND periode LIKE $tahun_esc
+            GROUP BY customer
+            ORDER BY eqv_idr DESC
+            LIMIT 5
+        ) a
+    ");
 
     foreach ($query->result() as $data) {
         $hasil = ($data->eqv_idr);
@@ -4154,16 +3970,22 @@ function cari_top_5_sales_val($filter)
 }
 
 
+// ar_dashboard.periode format 'YYYY-MM' (mis. '2026-01')
 function cari_top_5_sales_namefil($bulan,$tahun,$filter)
 {
-
-    if ($filter == 'NAG') {
-        $query = $this->db->query("SELECT GROUP_CONCAT(concat('''',customer,'''')) customer from (select customer, ROUND(eqv_idr,2) eqv_idr from (select customer,sum(eqv_idr) eqv_idr from tbl_data_sales where bulan = '$bulan' and tahun = '$tahun' GROUP BY id_customer) a order by a.eqv_idr desc limit 5) a");
-    }elseif ($filter == 'NAK') {
-        $query = $this->db->query("SELECT GROUP_CONCAT(concat('''',customer,'''')) customer from (select customer, ROUND(eqv_idr,2) eqv_idr from (select customer,sum(eqv_idr) eqv_idr from tbl_data_sales_knitting where bulan = '$bulan' and tahun = '$tahun' GROUP BY id_customer) a order by a.eqv_idr desc limit 5) a");
-    }else{
-        $query = $this->db->query("SELECT GROUP_CONCAT(concat('''',customer,'''')) customer from (select customer, ROUND(sum(eqv_idr),2) eqv_idr from ((select customer,sum(eqv_idr) eqv_idr from tbl_data_sales where bulan = '$bulan' and tahun = '$tahun' GROUP BY id_customer) UNION (select customer,sum(eqv_idr) eqv_idr from tbl_data_sales where bulan = '$bulan' and tahun = '$tahun' GROUP BY id_customer)) a GROUP BY customer order by a.eqv_idr desc limit 5) a");
-    }
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+    $periode_esc = $this->db->escape($tahun . '-' . $bulan);
+    $query = $this->db->query("
+        SELECT GROUP_CONCAT(concat('''',customer,'''')) customer
+        FROM (
+            SELECT customer, ROUND(SUM(total),2) eqv_idr
+            FROM ar_dashboard
+            WHERE type = 'top_buyer_by_sales_value' AND profit_center $pc AND periode = $periode_esc
+            GROUP BY customer
+            ORDER BY eqv_idr DESC
+            LIMIT 5
+        ) a
+    ");
 
     foreach ($query->result() as $data) {
         $hasil = ($data->customer);
@@ -4172,16 +3994,22 @@ function cari_top_5_sales_namefil($bulan,$tahun,$filter)
     return $hasil;
 }
 
+// ar_dashboard.periode format 'YYYY-MM' (mis. '2026-01')
 function cari_top_5_sales_valfil($bulan,$tahun, $filter)
 {
-
-    if ($filter == 'NAG') {
-        $query = $this->db->query("SELECT GROUP_CONCAT(eqv_idr) eqv_idr from (select customer, ROUND(eqv_idr,2) eqv_idr from (select customer,sum(eqv_idr) eqv_idr from tbl_data_sales where bulan = '$bulan' and tahun = '$tahun' GROUP BY id_customer) a order by a.eqv_idr desc limit 5) a");
-    }elseif ($filter == 'NAK') {
-        $query = $this->db->query("SELECT GROUP_CONCAT(eqv_idr) eqv_idr from (select customer, ROUND(eqv_idr,2) eqv_idr from (select customer,sum(eqv_idr) eqv_idr from tbl_data_sales_knitting where bulan = '$bulan' and tahun = '$tahun' GROUP BY id_customer) a order by a.eqv_idr desc limit 5) a");
-    }else{
-        $query = $this->db->query("SELECT GROUP_CONCAT(eqv_idr) eqv_idr from (select customer, ROUND(sum(eqv_idr),2) eqv_idr from ((select customer,sum(eqv_idr) eqv_idr from tbl_data_sales where bulan = '$bulan' and tahun = '$tahun' GROUP BY id_customer) UNION (select customer,sum(eqv_idr) eqv_idr from tbl_data_sales where bulan = '$bulan' and tahun = '$tahun' GROUP BY id_customer)) a group by customer order by a.eqv_idr desc limit 5) a");
-    }
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+    $periode_esc = $this->db->escape($tahun . '-' . $bulan);
+    $query = $this->db->query("
+        SELECT GROUP_CONCAT(eqv_idr) eqv_idr
+        FROM (
+            SELECT customer, ROUND(SUM(total),2) eqv_idr
+            FROM ar_dashboard
+            WHERE type = 'top_buyer_by_sales_value' AND profit_center $pc AND periode = $periode_esc
+            GROUP BY customer
+            ORDER BY eqv_idr DESC
+            LIMIT 5
+        ) a
+    ");
 
     foreach ($query->result() as $data) {
         $hasil = ($data->eqv_idr);
@@ -4336,17 +4164,24 @@ function update_nofg($id)
 
 function cari_sales_ytd_mtm($filter)
 {
-    if ($filter == 'NAG') {
-        $where = "select * from tbl_data_sales where tahun = YEAR(CURDATE())";
-    }elseif ($filter == 'NAK') {
-        $where = "select * from tbl_data_sales_knitting where tahun = YEAR(CURDATE())";
-    }else{
-        $where = "select * from tbl_data_sales where tahun = YEAR(CURDATE()) UNION select * from tbl_data_sales_knitting where tahun = YEAR(CURDATE())";
-    }
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+    $tahun_esc = $this->db->escape(date('Y') . '-%');
 
-    $query = $this->db->query("SELECT GROUP_CONCAT(eqv_idr) eqv_idr from (SELECT bulan_text,ROUND(COALESCE(eqv_idr,0),2) eqv_idr FROM (select DISTINCT bulan_text from dim_date WHERE tahun = YEAR(CURDATE())) a left join 
-        (SELECT bulan,sum(eqv_idr) eqv_idr FROM($where) a GROUP BY bulan) b on b.bulan = a.bulan_text ORDER BY a.bulan_text asc) a");
-    if ($query->result()) {  
+    $query = $this->db->query("
+        SELECT GROUP_CONCAT(eqv_idr) eqv_idr
+        FROM (
+            SELECT a.bulan_text, ROUND(COALESCE(b.total,0),2) eqv_idr
+            FROM (SELECT DISTINCT bulan_text FROM dim_date WHERE tahun = YEAR(CURDATE())) a
+            LEFT JOIN (
+                SELECT RIGHT(periode,2) COLLATE latin1_swedish_ci bulan, SUM(total) total
+                FROM ar_dashboard
+                WHERE type = 'top_buyer_by_sales_value' AND profit_center $pc AND periode LIKE $tahun_esc
+                GROUP BY bulan
+            ) b ON b.bulan = a.bulan_text
+            ORDER BY a.bulan_text ASC
+        ) a
+    ");
+    if ($query->result()) {
         foreach ($query->result() as $data) {
             $hasil = ($data->eqv_idr);
         }
@@ -4374,49 +4209,39 @@ function cari_sales_ytd_mtm_bfr()
 
 function cari_sales_ytd_mtm_pertahun($tahun, $filter)
 {
-    if ($filter == 'NAG') {
-        $where = "select * from tbl_data_sales_$tahun where tahun = '$tahun'";
-    }elseif ($filter == 'NAK') {
-        $where = "select * from tbl_data_sales_knitting_$tahun where tahun = '$tahun'";
-    }else{
-        $where = "select * from tbl_data_sales_$tahun where tahun = '$tahun' UNION select * from tbl_data_sales_knitting_$tahun where tahun = '$tahun'";
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+    $tahun_int  = (int) $tahun;
+    $periode_esc = $this->db->escape($tahun . '-%');
+
+    $query = $this->db->query("
+        SELECT GROUP_CONCAT(eqv_idr) eqv_idr
+        FROM (
+            SELECT a.bulan_text, ROUND(COALESCE(b.total,0),2) eqv_idr
+            FROM (SELECT DISTINCT bulan_text FROM dim_date WHERE tahun = $tahun_int) a
+            LEFT JOIN (
+                SELECT RIGHT(periode,2) COLLATE latin1_swedish_ci bulan, SUM(total) total
+                FROM ar_dashboard
+                WHERE type = 'top_buyer_by_sales_value' AND profit_center $pc AND periode LIKE $periode_esc
+                GROUP BY bulan
+            ) b ON b.bulan = a.bulan_text
+            ORDER BY a.bulan_text ASC
+        ) a
+    ");
+    if ($query->result()) {
+        foreach ($query->result() as $data) {
+            $hasil = explode(',', $data->eqv_idr);
+        }
+    } else {
+        $hasil = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     }
 
-    $query = $this->db->query("SELECT GROUP_CONCAT(eqv_idr) eqv_idr from (SELECT bulan_text,ROUND(COALESCE(eqv_idr,0),2) eqv_idr FROM (select DISTINCT bulan_text from dim_date WHERE tahun = '$tahun') a left join 
-        (SELECT bulan,sum(eqv_idr) eqv_idr FROM($where) a GROUP BY bulan) b on b.bulan = a.bulan_text ORDER BY a.bulan_text asc) a");
-    if ($query->result()) {  
-        foreach ($query->result() as $data) {
-                    $hasil = explode(',', $data->eqv_idr); // Ubah string menjadi array
-                }
-            } else {
-                $hasil = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // Data default jika kosong
-            }
-
-            return $hasil;
-        }
+    return $hasil;
+}
 
         function cari_sales_ytd_mtm_tahunini($filter)
         {
-
-            if ($filter == 'NAG') {
-                $where = "select * from tbl_data_sales where tahun = YEAR(CURDATE())";
-            }elseif ($filter == 'NAK') {
-                $where = "select * from tbl_data_sales_knitting where tahun = YEAR(CURDATE())";
-            }else{
-                $where = "select * from tbl_data_sales where tahun = YEAR(CURDATE()) UNION select * from tbl_data_sales_knitting where tahun = YEAR(CURDATE())";
-            }
-
-            $query = $this->db->query("SELECT GROUP_CONCAT(eqv_idr) eqv_idr from (SELECT bulan_text,ROUND(COALESCE(eqv_idr,0),2) eqv_idr FROM (select DISTINCT bulan_text from dim_date WHERE tahun = YEAR(CURDATE())) a left join 
-                (SELECT bulan,sum(eqv_idr) eqv_idr FROM($where) a GROUP BY bulan) b on b.bulan = a.bulan_text ORDER BY a.bulan_text asc) a");
-            if ($query->result()) {  
-                foreach ($query->result() as $data) {
-                    $hasil = explode(',', $data->eqv_idr); // Ubah string menjadi array
-                }
-            } else {
-                $hasil = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // Data default jika kosong
-            }
-
-            return $hasil;
+            $eqv_idr = $this->cari_sales_ytd_mtm($filter);
+            return $eqv_idr ? explode(',', $eqv_idr) : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         }
 
         function cari_overdue_aging($filter)
@@ -4591,53 +4416,58 @@ function modal_caridata_slscm2($filter)
 
 function load_det_sales5($customer, $bulan, $filter)
 {
+    $pc = ($filter === 'NAG' || $filter === 'NAK') ? "= '$filter'" : "IN ('NAG','NAK')";
+    $customer_esc  = $this->db->escape($customer);
+    // Dropdown bulan cuma berisi bulan tahun berjalan, jadi periode = tahun sekarang + bulan.
+    // 'ALL' = year-to-date tahun berjalan (bukan gabungan semua tahun histori).
+    $where_periode = ($bulan && $bulan !== 'ALL')
+        ? (' AND periode = ' . $this->db->escape(date('Y') . '-' . $bulan))
+        : (' AND periode LIKE ' . $this->db->escape(date('Y') . '-%'));
 
-    if ($bulan == "ALL") {
-        $where = "where tahun = DATE_FORMAT(CURRENT_DATE,'%Y') and customer = '$customer' GROUP BY id_customer ";
-    } else {
-        $where = "where tahun = DATE_FORMAT(CURRENT_DATE,'%Y') and bulan = '$bulan' and customer = '$customer' GROUP BY id_customer ";
-    }
-
-    if ($filter == 'NAG') {
-        $hasil = $this->db->query("SELECT customer, ROUND(qty,2) qty,ROUND(eqv_idr,2) eqv_idr from (select customer,sum(qty) qty,sum(eqv_idr) eqv_idr from tbl_data_sales $where) a");
-    }elseif($filter == 'NAK'){
-        $hasil = $this->db->query("SELECT customer, ROUND(qty,2) qty,ROUND(eqv_idr,2) eqv_idr from (select customer,sum(qty) qty,sum(eqv_idr) eqv_idr from tbl_data_sales_knitting $where) a");
-    }else{
-
-        $hasil = $this->db->query("SELECT customer, ROUND(qty,2) qty,ROUND(eqv_idr,2) eqv_idr from ((select customer,sum(qty) qty,sum(eqv_idr) eqv_idr from tbl_data_sales $where) UNION (select customer,sum(qty) qty,sum(eqv_idr) eqv_idr from tbl_data_sales_knitting $where)) a");
-    }
+    $hasil = $this->db->query("
+        SELECT customer, ROUND(SUM(qty),2) qty, ROUND(SUM(total),2) eqv_idr
+        FROM ar_dashboard
+        WHERE type = 'top_buyer_by_sales_value' AND profit_center $pc AND customer = $customer_esc $where_periode
+        GROUP BY customer
+    ");
     return $hasil->result_array();
 }
 
 function load_det_motm($bulan, $filter)
 {
-    if ($filter == 'NAG') {
-        $where = "select * from tbl_data_sales";
-    }elseif ($filter == 'NAK') {
-        $where = "select * from tbl_data_sales_knitting";
-    }else{
-        $where = "select * from tbl_data_sales UNION select * from tbl_data_sales_knitting";
-    }
+    $pc = ($filter === 'NAG' || $filter === 'NAK') ? "= '$filter'" : "IN ('NAG','NAK')";
+    $periode_esc = $this->db->escape(date('Y') . '-' . $bulan);
 
-        //
-    $hasil = $this->db->query("SELECT bulan,customer,sum(qty) qty,sum(eqv_idr) eqv_idr FROM(select * from ($where) a where tahun = DATE_FORMAT(CURRENT_DATE,'%Y')) a where bulan = '$bulan' and eqv_idr > 0 GROUP BY customer order by eqv_idr desc  ");
+    $hasil = $this->db->query("
+        SELECT customer, ROUND(SUM(qty),2) qty, ROUND(SUM(total),2) eqv_idr
+        FROM ar_dashboard
+        WHERE type = 'top_buyer_by_sales_value' AND profit_center $pc AND periode = $periode_esc
+        GROUP BY customer
+        HAVING eqv_idr > 0
+        ORDER BY eqv_idr DESC
+    ");
     return $hasil->result_array();
 }
 
+// Sumbernya ar_dashboard.periode 'YYYY-MM' sekarang mencakup semua tahun,
+// jadi load_det_motm2 & load_det_motm2_ (dulu dipisah per tabel tahun) sekarang identik.
 function load_det_motm2($bulan, $tahun)
 {
-
-        //
-    $hasil = $this->db->query("SELECT bulan,customer,sum(qty) qty,sum(eqv_idr) eqv_idr FROM(select * from tbl_data_sales where tahun = DATE_FORMAT(CURRENT_DATE,'%Y')) a where bulan = '$bulan' and eqv_idr > 0 GROUP BY customer order by eqv_idr desc  ");
+    $periode_esc = $this->db->escape($tahun . '-' . $bulan);
+    $hasil = $this->db->query("
+        SELECT customer, ROUND(SUM(qty),2) qty, ROUND(SUM(total),2) eqv_idr
+        FROM ar_dashboard
+        WHERE type = 'top_buyer_by_sales_value' AND profit_center IN ('NAG','NAK') AND periode = $periode_esc
+        GROUP BY customer
+        HAVING eqv_idr > 0
+        ORDER BY eqv_idr DESC
+    ");
     return $hasil->result_array();
 }
 
 function load_det_motm2_($bulan, $tahun)
 {
-
-        //
-    $hasil = $this->db->query("SELECT bulan,customer,sum(qty) qty,sum(eqv_idr) eqv_idr FROM(select * from tbl_data_sales_$tahun where tahun = '$tahun') a where bulan = '$bulan' and eqv_idr > 0 GROUP BY customer order by eqv_idr desc  ");
-    return $hasil->result_array();
+    return $this->load_det_motm2($bulan, $tahun);
 }
 
 // function load_det_motm2($bulan, $tahun, $filter)
@@ -4716,10 +4546,251 @@ function dsb_data_total_ar($filter)
  return $hasil->result_array();
 }
 
+// ── ar_dashboard helpers ──────────────────────────────────────────────────────
+
+function dsb_ar_total($type, $col, $filter)
+{
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+    $q  = $this->db->query("SELECT COALESCE(SUM($col), 0) val FROM ar_dashboard WHERE type = '$type' AND profit_center $pc");
+    return $q->row() ? (float)$q->row()->val : 0;
+}
+
+function dsb_ar_detail_sales($type, $filter)
+{
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+    $q  = $this->db->query("
+        SELECT CONVERT(customer USING utf8mb4) customer,
+               CONVERT(uom USING utf8mb4) uom,
+               SUM(qty) qty,
+               CONCAT(FORMAT(SUM(qty), IF(uom='PCS',0,2)), ' ', CONVERT(uom USING utf8mb4)) qty2,
+               SUM(total) total,
+               CONCAT('IDR ', FORMAT(SUM(total),2)) total2,
+               IF(SUM(qty)>0, ROUND(SUM(total)/SUM(qty),2), 0) avg_price
+        FROM ar_dashboard
+        WHERE type = '$type' AND profit_center $pc
+        GROUP BY customer, uom
+        ORDER BY total DESC
+    ");
+    return $q->result_array();
+}
+
+function dsb_ar_detail_combined($type1, $type2, $filter)
+{
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+    $q  = $this->db->query("
+        SELECT CONVERT(customer USING utf8mb4) customer,
+               CONVERT(uom USING utf8mb4) uom,
+               SUM(qty) qty,
+               CONCAT(FORMAT(SUM(qty), IF(uom='PCS',0,2)), ' ', CONVERT(uom USING utf8mb4)) qty2,
+               SUM(total) total,
+               CONCAT('IDR ', FORMAT(SUM(total),2)) total2,
+               IF(SUM(qty)>0, ROUND(SUM(total)/SUM(qty),2), 0) avg_price
+        FROM ar_dashboard
+        WHERE type IN ('$type1','$type2') AND profit_center $pc
+        GROUP BY customer, uom
+        ORDER BY total DESC
+    ");
+    return $q->result_array();
+}
+
+function dsb_ar_detail_receivable($filter)
+{
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+    $q  = $this->db->query("
+        SELECT CONVERT(customer USING utf8mb4) customer,
+               CONVERT(shipp USING utf8mb4) shipp,
+               CONVERT(curr USING utf8mb4) curr,
+               ROUND(SUM(total), 2)           total,
+               ROUND(SUM(total_idr), 2)        total_idr,
+               ROUND(SUM(total_not_due), 2)    not_due,
+               ROUND(SUM(total_ready_due), 2)  ready_due
+        FROM ar_dashboard
+        WHERE type = 'receivable' AND profit_center $pc
+        GROUP BY customer, shipp, curr
+        ORDER BY shipp, customer ASC
+    ");
+    return $q->result_array();
+}
+
+function dsb_ar_last_update()
+{
+    $q = $this->db->query("SELECT MAX(updated_at) updated_at FROM ar_dashboard");
+    return $q->row() ? $q->row()->updated_at : null;
+}
+
+// ── Notifikasi perubahan yang berpengaruh ke dashboard ──────────────────────
+// Sumbernya tbl_log (sudah otomatis dicatat lewat trigger DB tiap ada
+// booking/approve/cancel/reverse invoice, alokasi, debit note, dsb).
+
+private function _dashboard_log_activities()
+{
+    return [
+        'Booking invoice', 'Cancel booking invoice',
+        'Create invoice', 'Create invoice Manual',
+        'Reverse Invoice', 'Reverse Invoice Manual',
+        'Create Alokasi', 'Cancel Alokasi', 'Reverse Alokasi',
+        'Create Debit Note', 'Reverse Debitnote',
+        'Reverse Kwitansi',
+    ];
+}
+
+private function _dashboard_log_activities_in()
+{
+    $activities = array_map([$this->db, 'escape'], $this->_dashboard_log_activities());
+    return implode(',', $activities);
+}
+
+function get_dashboard_activity_log($since_id = 0, $limit = 50)
+{
+    $since_id = (int) $since_id;
+    $limit    = (int) $limit;
+    $in       = $this->_dashboard_log_activities_in();
+
+    $q = $this->db->query("
+        SELECT id, nama, activity, tanggal_input, doc_number, keterangan
+        FROM tbl_log
+        WHERE activity IN ($in) AND id > $since_id
+        ORDER BY id DESC
+        LIMIT $limit
+    ");
+    return $q->result_array();
+}
+
+function count_dashboard_activity_log($since_id = 0)
+{
+    $since_id = (int) $since_id;
+    $in       = $this->_dashboard_log_activities_in();
+
+    $q = $this->db->query("
+        SELECT COUNT(*) cnt FROM tbl_log WHERE activity IN ($in) AND id > $since_id
+    ");
+    return (int) $q->row()->cnt;
+}
+
+// Cari di seluruh histori tbl_log (bukan cuma 50 yang lagi ditampilkan di lonceng)
+function search_dashboard_activity_log($keyword, $limit = 50)
+{
+    $in    = $this->_dashboard_log_activities_in();
+    $limit = (int) $limit;
+    $kw    = $this->db->escape_like_str($keyword);
+
+    $q = $this->db->query("
+        SELECT id, nama, activity, tanggal_input, doc_number, keterangan
+        FROM tbl_log
+        WHERE activity IN ($in)
+          AND (activity LIKE '%$kw%' ESCAPE '!' OR doc_number LIKE '%$kw%' ESCAPE '!' OR nama LIKE '%$kw%' ESCAPE '!')
+        ORDER BY id DESC
+        LIMIT $limit
+    ");
+    return $q->result_array();
+}
+
+function max_dashboard_activity_log_id()
+{
+    $in = $this->_dashboard_log_activities_in();
+    $q  = $this->db->query("SELECT COALESCE(MAX(id),0) mx FROM tbl_log WHERE activity IN ($in)");
+    return (int) $q->row()->mx;
+}
+
+function dsb_ar_log($filter, $date_from = null, $date_to = null, $limit = 200)
+{
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+    $where_date = '';
+    if ($date_from) $where_date .= " AND DATE(logged_at) >= '$date_from'";
+    if ($date_to)   $where_date .= " AND DATE(logged_at) <= '$date_to'";
+    // Hanya tampilkan log jam 06:00 - 18:00
+    $q = $this->db->query("
+        SELECT logged_at, profit_center, type,
+               ROUND(SUM(qty), 2)              qty,
+               ROUND(SUM(total), 2)            total,
+               ROUND(SUM(total_idr), 2)        total_idr,
+               ROUND(SUM(total_not_due), 2)    total_not_due,
+               ROUND(SUM(total_ready_due), 2)  total_ready_due
+        FROM ar_dashboard_log
+        WHERE profit_center $pc
+          AND HOUR(logged_at) >= 6 AND HOUR(logged_at) < 18
+          $where_date
+        GROUP BY logged_at, profit_center, type
+        ORDER BY logged_at DESC, profit_center, type
+        LIMIT $limit
+    ");
+    return $q->result_array();
+}
+
+function dsb_ar_log_detail($filter, $run_time, $col_key)
+{
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+    // Map KPI key → type(s) in log table
+    $map = [
+        'sls_ytd_inv'  => "'sales_ytd_invoiced'",
+        'sls_cm_inv'   => "'sales_cm_invoiced'",
+        'sls_no_inv'   => "'sales_ytd_not_invoiced'",
+        'sls_ytd_all'  => "'sales_ytd_invoiced','sales_ytd_not_invoiced'",
+        'sls_cm_all'   => "'sales_cm_invoiced','sales_cm_not_invoiced'",
+        'ar_idr'       => "'receivable'",
+        'ready_due'    => "'receivable'",
+        'not_due'      => "'receivable'",
+    ];
+    if (!isset($map[$col_key])) return [];
+    $types        = $map[$col_key];
+    $run_time_esc = $this->db->escape($run_time);
+    $order = 'total DESC';
+    if ($col_key === 'ar_idr')    $order = 'total_idr DESC';
+    if ($col_key === 'ready_due') $order = 'total_ready_due DESC';
+    if ($col_key === 'not_due')   $order = 'total_not_due DESC';
+    $q = $this->db->query("
+        SELECT CONVERT(customer USING utf8mb4) customer,
+               CONVERT(uom USING utf8mb4) uom,
+               ROUND(SUM(qty), 2)             qty,
+               ROUND(SUM(total), 2)           total,
+               ROUND(SUM(total_idr), 2)       total_idr,
+               ROUND(SUM(total_not_due), 2)   total_not_due,
+               ROUND(SUM(total_ready_due), 2) total_ready_due,
+               IF(SUM(qty)>0, ROUND(SUM(total)/SUM(qty),2), 0) avg_price
+        FROM ar_dashboard_log
+        WHERE profit_center $pc
+          AND type IN ($types)
+          AND DATE_FORMAT(logged_at, '%Y-%m-%d %H:%i') = $run_time_esc
+          AND customer IS NOT NULL
+        GROUP BY customer, uom
+        ORDER BY $order
+    ");
+    return $q->result_array();
+}
+
+function dsb_ar_log_summary($filter, $date_from = null, $date_to = null)
+{
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+    $where_date = '';
+    if ($date_from) $where_date .= " AND DATE(logged_at) >= '$date_from'";
+    if ($date_to)   $where_date .= " AND DATE(logged_at) <= '$date_to'";
+    // Ringkasan per waktu-run (grouped by logged_at, satu baris per run per PC)
+    $q = $this->db->query("
+        SELECT DATE_FORMAT(logged_at, '%Y-%m-%d %H:%i') run_time,
+               profit_center,
+               ROUND(SUM(CASE WHEN type='sales_ytd_invoiced'    THEN total ELSE 0 END), 2) sls_ytd_inv,
+               ROUND(SUM(CASE WHEN type='sales_cm_invoiced'     THEN total ELSE 0 END), 2) sls_cm_inv,
+               ROUND(SUM(CASE WHEN type='sales_ytd_not_invoiced' THEN total ELSE 0 END), 2) sls_no_inv,
+               ROUND(SUM(CASE WHEN type='sales_cm_not_invoiced'  THEN total ELSE 0 END), 2) sls_cm_no_inv,
+               ROUND(SUM(CASE WHEN type='receivable'            THEN total_idr ELSE 0 END), 2) ar_idr,
+               ROUND(SUM(CASE WHEN type='receivable'            THEN total_ready_due ELSE 0 END), 2) ready_due
+        FROM ar_dashboard_log
+        WHERE profit_center $pc
+          AND HOUR(logged_at) >= 6 AND HOUR(logged_at) < 18
+          $where_date
+        GROUP BY run_time, profit_center
+        ORDER BY run_time DESC
+        LIMIT 200
+    ");
+    return $q->result_array();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function getTopInvoice($id)
 {
     $hasil = $this->db->query("SELECT b.id, b.no_invoice, b.id_customer, b.id_top, a.type, a.top
-        FROM tbl_master_top AS a INNER JOIN tbl_book_invoice AS b ON a.id = b.id_top 
+        FROM tbl_master_top AS a INNER JOIN tbl_book_invoice AS b ON a.id = b.id_top
         WHERE b.id = '$id'");
     return $hasil->row();
 }
