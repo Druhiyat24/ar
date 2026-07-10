@@ -562,7 +562,7 @@
         try {
             var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
             var p = dt.split(/[- :]/);
-            return p[2] + ' ' + months[parseInt(p[1], 10) - 1] + ' ' + p[0];
+            return p[2] + ' ' + months[parseInt(p[1], 10) - 1] + ' ' + p[0] + ' ' + p[3] + ':' + p[4] + ':' + p[5];
         } catch (e) { return dt; }
     }
 
