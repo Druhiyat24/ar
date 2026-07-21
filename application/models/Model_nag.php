@@ -5127,88 +5127,108 @@ function cari_sj_knitting($id_sj, $profit_center)
     //     WHERE a.status_inv is null and a.tipe_pengeluaran = 'Penjualan' AND a.no_so = '$id_sj' AND harga != 0 GROUP BY b.id, harga ORDER BY MIN(kode_out) ASC ");
 
     $hasil = $db_pgsql->query("SELECT
-    MAX(i.kode_so) AS no_so,
-    MAX(kode_out) AS sj,
-    MAX(tgl_pengeluaran) AS bppbdate,
-    MAX(kode_out) AS shipping_number,
+    MAX(no_so) AS no_so,
+    MAX(sj) AS sj,
+    MAX(bppbdate) AS bppbdate,
+    MAX(shipping_number) AS shipping_number,
     '-' AS ws,
-    MAX(lab_dip) AS styleno,
+    MAX(styleno) AS styleno,
     '-' AS product_group,
-    MAX(nama_kain) AS product_item,
-    MAX(warna) AS color,
+    MAX(product_item) AS product_item,
+    MAX(color) AS color,
     '-' AS size,
-    MAX(i.currency) AS curr,
-    MAX(g.nama_unit) AS uom,
+    MAX(curr) AS curr,
+    MAX(uom) AS uom,
 
     SUM(qty_meter) AS qty,
 
-    ROUND(MAX(COALESCE(harga_shipment,0)),4) AS unit_price,
-    ROUND(SUM(qty_meter) * ROUND(MAX(COALESCE(harga_shipment,0)),4),4) AS total_price,
+    ROUND(MAX(harga_shipment),4) AS unit_price,
+    ROUND(SUM(qty_meter) * ROUND(MAX(harga_shipment),4),4) AS total_price,
 
-    MAX(a.no_so) AS id_so,
-    MAX(a.id) AS id_bppb,
+    MAX(id_so) AS id_so,
+    MAX(id_bppb) AS id_bppb,
 
     'GRADE A' AS grade,
     'A' AS grade_code,
 
-    MAX(h.nama_unit) AS uom_so,
+    MAX(uom_so) AS uom_so,
 
-    SUM(
-        CASE
-            WHEN h.nama_unit = 'Meter' THEN meter
-            WHEN h.nama_unit = 'Yard' THEN yard
-            ELSE qty_netto
-        END
-    ) AS qty_so,
+    SUM(qty_so) AS qty_so,
 
-    ROUND(MAX(COALESCE(harga,0)),4) AS unit_price_so,
+    ROUND(MAX(harga),4) AS unit_price_so,
 
-    ROUND(
-        SUM(
+    ROUND(SUM(qty_so) * ROUND(MAX(harga),4),4) AS total_price_so,
+
+    MAX(po_konsumen) AS po_konsumen,
+    MAX(kode_konsumen) AS kode_konsumen
+
+FROM (
+    SELECT
+        b.id AS barcode_id,
+        i.kode_so AS no_so,
+        kode_out AS sj,
+        tgl_pengeluaran AS bppbdate,
+        kode_out AS shipping_number,
+        lab_dip AS styleno,
+        nama_kain AS product_item,
+        warna AS color,
+        i.currency AS curr,
+        MAX(g.nama_unit) AS uom,
+        MAX(qty_meter) AS qty_meter,
+        MAX(COALESCE(harga_shipment,0)) AS harga_shipment,
+        a.no_so AS id_so,
+        a.id AS id_bppb,
+        MAX(h.nama_unit) AS uom_so,
+        MAX(
             CASE
                 WHEN h.nama_unit = 'Meter' THEN meter
                 WHEN h.nama_unit = 'Yard' THEN yard
                 ELSE qty_netto
             END
-        ) * ROUND(MAX(COALESCE(harga,0)),4),
-    4) AS total_price_so,
+        ) AS qty_so,
+        MAX(COALESCE(harga,0)) AS harga,
+        b.kain_id AS kain_id,
+        i.po_konsumen AS po_konsumen,
+        mk.kode_konsumen AS kode_konsumen
 
-    MAX(i.po_konsumen) AS po_konsumen,
-    MAX(mk.kode_konsumen) AS kode_konsumen
+    FROM official_out_h a
+    INNER JOIN official_out_barcode b
+        ON b.id_official = a.id
+    INNER JOIN master_kain c
+        ON c.id = b.kain_id
+    LEFT JOIN master_kain_detail d
+        ON d.id = b.detail_kain_id
+    INNER JOIN sales_orders i
+        ON i.id = a.no_so
+    INNER JOIN detail_so e
+        ON e.sales_order_id = i.id
+       AND e.master_kain_id = b.kain_id
+    LEFT JOIN master_unit g
+        ON g.id = e.id_unit_sales_order_shipment
+    LEFT JOIN master_unit h
+        ON h.id = e.id_unit_sales_order
+    INNER JOIN master_konsumen mk
+        ON mk.id = i.konsumen_id
 
-FROM official_out_h a
-INNER JOIN official_out_barcode b
-    ON b.id_official = a.id
-INNER JOIN master_kain c
-    ON c.id = b.kain_id
-LEFT JOIN master_kain_detail d
-    ON d.id = b.detail_kain_id
-INNER JOIN sales_orders i
-    ON i.id = a.no_so
-INNER JOIN detail_so e
-    ON e.sales_order_id = i.id
-   AND e.master_kain_id = b.kain_id
-LEFT JOIN master_unit g
-    ON g.id = e.id_unit_sales_order_shipment
-LEFT JOIN master_unit h
-    ON h.id = e.id_unit_sales_order
-INNER JOIN master_konsumen mk
-    ON mk.id = i.konsumen_id
+    WHERE
+        a.status_inv IS NULL
+        AND a.tipe_pengeluaran = 'Penjualan'
+        AND a.no_so = '$id_sj'
+        AND harga <> 0
 
-WHERE
-    a.status_inv IS NULL
-    AND a.tipe_pengeluaran = 'Penjualan'
-    AND a.no_so = '$id_sj'
-    AND harga <> 0
+    GROUP BY
+        b.id, i.kode_so, kode_out, tgl_pengeluaran, lab_dip, nama_kain, warna,
+        i.currency, a.no_so, a.id, b.kain_id, i.po_konsumen, mk.kode_konsumen
+) barcode_item
 
 GROUP BY
-    b.kain_id,
+    kain_id,
     harga,
     harga_shipment,
-    kode_out
+    sj
 
 ORDER BY
-    MIN(kode_out) ASC ");
+    MIN(sj) ASC ");
 
     return $hasil->result_array();
 }
