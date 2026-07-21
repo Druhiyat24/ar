@@ -5204,7 +5204,8 @@ WHERE
 GROUP BY
     b.kain_id,
     harga,
-    harga_shipment
+    harga_shipment,
+    kode_out
 
 ORDER BY
     MIN(kode_out) ASC ");
