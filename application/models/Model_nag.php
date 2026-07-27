@@ -4173,7 +4173,7 @@ function cari_sales_ytd_mtm($filter)
             SELECT a.bulan_text, ROUND(COALESCE(b.total,0),2) eqv_idr
             FROM (SELECT DISTINCT bulan_text FROM dim_date WHERE tahun = YEAR(CURDATE())) a
             LEFT JOIN (
-                SELECT RIGHT(periode,2) COLLATE latin1_swedish_ci bulan, SUM(total) total
+                SELECT RIGHT(periode,2)  bulan, SUM(total) total
                 FROM ar_dashboard
                 WHERE type = 'top_buyer_by_sales_value' AND profit_center $pc AND periode LIKE $tahun_esc
                 GROUP BY bulan
@@ -4219,7 +4219,7 @@ function cari_sales_ytd_mtm_pertahun($tahun, $filter)
             SELECT a.bulan_text, ROUND(COALESCE(b.total,0),2) eqv_idr
             FROM (SELECT DISTINCT bulan_text FROM dim_date WHERE tahun = $tahun_int) a
             LEFT JOIN (
-                SELECT RIGHT(periode,2) COLLATE latin1_swedish_ci bulan, SUM(total) total
+                SELECT RIGHT(periode,2)  bulan, SUM(total) total
                 FROM ar_dashboard
                 WHERE type = 'top_buyer_by_sales_value' AND profit_center $pc AND periode LIKE $periode_esc
                 GROUP BY bulan
