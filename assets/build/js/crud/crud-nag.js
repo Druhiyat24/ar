@@ -13402,7 +13402,23 @@ function delete_memo_temp(){
 
 			}
 
-			function cari_data_memo() { 
+			function cari_inv_memo() {
+
+				var keyword = $('#carinoinv').val().toUpperCase();
+
+				$('#table-inv-memo tbody tr').each(function () {
+					var no_memo = $(this).find('td').eq(3).text().toUpperCase();
+					var no_invoice = $(this).find('td').eq(5).text().toUpperCase();
+
+					if (no_memo.indexOf(keyword) > -1 || no_invoice.indexOf(keyword) > -1) {
+						$(this).show();
+					} else {
+						$(this).hide();
+					}
+				});
+			}
+
+			function cari_data_memo() {
 
 				$('#table-inv-memo tbody tr').remove();
 		//Date range picker
