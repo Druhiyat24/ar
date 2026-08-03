@@ -507,7 +507,7 @@ class Model_nag extends CI_Model
                 bppb AS c ON b.id = c.id_so_det INNER JOIN 
                 act_costing AS d ON a.id_cost = d.id INNER JOIN 
                 masterproduct AS e ON d.id_product = e.id               
-                WHERE b.id_so = '$id_sj' and c.id_supplier != '1038' AND (ISNULL(c.stat_inv) OR c.stat_inv = '' or c.stat_inv='0')
+                WHERE b.id_so = '$id_sj' AND (c.bppbdate < '2026-08-01' OR (c.bppbdate >= '2026-08-01' AND c.jenis_trans LIKE 'penjualan%')) and c.id_supplier != '1038' AND (ISNULL(c.stat_inv) OR c.stat_inv = '' or c.stat_inv='0')
                 ORDER BY c.bppbno ");
         }else{
             $hasil = $db_pgsql->query("SELECT kode_so no_so, kode_out sj, tgl_pengeluaran bppbdate, kode_out shipping_number, '-' ws, lab_dip styleno, '-' product_group, nama_kain product_item, warna color, '-' size,  currency curr, nama_unit uom, qty_meter qty, Round(coalesce(harga_shipment,0),4) AS unit_price, ROUND(qty_meter * Round(coalesce(harga_shipment,0),4), 4) AS total_price,  a.no_so id_so, a.id AS id_bppb, 'GRADE A' grade,'A' grade from official_out_h a inner join official_out_barcode b on b.id_official = a.id inner join master_kain c on c.id = b.kain_id LEFT JOIN master_kain_detail d on d.id = b.detail_kain_id INNER JOIN detail_so e on e.id = b.detail_so_id INNER JOIN sales_orders f on f.id = a.no_so left join master_unit g on g.id = e.id_unit_sales_order_shipment where a.status_inv is null and a.tipe_pengeluaran = 'Penjualan' and a.no_so = '$id_sj' ORDER BY kode_out asc ");
@@ -3402,9 +3402,10 @@ function edit_memo_h($dn_number, $nm_memo)
 }
 
 
-function cari_invoice_memo($dt_dari_memo, $dt_sampai_memo, $id_customer)
+function cari_invoice_memo($dt_dari_memo, $dt_sampai_memo, $id_customer = '')
 {
-    $hasil = $this->db->query("SELECT b.id,a.id_supplier,d.supplier,a.nm_memo, a.tgl_memo,IF(b.inv_vendor is null,'-',b.inv_vendor) no_invoice,a.curr,sum(b.biaya) grand_total,'' id_book from memo_h a inner join mastersupplier d on d.id_supplier =a.id_supplier inner join memo_det b on b.id_h = a.id_h where a.id_buyer = '$id_customer' and a.tgl_memo BETWEEN '$dt_dari_memo' and '$dt_sampai_memo' and a.status NOT IN ('DRAFT','CANCEL') and b.cancel = 'N' and b.no_dn is null GROUP BY b.id order by a.nm_memo asc");
+    $filter_customer = ($id_customer !== '' && $id_customer !== '0') ? "and a.id_buyer = '$id_customer'" : "";
+    $hasil = $this->db->query("SELECT b.id,a.id_supplier,d.supplier,e.supplier customer,a.nm_memo, a.tgl_memo,IF(b.inv_vendor is null,'-',b.inv_vendor) no_invoice,a.curr,sum(b.biaya) grand_total,'' id_book from memo_h a inner join mastersupplier d on d.id_supplier =a.id_supplier left join mastersupplier e on e.id_supplier = a.id_buyer inner join memo_det b on b.id_h = a.id_h where a.tgl_memo BETWEEN '$dt_dari_memo' and '$dt_sampai_memo' $filter_customer and a.status NOT IN ('DRAFT','CANCEL') and b.cancel = 'N' and b.no_dn is null GROUP BY b.id order by a.nm_memo asc");
     return $hasil->result_array();
 }
 
@@ -3425,7 +3426,7 @@ function simpan_invoice_detail_memo($data)
 
 function load_invoice_detail_memo()
 {
-    $hasil = $this->db->query("SELECT id,id_supplier,supplier,no_invoice,curr,total,nm_memo from tbl_memo_temp");
+    $hasil = $this->db->query("SELECT id,id_supplier,supplier,customer,no_invoice,curr,total,nm_memo from tbl_memo_temp");
     return $hasil->result_array();
 }
 
@@ -4120,7 +4121,7 @@ function cari_sj_noncom($dt_dari_sj, $dt_sampai_sj)
         act_costing AS d ON a.id_cost = d.id INNER JOIN 
         masterproduct AS e ON d.id_product = e.id INNER JOIN
         mastersupplier f on f.Id_Supplier = c.id_supplier
-        WHERE c.not_sales is null and c.id_supplier not in ('1038','1384') AND (ISNULL(c.stat_inv) OR c.stat_inv = '' or c.stat_inv='0') and c.confirm = 'Y' and c.cancel = 'N' and LEFT(c.bppbno_int,2) = 'FG' and c.bppbdate BETWEEN '$dt_dari_sj' AND '$dt_sampai_sj') a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.bppbdate")->result_array();
+        WHERE c.not_sales is null AND (c.bppbdate < '2026-08-01' OR (c.bppbdate >= '2026-08-01' AND c.jenis_trans LIKE 'penjualan%')) and c.id_supplier not in ('1038','1384') AND (ISNULL(c.stat_inv) OR c.stat_inv = '' or c.stat_inv='0') and c.confirm = 'Y' and c.cancel = 'N' and LEFT(c.bppbno_int,2) = 'FG' and c.bppbdate BETWEEN '$dt_dari_sj' AND '$dt_sampai_sj') a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) b on b.tanggal = a.bppbdate")->result_array();
 
     $hasil_pgsql = $db_pgsql->query("SELECT * from (SELECT f.so_date, a.id, f.jenis_order jns_so, f.tipe_order_import_export area, mk.nama_konsumen supplier, mk.kode_konsumen id_supplier, kode_so no_so, kode_out sj, tgl_pengeluaran bppbdate, kode_out shipping_number, '-' ws, lab_dip styleno, '-' product_group, nama_kain product_item, warna color, '-' size,  currency curr, h.nama_unit uom, qty_netto qty, Round(coalesce(harga,0),4) AS unit_price, ROUND(qty_netto * Round(coalesce(harga,0),4), 4) AS total_price, a.no_so id_so, a.id AS id_bppb, 'A' grade, '' not_sales, CONCAT(ROUND(qty_netto,2),' ',h.nama_unit) qty_pcs, TO_CHAR(ROUND(qty_netto * ROUND(coalesce(harga,0),4), 2), 'FM999,999,999,990.00') AS total, '-' invno, g.nama_unit uom_ship, qty_meter qty_ship, Round(coalesce(harga_shipment,0),4) AS unit_price_ship, ROUND(qty_meter * Round(coalesce(harga_shipment,0),4), 4) AS total_price_ship, TO_CHAR(ROUND(qty_meter * ROUND(COALESCE(harga_shipment,0),4), 2), 'FM999,999,999,990.00') AS total_ship from official_out_h a 
         inner join official_out_barcode b on b.id_official = a.id 

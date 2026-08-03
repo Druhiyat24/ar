@@ -10296,14 +10296,16 @@ function simpandn_det()
 				var nm_memo = document.getElementById("table-dn").rows[i].cells[12].children[0].value || '';
 				var no_coa = document.getElementById("table-dn").rows[i].cells[9].children[0].value;
 				var id_memo_det = document.getElementById("table-dn").rows[i].cells[13].children[0].value || '';
+				var customer = document.getElementById("table-dn").rows[i].cells[14].children[0].value || '';
 
-				
-				data.push({		
+
+				data.push({
 					"no_dn": $('#dn_number').val(),
 					"deskripsi": deskripsi,
 					"supplier": supplier,
-					"supplier_invoice": supplier_invoice,	
-					"header1": header1,					
+					"customer": customer,
+					"supplier_invoice": supplier_invoice,
+					"header1": header1,
 					"header2":header2,
 					"header3": header3,
 					"value": value,
@@ -10313,7 +10315,7 @@ function simpandn_det()
 					"no_coa": no_coa,
 					"id_memo_det": id_memo_det,
 
-				})		
+				})
 			}
 
 			var fdata = {
@@ -13362,12 +13364,13 @@ function reverse_kwt(){
 	function add_memo() {
 
 		$cust = $('#nama_supp').val();
-		$idcust = $('[name="customer"]').val()	
+		$idcust = $('[name="customer"]').val()
 	//\
 	// alert($cust);
 	$('[name="no_memo"]').val('');
 	$('[name="custm"]').val($cust);
 	$('[name="id_custm"]').val($idcust);
+	$('#filter_customer_memo').val($idcust).trigger('change');
 	//
 	// $('#table-dn tbody tr').remove();	
 	// $('#table-sj tbody tr').remove();
@@ -13401,12 +13404,12 @@ function delete_memo_temp(){
 
 			function cari_data_memo() { 
 
-				$('#table-inv-memo tbody tr').remove();	
+				$('#table-inv-memo tbody tr').remove();
 		//Date range picker
 		var dt_dari_memo = $('#filter_from').val();
 		var dt_sampai_memo = $('#filter_to').val();
 
-		var id_customer = $('#id_custm').val();
+		var id_customer = $('#filter_customer_memo').val();
 
 		console.log(dt_dari_memo + ' ' + dt_sampai_memo + ' ' + id_customer);
 
@@ -13421,7 +13424,8 @@ function delete_memo_temp(){
 					trHTML += '<tr>';					
 					trHTML += '<td>' + item.id + "</td>";
 					trHTML += '<td>' + item.supplier + "</td>";
-					trHTML += '<td>' + item.nm_memo + "</td>";	
+					trHTML += '<td>' + item.customer + "</td>";
+					trHTML += '<td>' + item.nm_memo + "</td>";
 					trHTML += '<td>' + item.tgl_memo + "</td>";
 					trHTML += '<td>' + item.no_invoice + "</td>";
 					trHTML += '<td>' + item.curr + "</td>";
@@ -13493,17 +13497,18 @@ function duplicate_data_memo(){
  				var rows = $(this).closest("tr")[0];
 				//
                 //
-                data.push({							
+                data.push({
 					//"id_invoice_proforma": rows.cells[0].innerHTML,
-					"id": rows.cells[0].innerHTML,	
-					"id_supplier": rows.cells[8].innerHTML,						
+					"id": rows.cells[0].innerHTML,
+					"id_supplier": rows.cells[9].innerHTML,
 					"supplier": rows.cells[1].innerHTML,
-					"nm_memo": rows.cells[2].innerHTML,
-					"memo_date": rows.cells[3].innerHTML,
-					"no_invoice": rows.cells[4].innerHTML,					
-					"curr": rows.cells[5].innerHTML,
-					"total": rows.cells[6].innerHTML,								
-				});		 
+					"customer": rows.cells[2].innerHTML,
+					"nm_memo": rows.cells[3].innerHTML,
+					"memo_date": rows.cells[4].innerHTML,
+					"no_invoice": rows.cells[5].innerHTML,
+					"curr": rows.cells[6].innerHTML,
+					"total": rows.cells[7].innerHTML,
+				});
 
             });
 
@@ -13573,6 +13578,7 @@ function duplicate_data_memo(){
 				trHTML += '<td hidden><input type="checkbox" name="id_memo_det" id="id_memo_det" class="flat" value = ' + item.id + ' checked></td>';
 				trHTML += '<td hidden><input style="width: 200px" type="text" class="form-control" name="text" value="'+ item.nm_memo +'" placeholder="" autocomplete="off"></td>';
 				trHTML += '<td hidden><input style="width: 200px" type="text" class="form-control" name="text" value="'+ item.id +'" placeholder="" autocomplete="off"></td>';
+				trHTML += '<td hidden><input style="width: 200px" type="text" class="form-control" name="text" value="'+ item.customer +'" placeholder="" autocomplete="off"></td>';
 				trHTML += '</tr>';
 
 			});

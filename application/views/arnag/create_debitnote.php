@@ -65,8 +65,8 @@
               <!-- /. Hidden Element -->
               <div class="form-group col-md-12">
                 <label>Consignee</label>
-                <select class="form-control select2bs4" id="customer" name="customer" onchange="get_alamat(this.value)">
-                  <!--           <option value="all_customer">All Customer</option> -->
+                <select class="form-control select2bs4" id="customer" name="customer" onchange="get_alamat(this.value)" required>
+                  <option value="" selected disabled>-- Select Consignee --</option>
                   <?php foreach ($customer as $cs) : ?>
                     <option value="<?= $cs['Id_Supplier']; ?>"><?= $cs['Supplier']; ?></option>
                   <?php endforeach; ?>
@@ -328,10 +328,13 @@
                                   <input type="hidden" class="form-control" name="inputan8" placeholder="" autocomplete='off' readonly> 
                                 </td>
                                 <td style="visibility:hidden;">
-                                  <input type="hidden" class="form-control" name="inputan8" placeholder="" autocomplete='off' readonly> 
+                                  <input type="hidden" class="form-control" name="inputan8" placeholder="" autocomplete='off' readonly>
+                                </td>
+                                <td style="visibility:hidden;">
+                                  <input type="hidden" class="form-control" name="inputan8" placeholder="" autocomplete='off' readonly>
                                 </td>
                               </tr>
-                            </tbody> 
+                            </tbody>
                           </table>
 
                           <!-- <input  style="margin-right: 15px;border: 0; line-height: 1; padding: 10px 20px; font-size: 1rem; text-align: center; color: #fff; text-shadow: 1px 1px 1px #000; border-radius: 6px; background-color: rgb(30, 144, 255);" id="add" type="button" value="(+) Add">  -->
@@ -553,14 +556,24 @@
                             <div class="card-header">
                               <!-- Date Range -->
                               <div class="row">
-                                <div class="col-md-4">
+                                <div class="col-md-3" style="display:none;">
                                   <label>Customer</label>
                                   <input type="text" class="form-control float-right" id="custm" name="custm" readonly>
                                   <input type="hidden" class="form-control float-right" id="id_custm" name="id_custm" readonly>
                                   <input type="hidden" class="form-control float-right" id="rates" name="rates" readonly>
                                   <input type="hidden" class="form-control float-right" id="pwith" name="pwith" readonly>
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-md-4">
+                                  <div class="form-group mb-0">
+                                    <label>Customer</label>
+                                    <select class="form-control select2bs4" id="filter_customer_memo" name="filter_customer_memo" required>
+                                      <?php foreach ($customer as $cs) : ?>
+                                        <option value="<?= $cs['Id_Supplier']; ?>"><?= $cs['Supplier']; ?></option>
+                                      <?php endforeach; ?>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div class="col-md-3">
                                   <div class="form-group mb-0">
                                     <label>From</label>
                                     <div class="input-group">
@@ -569,7 +582,7 @@
                                     </div>
                                   </div>
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-md-3">
                                   <div class="form-group mb-0">
                                     <label>To</label>
                                     <div class="input-group">
@@ -586,7 +599,7 @@
                                     <option value="PPh 23">dsb..</option>
                                 </select>
                               </div> -->
-                              <div class="col-md-4">
+                              <div class="col-md-2">
 
                                 <div class="form-group mb-0">
                                   <label>Search Data</label>
@@ -666,6 +679,7 @@
                                   <tr>
                                     <th>ID</th>
                                     <th>Supplier</th>
+                                    <th>Customer</th>
                                     <th>No Memo</th>
                                     <th>Memo Date</th>
                                     <th>No Invoice</th>

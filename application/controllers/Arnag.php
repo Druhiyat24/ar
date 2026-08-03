@@ -2942,7 +2942,7 @@ public function update_memo_h()
 }
 
 
-public function cari_invoice_memo($dt_dari_memo, $dt_sampai_memo, $id_customer)
+public function cari_invoice_memo($dt_dari_memo, $dt_sampai_memo, $id_customer = '')
 {
     $data =  $this->Model_nag->cari_invoice_memo($dt_dari_memo, $dt_sampai_memo, $id_customer);
     echo json_encode($data);
