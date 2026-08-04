@@ -879,6 +879,7 @@
             $('#tbody2').empty();
             tampung = [];   // reset detector duplikasi
 
+            var consignee_name = $('#nama_supp').val();
             var trHTML = '';
 
             $.each(response, function (i, item) {
@@ -900,6 +901,7 @@
                 trHTML += '<td hidden><input type="checkbox" name="id_memo_det" value="" checked></td>';
                 trHTML += '<td hidden><input type="text" class="form-control" value="'+ item.no_bpb +'"></td>';
                 trHTML += '<td hidden><input type="text" class="form-control" value=""></td>';
+                trHTML += '<td hidden><input type="text" class="form-control" value="'+ (consignee_name || '') +'"></td>';
                 trHTML += '</tr>';
 
                 tampung.push(item.id);
