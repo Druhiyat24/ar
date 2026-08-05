@@ -15048,6 +15048,7 @@ async function simpandn_det_edit() {
 			"no_dn": no_dn,
 			"deskripsi": row[0].children[0].value,
 			"supplier": row[1].children[0].value,
+			"customer": row[14] ? (row[14].children[0].value || '') : '',
 			"supplier_invoice": row[2].children[0].value,
 			"header1": row[3].children[0].value,
 			"header2": row[4].children[0].value,

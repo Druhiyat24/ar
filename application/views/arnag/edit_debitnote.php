@@ -281,7 +281,10 @@
                                             <input type="hidden" class="form-control" name="inputan8" placeholder="" autocomplete='off' readonly> 
                                         </td>
                                         <td style="display: none;">
-                                            <input type="hidden" class="form-control" name="inputan8" placeholder="" autocomplete='off' readonly> 
+                                            <input type="hidden" class="form-control" name="inputan8" placeholder="" autocomplete='off' readonly>
+                                        </td>
+                                        <td style="display: none;">
+                                            <input type="hidden" class="form-control" name="inputan8" placeholder="" autocomplete='off' readonly>
                                         </td>
                                     </tr>
 
@@ -333,7 +336,10 @@
                                                         <input type="hidden" class="form-control" name="inputan8" placeholder="" value="<?= $row['nm_memo']; ?>" autocomplete='off' readonly> 
                                                     </td>
                                                     <td style="display: none;">
-                                                        <input type="hidden" class="form-control" name="inputan8" placeholder="" value="<?= $row['id_memo_det']; ?>" autocomplete='off' readonly> 
+                                                        <input type="hidden" class="form-control" name="inputan8" placeholder="" value="<?= $row['id_memo_det']; ?>" autocomplete='off' readonly>
+                                                    </td>
+                                                    <td style="display: none;">
+                                                        <input type="hidden" class="form-control" name="inputan8" placeholder="" value="<?= isset($row['customer']) ? $row['customer'] : ''; ?>" autocomplete='off' readonly>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>
@@ -563,7 +569,7 @@
                     <div class="card-header">
                         <!-- Date Range -->
                         <div class="row">
-                            <div class="col-md-4">
+                            <div class="col-md-3" style="display:none;">
                                 <label>Customer</label>
                                 <input type="text" class="form-control float-right" id="custm" name="custm" readonly>
                                 <input type="hidden" class="form-control float-right" id="id_custm" name="id_custm" readonly>
@@ -571,14 +577,30 @@
                                 <input type="hidden" class="form-control float-right" id="pwith" name="pwith" readonly>
                             </div>
                             <div class="col-md-4">
-                                <div class="form-group">
-                                    <!-- <label>Date Range</label> -->
-                                    <label>Date Range</label>
+                                <div class="form-group mb-0">
+                                    <label>Customer</label>
+                                    <select class="form-control select2bs4" id="filter_customer_memo" name="filter_customer_memo" required>
+                                      <?php foreach ($customer as $cs) : ?>
+                                        <option value="<?= $cs['Id_Supplier']; ?>"><?= $cs['Supplier']; ?></option>
+                                      <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group mb-0">
+                                    <label>From</label>
                                     <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
-                                        </div>
-                                        <input type="text" class="form-control float-right" id="tgl_fil_memo" name="tgl_fil_memo">
+                                        <input type="text" name="filter_from_so" id="filter_from" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                        <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group mb-0">
+                                    <label>To</label>
+                                    <div class="input-group">
+                                        <input type="text" name="filter_to_so" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
+                                        <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                     </div>
                                 </div>
                             </div>
@@ -590,18 +612,17 @@
                                     <option value="PPh 23">dsb..</option>
                                 </select>
                             </div> -->
-                            <div class="col-md-4">
-
-                            </br>
-                            <button type="button" id="find_so" name="find_so" class="btn btn-info" href="javascript:void(0)" onclick="cari_data_memo()"><i class="fa fa-search"></i> Search</button>
+                            <div class="col-md-2">
+                                <div class="form-group mb-0">
+                                    <label>Search Data</label>
+                                    <div class="input-group">
+                                        <button type="button" id="find_so" name="find_so" class="btn btn-info" href="javascript:void(0)" onclick="cari_data_memo()"><i class="fa fa-search"></i> Search</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-2">
-                        <input type="hidden" class="form-control float-right" id="id_custm" name="id_custm" readonly>
-                    </div>
-                    <!-- End Date Range -->
-                </div>
-                <!-- /.card-header -->
+                    <!-- /.card-header -->
                 <!-- Detail SO -->
                        <!--  <div class="d-flex justify-content-between">
                            <div class="ml-auto">
@@ -666,6 +687,7 @@
                                     <tr>
                                         <th>ID</th>
                                         <th>Supplier</th>
+                                        <th>Customer</th>
                                         <th>No Memo</th>
                                         <th>Memo Date</th>
                                         <th>No Invoice</th>
@@ -889,13 +911,14 @@
                     success: function (response) {
                 // console.log(response,tampung);
 
+                var consignee_name = $('#nama_supp').val();
                 var trHTML = '';
                 $.each(response, function (i, item) {
                     if (!tampung.includes(item.id)) {
-                       console.log(tampung.includes(item.id),item.id); 
-                       trHTML += '<tr>';       
-                       trHTML += '<td><input style="width: 300px;word-wrap: break-word;" type="text" class="form-control" name="inputan0" value="'+ item.itemdesc +'" placeholder="" autocomplete="off">';     
-                       trHTML += '<td><input style="width: 250px;" class="form-control" value="'+ item.nama_supp +'" list="supp" name="supp"> <datalist id="supp"><option value="'+ item.nama_supp +'">'+ nama_supp.supplier +'</option></datalist></td>';
+                       console.log(tampung.includes(item.id),item.id);
+                       trHTML += '<tr>';
+                       trHTML += '<td><input style="width: 300px;word-wrap: break-word;" type="text" class="form-control" name="inputan0" value="'+ item.itemdesc +'" placeholder="" autocomplete="off">';
+                       trHTML += '<td><input style="width: 250px;" class="form-control" value="'+ item.nama_supp +'" list="supp" name="supp"> <datalist id="supp"><option value="'+ item.nama_supp +'">'+ item.nama_supp +'</option></datalist></td>';
                        trHTML += '<td><input style="width: 200px" type="text" class="form-control" name="inputan2" value="" placeholder="" autocomplete="off"></td>';
                        trHTML += '<td><input style="width: 200px" type="text" class="form-control" id="inputan3" name="inputan3" value="'+ item.no_po +'" placeholder="" autocomplete="off" readonly></td>';
                        trHTML += '<td><input style="width: 200px" type="text" class="form-control" id="inputan4" name="inputan4" value="'+ item.header2 +'" placeholder="" autocomplete="off" readonly></td>';
@@ -908,6 +931,7 @@
                        trHTML += '<td hidden><input type="checkbox" name="id_memo_det" id="id_memo_det" class="flat" value = "" checked></td>';
                        trHTML += '<td hidden><input style="width: 200px" type="text" class="form-control" name="text" value="'+ item.no_bpb +'" placeholder="" autocomplete="off"></td>';
                        trHTML += '<td hidden><input style="width: 200px" type="text" class="form-control" name="text" value="" placeholder="" autocomplete="off"></td>';
+                       trHTML += '<td hidden><input style="width: 200px" type="text" class="form-control" name="text" value="'+ (consignee_name || '') +'" placeholder="" autocomplete="off"></td>';
                        trHTML += '</tr>';
                        tampung.push(item.id);
                    }
