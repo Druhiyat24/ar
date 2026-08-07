@@ -411,6 +411,25 @@ class Model_nag extends CI_Model
         $this->db->insert($table, $data);
     }
 
+    // Log detail perubahan data yang mempengaruhi dashboard (create/cancel/edit
+    // invoice, bppb, dsb). field_name/old_value/new_value dikosongkan kalau
+    // action-nya CREATE atau CANCEL (perubahan seluruh baris, bukan per-field).
+    function log_data_change($doc_number, $source_table, $action, $profit_center, $created_by, $field_name = null, $old_value = null, $new_value = null)
+    {
+        $data = [
+            'doc_number'    => $doc_number,
+            'source_table'  => $source_table,
+            'action'        => $action,
+            'field_name'    => $field_name,
+            'old_value'     => $old_value,
+            'new_value'     => $new_value,
+            'profit_center' => $profit_center,
+            'created_by'    => $created_by,
+            'created_at'    => date('Y-m-d H:i:s'),
+        ];
+        $this->db->insert('tbl_data_change_log', $data);
+    }
+
     function getType($id)
     {
         $hasil = $this->db->query("SELECT b.id, b.id_type, b.doc_number, a.type, b.no_invoice, b.value, b.doc_type, id_customer, profit_center, shipp
@@ -629,22 +648,29 @@ function simpan_invoice_detail($data)
     if (!empty($data)) {
         $id_book_invoice = $data[0]['id_book_invoice'];
         $inv = $this->db->get_where('tbl_book_invoice', ['id' => $id_book_invoice])->row();
-        $shipp_invoice    = $inv ? $inv->shipp : '';
-        $customer_invoice = $inv ? $inv->id_customer : '';
 
-        $db_nag = $this->load->database('db_nag', TRUE);
-        foreach ($data as $row) {
-            $db_nag->query("UPDATE bppb SET
-                shipp_invoice = '$shipp_invoice',
-                customer_invoice = '$customer_invoice',
-                qty_invoice = '{$row['qty']}',
-                satuan_invoice = '{$row['uom']}',
-                curr_invoice = '{$row['curr']}',
-                price_invoice = '{$row['unit_price']}',
-                total_invoice = '{$row['total_price']}',
-                price_other_invoice = 0,
-                total_other_invoice = 0
-                WHERE id = '{$row['id_bppb']}'");
+        // Update bppb cuma untuk NAG. Invoice NAK juga lewat fungsi ini (dipanggil dari
+        // simpan_invoice_detail_new()), tapi bppb-nya di-update dari
+        // simpan_invoice_detail_knitting() memakai data tbl_invoice_detail_knitting
+        // (biar tidak dobel-update / tabrakan angka dengan versi shipment di sini).
+        if ($inv && $inv->profit_center === 'NAG') {
+            $shipp_invoice    = $inv->shipp;
+            $customer_invoice = $inv->id_customer;
+
+            $db_nag = $this->load->database('db_nag', TRUE);
+            foreach ($data as $row) {
+                $db_nag->query("UPDATE bppb SET
+                    shipp_invoice = '$shipp_invoice',
+                    customer_invoice = '$customer_invoice',
+                    qty_invoice = '{$row['qty']}',
+                    satuan_invoice = '{$row['uom']}',
+                    curr_invoice = '{$row['curr']}',
+                    price_invoice = '{$row['unit_price']}',
+                    total_invoice = '{$row['total_price']}',
+                    price_other_invoice = 0,
+                    total_other_invoice = 0
+                    WHERE id = '{$row['id_bppb']}'");
+            }
         }
     }
 
@@ -729,12 +755,12 @@ function report_invoice($id)
 {
     $hasil = $this->db->query("SELECT distinct a.no_invoice, LEFT(b.Supplier, 30) AS customer,
       IFNULL(b.alamat, '-') alamat, IFNULL(b.Phone, '-') AS phone, IFNULL(b.Email, '-') AS email,
-      DATE_FORMAT(f.sj_date,'%d-%m-%Y') AS tgl_inv, UPPER(c.type) AS type, a.shipp, d.type AS type_top, d.top,
+      DATE_FORMAT(f.sj_date,'%d-%m-%Y') AS tgl_inv, f.sj_date AS sj_date, a.profit_center, UPPER(c.type) AS type, a.shipp, d.type AS type_top, d.top,
       e.no_rek, e.nama_bank, e.v_bankaddress, e.curr, v_swiftcode
-      FROM tbl_book_invoice AS a INNER JOIN 
+      FROM tbl_book_invoice AS a INNER JOIN
       mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN
-      tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
-      tbl_master_top AS d ON a.id_top = d.id  INNER JOIN 
+      tbl_type AS c ON a.id_type = c.id_type INNER JOIN
+      tbl_master_top AS d ON a.id_top = d.id  INNER JOIN
       masterbank AS e ON a.id_bank = e.id  INNER join
       tbl_invoice_detail as f on a.id=f.id_book_invoice
       WHERE a.id = '$id' ");

@@ -544,6 +544,8 @@ public function cancel_booking_invoice()
 public function cancel_invoice()
 {
     $id = $this->input->post('id_book_inv');
+    $inv_info = $this->Model_nag->getType($id);
+
     $this->Model_nag->update_bppb($id);
     $this->Model_nag->copy_invoice($id);
     $this->Model_nag->copy_pot($id);
@@ -551,6 +553,11 @@ public function cancel_invoice()
     $this->Model_nag->cancel_invoice($id);
     $this->Model_nag->delete_pot($id);
     $this->Model_nag->delete_detail($id);
+
+        // Simpan Log Perubahan Data (dashboard)
+    if ($inv_info) {
+        $this->Model_nag->log_data_change($inv_info->no_invoice, 'tbl_book_invoice', 'CANCEL', $inv_info->profit_center, $this->session->userdata('username'));
+    }
 
     redirect('arnag/listinvoice');
 }
@@ -683,6 +690,9 @@ public function update_invoice_header()
     $doc_number = $no_inv;
     $status     = "POST";
     $this->log_booking_invoice($activity, $doc_number, $status);
+        // Simpan Log Perubahan Data (dashboard)
+    $inv_info = $this->Model_nag->getType($id_inv);
+    $this->Model_nag->log_data_change($no_inv, 'tbl_book_invoice', 'CREATE', $inv_info ? $inv_info->profit_center : null, $created_by);
         // End Simpan Log
     redirect('arnag/createinvoice');
 }
@@ -844,6 +854,13 @@ public function report_invoice3($id)
         //   
     $mpdf = new \Mpdf\Mpdf();
     $data['data_invoice'] = $this->Model_nag->report_invoice($id);
+    if ($data['data_invoice'] && $data['data_invoice']['profit_center'] == 'NAK' && $data['data_invoice']['sj_date'] >= '2026-08-01') {
+        $data_konsumen = $this->Model_nag->get_konsumen_invoice($id);
+        if ($data_konsumen) {
+            $data['data_invoice']['customer'] = $data_konsumen['supplier'];
+            $data['data_invoice']['alamat'] = $data_konsumen['alamat'];
+        }
+    }
     $data['data_invoice_detail'] = $this->Model_nag->report_invoice_detail($id);
     $data['data_invoice_pot'] = $this->Model_nag->report_invoice_pot($id);
     $data['group_bppb_number'] = $this->Model_nag->group_bppb_number($id);
@@ -863,8 +880,15 @@ public function export_excel_invoice($id)
     if (!$this->session->userdata('username')) {
         redirect('auth');
     }
-        //          
+        //
     $data['data_invoice'] = $this->Model_nag->report_invoice($id);
+    if ($data['data_invoice'] && $data['data_invoice']['profit_center'] == 'NAK' && $data['data_invoice']['sj_date'] >= '2026-08-01') {
+        $data_konsumen = $this->Model_nag->get_konsumen_invoice($id);
+        if ($data_konsumen) {
+            $data['data_invoice']['customer'] = $data_konsumen['supplier'];
+            $data['data_invoice']['alamat'] = $data_konsumen['alamat'];
+        }
+    }
     $data['data_invoice_detail'] = $this->Model_nag->report_invoice_detail($id);
     $data['data_invoice_pot'] = $this->Model_nag->report_invoice_pot($id);
     $data['group_bppb_number'] = $this->Model_nag->group_bppb_number($id);
