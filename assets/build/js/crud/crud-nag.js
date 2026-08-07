@@ -10006,15 +10006,13 @@ function at_credit_alokasi()
 //ubah september
 function save_dn() {
 
-	
-	simpandn_h();	
-	simpandn_det();
-	// update_memo_h();
-	update_memo_det();
-	update_req_dn();
-	//	
+	// no_dn digenerate ulang di server (simpandn_h) supaya tidak bentrok kalau ada
+	// 2 user create bersamaan. simpandn_det/update_memo_det/update_req_dn baru
+	// dipanggil SETELAH #dn_number diperbarui dengan nomor hasil generate ulang itu.
+	simpandn_h();
+	//
 	$('#modal-simpan-dn').modal('hide');
-	
+
 }
 
 	// let array = $('#no_req').val();
@@ -10228,26 +10226,43 @@ function simpandn_h() {
 				'data_table': data,
 				'no_dn': no_dn
 			}
-			$.ajax({				
+			$.ajax({
 				url: "simpandn_h/",
 				type: "POST",
 				data: fdata,
 				dataType: "JSON",
 				success: function (data) {
-					
+
 					if (data.status) //if success close modal and reload ajax table
 					{
 						msg = 'Success Input Detail'
+
+						// Server generate ulang no_dn (cegah bentrok 2 user create bersamaan) -
+						// pakai nomor hasil generate ulang itu untuk detail/memo/request,
+						// baru reload setelah semuanya terkirim.
+						if (data.no_dn) {
+							$('#dn_number').val(data.no_dn);
+						}
+						simpandn_det();
+						update_memo_det();
+						update_req_dn();
+						// Reload Page
+						window.location.href = window.location.href;
 					} else {
 						msg = 'Error Input Detail'
+						// Gagal dapat kunci nomor DN (jarang terjadi) - jangan reload supaya
+						// data yang sudah diisi user tidak hilang, biar bisa langsung coba lagi.
+						Swal.fire({
+							icon: 'warning',
+							title: 'Failed to Save',
+							text: data.message || 'Please try again.'
+						});
 					}
 					// Delete Table Invoice Detail Temporary
 					// delete_kwt_detail_temporary();
 					// Print Preview Invoice
 					// let no_kwt= $('[name="kwt_no"]').val();
 					// print_kwitansi(no_kwt);
-     //                // Reload Page
-     window.location.href = window.location.href;
 
  },
  error: function (jqXHR, textStatus, errorThrown) {
@@ -10263,7 +10278,7 @@ function simpandn_h() {
 
 }
 //ubah september
-function simpandn_det() 
+function simpandn_det()
 { 	
 	return new Promise(resolve => {		
 		setTimeout(() => {

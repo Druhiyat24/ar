@@ -2380,12 +2380,18 @@ public function simpanalokasi()
 public function simpandn_h()
 {
     $data = $this->input->post('data_table');
-    $this->Model_nag->simpandn_h($data);
+    $no_dn = $this->Model_nag->simpandn_h($data);
+
+    if ($no_dn === false) {
+        echo json_encode(array("status" => FALSE, "message" => "Please try again."));
+        return;
+    }
+
     $activity   = "Create Debit Note";
-    $doc_number = $this->input->post('no_dn');
+    $doc_number = $no_dn;
     $status     = "POST";
     $this->log_booking_invoice($activity, $doc_number, $status);
-    echo json_encode(array("status" => TRUE));
+    echo json_encode(array("status" => TRUE, "no_dn" => $no_dn));
 }
 
 public function cari_alokasi($dt_dari_kwt, $dt_sampai_kwt, $customer)

@@ -2979,8 +2979,27 @@ function simpanalokasi($data)
     //ubah september
 function simpandn_h($data)
 {
+    // Cegah 2 user dapat nomor DN yang sama kalau create bersamaan: kunci sebentar,
+    // generate ulang no_dn paling baru saat mau insert (bukan pakai nomor dari saat
+    // halaman dibuka), baru lepas kunci setelah insert selesai.
+    $lock = $this->db->query("SELECT GET_LOCK('gen_no_dn', 10) AS locked")->row();
+    if (!$lock || (int) $lock->locked !== 1) {
+        // Gagal dapat kunci (harusnya sangat jarang) - jangan lanjut insert tanpa
+        // proteksi, biar user disuruh coba simpan ulang daripada berpotensi nomor bentrok.
+        return false;
+    }
+
+    $no_dn_baru = $this->get_kode_debitnote();
+    foreach ($data as &$row) {
+        $row['no_dn'] = $no_dn_baru;
+    }
+    unset($row);
+
     $this->db->insert_batch('tbl_debitnote_h', $data);
-    return $this->db->insert_id();
+
+    $this->db->query("SELECT RELEASE_LOCK('gen_no_dn')");
+
+    return $no_dn_baru;
 }
 
     //ubah september
