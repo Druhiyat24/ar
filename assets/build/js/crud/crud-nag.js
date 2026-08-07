@@ -1460,20 +1460,9 @@ function save_invoice() {
 	let dp		 	 = $('[name="dp"]').val();
 	let profit_ctr	 = $('[name="txt_mdl_pc"]').val();
 	update_invoice_header();
-	update_status_bppb();
-	// at_debit_inv();
-	// if (diskon >= 1) {		
-	// 	at_pot_inv();
-	// }
-	// if (dp >= 1) {		
-	// 	at_dp_inv();
-	// }
-	// at_credit_inv();
-	// if (vat >= 1) {		
-	// 	at_ppn_inv();
-	// }
 	simpan_invoice_detail();
 	simpan_invoice_pot();
+	update_status_bppb();
 
 
 	// console.log(vat + ' ' + diskon + ' ' + dp);	

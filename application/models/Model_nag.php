@@ -624,7 +624,31 @@ function update_pi_sodet_cbd($id_sodet, $no_pi)
 function simpan_invoice_detail($data)
 {
     $this->db->insert_batch('tbl_invoice_detail', $data);
-    return $this->db->insert_id();
+    $insert_id = $this->db->insert_id();
+
+    if (!empty($data)) {
+        $id_book_invoice = $data[0]['id_book_invoice'];
+        $inv = $this->db->get_where('tbl_book_invoice', ['id' => $id_book_invoice])->row();
+        $shipp_invoice    = $inv ? $inv->shipp : '';
+        $customer_invoice = $inv ? $inv->id_customer : '';
+
+        $db_nag = $this->load->database('db_nag', TRUE);
+        foreach ($data as $row) {
+            $db_nag->query("UPDATE bppb SET
+                shipp_invoice = '$shipp_invoice',
+                customer_invoice = '$customer_invoice',
+                qty_invoice = '{$row['qty']}',
+                satuan_invoice = '{$row['uom']}',
+                curr_invoice = '{$row['curr']}',
+                price_invoice = '{$row['unit_price']}',
+                total_invoice = '{$row['total_price']}',
+                price_other_invoice = 0,
+                total_other_invoice = 0
+                WHERE id = '{$row['id_bppb']}'");
+        }
+    }
+
+    return $insert_id;
 }
 
 function simpan_invoice_pot($data)
