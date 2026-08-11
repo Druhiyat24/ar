@@ -545,6 +545,42 @@ public function cancel_invoice()
 {
     $id = $this->input->post('id_book_inv');
     $inv_info = $this->Model_nag->getType($id);
+    // Ambil daftar FG/OUT (id_bppb + shipp_number + so_number + product_item) dulu
+    // sebelum detail-nya dihapus, biar bisa dicatat per baris di log. Cek dua-duanya
+    // (NAG di tbl_invoice_detail, NAK di tbl_invoice_detail_knitting) - yang ada
+    // datanya cuma salah satu.
+    $detail_rows = $this->db->query("
+        SELECT DISTINCT id_bppb, shipp_number, so_number, product_item FROM tbl_invoice_detail WHERE id_book_invoice = '$id'
+        UNION
+        SELECT DISTINCT id_bppb, shipp_number, so_number, product_item FROM tbl_invoice_detail_knitting WHERE id_book_invoice = '$id'
+    ")->result();
+
+    // Ambil qty/price/total lama di bppb dulu (sebelum dikosongkan oleh update_bppb()),
+    // supaya perubahannya ke-log lengkap. Nilai fallback (yang berlaku efektif begitu
+    // kolom *_invoice dikosongkan) diambil dari bppb.qty & so_det.price (via id_so_det).
+    $old_map = [];
+    $fallback_map = [];
+    if (!empty($detail_rows)) {
+        $ids = array_map(function ($d) {
+            return "'" . $d->id_bppb . "'";
+        }, $detail_rows);
+        $id_list = implode(',', $ids);
+        $db_nag = $this->load->database('db_nag', TRUE);
+
+        $bppb_rows = $db_nag->query("SELECT id, qty_invoice, price_invoice, total_invoice FROM bppb WHERE id IN ($id_list)")->result();
+        foreach ($bppb_rows as $b) {
+            $old_map[$b->id] = $b;
+        }
+
+        $fallback_rows = $db_nag->query("
+            SELECT c.id AS id_bppb, c.qty, ROUND(b.price, 4) AS price
+            FROM bppb c INNER JOIN so_det b ON b.id = c.id_so_det
+            WHERE c.id IN ($id_list)
+        ")->result();
+        foreach ($fallback_rows as $f) {
+            $fallback_map[$f->id_bppb] = $f;
+        }
+    }
 
     $this->Model_nag->update_bppb($id);
     $this->Model_nag->copy_invoice($id);
@@ -554,9 +590,30 @@ public function cancel_invoice()
     $this->Model_nag->delete_pot($id);
     $this->Model_nag->delete_detail($id);
 
-        // Simpan Log Perubahan Data (dashboard)
+        // Simpan Log Perubahan Data (dashboard) - 1 baris per FG/OUT kalau ada,
+        // fallback 1 baris ringkasan invoice kalau tidak ada detail.
     if ($inv_info) {
-        $this->Model_nag->log_data_change($inv_info->no_invoice, 'tbl_book_invoice', 'CANCEL', $inv_info->profit_center, $this->session->userdata('username'));
+        $created_by = $this->session->userdata('username');
+        if (!empty($detail_rows)) {
+            foreach ($detail_rows as $d) {
+                $old   = isset($old_map[$d->id_bppb]) ? $old_map[$d->id_bppb] : null;
+                $fb    = isset($fallback_map[$d->id_bppb]) ? $fallback_map[$d->id_bppb] : null;
+                $qty_new   = $fb ? $fb->qty : null;
+                $price_new = $fb ? $fb->price : null;
+                $total_new = ($qty_new !== null && $price_new !== null) ? ($qty_new * $price_new) : null;
+
+                $this->Model_nag->log_data_change($inv_info->no_invoice, 'bppb', 'Cancel Invoice', $inv_info->profit_center, $created_by, 'price_invoice', [
+                    'qty_old'   => $old ? $old->qty_invoice : null,
+                    'qty_new'   => $qty_new,
+                    'price_old' => $old ? $old->price_invoice : null,
+                    'price_new' => $price_new,
+                    'total_old' => $old ? $old->total_invoice : null,
+                    'total_new' => $total_new,
+                ], $d->shipp_number, $d->so_number, $d->product_item);
+            }
+        } else {
+            $this->Model_nag->log_data_change($inv_info->no_invoice, 'tbl_book_invoice', 'Cancel Invoice', $inv_info->profit_center, $created_by);
+        }
     }
 
     redirect('arnag/listinvoice');
@@ -690,9 +747,9 @@ public function update_invoice_header()
     $doc_number = $no_inv;
     $status     = "POST";
     $this->log_booking_invoice($activity, $doc_number, $status);
-        // Simpan Log Perubahan Data (dashboard)
-    $inv_info = $this->Model_nag->getType($id_inv);
-    $this->Model_nag->log_data_change($no_inv, 'tbl_book_invoice', 'CREATE', $inv_info ? $inv_info->profit_center : null, $created_by);
+        // Log Perubahan Data (dashboard) per FG/OUT sudah dicatat di
+        // Model_nag::simpan_invoice_detail() (dipanggil terpisah dari JS), jadi tidak
+        // perlu log ringkasan lagi di sini.
         // End Simpan Log
     redirect('arnag/createinvoice');
 }
@@ -726,7 +783,8 @@ function update_pi_sodet_cbd()
 public function simpan_invoice_detail()
 {
     $data = $this->input->post('data_table');
-    $this->Model_nag->simpan_invoice_detail($data);
+    $created_by = $this->session->userdata('username');
+    $this->Model_nag->simpan_invoice_detail($data, $created_by);
     echo json_encode(array("status" => TRUE));
 }
 
@@ -3371,6 +3429,40 @@ public function hapus_detail_invoice_edit() {
         return;
     }
 
+    $inv_info = $this->Model_nag->getType($id_book_invoice);
+
+    // Ambil daftar FG/OUT (id_bppb + shipp_number + so_number + product_item) dulu
+    // sebelum detail-nya dihapus, biar bisa dicatat per baris di log & dicari nilai
+    // lama/fallback-nya di bppb.
+    $detail_rows = $this->db->query("
+        SELECT DISTINCT id_bppb, shipp_number, so_number, product_item
+        FROM tbl_invoice_detail WHERE id_book_invoice = '$id_book_invoice'
+    ")->result();
+
+    $old_map = [];
+    $fallback_map = [];
+    if (!empty($detail_rows) && $inv_info && $inv_info->profit_center === 'NAG') {
+        $ids = array_map(function ($d) {
+            return "'" . $d->id_bppb . "'";
+        }, $detail_rows);
+        $id_list = implode(',', $ids);
+        $db_nag = $this->load->database('db_nag', TRUE);
+
+        $bppb_rows = $db_nag->query("SELECT id, qty_invoice, price_invoice, total_invoice FROM bppb WHERE id IN ($id_list)")->result();
+        foreach ($bppb_rows as $b) {
+            $old_map[$b->id] = $b;
+        }
+
+        $fallback_rows = $db_nag->query("
+            SELECT c.id AS id_bppb, c.qty, ROUND(b.price, 4) AS price
+            FROM bppb c INNER JOIN so_det b ON b.id = c.id_so_det
+            WHERE c.id IN ($id_list)
+        ")->result();
+        foreach ($fallback_rows as $f) {
+            $fallback_map[$f->id_bppb] = $f;
+        }
+    }
+
     $detail_data = $this->db->get_where('tbl_invoice_detail', ['id_book_invoice' => $id_book_invoice])->result_array();
     if (!empty($detail_data)) {
         $this->db->insert_batch('tbl_invoice_detail_edit', $detail_data);
@@ -3381,20 +3473,53 @@ public function hapus_detail_invoice_edit() {
         $this->db->insert_batch('tbl_invoice_pot_edit', $pot_data);
     }
 
-    $sql_update_bppb = "
-    UPDATE bppb a
-    INNER JOIN tbl_invoice_detail b ON b.id_bppb = a.id
-    SET a.stat_inv = 0,
-    a.id_invoice_ar = NULL
-    WHERE b.id_book_invoice = ?
-    ";
-    $this->db->query($sql_update_bppb, [$id_book_invoice]);
+    // Kosongkan bppb (stat_inv, id_invoice_ar, dan semua kolom invoice-tracking) buat
+    // baris-baris yang detail invoice-nya dihapus.
+    if (!empty($detail_rows)) {
+        $db_nag = $this->load->database('db_nag', TRUE);
+        foreach ($detail_rows as $d) {
+            $db_nag->query("UPDATE bppb SET
+                stat_inv = 0,
+                id_invoice_ar = NULL,
+                shipp_invoice = NULL,
+                customer_invoice = NULL,
+                qty_invoice = NULL,
+                satuan_invoice = NULL,
+                curr_invoice = NULL,
+                price_invoice = NULL,
+                total_invoice = NULL,
+                price_other_invoice = NULL,
+                total_other_invoice = NULL
+                WHERE id = '{$d->id_bppb}'");
+        }
+    }
 
     $this->db->where('id_book_invoice', $id_book_invoice);
     $this->db->delete('tbl_invoice_detail');
 
     $this->db->where('id_book_invoice', $id_book_invoice);
     $this->db->delete('tbl_invoice_pot');
+
+    // Simpan Log Perubahan Data (dashboard) - 1 baris per FG/OUT
+    if ($inv_info && !empty($detail_rows)) {
+        $created_by = $this->session->userdata('username');
+        foreach ($detail_rows as $d) {
+            $old   = isset($old_map[$d->id_bppb]) ? $old_map[$d->id_bppb] : null;
+            $fb    = isset($fallback_map[$d->id_bppb]) ? $fallback_map[$d->id_bppb] : null;
+            $qty_new   = $fb ? $fb->qty : null;
+            $price_new = $fb ? $fb->price : null;
+            $total_new = ($qty_new !== null && $price_new !== null) ? ($qty_new * $price_new) : null;
+
+            $this->Model_nag->log_data_change($inv_info->no_invoice, 'bppb', 'Edit Invoice', $inv_info->profit_center, $created_by, 'price_invoice', [
+                'qty_old'   => $old ? $old->qty_invoice : null,
+                'qty_new'   => $qty_new,
+                'price_old' => $old ? $old->price_invoice : null,
+                'price_new' => $price_new,
+                'total_old' => $old ? $old->total_invoice : null,
+                'total_new' => $total_new,
+            ], $d->shipp_number, $d->so_number, $d->product_item);
+        }
+    }
 
     echo json_encode([
         'status' => 'success',
@@ -3410,24 +3535,12 @@ public function simpan_invoice_detail_pot_edit()
     $data_detail = $data['data_detail'];
     $data_pot    = $data['data_pot'];
 
-    $this->Model_nag->simpan_invoice_detail_edit($data_detail);
+    $created_by = $this->session->userdata('username');
+    // Update bppb (stat_inv, id_invoice_ar, dan kolom invoice-tracking lainnya) +
+    // log perubahan data sekarang ditangani di dalam simpan_invoice_detail_edit(),
+    // sama seperti Create Invoice.
+    $this->Model_nag->simpan_invoice_detail_edit($data_detail, $created_by);
     $this->Model_nag->simpan_invoice_pot_edit($data_pot);
-
-    $id_bppb_list = array_column($data_detail, 'id_bppb');
-    $id_book_invoice_list = array_column($data_detail, 'id_book_invoice');
-
-    $id_book_invoice = $id_book_invoice_list[0] ?? null;
-
-    if (!empty($id_bppb_list) && $id_book_invoice) {
-        $update_data = [
-            'stat_inv' => '1',
-            'id_invoice_ar' => $id_book_invoice
-        ];
-
-        $this->db->where_in('id', $id_bppb_list);
-        $this->db->update('bppb', $update_data);
-    }
-
 
     echo json_encode(array("status" => TRUE));
 }

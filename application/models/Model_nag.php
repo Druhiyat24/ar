@@ -401,7 +401,23 @@ class Model_nag extends CI_Model
     {
 
         $db_nag = $this->load->database('db_nag', TRUE);
-        $hasil1 = $db_nag->query("UPDATE bppb SET stat_inv = '0', id_invoice_ar = null WHERE id_invoice_ar = '$id'");
+        // Invoice dibatalkan - kosongkan juga kolom-kolom tracking invoice di bppb
+        // (biar row-nya "bebas" lagi buat di-invoice ulang; kalau price_invoice null,
+        // harga fallback diambil dari so_det.price via bppb.id_so_det - satu FG/OUT bisa
+        // punya beberapa harga karena beda id_item/id_so_det).
+        $hasil1 = $db_nag->query("UPDATE bppb SET
+            stat_inv = '0',
+            id_invoice_ar = null,
+            shipp_invoice = null,
+            customer_invoice = null,
+            qty_invoice = null,
+            satuan_invoice = null,
+            curr_invoice = null,
+            price_invoice = null,
+            total_invoice = null,
+            price_other_invoice = null,
+            total_other_invoice = null
+            WHERE id_invoice_ar = '$id'");
 
         return $hasil1;
     }
@@ -412,17 +428,27 @@ class Model_nag extends CI_Model
     }
 
     // Log detail perubahan data yang mempengaruhi dashboard (create/cancel/edit
-    // invoice, bppb, dsb). field_name/old_value/new_value dikosongkan kalau
-    // action-nya CREATE atau CANCEL (perubahan seluruh baris, bukan per-field).
-    function log_data_change($doc_number, $source_table, $action, $profit_center, $created_by, $field_name = null, $old_value = null, $new_value = null)
+    // invoice, bppb, dsb). field_name menandakan field mana yang sebenarnya berubah
+    // (mis. 'price_invoice'), tapi qty/price/total old-new selalu diisi kalau ada
+    // datanya, biar konteksnya lengkap.
+    // ref_number = nomor referensi shipment/bppb (FG/OUT..) buat drill-down per baris.
+    // $values = ['qty_old'=>, 'qty_new'=>, 'price_old'=>, 'price_new'=>, 'total_old'=>, 'total_new'=>]
+    function log_data_change($doc_number, $source_table, $action, $profit_center, $created_by, $field_name = null, $values = [], $ref_number = null, $so_number = null, $product_item = null)
     {
         $data = [
             'doc_number'    => $doc_number,
+            'ref_number'    => $ref_number,
+            'so_number'     => $so_number,
+            'product_item'  => $product_item,
             'source_table'  => $source_table,
             'action'        => $action,
             'field_name'    => $field_name,
-            'old_value'     => $old_value,
-            'new_value'     => $new_value,
+            'qty_old'       => isset($values['qty_old'])   ? $values['qty_old']   : null,
+            'qty_new'       => isset($values['qty_new'])   ? $values['qty_new']   : null,
+            'price_old'     => isset($values['price_old']) ? $values['price_old'] : null,
+            'price_new'     => isset($values['price_new']) ? $values['price_new'] : null,
+            'total_old'     => isset($values['total_old']) ? $values['total_old'] : null,
+            'total_new'     => isset($values['total_new']) ? $values['total_new'] : null,
             'profit_center' => $profit_center,
             'created_by'    => $created_by,
             'created_at'    => date('Y-m-d H:i:s'),
@@ -640,41 +666,77 @@ function update_pi_sodet_cbd($id_sodet, $no_pi)
 }
 
 
-function simpan_invoice_detail($data)
+function simpan_invoice_detail($data, $created_by = null)
 {
     $this->db->insert_batch('tbl_invoice_detail', $data);
     $insert_id = $this->db->insert_id();
 
     if (!empty($data)) {
         $id_book_invoice = $data[0]['id_book_invoice'];
-        $inv = $this->db->get_where('tbl_book_invoice', ['id' => $id_book_invoice])->row();
-
-        // Update bppb cuma untuk NAG. Invoice NAK juga lewat fungsi ini (dipanggil dari
-        // simpan_invoice_detail_new()), tapi bppb-nya di-update dari
-        // simpan_invoice_detail_knitting() memakai data tbl_invoice_detail_knitting
-        // (biar tidak dobel-update / tabrakan angka dengan versi shipment di sini).
-        if ($inv && $inv->profit_center === 'NAG') {
-            $shipp_invoice    = $inv->shipp;
-            $customer_invoice = $inv->id_customer;
-
-            $db_nag = $this->load->database('db_nag', TRUE);
-            foreach ($data as $row) {
-                $db_nag->query("UPDATE bppb SET
-                    shipp_invoice = '$shipp_invoice',
-                    customer_invoice = '$customer_invoice',
-                    qty_invoice = '{$row['qty']}',
-                    satuan_invoice = '{$row['uom']}',
-                    curr_invoice = '{$row['curr']}',
-                    price_invoice = '{$row['unit_price']}',
-                    total_invoice = '{$row['total_price']}',
-                    price_other_invoice = 0,
-                    total_other_invoice = 0
-                    WHERE id = '{$row['id_bppb']}'");
-            }
-        }
+        $this->sync_bppb_invoice_and_log($data, $id_book_invoice, $created_by, 'Create Invoice');
     }
 
     return $insert_id;
+}
+
+// Update kolom invoice-tracking di bppb (cuma NAG) + log perubahan per FG/OUT.
+// Dipakai bareng oleh Create Invoice (simpan_invoice_detail) dan nambah baris SJ ke
+// invoice yang sudah ada lewat Edit Invoice (simpan_invoice_detail_edit), biar
+// perilakunya konsisten - keduanya sama-sama nambah baris tbl_invoice_detail baru.
+private function sync_bppb_invoice_and_log($data, $id_book_invoice, $created_by, $action_label)
+{
+    $inv = $this->db->get_where('tbl_book_invoice', ['id' => $id_book_invoice])->row();
+
+    // Invoice NAK juga lewat fungsi ini kalau dipanggil dari simpan_invoice_detail_new(),
+    // tapi bppb-nya di-update dari simpan_invoice_detail_knitting() memakai data
+    // tbl_invoice_detail_knitting (biar tidak dobel-update / tabrakan angka).
+    if (!$inv || $inv->profit_center !== 'NAG') {
+        return;
+    }
+
+    $shipp_invoice    = $inv->shipp;
+    $customer_invoice = $inv->id_customer;
+    $no_invoice       = $inv->no_invoice;
+
+    $db_nag = $this->load->database('db_nag', TRUE);
+    foreach ($data as $row) {
+        // Ambil qty/harga/total lama di bppb dulu sebelum ditimpa, biar perubahan
+        // per FG/OUT ke-log lengkap (old vs new). Kalau kolom *_invoice belum pernah
+        // keisi (belum pernah di-invoice), fallback ke nilai dasarnya: qty ke bppb.qty,
+        // price ke so_det.price, total ke qty fallback x price fallback.
+        $old = $db_nag->query("
+            SELECT b.qty AS base_qty, b.qty_invoice, b.total_invoice, b.price_invoice, ROUND(c.price, 4) AS so_det_price
+            FROM bppb b LEFT JOIN so_det c ON c.id = b.id_so_det
+            WHERE b.id = '{$row['id_bppb']}'
+        ")->row();
+        $old_price = $old ? ($old->price_invoice !== null ? $old->price_invoice : $old->so_det_price) : null;
+        $old_qty   = $old ? ($old->qty_invoice   !== null ? $old->qty_invoice   : $old->base_qty)     : null;
+        $old_total = $old ? ($old->total_invoice !== null ? $old->total_invoice : ($old_qty * $old_price)) : null;
+
+        $db_nag->query("UPDATE bppb SET
+            shipp_invoice = '$shipp_invoice',
+            customer_invoice = '$customer_invoice',
+            qty_invoice = '{$row['qty']}',
+            satuan_invoice = '{$row['uom']}',
+            curr_invoice = '{$row['curr']}',
+            price_invoice = '{$row['unit_price']}',
+            total_invoice = '{$row['total_price']}',
+            price_other_invoice = 0,
+            total_other_invoice = 0,
+            stat_inv = '1',
+            id_invoice_ar = '$id_book_invoice'
+            WHERE id = '{$row['id_bppb']}'");
+
+        // Log perubahan data (dashboard) - 1 baris per FG/OUT (shipp_number)
+        $this->log_data_change($no_invoice, 'bppb', $action_label, 'NAG', $created_by, 'price_invoice', [
+            'qty_old'   => $old_qty,
+            'qty_new'   => $row['qty'],
+            'price_old' => $old_price,
+            'price_new' => $row['unit_price'],
+            'total_old' => $old_total,
+            'total_new' => $row['total_price'],
+        ], $row['shipp_number'], $row['so_number'], $row['product_item']);
+    }
 }
 
 function simpan_invoice_pot($data)
@@ -4877,6 +4939,59 @@ function dsb_ar_log_summary($filter, $date_from = null, $date_to = null)
     return $q->result_array();
 }
 
+// ── Riwayat perubahan data (tbl_data_change_log) - dikunci hari ini saja ────────
+
+// Cuma baris yang qty/price/total-nya beneran berubah (before != after) yang
+// dianggap "perubahan" - baris yang old=new persis (tidak ada delta) di-skip.
+function _data_change_actual_filter()
+{
+    return "
+        AND NOT (
+            COALESCE(qty_old,0)   = COALESCE(qty_new,0)
+            AND COALESCE(price_old,0) = COALESCE(price_new,0)
+            AND COALESCE(total_old,0) = COALESCE(total_new,0)
+        )
+    ";
+}
+
+function get_data_change_log_today($filter, $since = null)
+{
+    $pc = ($filter === 'ALL' || !$filter) ? "IN ('NAG','NAK')" : "= '" . $this->db->escape_str($filter) . "'";
+    $where_since = $since ? " AND created_at >= '" . $this->db->escape_str($since) . "'" : "";
+    $where_actual = $this->_data_change_actual_filter();
+    $q = $this->db->query("
+        SELECT doc_number, ref_number, so_number, product_item, source_table, action, field_name,
+               qty_old, qty_new, price_old, price_new, total_old, total_new,
+               profit_center, created_by, created_at
+        FROM tbl_data_change_log
+        WHERE DATE(created_at) = CURDATE()
+          AND profit_center $pc
+          $where_since
+          $where_actual
+        ORDER BY created_at DESC
+        LIMIT 500
+    ");
+    return $q->result_array();
+}
+
+function get_data_change_summary_today($filter, $since = null)
+{
+    $pc = ($filter === 'ALL' || !$filter) ? "IN ('NAG','NAK')" : "= '" . $this->db->escape_str($filter) . "'";
+    $where_since = $since ? " AND created_at >= '" . $this->db->escape_str($since) . "'" : "";
+    $where_actual = $this->_data_change_actual_filter();
+    $q = $this->db->query("
+        SELECT COUNT(*) cnt,
+               COALESCE(SUM(total_new - total_old), 0) delta_total,
+               COALESCE(SUM(qty_new - qty_old), 0) delta_qty
+        FROM tbl_data_change_log
+        WHERE DATE(created_at) = CURDATE()
+          AND profit_center $pc
+          $where_since
+          $where_actual
+    ");
+    return $q->row_array();
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 function getTopInvoice($id)
@@ -4917,10 +5032,12 @@ function update_invoice_h($id, $id_top, $id_customer, $type, $profit_center, $id
     return $hasil;
 }
 
-public function simpan_invoice_detail_edit($data_detail)
+public function simpan_invoice_detail_edit($data_detail, $created_by = null)
 {
     if (!empty($data_detail)) {
         $this->db->insert_batch('tbl_invoice_detail', $data_detail);
+        $id_book_invoice = $data_detail[0]['id_book_invoice'];
+        $this->sync_bppb_invoice_and_log($data_detail, $id_book_invoice, $created_by, 'Edit Invoice');
     }
 }
 
