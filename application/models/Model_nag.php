@@ -5230,12 +5230,13 @@ function cari_sj_knitting($id_sj, $profit_center)
     MAX(color) AS color,
     '-' AS size,
     MAX(curr) AS curr,
-    MAX(uom) AS uom,
+   MAX(uom_so) AS uom,
 
-    SUM(qty_meter) AS qty,
+    SUM(qty_so) AS qty,
 
-    ROUND(MAX(harga_shipment),4) AS unit_price,
-    ROUND(SUM(qty_meter) * ROUND(MAX(harga_shipment),4),4) AS total_price,
+    ROUND(MAX(harga),4) AS unit_price,
+
+    ROUND(SUM(qty_so) * ROUND(MAX(harga),4),4) AS total_price,
 
     MAX(id_so) AS id_so,
     MAX(id_bppb) AS id_bppb,
