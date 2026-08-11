@@ -10021,45 +10021,33 @@ function save_dn() {
  //  		console.log(array[i]);
 	// }
 
-
+	// Balikin gabungan promise dari semua request update_req_dn (bisa lebih dari
+	// 1 kalau user pilih beberapa No Request), biar caller bisa nunggu semuanya
+	// selesai dulu sebelum reload halaman - sebelumnya reload jalan duluan dan
+	// kadang motong request ini di tengah jalan sebelum sempat sampai ke server.
 	function update_req_dn(){
-		let array = $('#no_req').val();
+		let array = $('#no_req').val() || [];
+		let requests = [];
 		for (let i = 0; i < array.length; i++) {
-	//
-	var dn_number 	 		= $('[name="dn_number"]').val();
-	var no_req 	 			= array[i];
+			var dn_number 	 		= $('[name="dn_number"]').val();
+			var no_req 	 			= array[i];
 
-	var formData = {
-		"dn_number": dn_number,
-		"no_req": no_req,			
-	};
-				//
-				$.ajax({						
-					url: "update_req_dn/",		
-					type: "POST",	
-					data: formData,			
-					dataType: "JSON",
-					success: function (data) {		
-
-						if (data.status) //if success close modal and reload ajax table
-						{
-							msg = 'Success Update Invoice Approve'
-						} else {
-							msg = 'Error Update Invoice Approve'
-						}
-					},
-					error: function (jqXHR, textStatus, errorThrown) {
-						msg = 'Error Update Invoice Header' + jqXHR.text
-					}
-				});   	
-				//
-				// $('#modal-approve-invoice-manual').modal('hide');
-				// console.log(id_inv);  
-				// window.location.reload();
-				// cari_invoice_post();
-			}
-
+			var formData = {
+				"dn_number": dn_number,
+				"no_req": no_req,
+			};
+			requests.push($.ajax({
+				url: "update_req_dn/",
+				type: "POST",
+				data: formData,
+				dataType: "JSON",
+				error: function (jqXHR, textStatus, errorThrown) {
+					msg = 'Error Update Invoice Header' + jqXHR.text
+				}
+			}));
 		}
+		return $.when.apply($, requests);
+	}
 
 		function update_memo_h(){
 	//
@@ -10245,9 +10233,13 @@ function simpandn_h() {
 						}
 						simpandn_det();
 						update_memo_det();
-						update_req_dn();
-						// Reload Page
-						window.location.href = window.location.href;
+						// Reload cuma setelah request update_req_dn beneran selesai - sebelumnya
+						// reload langsung jalan begitu request ini didispatch, jadi kadang
+						// browser motong request-nya sebelum sempat sampai ke server (req_dn_h
+						// nggak ke-update).
+						$.when(update_req_dn()).always(function () {
+							window.location.href = window.location.href;
+						});
 					} else {
 						msg = 'Error Input Detail'
 						// Gagal dapat kunci nomor DN (jarang terjadi) - jangan reload supaya
