@@ -2175,7 +2175,8 @@ public function simpankwitansi()
 public function simpan_invoice_nb_detail()
 {
     $data = $this->input->post('data_table');
-    $this->Model_nag->simpan_invoice_nb_detail($data);
+    $created_by = $this->session->userdata('username');
+    $this->Model_nag->simpan_invoice_nb_detail($data, $created_by);
     echo json_encode(array("status" => TRUE));
 }
 
@@ -2276,7 +2277,8 @@ public function export_excel_invoice_nb($id)
 public function cancel_invoice_nb()
 {
     $id = $this->input->post('id_book_inv');
-    $this->Model_nag->cancel_invoice_nb($id);
+    $created_by = $this->session->userdata('username');
+    $this->Model_nag->cancel_invoice_nb($id, $created_by);
 
 
     redirect('arnag/listinvoice_manual');
@@ -2915,7 +2917,7 @@ public function reverseinvoice_manual()
 
     ];
     $this->Model_nag->log_booking_invoice($data, 'tbl_log');
-    $this->Model_nag->cancel_invoice_manual($id);
+    $this->Model_nag->cancel_invoice_manual($id, $nama);
 
 
     redirect('arnag/listinvoice_manual');

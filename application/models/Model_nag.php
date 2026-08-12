@@ -432,7 +432,9 @@ class Model_nag extends CI_Model
     // (mis. 'price_invoice'), tapi qty/price/total old-new selalu diisi kalau ada
     // datanya, biar konteksnya lengkap.
     // ref_number = nomor referensi shipment/bppb (FG/OUT..) buat drill-down per baris.
-    // $values = ['qty_old'=>, 'qty_new'=>, 'price_old'=>, 'price_new'=>, 'total_old'=>, 'total_new'=>]
+    // $values = ['qty_old'=>, 'qty_new'=>, 'price_old'=>, 'price_new'=>, 'total_old'=>,
+    //            'total_new'=>, 'old_value'=>, 'new_value'=>]
+    // old_value/new_value dipakai buat perubahan yang bukan angka (mis. currency: 'USD'->'IDR').
     function log_data_change($doc_number, $source_table, $action, $profit_center, $created_by, $field_name = null, $values = [], $ref_number = null, $so_number = null, $product_item = null)
     {
         $data = [
@@ -449,6 +451,8 @@ class Model_nag extends CI_Model
             'price_new'     => isset($values['price_new']) ? $values['price_new'] : null,
             'total_old'     => isset($values['total_old']) ? $values['total_old'] : null,
             'total_new'     => isset($values['total_new']) ? $values['total_new'] : null,
+            'old_value'     => isset($values['old_value']) ? $values['old_value'] : null,
+            'new_value'     => isset($values['new_value']) ? $values['new_value'] : null,
             'profit_center' => $profit_center,
             'created_by'    => $created_by,
             'created_at'    => date('Y-m-d H:i:s'),
@@ -2466,10 +2470,39 @@ function get_kode_inv_nb()
     return $kd . "/INM/NAG/" . date('my');
 }
 
-function simpan_invoice_nb_detail($data)
+function simpan_invoice_nb_detail($data, $created_by = null)
 {
     $this->db->insert_batch('tbl_invoice_nb_detail', $data);
-    return $this->db->insert_id();
+    $insert_id = $this->db->insert_id();
+
+    // Log per baris - Create Invoice Manual tidak terhubung ke bppb sama sekali
+    // (diinput manual), jadi old value selalu null (belum pernah ada sebelumnya).
+    foreach ($data as $row) {
+        $qty   = isset($row['qty'])        ? $row['qty']        : 0;
+        $price = isset($row['unit_price']) ? $row['unit_price'] : 0;
+        $total = isset($row['total'])      ? $row['total']      : ($qty * $price);
+        if ($qty == 0 && $price == 0 && $total == 0) {
+            continue;
+        }
+        $this->log_data_change(
+            isset($row['no_inv']) ? $row['no_inv'] : null,
+            'tbl_invoice_nb_detail',
+            'Create Invoice Manual',
+            'NAG',
+            $created_by,
+            'price_invoice',
+            [
+                'qty_old' => 0, 'qty_new' => $qty,
+                'price_old' => 0, 'price_new' => $price,
+                'total_old' => 0, 'total_new' => $total,
+            ],
+            isset($row['no_bppb']) ? $row['no_bppb'] : null,
+            isset($row['no_so']) ? $row['no_so'] : null,
+            isset($row['prod_item']) ? $row['prod_item'] : null
+        );
+    }
+
+    return $insert_id;
 }
 
 function report_invoice_nb($id)
@@ -2607,15 +2640,59 @@ function cari_inv_detail_nb($id)
     return $hasil->result_array();
 }
 
-function cancel_invoice_nb($id)
+function cancel_invoice_nb($id, $created_by = null)
 {
+    $old_rows = $this->db->query("SELECT no_inv, no_so, no_bppb, prod_item, qty, unit_price, total FROM tbl_invoice_nb_detail WHERE no_inv = '$id' AND status <> 'CANCEL'")->result_array();
+
     $hasil = $this->db->query("UPDATE tbl_invoice_nb a inner join tbl_invoice_nb_detail b on a.no_inv = b.no_inv set a.status = 'CANCEL', b.status = 'CANCEL' where a.no_inv = '$id' ");
+
+    foreach ($old_rows as $row) {
+        $this->log_data_change(
+            $row['no_inv'],
+            'tbl_invoice_nb_detail',
+            'Cancel Invoice Manual',
+            'NAG',
+            $created_by,
+            'price_invoice',
+            [
+                'qty_old' => $row['qty'], 'qty_new' => 0,
+                'price_old' => $row['unit_price'], 'price_new' => 0,
+                'total_old' => $row['total'], 'total_new' => 0,
+            ],
+            $row['no_bppb'],
+            $row['no_so'],
+            $row['prod_item']
+        );
+    }
+
     return $hasil;
 }
 
-function cancel_invoice_manual($id)
+function cancel_invoice_manual($id, $created_by = null)
 {
+    $old_rows = $this->db->query("SELECT no_inv, no_so, no_bppb, prod_item, qty, unit_price, total FROM tbl_invoice_nb_detail WHERE no_inv = '$id' AND status <> 'CANCEL'")->result_array();
+
     $hasil = $this->db->query("UPDATE tbl_invoice_nb a inner join tbl_invoice_nb_detail b on a.no_inv = b.no_inv set a.status = 'CANCEL', b.status = 'CANCEL' where a.no_inv = '$id' ");
+
+    foreach ($old_rows as $row) {
+        $this->log_data_change(
+            $row['no_inv'],
+            'tbl_invoice_nb_detail',
+            'Cancel Invoice Manual',
+            'NAG',
+            $created_by,
+            'price_invoice',
+            [
+                'qty_old' => $row['qty'], 'qty_new' => 0,
+                'price_old' => $row['unit_price'], 'price_new' => 0,
+                'total_old' => $row['total'], 'total_new' => 0,
+            ],
+            $row['no_bppb'],
+            $row['no_so'],
+            $row['prod_item']
+        );
+    }
+
     return $hasil;
 }
 
@@ -4950,6 +5027,7 @@ function _data_change_actual_filter()
             COALESCE(qty_old,0)   = COALESCE(qty_new,0)
             AND COALESCE(price_old,0) = COALESCE(price_new,0)
             AND COALESCE(total_old,0) = COALESCE(total_new,0)
+            AND COALESCE(old_value,'') = COALESCE(new_value,'')
         )
     ";
 }
@@ -4961,7 +5039,7 @@ function get_data_change_log_today($filter, $since = null)
     $where_actual = $this->_data_change_actual_filter();
     $q = $this->db->query("
         SELECT doc_number, ref_number, so_number, product_item, source_table, action, field_name,
-               qty_old, qty_new, price_old, price_new, total_old, total_new,
+               qty_old, qty_new, price_old, price_new, total_old, total_new, old_value, new_value,
                profit_center, created_by, created_at
         FROM tbl_data_change_log
         WHERE DATE(created_at) = CURDATE()
@@ -4990,6 +5068,24 @@ function get_data_change_summary_today($filter, $since = null)
           $where_actual
     ");
     return $q->row_array();
+}
+
+// Ringkasan jumlah transaksi per jenis action (Create Invoice, Cancel Invoice,
+// Edit SJ, dst) hari ini - biar dashboard bisa nampilin komposisi perubahan.
+function get_data_change_breakdown_today($filter)
+{
+    $pc = ($filter === 'ALL' || !$filter) ? "IN ('NAG','NAK')" : "= '" . $this->db->escape_str($filter) . "'";
+    $where_actual = $this->_data_change_actual_filter();
+    $q = $this->db->query("
+        SELECT action, COUNT(*) cnt, COALESCE(SUM(total_new - total_old), 0) delta_total
+        FROM tbl_data_change_log
+        WHERE DATE(created_at) = CURDATE()
+          AND profit_center $pc
+          $where_actual
+        GROUP BY action
+        ORDER BY cnt DESC
+    ");
+    return $q->result_array();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
