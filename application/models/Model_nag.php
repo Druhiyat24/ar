@@ -560,7 +560,7 @@ class Model_nag extends CI_Model
                 bppb AS c ON b.id = c.id_so_det INNER JOIN 
                 act_costing AS d ON a.id_cost = d.id INNER JOIN 
                 masterproduct AS e ON d.id_product = e.id               
-                WHERE b.id_so = '$id_sj' AND (c.bppbdate < '2026-08-01' OR (c.bppbdate >= '2026-08-01' AND c.jenis_trans LIKE 'penjualan%')) and c.id_supplier != '1038' AND (ISNULL(c.stat_inv) OR c.stat_inv = '' or c.stat_inv='0')
+                WHERE b.id_so = '$id_sj' AND (c.bppbdate < '2026-08-01' OR (c.bppbdate >= '2026-08-01' AND c.jenis_trans LIKE 'penjualan%')) and c.id_supplier != '1038' AND (ISNULL(c.stat_inv) OR c.stat_inv = '' or c.stat_inv='0') AND c.confirm = 'Y'
                 ORDER BY c.bppbno ");
         }else{
             $hasil = $db_pgsql->query("SELECT kode_so no_so, kode_out sj, tgl_pengeluaran bppbdate, kode_out shipping_number, '-' ws, lab_dip styleno, '-' product_group, nama_kain product_item, warna color, '-' size,  currency curr, nama_unit uom, qty_meter qty, Round(coalesce(harga_shipment,0),4) AS unit_price, ROUND(qty_meter * Round(coalesce(harga_shipment,0),4), 4) AS total_price,  a.no_so id_so, a.id AS id_bppb, 'GRADE A' grade,'A' grade from official_out_h a inner join official_out_barcode b on b.id_official = a.id inner join master_kain c on c.id = b.kain_id LEFT JOIN master_kain_detail d on d.id = b.detail_kain_id INNER JOIN detail_so e on e.id = b.detail_so_id INNER JOIN sales_orders f on f.id = a.no_so left join master_unit g on g.id = e.id_unit_sales_order_shipment where a.status_inv is null and a.tipe_pengeluaran = 'Penjualan' and a.no_so = '$id_sj' ORDER BY kode_out asc ");
