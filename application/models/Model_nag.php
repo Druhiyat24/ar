@@ -435,7 +435,10 @@ class Model_nag extends CI_Model
     // $values = ['qty_old'=>, 'qty_new'=>, 'price_old'=>, 'price_new'=>, 'total_old'=>,
     //            'total_new'=>, 'old_value'=>, 'new_value'=>]
     // old_value/new_value dipakai buat perubahan yang bukan angka (mis. currency: 'USD'->'IDR').
-    function log_data_change($doc_number, $source_table, $action, $profit_center, $created_by, $field_name = null, $values = [], $ref_number = null, $so_number = null, $product_item = null)
+    // $curr = mata uang asli transaksi ini (USD/IDR/dst) - null dianggap IDR.
+    // Dipakai buat convert qty/price/total ke IDR pas ditampilkan di dashboard,
+    // karena banyak transaksi (SO/bppb/invoice) aslinya bukan IDR.
+    function log_data_change($doc_number, $source_table, $action, $profit_center, $created_by, $field_name = null, $values = [], $ref_number = null, $so_number = null, $product_item = null, $curr = null)
     {
         $data = [
             'doc_number'    => $doc_number,
@@ -453,6 +456,7 @@ class Model_nag extends CI_Model
             'total_new'     => isset($values['total_new']) ? $values['total_new'] : null,
             'old_value'     => isset($values['old_value']) ? $values['old_value'] : null,
             'new_value'     => isset($values['new_value']) ? $values['new_value'] : null,
+            'curr'          => $curr ?: 'IDR',
             'profit_center' => $profit_center,
             'created_by'    => $created_by,
             'created_at'    => date('Y-m-d H:i:s'),
@@ -739,7 +743,7 @@ private function sync_bppb_invoice_and_log($data, $id_book_invoice, $created_by,
             'price_new' => $row['unit_price'],
             'total_old' => $old_total,
             'total_new' => $row['total_price'],
-        ], $row['shipp_number'], $row['so_number'], $row['product_item']);
+        ], $row['shipp_number'], $row['so_number'], $row['product_item'], $row['curr']);
     }
 }
 
@@ -1117,9 +1121,15 @@ $this->db->query("insert into sb_list_journal select '', a.* from (select a.no_i
 
 function approve_invoice_second_nak_new($id, $created_by, $created_date)
 {
-   $this->db->query(" insert into tbl_list_journal select '', a.* from (select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input,  '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date,'' created_at,'' updated_at, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, round(ip.total - ipk.total,4) total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, round(ipk.grand_total,4) grand_total, CONCAT('PENJUALAN ',a.type_so,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN tbl_invoice_pot_knitting ipk on ipk.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%$inv_credit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
-            UNION
-            select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, grand_total credit, 0 debit_idr, (grand_total * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date,'' created_at,'' updated_at, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, round(ipk.grand_total,4) grand_total, CONCAT('PENJUALAN ',a.type_so,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN tbl_invoice_pot_knitting ipk on ipk.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr) a where debit > 0 OR credit > 0");
+   $this->db->query("select '', a.* from (select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date,'' created_at,'' updated_at, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
+            UNION ALL
+            select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, discount debit, 0 credit, (discount * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%NAK_pot%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
+            UNION ALL
+            select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, dp debit, 0 credit, (dp * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%DP%') b on b.shipp_tipe = a.shipp  LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
+            UNION ALL
+            select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, total credit, 0 debit_idr, (total * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%NAK_credit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
+            UNION ALL
+            select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, '2.53.01' no_coa, 'PPN KELUARAN' nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, vat credit, 0 debit_idr, (vat * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr) a where debit > 0 OR credit > 0");
 
     $this->db->query(" insert into sb_list_journal select '', a.* from (select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
     UNION
@@ -2498,7 +2508,8 @@ function simpan_invoice_nb_detail($data, $created_by = null)
             ],
             isset($row['no_bppb']) ? $row['no_bppb'] : null,
             isset($row['no_so']) ? $row['no_so'] : null,
-            isset($row['prod_item']) ? $row['prod_item'] : null
+            isset($row['prod_item']) ? $row['prod_item'] : null,
+            isset($row['curr']) ? $row['curr'] : null
         );
     }
 
@@ -2642,7 +2653,7 @@ function cari_inv_detail_nb($id)
 
 function cancel_invoice_nb($id, $created_by = null)
 {
-    $old_rows = $this->db->query("SELECT no_inv, no_so, no_bppb, prod_item, qty, unit_price, total FROM tbl_invoice_nb_detail WHERE no_inv = '$id' AND status <> 'CANCEL'")->result_array();
+    $old_rows = $this->db->query("SELECT no_inv, no_so, no_bppb, prod_item, qty, unit_price, total, curr FROM tbl_invoice_nb_detail WHERE no_inv = '$id' AND status <> 'CANCEL'")->result_array();
 
     $hasil = $this->db->query("UPDATE tbl_invoice_nb a inner join tbl_invoice_nb_detail b on a.no_inv = b.no_inv set a.status = 'CANCEL', b.status = 'CANCEL' where a.no_inv = '$id' ");
 
@@ -2661,7 +2672,8 @@ function cancel_invoice_nb($id, $created_by = null)
             ],
             $row['no_bppb'],
             $row['no_so'],
-            $row['prod_item']
+            $row['prod_item'],
+            $row['curr']
         );
     }
 
@@ -2670,7 +2682,7 @@ function cancel_invoice_nb($id, $created_by = null)
 
 function cancel_invoice_manual($id, $created_by = null)
 {
-    $old_rows = $this->db->query("SELECT no_inv, no_so, no_bppb, prod_item, qty, unit_price, total FROM tbl_invoice_nb_detail WHERE no_inv = '$id' AND status <> 'CANCEL'")->result_array();
+    $old_rows = $this->db->query("SELECT no_inv, no_so, no_bppb, prod_item, qty, unit_price, total, curr FROM tbl_invoice_nb_detail WHERE no_inv = '$id' AND status <> 'CANCEL'")->result_array();
 
     $hasil = $this->db->query("UPDATE tbl_invoice_nb a inner join tbl_invoice_nb_detail b on a.no_inv = b.no_inv set a.status = 'CANCEL', b.status = 'CANCEL' where a.no_inv = '$id' ");
 
@@ -2689,7 +2701,8 @@ function cancel_invoice_manual($id, $created_by = null)
             ],
             $row['no_bppb'],
             $row['no_so'],
-            $row['prod_item']
+            $row['prod_item'],
+            $row['curr']
         );
     }
 
@@ -4786,6 +4799,38 @@ function dsb_ar_total($type, $col, $filter)
     return $q->row() ? (float)$q->row()->val : 0;
 }
 
+// Posisi AR (total_idr, sama kolom yang dipakai kartu "Account Receivable" di
+// dashboard depan) di AWAL hari ini - dipakai buat reconciliation "start of
+// day -> plus/minus -> now" di Change Log, biar user bisa lihat AR mulai dari
+// berapa terus jadi berapa sekarang. Diambil dari snapshot ar_dashboard_log
+// paling awal HARI INI; kalau belum ada snapshot hari ini sama sekali (misal
+// belum sempat refresh), fallback ke snapshot terakhir SEBELUM hari ini
+// (posisi penutupan hari kemarin).
+function dsb_ar_start_of_day($filter)
+{
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+
+    $has_today = $this->db->query("SELECT COUNT(*) cnt FROM ar_dashboard_log WHERE DATE(logged_at) = CURDATE()")->row()->cnt;
+
+    if ($has_today > 0) {
+        $q = $this->db->query("
+            SELECT COALESCE(SUM(total_idr), 0) val
+            FROM ar_dashboard_log
+            WHERE type = 'receivable' AND profit_center $pc
+              AND logged_at = (SELECT MIN(logged_at) FROM ar_dashboard_log WHERE DATE(logged_at) = CURDATE())
+        ");
+        return $q->row() ? (float)$q->row()->val : 0;
+    }
+
+    $q = $this->db->query("
+        SELECT COALESCE(SUM(total_idr), 0) val
+        FROM ar_dashboard_log
+        WHERE type = 'receivable' AND profit_center $pc
+          AND logged_at = (SELECT MAX(logged_at) FROM ar_dashboard_log WHERE DATE(logged_at) < CURDATE())
+    ");
+    return $q->row() ? (float)$q->row()->val : 0;
+}
+
 function dsb_ar_detail_sales($type, $filter)
 {
     $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
@@ -5032,21 +5077,75 @@ function _data_change_actual_filter()
     ";
 }
 
+// Yang beneran nentuin naik/turunnya AR cuma FG/OUT (bppb) dan Invoice Manual
+// (tbl_invoice_nb_detail) - source_table lain (kalau ada sisa dari versi lama)
+// tidak ikut kehitung di ringkasan/plus-minus/per-customer.
+function _data_change_scope_filter()
+{
+    return "AND source_table IN ('bppb', 'tbl_invoice_nb_detail')";
+}
+
+// Tanggal transaksi yang beneran dipakai buat cari rate: bppbdate buat FG/OUT
+// (source_table='bppb', dicari lewat ref_number = bppbno_int), inv_date buat
+// Invoice Manual (source_table='tbl_invoice_nb_detail', lewat doc_number =
+// no_inv). created_at (waktu log ditulis) cuma fallback kalau keduanya tidak
+// ketemu - BUKAN tanggal yang seharusnya dipakai buat rate.
+function _data_change_business_date_expr($alias = 't')
+{
+    return "
+        COALESCE(
+            (SELECT MIN(bp.bppbdate) FROM bppb bp WHERE $alias.source_table = 'bppb' AND bp.bppbno_int = $alias.ref_number),
+            (SELECT inv.inv_date FROM tbl_invoice_nb inv WHERE $alias.source_table = 'tbl_invoice_nb_detail' AND inv.no_inv = $alias.doc_number LIMIT 1),
+            DATE($alias.created_at)
+        )
+    ";
+}
+
+// Konversi ke IDR: join rate pajak (masterrate, v_codecurr='PAJAK') yang
+// paling deket ke tanggal transaksi ASLI-nya (bukan created_at), per currency
+// baris itu sendiri. Kalau curr null/'IDR' -> multiplier 1 (dianggap sudah
+// IDR). Kalau curr non-IDR tapi rate-nya tidak ketemu -> fallback ke 1 (lebih
+// baik tampil apa adanya daripada hilang total dari hitungan).
+function _data_change_rate_join($alias = 't')
+{
+    $business_date = $this->_data_change_business_date_expr($alias);
+    return "
+        LEFT JOIN masterrate mr ON mr.v_codecurr = 'PAJAK' AND mr.curr = $alias.curr
+          AND mr.tanggal = (
+              SELECT MAX(m2.tanggal) FROM masterrate m2
+              WHERE m2.v_codecurr = 'PAJAK' AND m2.curr = $alias.curr AND m2.tanggal <= ($business_date)
+          )
+    ";
+}
+
+function _data_change_idr_rate_expr($alias = 't')
+{
+    return "CASE WHEN COALESCE($alias.curr,'IDR') = 'IDR' THEN 1 ELSE COALESCE(mr.rate, 1) END";
+}
+
 function get_data_change_log_today($filter, $since = null)
 {
     $pc = ($filter === 'ALL' || !$filter) ? "IN ('NAG','NAK')" : "= '" . $this->db->escape_str($filter) . "'";
-    $where_since = $since ? " AND created_at >= '" . $this->db->escape_str($since) . "'" : "";
+    $where_since = $since ? " AND t.created_at >= '" . $this->db->escape_str($since) . "'" : "";
     $where_actual = $this->_data_change_actual_filter();
+    $scope = $this->_data_change_scope_filter();
+    $rate_join = $this->_data_change_rate_join('t');
+    $rate_expr = $this->_data_change_idr_rate_expr('t');
     $q = $this->db->query("
-        SELECT doc_number, ref_number, so_number, product_item, source_table, action, field_name,
-               qty_old, qty_new, price_old, price_new, total_old, total_new, old_value, new_value,
-               profit_center, created_by, created_at
-        FROM tbl_data_change_log
-        WHERE DATE(created_at) = CURDATE()
-          AND profit_center $pc
+        SELECT t.doc_number, t.ref_number, t.so_number, t.product_item, t.source_table, t.action, t.field_name,
+               t.qty_old, t.qty_new, t.price_old, t.price_new, t.total_old, t.total_new, t.old_value, t.new_value,
+               t.curr, $rate_expr AS idr_rate,
+               (t.price_old * $rate_expr) AS price_old_idr, (t.price_new * $rate_expr) AS price_new_idr,
+               (t.total_old * $rate_expr) AS total_old_idr, (t.total_new * $rate_expr) AS total_new_idr,
+               t.profit_center, t.created_by, t.created_at
+        FROM tbl_data_change_log t
+        $rate_join
+        WHERE DATE(t.created_at) = CURDATE()
+          AND t.profit_center $pc
           $where_since
           $where_actual
-        ORDER BY created_at DESC
+          $scope
+        ORDER BY t.created_at DESC
         LIMIT 500
     ");
     return $q->result_array();
@@ -5055,19 +5154,66 @@ function get_data_change_log_today($filter, $since = null)
 function get_data_change_summary_today($filter, $since = null)
 {
     $pc = ($filter === 'ALL' || !$filter) ? "IN ('NAG','NAK')" : "= '" . $this->db->escape_str($filter) . "'";
-    $where_since = $since ? " AND created_at >= '" . $this->db->escape_str($since) . "'" : "";
+    $where_since = $since ? " AND t.created_at >= '" . $this->db->escape_str($since) . "'" : "";
     $where_actual = $this->_data_change_actual_filter();
+    $scope = $this->_data_change_scope_filter();
+    $rate_join = $this->_data_change_rate_join('t');
+    $rate_expr = $this->_data_change_idr_rate_expr('t');
+    // Plus/minus dipecah biar dashboard bisa nunjukin "hari ini nambah berapa,
+    // berkurang berapa" terpisah, bukan cuma net-nya doang - semua sudah dalam IDR.
     $q = $this->db->query("
         SELECT COUNT(*) cnt,
-               COALESCE(SUM(total_new - total_old), 0) delta_total,
-               COALESCE(SUM(qty_new - qty_old), 0) delta_qty
-        FROM tbl_data_change_log
-        WHERE DATE(created_at) = CURDATE()
-          AND profit_center $pc
+               COALESCE(SUM((t.total_new - t.total_old) * $rate_expr), 0) delta_total,
+               COALESCE(SUM(t.qty_new - t.qty_old), 0) delta_qty,
+               COALESCE(SUM(CASE WHEN (t.total_new - t.total_old) > 0 THEN (t.total_new - t.total_old) * $rate_expr ELSE 0 END), 0) plus_total,
+               COALESCE(SUM(CASE WHEN (t.total_new - t.total_old) < 0 THEN (t.total_old - t.total_new) * $rate_expr ELSE 0 END), 0) minus_total,
+               COALESCE(SUM(CASE WHEN (t.qty_new - t.qty_old) > 0 THEN (t.qty_new - t.qty_old) ELSE 0 END), 0) plus_qty,
+               COALESCE(SUM(CASE WHEN (t.qty_new - t.qty_old) < 0 THEN (t.qty_old - t.qty_new) ELSE 0 END), 0) minus_qty,
+               COALESCE(SUM(CASE WHEN (t.total_new - t.total_old) > 0 THEN 1 ELSE 0 END), 0) plus_cnt,
+               COALESCE(SUM(CASE WHEN (t.total_new - t.total_old) < 0 THEN 1 ELSE 0 END), 0) minus_cnt
+        FROM tbl_data_change_log t
+        $rate_join
+        WHERE DATE(t.created_at) = CURDATE()
+          AND t.profit_center $pc
           $where_since
           $where_actual
+          $scope
     ");
     return $q->row_array();
+}
+
+// Ringkasan perubahan hari ini per buyer/customer - customer dicari lewat
+// so_number (kalau ada) -> so -> act_costing -> mastersupplier, karena
+// tbl_data_change_log sendiri tidak nyimpen kolom customer langsung. Semua
+// nilai sudah dikonversi ke IDR.
+function get_data_change_by_customer_today($filter)
+{
+    $pc = ($filter === 'ALL' || !$filter) ? "IN ('NAG','NAK')" : "= '" . $this->db->escape_str($filter) . "'";
+    $where_actual = $this->_data_change_actual_filter();
+    $scope = $this->_data_change_scope_filter();
+    $rate_join = $this->_data_change_rate_join('t');
+    $rate_expr = $this->_data_change_idr_rate_expr('t');
+    $q = $this->db->query("
+        SELECT
+            COALESCE(m.Supplier, 'Unknown / No SO Match') AS customer,
+            COUNT(*) cnt,
+            COALESCE(SUM(CASE WHEN (t.total_new - t.total_old) > 0 THEN (t.total_new - t.total_old) * $rate_expr ELSE 0 END), 0) plus_total,
+            COALESCE(SUM(CASE WHEN (t.total_new - t.total_old) < 0 THEN (t.total_old - t.total_new) * $rate_expr ELSE 0 END), 0) minus_total,
+            COALESCE(SUM((t.total_new - t.total_old) * $rate_expr), 0) net_total
+        FROM tbl_data_change_log t
+        $rate_join
+        LEFT JOIN so s ON s.so_no = t.so_number
+        LEFT JOIN act_costing ac ON ac.id = s.id_cost
+        LEFT JOIN mastersupplier m ON m.Id_Supplier = ac.id_buyer
+        WHERE DATE(t.created_at) = CURDATE()
+          AND t.profit_center $pc
+          $where_actual
+          $scope
+        GROUP BY customer
+        ORDER BY SUM(ABS((t.total_new - t.total_old) * $rate_expr)) DESC
+        LIMIT 15
+    ");
+    return $q->result_array();
 }
 
 // Ringkasan jumlah transaksi per jenis action (Create Invoice, Cancel Invoice,
@@ -5076,13 +5222,18 @@ function get_data_change_breakdown_today($filter)
 {
     $pc = ($filter === 'ALL' || !$filter) ? "IN ('NAG','NAK')" : "= '" . $this->db->escape_str($filter) . "'";
     $where_actual = $this->_data_change_actual_filter();
+    $scope = $this->_data_change_scope_filter();
+    $rate_join = $this->_data_change_rate_join('t');
+    $rate_expr = $this->_data_change_idr_rate_expr('t');
     $q = $this->db->query("
-        SELECT action, COUNT(*) cnt, COALESCE(SUM(total_new - total_old), 0) delta_total
-        FROM tbl_data_change_log
-        WHERE DATE(created_at) = CURDATE()
-          AND profit_center $pc
+        SELECT t.action, COUNT(*) cnt, COALESCE(SUM((t.total_new - t.total_old) * $rate_expr), 0) delta_total
+        FROM tbl_data_change_log t
+        $rate_join
+        WHERE DATE(t.created_at) = CURDATE()
+          AND t.profit_center $pc
           $where_actual
-        GROUP BY action
+          $scope
+        GROUP BY t.action
         ORDER BY cnt DESC
     ");
     return $q->result_array();
