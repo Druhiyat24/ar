@@ -240,6 +240,138 @@ class Landingpage extends CI_Controller
     }
 
 
+    // Dipanggil via AJAX dari dalam halaman dashboard (bukan tombol manual) untuk
+    // menyinkronkan data begitu kartu KPI/chart dibuka — tanpa gating role dsb_refresh
+    // karena berjalan otomatis untuk siapa pun yang membuka halaman dashboard
+    public function sync_dashboard_ajax()
+    {
+        if (!$this->session->userdata('username')) {
+            echo json_encode(['status' => false, 'message' => 'Unauthorized']); return;
+        }
+
+        // Throttle: kalau sudah pernah sync di menit yang sama (mis. beberapa user
+        // login berbarengan), jangan jalankan ulang procedure-nya lagi - selain berat,
+        // ar_dashboard_log dikelompokkan per menit jadi bisa dobel kalau ditarik 2x
+        // di menit yang sama.
+        $last_update = $this->Model_nag->dsb_ar_last_update();
+        if ($last_update && date('Y-m-d H:i', strtotime($last_update)) === date('Y-m-d H:i')) {
+            echo json_encode(['status' => true, 'last_update' => $last_update, 'skipped' => true]);
+            return;
+        }
+
+        try {
+            $this->db->query('CALL ar_get_data_dashboard()');
+            $status = true;
+        } catch (Exception $e) {
+            $status = false;
+        }
+
+        echo json_encode([
+            'status'      => $status,
+            'last_update' => $this->Model_nag->dsb_ar_last_update()
+        ]);
+    }
+
+    // Auto-refresh dashboard depan tanpa reload halaman - dipanggil tiap 1 menit
+    // dari JS selama halaman dashboard terbuka. Tetap pakai throttle per-menit
+    // yang sama seperti sync_dashboard_ajax (aman meski banyak user buka
+    // dashboard bersamaan - stored procedure cuma jalan sekali per menit,
+    // request lain cuma re-SELECT nilai yang sudah ada).
+    public function dashboard_kpi_refresh()
+    {
+        if (!$this->session->userdata('username')) {
+            echo json_encode(['status' => false]); return;
+        }
+        $filter = $this->input->post('pc') ?: 'ALL';
+
+        $last_update = $this->Model_nag->dsb_ar_last_update();
+        $already_this_minute = $last_update && date('Y-m-d H:i', strtotime($last_update)) === date('Y-m-d H:i');
+        if (!$already_this_minute) {
+            try {
+                $this->db->query('CALL ar_get_data_dashboard()');
+            } catch (Exception $e) {
+                // Biarin lanjut - tetep balikin nilai terakhir yang ada walau sync gagal.
+            }
+        }
+
+        $kpi = [
+            'sls_ytd_inv'   => (float) $this->Model_nag->dsb_ar_total('sales_ytd_invoiced',     'total', $filter),
+            'sls_cm_inv'    => (float) $this->Model_nag->dsb_ar_total('sales_cm_invoiced',      'total', $filter),
+            'sls_no_inv'    => (float) $this->Model_nag->dsb_ar_total('sales_ytd_not_invoiced', 'total', $filter),
+            'sls_cm_no_inv' => (float) $this->Model_nag->dsb_ar_total('sales_cm_not_invoiced',  'total', $filter),
+            'ar_eqvidr'     => (float) $this->Model_nag->dsb_ar_total('receivable', 'total_idr',       $filter),
+            'ready_due'     => (float) $this->Model_nag->dsb_ar_total('receivable', 'total_ready_due', $filter),
+        ];
+        $kpi['sls_ytd_all'] = $kpi['sls_no_inv'] + $kpi['sls_ytd_inv'];
+        $kpi['sls_cm_all']  = $kpi['sls_cm_no_inv'] + $kpi['sls_cm_inv'];
+        $kpi['not_due']     = $kpi['ar_eqvidr'] - $kpi['ready_due'];
+
+        $last_update = $this->Model_nag->dsb_ar_last_update();
+        $last_update_fmt = 'Belum ada data';
+        if (!empty($last_update)) {
+            $dt = new DateTime($last_update);
+            $months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            $last_update_fmt = $dt->format('d') . ' ' . $months[(int)$dt->format('m')] . ' ' . $dt->format('Y H:i:s');
+        }
+
+        echo json_encode([
+            'status' => true, 'kpi' => $kpi,
+            'last_update' => $last_update, 'last_update_fmt' => $last_update_fmt,
+        ]);
+    }
+
+    // Data mentah buat modal detail "Sales YTD" (per customer) - dipakai auto-
+    // refresh tiap 1 menit selama modalnya kebuka, tanpa nge-trigger ulang
+    // stored procedure (cuma re-SELECT dari ar_dashboard yang sudah ada).
+    // Data mentah buat modal detail Sales (Sales YTD, CM, YTD All, CM All, Not
+    // Invoiced) - dipakai auto-refresh tiap 1 menit selama modalnya kebuka.
+    // Cuma re-SELECT dari ar_dashboard (murah), tidak nge-trigger stored
+    // procedure, jadi aman dipoll tiap menit.
+    public function sales_detail_refresh()
+    {
+        if (!$this->session->userdata('username')) {
+            echo json_encode(['status' => false]); return;
+        }
+        $filter = $this->input->post('pc') ?: 'ALL';
+        $report = $this->input->post('report') ?: '';
+        switch ($report) {
+            case 'ytd':  $rows = $this->Model_nag->dsb_ar_detail_sales('sales_ytd_invoiced', $filter) ?: []; break;
+            case 'cm':   $rows = $this->Model_nag->dsb_ar_detail_sales('sales_cm_invoiced', $filter) ?: []; break;
+            case 'ni':   $rows = $this->Model_nag->dsb_ar_detail_sales('sales_ytd_not_invoiced', $filter) ?: []; break;
+            case 'ytd2': $rows = $this->Model_nag->dsb_ar_detail_combined('sales_ytd_invoiced', 'sales_ytd_not_invoiced', $filter) ?: []; break;
+            case 'cm2':  $rows = $this->Model_nag->dsb_ar_detail_combined('sales_cm_invoiced', 'sales_cm_not_invoiced', $filter) ?: []; break;
+            default:
+                echo json_encode(['status' => false]); return;
+        }
+        echo json_encode(['status' => true, 'data' => $rows]);
+    }
+
+    // Sama seperti di atas, tapi buat modal detail AR (Account Receivable,
+    // Overdue, Not Due) - semuanya sumbernya sama (dsb_ar_detail_receivable),
+    // cuma kolom & filter baris yang ditampilkan beda per modal.
+    public function ar_detail_refresh()
+    {
+        if (!$this->session->userdata('username')) {
+            echo json_encode(['status' => false]); return;
+        }
+        $filter = $this->input->post('pc') ?: 'ALL';
+        $report = $this->input->post('report') ?: '';
+        $rows = $this->Model_nag->dsb_ar_detail_receivable($filter) ?: [];
+        switch ($report) {
+            case 'overdue':
+                $rows = array_values(array_filter($rows, function ($r) { return $r['ready_due'] > 0; }));
+                break;
+            case 'notdue':
+                $rows = array_values(array_filter($rows, function ($r) { return $r['not_due'] > 0; }));
+                break;
+            case 'ar':
+                break;
+            default:
+                echo json_encode(['status' => false]); return;
+        }
+        echo json_encode(['status' => true, 'data' => $rows]);
+    }
+
     public function refresh_dashboard()
     {
         if (!$this->session->userdata('username')) {
@@ -255,6 +387,20 @@ class Landingpage extends CI_Controller
         ")->row()->cnt;
         if (!$allowed) {
             echo json_encode(['status' => false, 'message' => 'Akses ditolak']); return;
+        }
+
+        // Kalau sudah ada yang refresh di menit yang sama, jangan tarik ulang -
+        // ar_dashboard_log dikelompokkan per menit, ditarik 2x di menit yang sama
+        // bikin log-nya dobel.
+        $last_update = $this->Model_nag->dsb_ar_last_update();
+        if ($last_update && date('Y-m-d H:i', strtotime($last_update)) === date('Y-m-d H:i')) {
+            echo json_encode([
+                'status'      => true,
+                'skipped'     => true,
+                'message'     => 'Data sudah diperbarui pada menit ini.',
+                'last_update' => $last_update
+            ]);
+            return;
         }
 
         // $procedures = [
@@ -294,28 +440,41 @@ class Landingpage extends CI_Controller
         ]);
     }
 
-    public function dashboard_log()
+    // Riwayat perubahan data (tbl_data_change_log) - dikunci hari ini saja (sama
+    // seperti dashboard_log) supaya query tidak berat dan user cuma bisa lihat
+    // perubahan hari berjalan.
+    public function data_change_log()
     {
         if (!$this->session->userdata('username')) {
             echo json_encode(['status' => false]); return;
         }
-        $filter    = $this->input->post('pc')     ?: 'ALL';
-        $date_from = $this->input->post('dari')   ?: date('Y-m-d');
-        $date_to   = $this->input->post('sampai') ?: date('Y-m-d');
-        $rows = $this->Model_nag->dsb_ar_log_summary($filter, $date_from, $date_to);
-        echo json_encode(['status' => true, 'data' => $rows]);
-    }
+        $filter = $this->input->post('pc') ?: 'ALL';
 
-    public function dashboard_log_detail()
-    {
-        if (!$this->session->userdata('username')) {
-            echo json_encode(['status' => false]); return;
-        }
-        $filter   = $this->input->post('pc')       ?: 'ALL';
-        $run_time = $this->input->post('run_time') ?: '';
-        $col_key  = $this->input->post('col_key')  ?: '';
-        $rows = $this->Model_nag->dsb_ar_log_detail($filter, $run_time, $col_key);
-        echo json_encode(['status' => true, 'data' => $rows]);
+        $rows        = $this->Model_nag->get_data_change_log_today($filter);
+        $summary     = $this->Model_nag->get_data_change_summary_today($filter);
+        $breakdown   = $this->Model_nag->get_data_change_breakdown_today($filter);
+        $by_customer = $this->Model_nag->get_data_change_by_customer_today($filter);
+        // Reconciliation "start of day -> now" - pakai fungsi & kolom PERSIS yang sama
+        // dengan kartu-kartu di dashboard depan (dsb_ar_total), biar dijamin sama
+        // angkanya, bukan dihitung ulang lewat tbl_data_change_log.
+        $ar_start_today = $this->Model_nag->dsb_ar_start_of_day($filter);
+        $ar_now         = $this->Model_nag->dsb_ar_total('receivable', 'total_idr', $filter);
+        // "Sales Current Month" - sama seperti kartu sls_cm_all di depan
+        // (sales_cm_invoiced + sales_cm_not_invoiced).
+        $sales_cm_start_today = $this->Model_nag->dsb_sales_cm_start_of_day($filter);
+        $sales_cm_now = $this->Model_nag->dsb_ar_total('sales_cm_invoiced', 'total', $filter)
+            + $this->Model_nag->dsb_ar_total('sales_cm_not_invoiced', 'total', $filter);
+        // "Sales YTD (All)" - sama seperti kartu sls_ytd_all di depan
+        // (sales_ytd_invoiced + sales_ytd_not_invoiced).
+        $sales_ytd_start_today = $this->Model_nag->dsb_sales_ytd_start_of_day($filter);
+        $sales_ytd_now = $this->Model_nag->dsb_ar_total('sales_ytd_invoiced', 'total', $filter)
+            + $this->Model_nag->dsb_ar_total('sales_ytd_not_invoiced', 'total', $filter);
+        echo json_encode([
+            'status' => true, 'data' => $rows, 'summary' => $summary, 'breakdown' => $breakdown, 'by_customer' => $by_customer,
+            'ar_start_today' => $ar_start_today, 'ar_now' => $ar_now,
+            'sales_cm_start_today' => $sales_cm_start_today, 'sales_cm_now' => $sales_cm_now,
+            'sales_ytd_start_today' => $sales_ytd_start_today, 'sales_ytd_now' => $sales_ytd_now,
+        ]);
     }
 
     // Daftar perubahan terbaru (untuk isi dropdown lonceng notifikasi) + jumlah belum dibaca

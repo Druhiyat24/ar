@@ -4831,6 +4831,62 @@ function dsb_ar_start_of_day($filter)
     return $q->row() ? (float)$q->row()->val : 0;
 }
 
+// Sama seperti dsb_ar_start_of_day, tapi buat kartu "Sales Current Month" di
+// dashboard depan (sls_cm_all = sales_cm_invoiced + sales_cm_not_invoiced).
+// PENTING: kartu ini pakai kolom `total` (bukan `total_idr`) - beda dengan
+// Account Receivable - jadi ikutin persis logika dsb_ar_total yang sudah ada.
+function dsb_sales_cm_start_of_day($filter)
+{
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+
+    $has_today = $this->db->query("SELECT COUNT(*) cnt FROM ar_dashboard_log WHERE DATE(logged_at) = CURDATE()")->row()->cnt;
+
+    if ($has_today > 0) {
+        $q = $this->db->query("
+            SELECT COALESCE(SUM(total), 0) val
+            FROM ar_dashboard_log
+            WHERE type IN ('sales_cm_invoiced', 'sales_cm_not_invoiced') AND profit_center $pc
+              AND logged_at = (SELECT MIN(logged_at) FROM ar_dashboard_log WHERE DATE(logged_at) = CURDATE())
+        ");
+        return $q->row() ? (float)$q->row()->val : 0;
+    }
+
+    $q = $this->db->query("
+        SELECT COALESCE(SUM(total), 0) val
+        FROM ar_dashboard_log
+        WHERE type IN ('sales_cm_invoiced', 'sales_cm_not_invoiced') AND profit_center $pc
+          AND logged_at = (SELECT MAX(logged_at) FROM ar_dashboard_log WHERE DATE(logged_at) < CURDATE())
+    ");
+    return $q->row() ? (float)$q->row()->val : 0;
+}
+
+// Sama seperti dsb_sales_cm_start_of_day, tapi buat kartu "Sales YTD (All)" di
+// dashboard depan (sls_ytd_all = sales_ytd_invoiced + sales_ytd_not_invoiced).
+function dsb_sales_ytd_start_of_day($filter)
+{
+    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
+
+    $has_today = $this->db->query("SELECT COUNT(*) cnt FROM ar_dashboard_log WHERE DATE(logged_at) = CURDATE()")->row()->cnt;
+
+    if ($has_today > 0) {
+        $q = $this->db->query("
+            SELECT COALESCE(SUM(total), 0) val
+            FROM ar_dashboard_log
+            WHERE type IN ('sales_ytd_invoiced', 'sales_ytd_not_invoiced') AND profit_center $pc
+              AND logged_at = (SELECT MIN(logged_at) FROM ar_dashboard_log WHERE DATE(logged_at) = CURDATE())
+        ");
+        return $q->row() ? (float)$q->row()->val : 0;
+    }
+
+    $q = $this->db->query("
+        SELECT COALESCE(SUM(total), 0) val
+        FROM ar_dashboard_log
+        WHERE type IN ('sales_ytd_invoiced', 'sales_ytd_not_invoiced') AND profit_center $pc
+          AND logged_at = (SELECT MAX(logged_at) FROM ar_dashboard_log WHERE DATE(logged_at) < CURDATE())
+    ");
+    return $q->row() ? (float)$q->row()->val : 0;
+}
+
 function dsb_ar_detail_sales($type, $filter)
 {
     $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
@@ -4993,74 +5049,6 @@ function dsb_ar_log($filter, $date_from = null, $date_to = null, $limit = 200)
     return $q->result_array();
 }
 
-function dsb_ar_log_detail($filter, $run_time, $col_key)
-{
-    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
-    // Map KPI key → type(s) in log table
-    $map = [
-        'sls_ytd_inv'  => "'sales_ytd_invoiced'",
-        'sls_cm_inv'   => "'sales_cm_invoiced'",
-        'sls_no_inv'   => "'sales_ytd_not_invoiced'",
-        'sls_ytd_all'  => "'sales_ytd_invoiced','sales_ytd_not_invoiced'",
-        'sls_cm_all'   => "'sales_cm_invoiced','sales_cm_not_invoiced'",
-        'ar_idr'       => "'receivable'",
-        'ready_due'    => "'receivable'",
-        'not_due'      => "'receivable'",
-    ];
-    if (!isset($map[$col_key])) return [];
-    $types        = $map[$col_key];
-    $run_time_esc = $this->db->escape($run_time);
-    $order = 'total DESC';
-    if ($col_key === 'ar_idr')    $order = 'total_idr DESC';
-    if ($col_key === 'ready_due') $order = 'total_ready_due DESC';
-    if ($col_key === 'not_due')   $order = 'total_not_due DESC';
-    $q = $this->db->query("
-        SELECT CONVERT(customer USING utf8mb4) customer,
-               CONVERT(uom USING utf8mb4) uom,
-               ROUND(SUM(qty), 2)             qty,
-               ROUND(SUM(total), 2)           total,
-               ROUND(SUM(total_idr), 2)       total_idr,
-               ROUND(SUM(total_not_due), 2)   total_not_due,
-               ROUND(SUM(total_ready_due), 2) total_ready_due,
-               IF(SUM(qty)>0, ROUND(SUM(total)/SUM(qty),2), 0) avg_price
-        FROM ar_dashboard_log
-        WHERE profit_center $pc
-          AND type IN ($types)
-          AND DATE_FORMAT(logged_at, '%Y-%m-%d %H:%i') = $run_time_esc
-          AND customer IS NOT NULL
-        GROUP BY customer, uom
-        ORDER BY $order
-    ");
-    return $q->result_array();
-}
-
-function dsb_ar_log_summary($filter, $date_from = null, $date_to = null)
-{
-    $pc = ($filter === 'ALL') ? "IN ('NAG','NAK')" : "= '$filter'";
-    $where_date = '';
-    if ($date_from) $where_date .= " AND DATE(logged_at) >= '$date_from'";
-    if ($date_to)   $where_date .= " AND DATE(logged_at) <= '$date_to'";
-    // Ringkasan per waktu-run (grouped by logged_at, satu baris per run per PC)
-    $q = $this->db->query("
-        SELECT DATE_FORMAT(logged_at, '%Y-%m-%d %H:%i') run_time,
-               profit_center,
-               ROUND(SUM(CASE WHEN type='sales_ytd_invoiced'    THEN total ELSE 0 END), 2) sls_ytd_inv,
-               ROUND(SUM(CASE WHEN type='sales_cm_invoiced'     THEN total ELSE 0 END), 2) sls_cm_inv,
-               ROUND(SUM(CASE WHEN type='sales_ytd_not_invoiced' THEN total ELSE 0 END), 2) sls_no_inv,
-               ROUND(SUM(CASE WHEN type='sales_cm_not_invoiced'  THEN total ELSE 0 END), 2) sls_cm_no_inv,
-               ROUND(SUM(CASE WHEN type='receivable'            THEN total_idr ELSE 0 END), 2) ar_idr,
-               ROUND(SUM(CASE WHEN type='receivable'            THEN total_ready_due ELSE 0 END), 2) ready_due
-        FROM ar_dashboard_log
-        WHERE profit_center $pc
-          AND HOUR(logged_at) >= 6 AND HOUR(logged_at) < 18
-          $where_date
-        GROUP BY run_time, profit_center
-        ORDER BY run_time DESC
-        LIMIT 200
-    ");
-    return $q->result_array();
-}
-
 // ── Riwayat perubahan data (tbl_data_change_log) - dikunci hari ini saja ────────
 
 // Cuma baris yang qty/price/total-nya beneran berubah (before != after) yang
@@ -5137,9 +5125,13 @@ function get_data_change_log_today($filter, $since = null)
                t.curr, $rate_expr AS idr_rate,
                (t.price_old * $rate_expr) AS price_old_idr, (t.price_new * $rate_expr) AS price_new_idr,
                (t.total_old * $rate_expr) AS total_old_idr, (t.total_new * $rate_expr) AS total_new_idr,
-               t.profit_center, t.created_by, t.created_at
+               t.profit_center, t.created_by, t.created_at,
+               m.Supplier AS customer
         FROM tbl_data_change_log t
         $rate_join
+        LEFT JOIN so s ON s.so_no = t.so_number
+        LEFT JOIN act_costing ac ON ac.id = s.id_cost
+        LEFT JOIN mastersupplier m ON m.Id_Supplier = ac.id_buyer
         WHERE DATE(t.created_at) = CURDATE()
           AND t.profit_center $pc
           $where_since
