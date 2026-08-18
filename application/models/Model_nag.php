@@ -5073,6 +5073,27 @@ function _data_change_scope_filter()
     return "AND source_table IN ('bppb', 'tbl_invoice_nb_detail')";
 }
 
+// Customer dicari lewat 2 jalur beda tergantung source_table: FG/OUT
+// (source_table='bppb') lewat so_number -> so -> act_costing -> mastersupplier,
+// Invoice Manual (source_table='tbl_invoice_nb_detail') tidak punya so_number
+// jadi lewat doc_number -> tbl_invoice_nb.no_inv -> mastersupplier. Dipakai
+// bareng dengan _data_change_customer_expr() di bawah.
+function _data_change_customer_join($alias = 't')
+{
+    return "
+        LEFT JOIN so s ON s.so_no = $alias.so_number
+        LEFT JOIN act_costing ac ON ac.id = s.id_cost
+        LEFT JOIN mastersupplier m ON m.Id_Supplier = ac.id_buyer
+        LEFT JOIN tbl_invoice_nb inb ON $alias.source_table = 'tbl_invoice_nb_detail' AND inb.no_inv = $alias.doc_number
+        LEFT JOIN mastersupplier m2 ON m2.Id_Supplier = inb.customer
+    ";
+}
+
+function _data_change_customer_expr()
+{
+    return "COALESCE(m.Supplier, m2.Supplier)";
+}
+
 // Tanggal transaksi yang beneran dipakai buat cari rate: bppbdate buat FG/OUT
 // (source_table='bppb', dicari lewat ref_number = bppbno_int), inv_date buat
 // Invoice Manual (source_table='tbl_invoice_nb_detail', lewat doc_number =
@@ -5119,6 +5140,8 @@ function get_data_change_log_today($filter, $since = null)
     $scope = $this->_data_change_scope_filter();
     $rate_join = $this->_data_change_rate_join('t');
     $rate_expr = $this->_data_change_idr_rate_expr('t');
+    $cust_join = $this->_data_change_customer_join('t');
+    $cust_expr = $this->_data_change_customer_expr();
     $q = $this->db->query("
         SELECT t.doc_number, t.ref_number, t.so_number, t.product_item, t.source_table, t.action, t.field_name,
                t.qty_old, t.qty_new, t.price_old, t.price_new, t.total_old, t.total_new, t.old_value, t.new_value,
@@ -5126,12 +5149,10 @@ function get_data_change_log_today($filter, $since = null)
                (t.price_old * $rate_expr) AS price_old_idr, (t.price_new * $rate_expr) AS price_new_idr,
                (t.total_old * $rate_expr) AS total_old_idr, (t.total_new * $rate_expr) AS total_new_idr,
                t.profit_center, t.created_by, t.created_at,
-               m.Supplier AS customer
+               $cust_expr AS customer
         FROM tbl_data_change_log t
         $rate_join
-        LEFT JOIN so s ON s.so_no = t.so_number
-        LEFT JOIN act_costing ac ON ac.id = s.id_cost
-        LEFT JOIN mastersupplier m ON m.Id_Supplier = ac.id_buyer
+        $cust_join
         WHERE DATE(t.created_at) = CURDATE()
           AND t.profit_center $pc
           $where_since
@@ -5185,18 +5206,18 @@ function get_data_change_by_customer_today($filter)
     $scope = $this->_data_change_scope_filter();
     $rate_join = $this->_data_change_rate_join('t');
     $rate_expr = $this->_data_change_idr_rate_expr('t');
+    $cust_join = $this->_data_change_customer_join('t');
+    $cust_expr = $this->_data_change_customer_expr();
     $q = $this->db->query("
         SELECT
-            COALESCE(m.Supplier, 'Unknown / No SO Match') AS customer,
+            COALESCE($cust_expr, 'Unknown / No SO Match') AS customer,
             COUNT(*) cnt,
             COALESCE(SUM(CASE WHEN (t.total_new - t.total_old) > 0 THEN (t.total_new - t.total_old) * $rate_expr ELSE 0 END), 0) plus_total,
             COALESCE(SUM(CASE WHEN (t.total_new - t.total_old) < 0 THEN (t.total_old - t.total_new) * $rate_expr ELSE 0 END), 0) minus_total,
             COALESCE(SUM((t.total_new - t.total_old) * $rate_expr), 0) net_total
         FROM tbl_data_change_log t
         $rate_join
-        LEFT JOIN so s ON s.so_no = t.so_number
-        LEFT JOIN act_costing ac ON ac.id = s.id_cost
-        LEFT JOIN mastersupplier m ON m.Id_Supplier = ac.id_buyer
+        $cust_join
         WHERE DATE(t.created_at) = CURDATE()
           AND t.profit_center $pc
           $where_actual

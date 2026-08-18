@@ -1216,7 +1216,20 @@ function loadChangeLog() {
             window._clLastLoadedAt = Date.now();
             _clUpdateLiveText();
             renderChangeLogRecon(res.ar_start_today, res.ar_now, res.sales_cm_start_today, res.sales_cm_now, res.sales_ytd_start_today, res.sales_ytd_now);
-            renderChangeLogSummary(res.summary);
+            // Samakan nominal Plus/Minus/Net Today dengan "Change Today" di strip
+            // reconciliation Sales Current Month (sumber ar_dashboard, PASTI sama
+            // dengan dashboard depan) - jangan pakai hasil SUM tbl_data_change_log
+            // sendiri, karena log itu cuma nyatet sebagian jalur jadi bisa beda
+            // nominal dengan angka yang beneran kejadian (lihat catatan di
+            // renderChangeLogRecon). cnt/plus_cnt/minus_cnt/qty tetap dari log
+            // (cuma buat info jumlah transaksi, bukan nominal).
+            var reconDelta = (parseFloat(res.sales_cm_now || 0) - parseFloat(res.sales_cm_start_today || 0));
+            var summaryForDisplay = Object.assign({}, res.summary, {
+                delta_total: reconDelta,
+                plus_total: reconDelta >= 0 ? reconDelta : 0,
+                minus_total: reconDelta < 0 ? Math.abs(reconDelta) : 0
+            });
+            renderChangeLogSummary(summaryForDisplay);
             renderChangeLogBreakdown(res.breakdown);
             // Tetap terapin filter search yang lagi diketik user (kalau ada), biar
             // auto-refresh tidak nge-reset hasil pencarian yang sedang dilihat.
