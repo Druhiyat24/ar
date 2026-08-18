@@ -5222,7 +5222,7 @@ function get_data_change_by_customer_today($filter)
           AND t.profit_center $pc
           $where_actual
           $scope
-        GROUP BY customer
+        GROUP BY $cust_expr
         ORDER BY SUM(ABS((t.total_new - t.total_old) * $rate_expr)) DESC
         LIMIT 15
     ");
