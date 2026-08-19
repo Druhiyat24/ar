@@ -961,11 +961,14 @@ if (!function_exists('_ar_render_customer_cards')) {
 </div>
 
 <!-- TOP 5 -->
-<div class="modal fade" id="mysales5" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+<div class="modal fade sls-detail-modal" id="mysales5" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:95vw; width:640px;">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="fas fa-trophy mr-2"></i>TOP 5 Buyer By Sales Value</h5>
+            <div class="modal-header text-white" style="background:linear-gradient(135deg,#00838f 0%,#26c6da 100%);">
+                <div>
+                    <h5 class="modal-title mb-0"><i class="fas fa-trophy mr-2"></i>TOP 5 Buyer By Sales Value</h5>
+                    <div style="font-size:12px;opacity:0.85;margin-top:2px;">Buyer detail for the selected period</div>
+                </div>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body"><div id="det_sales5"></div></div>
@@ -974,11 +977,14 @@ if (!function_exists('_ar_render_customer_cards')) {
 </div>
 
 <!-- MoTM -->
-<div class="modal fade" id="mymotm" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+<div class="modal fade sls-detail-modal" id="mymotm" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:95vw; width:1100px;">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title" id="jdl_motm"></h5>
+            <div class="modal-header text-white" style="background:linear-gradient(135deg,#1565c0 0%,#42a5f5 100%);">
+                <div>
+                    <h5 class="modal-title mb-0" id="jdl_motm"></h5>
+                    <div style="font-size:12px;opacity:0.85;margin-top:2px;">All sales this period, ranked by customer</div>
+                </div>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body"><div id="det_motm"></div></div>
@@ -1216,18 +1222,20 @@ function loadChangeLog() {
             window._clLastLoadedAt = Date.now();
             _clUpdateLiveText();
             renderChangeLogRecon(res.ar_start_today, res.ar_now, res.sales_cm_start_today, res.sales_cm_now, res.sales_ytd_start_today, res.sales_ytd_now);
-            // Samakan nominal Plus/Minus/Net Today dengan "Change Today" di strip
-            // reconciliation Sales Current Month (sumber ar_dashboard, PASTI sama
-            // dengan dashboard depan) - jangan pakai hasil SUM tbl_data_change_log
-            // sendiri, karena log itu cuma nyatet sebagian jalur jadi bisa beda
-            // nominal dengan angka yang beneran kejadian (lihat catatan di
-            // renderChangeLogRecon). cnt/plus_cnt/minus_cnt/qty tetap dari log
-            // (cuma buat info jumlah transaksi, bukan nominal).
+            // Plus/Minus Today TETAP dari SUM tbl_data_change_log (akurat per baris,
+            // cocok dengan Detail Log) - JANGAN dipaksa ikut tanda reconDelta seperti
+            // sebelumnya, karena itu bikin Plus tampil 0 padahal ada baris log yang
+            // beneran nambah (cuma kalah besar dari pergerakan yang tidak ke-log).
+            // Net Actual Today tetap dibuat sama dengan "Change Today" (sumber
+            // ar_dashboard, PASTI cocok dashboard depan) - kalau angkanya beda dari
+            // Plus-Minus versi log, itu sinyal ada pergerakan yang belum ke-cover
+            // logging-nya, jadi ditampilkan sebagai catatan "gap" di kartu Net,
+            // bukan disembunyikan dengan menimpa Plus/Minus.
             var reconDelta = (parseFloat(res.sales_cm_now || 0) - parseFloat(res.sales_cm_start_today || 0));
+            var loggedNet = parseFloat(res.summary.delta_total || 0);
             var summaryForDisplay = Object.assign({}, res.summary, {
                 delta_total: reconDelta,
-                plus_total: reconDelta >= 0 ? reconDelta : 0,
-                minus_total: reconDelta < 0 ? Math.abs(reconDelta) : 0
+                unlogged_gap: reconDelta - loggedNet
             });
             renderChangeLogSummary(summaryForDisplay);
             renderChangeLogBreakdown(res.breakdown);
@@ -1322,6 +1330,11 @@ function renderChangeLogSummary(summary) {
             '<div class="cl-kpi-label" style="color:rgba(255,255,255,0.75);">Net Actual Today (IDR)</div>' +
             '<div class="cl-kpi-value" style="color:#fff;">' + _clFmtSigned(summary.delta_total) + '</div>' +
             '<div class="cl-kpi-sub" style="color:rgba(255,255,255,0.75);">Qty ' + _clFmtSigned(summary.delta_qty) + '</div>' +
+            (Math.abs(summary.unlogged_gap || 0) >= 1
+                ? '<div class="cl-kpi-sub" style="color:#ffe082;margin-top:4px;" title="Selisih antara Change Today (dashboard) dan total Plus/Minus di Detail Log - ada pergerakan yang belum tercatat di log ini.">' +
+                    '<i class="fas fa-exclamation-triangle mr-1"></i>Unlogged: ' + _clFmtSigned(summary.unlogged_gap) +
+                  '</div>'
+                : '') +
         '</div>' +
 
         '</div>';
