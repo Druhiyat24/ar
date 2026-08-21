@@ -488,7 +488,7 @@ CSS HEADER
 	<br />
 
 	<!-- <div style="margin-bottom: 2.54cm;"> -->
-	<div style="margin-bottom: 0.5cm; page-break-inside: avoid;">
+	<div style="margin-bottom: 0.5cm;">
 		<?php if ($group_user['tgl_input'] >= '2026-06-09') { ?>
 		<table style="page-break-inside: avoid;" cellpadding="0" cellspacing="0" border="1" width="600px">
 			<tr>
