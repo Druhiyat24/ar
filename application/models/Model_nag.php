@@ -4668,11 +4668,15 @@ function load_det_sales5($customer, $bulan, $filter)
         ? (' AND periode = ' . $this->db->escape(date('Y') . '-' . $bulan))
         : (' AND periode LIKE ' . $this->db->escape(date('Y') . '-%'));
 
+    // profit_center ikut di-GROUP BY (bukan cuma customer) - biar view bisa
+    // pecah qty per satuan aslinya (NAG=PCS, NAK=Kilogram) kalau 1 customer
+    // sama-sama beli dari 2 profit center, bukan ditumpuk jadi 1 angka qty
+    // dengan 1 label satuan yang belum tentu benar buat semuanya.
     $hasil = $this->db->query("
-        SELECT customer, ROUND(SUM(qty),2) qty, ROUND(SUM(total),2) eqv_idr
+        SELECT customer, profit_center, ROUND(SUM(qty),2) qty, ROUND(SUM(total),2) eqv_idr
         FROM ar_dashboard
         WHERE type = 'top_buyer_by_sales_value' AND profit_center $pc AND customer = $customer_esc $where_periode
-        GROUP BY customer
+        GROUP BY customer, profit_center
     ");
     return $hasil->result_array();
 }
@@ -4682,11 +4686,12 @@ function load_det_motm($bulan, $filter)
     $pc = ($filter === 'NAG' || $filter === 'NAK') ? "= '$filter'" : "IN ('NAG','NAK')";
     $periode_esc = $this->db->escape(date('Y') . '-' . $bulan);
 
+    // profit_center ikut di-GROUP BY - sama alasannya seperti load_det_sales5 di atas.
     $hasil = $this->db->query("
-        SELECT customer, ROUND(SUM(qty),2) qty, ROUND(SUM(total),2) eqv_idr
+        SELECT customer, profit_center, ROUND(SUM(qty),2) qty, ROUND(SUM(total),2) eqv_idr
         FROM ar_dashboard
         WHERE type = 'top_buyer_by_sales_value' AND profit_center $pc AND periode = $periode_esc
-        GROUP BY customer
+        GROUP BY customer, profit_center
         HAVING eqv_idr > 0
         ORDER BY eqv_idr DESC
     ");
@@ -4698,11 +4703,12 @@ function load_det_motm($bulan, $filter)
 function load_det_motm2($bulan, $tahun)
 {
     $periode_esc = $this->db->escape($tahun . '-' . $bulan);
+    // profit_center ikut di-GROUP BY - sama alasannya seperti load_det_sales5 di atas.
     $hasil = $this->db->query("
-        SELECT customer, ROUND(SUM(qty),2) qty, ROUND(SUM(total),2) eqv_idr
+        SELECT customer, profit_center, ROUND(SUM(qty),2) qty, ROUND(SUM(total),2) eqv_idr
         FROM ar_dashboard
         WHERE type = 'top_buyer_by_sales_value' AND profit_center IN ('NAG','NAK') AND periode = $periode_esc
-        GROUP BY customer
+        GROUP BY customer, profit_center
         HAVING eqv_idr > 0
         ORDER BY eqv_idr DESC
     ");

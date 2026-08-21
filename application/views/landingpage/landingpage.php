@@ -660,7 +660,7 @@ body { overflow-y: scroll; }
 
 <!-- Overdue Aging -->
 <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:95vw; width:1100px;">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title"><i class="fas fa-clock mr-2"></i>Overdue Receivable Aging</h5>
@@ -678,11 +678,18 @@ body { overflow-y: scroll; }
 if (!function_exists('_sls_render_customer_cards')) {
     function _sls_render_customer_cards($rows, $list_id, $sum_prefix, $unit_label)
     {
-        $ttl_qty = 0; $ttl_total = 0; $max_total = 0;
+        $ttl_qty = 0; $ttl_total = 0; $max_total = 0; $qty_by_uom = [];
         foreach ($rows as $r) {
             $ttl_qty += $r['qty'];
             $ttl_total += $r['total'];
             if ($r['total'] > $max_total) $max_total = $r['total'];
+            // Grup qty per satuan aslinya - jangan ditumpuk jadi 1 angka pakai
+            // $unit_label kalau datanya campuran (misal filter ALL gabung NAG/PCS
+            // dan NAK/Kilogram), soalnya menjumlahkan 2 satuan beda jadi 1 angka
+            // itu tidak berarti apa-apa.
+            $uom_key = trim((string) ($r['uom'] ?? ''));
+            if ($uom_key === '') $uom_key = $unit_label;
+            $qty_by_uom[$uom_key] = ($qty_by_uom[$uom_key] ?? 0) + $r['qty'];
         }
         if ($max_total <= 0) $max_total = 1;
         $cust_count = count($rows);
@@ -696,10 +703,21 @@ if (!function_exists('_sls_render_customer_cards')) {
                 <div class="sls-sum-value" id="sls-sum-count-<?= $sum_prefix; ?>"><?= $cust_count; ?></div>
                 <div class="sls-sum-sub">contributing this period</div>
             </div>
-            <div class="sls-sum-card">
+            <div class="sls-sum-card" id="sls-sum-qtycard-<?= $sum_prefix; ?>">
                 <i class="fas fa-boxes sls-sum-icon" style="color:#00897b;"></i>
-                <div class="sls-sum-label">Total Qty (<?= $unit_label; ?>)</div>
-                <div class="sls-sum-value" id="sls-sum-qty-<?= $sum_prefix; ?>"><?= number_format($ttl_qty, 0); ?></div>
+                <?php if (count($qty_by_uom) > 1) : ?>
+                    <div class="sls-sum-label">Total Qty</div>
+                    <div class="sls-sum-curr-list">
+                        <?php foreach ($qty_by_uom as $uom => $q) : ?>
+                            <div class="sls-sum-curr-row"><span class="curr-code"><?= htmlspecialchars($uom); ?></span><span class="curr-amt"><?= number_format($q, $uom === 'PCS' ? 0 : 2); ?></span></div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else :
+                    $only_uom = $qty_by_uom ? array_key_first($qty_by_uom) : $unit_label;
+                ?>
+                    <div class="sls-sum-label">Total Qty (<?= htmlspecialchars($only_uom); ?>)</div>
+                    <div class="sls-sum-value"><?= number_format($ttl_qty, $only_uom === 'PCS' ? 0 : 2); ?></div>
+                <?php endif; ?>
                 <div class="sls-sum-sub">across all customers</div>
             </div>
             <div class="sls-sum-card" style="background:linear-gradient(135deg,#3949ab 0%,#5c6bc0 100%); flex:1.4; min-width:220px;">
@@ -962,7 +980,7 @@ if (!function_exists('_ar_render_customer_cards')) {
 
 <!-- TOP 5 -->
 <div class="modal fade sls-detail-modal" id="mysales5" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width:95vw; width:640px;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:95vw; width:1100px;">
         <div class="modal-content">
             <div class="modal-header text-white" style="background:linear-gradient(135deg,#00838f 0%,#26c6da 100%);">
                 <div>
@@ -1676,13 +1694,38 @@ function _slsRenderSalesCards(rows, listId, sumPrefix) {
     });
     if (maxTotal <= 0) maxTotal = 1;
 
-    var countEl = document.getElementById('sls-sum-count-' + sumPrefix);
-    var qtyEl   = document.getElementById('sls-sum-qty-' + sumPrefix);
-    var totEl   = document.getElementById('sls-sum-total-' + sumPrefix);
-    var topEl   = document.getElementById('sls-sum-top-' + sumPrefix);
+    var countEl  = document.getElementById('sls-sum-count-' + sumPrefix);
+    var qtyCardEl = document.getElementById('sls-sum-qtycard-' + sumPrefix);
+    var totEl    = document.getElementById('sls-sum-total-' + sumPrefix);
+    var topEl    = document.getElementById('sls-sum-top-' + sumPrefix);
     if (countEl) countEl.textContent = rows.length;
-    if (qtyEl) qtyEl.textContent = _slsFmt0(ttlQty);
     if (totEl) totEl.textContent = _slsFmt2(ttlTotal);
+
+    // Grup qty per satuan aslinya (sama seperti versi PHP) - jangan ditumpuk
+    // jadi 1 angka kalau datanya campuran satuan (misal filter ALL gabung
+    // NAG/PCS dan NAK/Kilogram).
+    if (qtyCardEl) {
+        var qtyByUom = {};
+        rows.forEach(function (r) {
+            var uom = (r.uom || 'PCS').toString().trim() || 'PCS';
+            qtyByUom[uom] = (qtyByUom[uom] || 0) + parseFloat(r.qty || 0);
+        });
+        var uomKeys = Object.keys(qtyByUom);
+        var qtyHtml = '<i class="fas fa-boxes sls-sum-icon" style="color:#00897b;"></i>';
+        if (uomKeys.length > 1) {
+            qtyHtml += '<div class="sls-sum-label">Total Qty</div><div class="sls-sum-curr-list">';
+            uomKeys.forEach(function (uom) {
+                qtyHtml += '<div class="sls-sum-curr-row"><span class="curr-code">' + uom + '</span><span class="curr-amt">' + (uom === 'PCS' ? _slsFmt0(qtyByUom[uom]) : _slsFmt2(qtyByUom[uom])) + '</span></div>';
+            });
+            qtyHtml += '</div>';
+        } else {
+            var onlyUom = uomKeys.length ? uomKeys[0] : 'PCS';
+            qtyHtml += '<div class="sls-sum-label">Total Qty (' + onlyUom + ')</div>' +
+                '<div class="sls-sum-value">' + (onlyUom === 'PCS' ? _slsFmt0(ttlQty) : _slsFmt2(ttlQty)) + '</div>';
+        }
+        qtyHtml += '<div class="sls-sum-sub">across all customers</div>';
+        qtyCardEl.innerHTML = qtyHtml;
+    }
     if (topEl) {
         topEl.textContent = rows.length ? ('Top: ' + rows[0].customer + ' (' + (ttlTotal > 0 ? (parseFloat(rows[0].total) / ttlTotal * 100).toFixed(1) : '0.0') + '%)') : '';
     }
