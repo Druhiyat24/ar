@@ -504,6 +504,7 @@ public function simpan_booking_invoice()
         $data = [
             'no_invoice'   => $this->input->post('id_inv'),
             'id_customer'  => $this->input->post('id_cust'),
+            'id_customer_ship' => $this->input->post('id_cust_ship') ?: $this->input->post('id_cust'),
             'shipp'        => $this->input->post('type_shipp'),
             'id_type'      => $this->input->post('type_comm'),
             'tgl_book_inv' => $date,
@@ -629,9 +630,10 @@ public function update_booking_invoice()
     $amount     = $this->input->post('amount');
     $no_invoice     = $this->input->post('no_inv');
     $id_customer     = $this->input->post('cust_mdl');
+    $id_customer_ship = $this->input->post('cust_ship_mdl') ?: $id_customer;
     $profit_center     = $this->input->post('pc_mdl');
     $shipp     = $this->input->post('shipp_mdl');
-    $this->Model_nag->edit_booking_invoice($id, $doc_number, $id_type, $doc_type, $amount, $no_invoice, $id_customer, $profit_center, $shipp);
+    $this->Model_nag->edit_booking_invoice($id, $doc_number, $id_type, $doc_type, $amount, $no_invoice, $id_customer, $profit_center, $shipp, $id_customer_ship);
     // redirect('arnag/bookinvoice');
     echo json_encode(['status' => 'ok']);
 }

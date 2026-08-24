@@ -207,18 +207,20 @@ function modal_book_invoice() {
 
        	$('#modal-add-booking-invoice').modal('show')	 	  
 
-       	$idbook = $('[name="inv_book_number"]').val()	
-       	$idcust = $('[name="customer"]').val()	
-       	$typeshipp = $('[name="shipp"]').val()	
+       	$idbook = $('[name="inv_book_number"]').val()
+       	$idcust = $('[name="customer"]').val()
+       	$idcustship = $('[name="customer_ship"]').val()
+       	$typeshipp = $('[name="shipp"]').val()
        	$doc_type = $('[name="doc_type"]').val()
        	$doc_number = $('[name="doc_number"]').val()
        	$typevalue    = $('[name="val"]').val()
        	$typecomm = $('[name="type"]').val()
        	$mdl_pc = $('[name="profit_center"]').val()
-       	$reff_number = $('[name="reff_number"]').val()		
+       	$reff_number = $('[name="reff_number"]').val()
 	//
 	$('[name="id_inv"]').val($idbook);
 	$('[name="id_cust"]').val($idcust);
+	$('[name="id_cust_ship"]').val($idcustship);
 	$('[name="type_shipp"]').val($typeshipp);
 	$('[name="type_doc"]').val($doc_type);
 	$('[name="type_doc_number"]').val($doc_number);
@@ -253,6 +255,7 @@ function getType(id, shipp, status) {
 			$('[name="amount"]').val(data.value);
 			$('[name="type_mdl"]').val(data.id_type).trigger('change');
 			$('[name="cust_mdl"]').val(data.id_customer).trigger('change');
+			$('[name="cust_ship_mdl"]').val(data.id_customer_ship).trigger('change');
 			$('[name="docum_type"]').val(data.doc_type).trigger('change');
 			$('[name="pc_mdl"]').val(data.profit_center).trigger('change');
 			$('[name="shipp_mdl"]').val(data.shipp);

@@ -45,8 +45,18 @@
                                         </div>
 
                                         <div class="form-group col-md-12">
-                                            <label>Customer</label>
+                                            <label>Billed To</label>
                                             <select class="form-control select2bs4" id="customer" name="customer" required>
+                                                <option value="" disabled selected>Pilih Customer</option>
+                                                <?php foreach ($customer as $cs) : ?>
+                                                    <option value="<?= $cs['Id_Supplier']; ?>"><?= $cs['Supplier']; ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group col-md-12">
+                                            <label>Shipped To</label>
+                                            <select class="form-control select2bs4" id="customer_ship" name="customer_ship">
                                                 <option value="" disabled selected>Pilih Customer</option>
                                                 <?php foreach ($customer as $cs) : ?>
                                                     <option value="<?= $cs['Id_Supplier']; ?>"><?= $cs['Supplier']; ?></option>
@@ -236,8 +246,10 @@
                         </div>
                     </div>
                     <!-- HIDDEN COMPONENT -->
-                    <!-- ID Customer -->
+                    <!-- ID Customer (Billed To) -->
                     <input type="hidden" class="form-control" id="id_cust" name="id_cust" readonly>
+                    <!-- ID Customer Ship (Shipped To) -->
+                    <input type="hidden" class="form-control" id="id_cust_ship" name="id_cust_ship" readonly>
                     <!-- Type Shipp -->
                     <input type="hidden" class="form-control" id="type_shipp" name="type_shipp" readonly>
                     <!-- Document Type -->
@@ -315,8 +327,18 @@
                         </div>
 
                         <div class="form-group col-md-6">
-                            <label>Customer</label>
+                            <label>Billed To</label>
                             <select id="cust_mdl" name="cust_mdl" class="form-control select2bs4" required>
+                                <?php foreach ($customer as $csm) : ?>
+                                    <option value="<?= $csm['Id_Supplier']; ?>"><?= $csm['Supplier']; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-group col-md-6">
+                            <label>Shipped To</label>
+                            <select id="cust_ship_mdl" name="cust_ship_mdl" class="form-control select2bs4">
+                                <option value="">Pilih Customer</option>
                                 <?php foreach ($customer as $csm) : ?>
                                     <option value="<?= $csm['Id_Supplier']; ?>"><?= $csm['Supplier']; ?></option>
                                 <?php endforeach; ?>

@@ -328,9 +328,10 @@ class Model_nag extends CI_Model
         return $hasil->result_array();
     }
 
-    function edit_booking_invoice($id, $doc_number, $id_type, $doc_type, $amount, $no_invoice, $id_customer, $profit_center, $shipp)
+    function edit_booking_invoice($id, $doc_number, $id_type, $doc_type, $amount, $no_invoice, $id_customer, $profit_center, $shipp, $id_customer_ship = null)
     {
-        $hasil = $this->db->query("UPDATE tbl_book_invoice SET no_invoice = '$no_invoice', id_customer = '$id_customer', profit_center = '$profit_center', shipp = '$shipp', doc_number = '$doc_number', id_type = '$id_type', value = '$amount', doc_type = '$doc_type' WHERE id = '$id' ");
+        $id_customer_ship = $id_customer_ship ?: $id_customer;
+        $hasil = $this->db->query("UPDATE tbl_book_invoice SET no_invoice = '$no_invoice', id_customer = '$id_customer', id_customer_ship = '$id_customer_ship', profit_center = '$profit_center', shipp = '$shipp', doc_number = '$doc_number', id_type = '$id_type', value = '$amount', doc_type = '$doc_type' WHERE id = '$id' ");
         return $hasil;
     }
 
@@ -466,8 +467,8 @@ class Model_nag extends CI_Model
 
     function getType($id)
     {
-        $hasil = $this->db->query("SELECT b.id, b.id_type, b.doc_number, a.type, b.no_invoice, b.value, b.doc_type, id_customer, profit_center, shipp
-            FROM tbl_type AS a INNER JOIN tbl_book_invoice AS b ON a.id_type = b.id_type 
+        $hasil = $this->db->query("SELECT b.id, b.id_type, b.doc_number, a.type, b.no_invoice, b.value, b.doc_type, id_customer, id_customer_ship, profit_center, shipp
+            FROM tbl_type AS a INNER JOIN tbl_book_invoice AS b ON a.id_type = b.id_type
             WHERE b.id = '$id' ");
         return $hasil->row();
     }
