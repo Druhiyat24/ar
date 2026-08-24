@@ -288,10 +288,11 @@ function loadbookinvoice(){
 				
 				var trHTML = '';
 				$.each(response, function (i, item) {
-					trHTML += '<tr>';					
+					trHTML += '<tr>';
 					trHTML += '<td>' + item.no_invoice + "</td>";
-					trHTML += '<td>' + item.customer + "</td>";			
-					trHTML += '<td>' + item.shipp + "</td>";				
+					trHTML += '<td>' + item.customer + "</td>";
+					trHTML += '<td>' + (item.customer_ship || item.customer) + "</td>";
+					trHTML += '<td>' + item.shipp + "</td>";
 					trHTML += '<td>' + item.tanggal + "</td>";
 					trHTML += '<td>' + item.type + "</td>";
 					trHTML += '<td>' + item.status + "</td>";

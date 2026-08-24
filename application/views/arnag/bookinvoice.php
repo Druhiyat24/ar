@@ -197,7 +197,8 @@
                                         <thead>
                                             <tr>
                                                 <th>Inv Number</th>
-                                                <th>Customer</th>
+                                                <th>Billed To</th>
+                                                <th>Shipped To</th>
                                                 <th>Shipp</th>
                                                 <th>Tanggal</th>
                                                 <th>Type</th>

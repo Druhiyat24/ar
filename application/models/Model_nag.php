@@ -318,12 +318,13 @@ class Model_nag extends CI_Model
             $str = "WHERE a.status =  '$status' AND a.tgl_book_inv BETWEEN '$dt_dari' AND '$dt_sampai' ";
         }
         //
-        $hasil = $this->db->query("SELECT a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, a.shipp, 
-           DATE_FORMAT(a.tgl_book_inv, '%Y-%m-%d') AS tanggal, c.type,  a.status, a.id, c.id_type, 
+        $hasil = $this->db->query("SELECT a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, UPPER(s.supplier) AS customer_ship, a.shipp,
+           DATE_FORMAT(a.tgl_book_inv, '%Y-%m-%d') AS tanggal, c.type,  a.status, a.id, c.id_type,
            FORMAT(a.value, 2) AS value, a.doc_type, a.doc_number
-           FROM tbl_book_invoice AS a INNER JOIN 
-           mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
-           tbl_type AS c ON a.id_type = c.id_type
+           FROM tbl_book_invoice AS a INNER JOIN
+           mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN
+           tbl_type AS c ON a.id_type = c.id_type LEFT JOIN
+           mastersupplier AS s ON a.id_customer_ship = s.id_supplier
            $str ");
         return $hasil->result_array();
     }
