@@ -271,6 +271,64 @@ function getType(id, shipp, status) {
 
 }
 
+// Buka modal Edit Billed To untuk invoice yang sudah diproses — khusus user berwenang
+function editBilledToProcessed(id) {
+	$.ajax({
+		url: "getType/" + id,
+		type: "GET",
+		dataType: "JSON",
+		success: function (data) {
+			$('[name="id_book_inv_bt"]').val(data.id);
+			$('[name="no_inv_bt"]').val(data.no_invoice);
+			$('[name="cust_bt"]').val(data.id_customer).trigger('change');
+			$('#modal-edit-billed-to').modal('show');
+		},
+		error: function () {
+			alert('Error get data from ajax');
+		}
+	});
+}
+
+function handleUpdateBilledTo() {
+	let formData = {
+		id_book_inv_bt: $('[name="id_book_inv_bt"]').val(),
+		no_inv_bt: $('[name="no_inv_bt"]').val(),
+		cust_bt: $('[name="cust_bt"]').val()
+	};
+
+	Swal.fire({
+		title: 'Ubah Billed To?',
+		text: "Invoice ini sudah diproses. Yakin ingin mengubah Billed To-nya?",
+		icon: 'warning',
+		showCancelButton: true,
+		confirmButtonColor: '#3085d6',
+		cancelButtonColor: '#d33',
+		confirmButtonText: 'Ya, simpan!',
+		cancelButtonText: 'Batal'
+	}).then((result) => {
+		if (result.isConfirmed) {
+			$.ajax({
+				url: "update_billed_to_processed/",
+				type: 'POST',
+				data: formData,
+				dataType: 'json',
+				success: function (response) {
+					if (response.status === 'ok') {
+						$('#modal-edit-billed-to').modal('hide');
+						loadbookinvoice();
+						Swal.fire('Tersimpan!', 'Billed To berhasil diperbarui.', 'success');
+					} else {
+						Swal.fire('Gagal!', response.message || 'Gagal menyimpan data.', 'error');
+					}
+				},
+				error: function () {
+					Swal.fire('Gagal!', 'Terjadi kesalahan saat mengirim data.', 'error');
+				}
+			});
+		}
+	});
+}
+
 function loadbookinvoice(){
 
 	$('#table-booking-invoice tbody tr').remove();
@@ -304,6 +362,10 @@ function loadbookinvoice(){
 						trHTML += '<td>' +
 						'<button type="button" class="btn btn-sm btn-primary" onclick="getType(\'' + item.id + '\', \'' + item.shipp + '\', \'' + item.status + '\')">Update</button> ' +
 						'<button type="button" class="btn btn-sm btn-danger" onclick="cancel_booking_invoice(\'' + item.id + '\', \'' + item.no_invoice + '\', \'' + item.status + '\')">Cancel</button>' +
+						'</td>';
+					} else if (typeof CAN_EDIT_PROCESSED_BILLED_TO !== 'undefined' && CAN_EDIT_PROCESSED_BILLED_TO) {
+						trHTML += '<td><b><i>Already Processed</i></b><br>' +
+						'<button type="button" class="btn btn-sm btn-warning mt-1" onclick="editBilledToProcessed(\'' + item.id + '\')">Edit Billed To</button>' +
 						'</td>';
 					} else {
 						trHTML += '<td><b><i>Already Processed</i></b></td>';

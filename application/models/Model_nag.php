@@ -336,6 +336,14 @@ class Model_nag extends CI_Model
         return $hasil;
     }
 
+    // Ubah Billed To pada booking invoice yang sudah diproses (bukan DRAFT lagi) —
+    // hanya dipanggil untuk user yang berwenang, dicek di controller
+    function update_billed_to($id, $id_customer)
+    {
+        $hasil = $this->db->query("UPDATE tbl_book_invoice SET id_customer = '$id_customer' WHERE id = '$id' ");
+        return $hasil;
+    }
+
     function cancel_booking_invoice($id)
     {
         $hasil = $this->db->query("UPDATE tbl_book_invoice SET status = 'CANCEL' WHERE id = '$id' ");

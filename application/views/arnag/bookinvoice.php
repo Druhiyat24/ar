@@ -404,6 +404,44 @@
     </form>
 </div>
 
+<!-- Modal Edit Billed To (invoice sudah diproses, khusus user tertentu) -->
+<div class="modal fade" id="modal-edit-billed-to">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h4 class="modal-title">Edit Billed To</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" style="font-size:12.5px;">Invoice ini sudah diproses. Perubahan Billed To di sini hanya mengubah nama customer yang ditagih, tidak memproses ulang data lain.</p>
+                <input type="hidden" id="id_book_inv_bt" name="id_book_inv_bt" readonly>
+                <div class="form-group">
+                    <label>No Invoice</label>
+                    <input type="text" class="form-control" id="no_inv_bt" name="no_inv_bt" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Billed To</label>
+                    <select id="cust_bt" name="cust_bt" class="form-control select2bs4" required>
+                        <?php foreach ($customer as $csbt) : ?>
+                            <option value="<?= $csbt['Id_Supplier']; ?>"><?= $csbt['Supplier']; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="handleUpdateBilledTo()">Simpan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var CAN_EDIT_PROCESSED_BILLED_TO = <?= json_encode(($user['username'] ?? '') === 'lukman'); ?>;
+</script>
+
 <!-- Only Input Number In Text -->
 <script>
     function isNumber(evt) {

@@ -638,6 +638,34 @@ public function update_booking_invoice()
     echo json_encode(['status' => 'ok']);
 }
 
+// Ubah Billed To pada booking invoice yang statusnya sudah diproses (bukan DRAFT) —
+// khusus user 'lukman', untuk kasus koreksi setelah proses jalan
+public function update_billed_to_processed()
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized']); return;
+    }
+    if ($this->session->userdata('username') !== 'lukman') {
+        echo json_encode(['status' => 'error', 'message' => 'Akses ditolak']); return;
+    }
+
+    $id          = $this->input->post('id_book_inv_bt');
+    $id_customer = $this->input->post('cust_bt');
+    $no_invoice  = $this->input->post('no_inv_bt');
+
+    if (!$id || !$id_customer) {
+        echo json_encode(['status' => 'error', 'message' => 'Data tidak lengkap']); return;
+    }
+
+    $this->Model_nag->update_billed_to($id, $id_customer);
+
+    // Simpan Log
+    $activity = 'Edit Billed To (invoice sudah diproses)';
+    $this->log_booking_invoice($activity, $no_invoice, 'Billed To diubah ke id_customer=' . $id_customer);
+
+    echo json_encode(['status' => 'ok']);
+}
+
 public function log_booking_invoice($activity, $doc_number, $status)
 {
     $nama          = $this->session->userdata('username');
