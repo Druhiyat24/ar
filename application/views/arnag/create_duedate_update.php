@@ -194,6 +194,14 @@
                             </div>
                     </div>
                     <!-- End Date Range -->
+                    <div class="row mt-2">
+                        <div class="col-md-6">
+                            <div class="form-group mb-0">
+                                <label>Description</label>
+                                <textarea class="form-control" id="mdl_desc_all" name="mdl_desc_all" rows="2" placeholder="Type here to auto-fill the Description of checked rows below" autocomplete="off"></textarea>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="row">

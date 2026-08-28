@@ -16590,13 +16590,13 @@ function cari_data_reff_duedate() {
 					trHTML += '</tr>';
 				});
 
-				$('#table-list-data').append(trHTML);				
+				$('#table-list-data').append(trHTML);
 
 			},
 			error: function (jqXHR, textStatus, errorThrown) {
 				console.error('Error:', jqXHR.responseText);
 			}
-		});	
+		});
 
 	}
 
@@ -16609,17 +16609,27 @@ function cari_data_reff_duedate() {
     var total = parseFloat(input.data('total')) || 0;
 
     if (checkbox.checked) {
-        textarea.prop('readonly', false);
         input.prop('readonly', false);
 
         // isi otomatis total
         input.val(formatMoney(total));
 
+        // Description selalu readonly — isi otomatis dari field Description di atas
+        textarea.val($('#mdl_desc_all').val());
+
     } else {
-        textarea.prop('readonly', true).val('');
+        textarea.val('');
         input.prop('readonly', true).val('');
     }
 }
+
+// Ketik di field Description atas -> otomatis isi Description baris yang dicentang saja (tetap readonly)
+$(document).on('input', '#mdl_desc_all', function () {
+    var val = $(this).val();
+    $('#table-list-data .cb_duedate:checked').each(function () {
+        $(this).closest('tr').find('.ket_reverse').val(val);
+    });
+});
 
 
 $(document).on('input', '.amount_duedate', function () {
