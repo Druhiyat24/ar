@@ -1561,9 +1561,9 @@ function update_faktur_pajak_cbd($id, $faktur_pjk)
 function report_proforma_invoice($id)
 {
     $hasil = $this->db->query("SELECT a.id, a.no_proforma_invoice AS no_pi, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi, b.supplier AS customer, a.shipp, a.peb,
-      UPPER(c.type) AS type, a.status, a.no_faktur_pajak, LEFT(IFNULL(b.alamat, '-'), 27) AS alamat, 
+      UPPER(c.type) AS type, a.status, a.no_faktur_pajak, IFNULL(b.alamat, '-') AS alamat,
       IFNULL(b.Phone, '-') AS phone, d.no_rek, d.nama_bank, d.v_bankaddress, d.curr
-      FROM tbl_invoice_proforma AS a INNER JOIN 
+      FROM tbl_invoice_proforma AS a INNER JOIN
       mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN 
       tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
       masterbank AS d ON a.id_bank = d.id
@@ -1574,9 +1574,9 @@ function report_proforma_invoice($id)
 function report_proforma_invoice_cbd($id)
 {
     $hasil = $this->db->query("SELECT a.id, a.no_proforma_invoice AS no_pi, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi, b.supplier AS customer, a.shipp, a.peb,
-      UPPER(c.type) AS type, a.status, a.no_faktur_pajak, LEFT(IFNULL(b.alamat, '-'), 27) AS alamat, 
+      UPPER(c.type) AS type, a.status, a.no_faktur_pajak, IFNULL(b.alamat, '-') AS alamat,
       IFNULL(b.Phone, '-') AS phone, d.no_rek, d.nama_bank, d.v_bankaddress, d.curr
-      FROM tbl_invoice_proforma_dp_cbd AS a INNER JOIN 
+      FROM tbl_invoice_proforma_dp_cbd AS a INNER JOIN
       mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN 
       tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
       masterbank AS d ON a.id_bank = d.id
@@ -2000,9 +2000,9 @@ function cari_return_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer)
 function report_return_invoice($id)
 {
     $hasil = $this->db->query("SELECT a.id, a.no_return_invoice AS no_return, DATE_FORMAT(a.tgl_return_inv, '%Y-%m-%d') AS date_return, b.supplier AS customer, a.shipp, a.peb,
-      UPPER(c.type) AS type_, a.status, a.nrp, a.no_invoice_asal, LEFT(IFNULL(b.alamat, '-'), 27) AS alamat, 
+      UPPER(c.type) AS type_, a.status, a.nrp, a.no_invoice_asal, IFNULL(b.alamat, '-') AS alamat,
       IFNULL(b.Phone, '-') AS phone, d.no_rek, d.nama_bank, d.v_bankaddress, d.curr
-      FROM tbl_invoice_return AS a INNER JOIN 
+      FROM tbl_invoice_return AS a INNER JOIN
       mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN 
       tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
       masterbank AS d ON a.id_bank = d.id
@@ -2529,7 +2529,7 @@ function simpan_invoice_nb_detail($data, $created_by = null)
 function report_invoice_nb($id)
 {
     $hasil = $this->db->query("SELECT distinct a.no_inv as no_invoice, LEFT(b.Supplier, 30) AS customer,
-      LEFT(IFNULL(b.alamat, '-'), 27) AS alamat, IFNULL(b.Phone, '-') AS phone, IFNULL(b.Email, '-') AS email,
+      IFNULL(b.alamat, '-') AS alamat, IFNULL(b.Phone, '-') AS phone, IFNULL(b.Email, '-') AS email,
       DATE_FORMAT(f.sj_date,'%d-%m-%Y') AS tgl_inv, UPPER(a.type) AS type, a.shipp, a.top_type AS type_top, a.top,
       e.no_rek, e.nama_bank,e.v_company, e.v_bankaddress, e.curr
       FROM tbl_invoice_nb AS a INNER JOIN 
@@ -4308,7 +4308,7 @@ function cari_sj_noncom($dt_dari_sj, $dt_sampai_sj)
         mastersupplier f on f.Id_Supplier = c.id_supplier
         WHERE c.not_sales is null AND (c.bppbdate < '2026-08-01' OR (c.bppbdate >= '2026-08-01' AND c.jenis_trans LIKE 'penjualan%')) and c.id_supplier not in ('1038','1384') AND (ISNULL(c.stat_inv) OR c.stat_inv = '' or c.stat_inv='0') and c.confirm = 'Y' and c.cancel = 'N' and LEFT(c.bppbno_int,2) = 'FG' and c.bppbdate BETWEEN '$dt_dari_sj' AND '$dt_sampai_sj') a left JOIN (select tanggal,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) b on b.tanggal = a.bppbdate")->result_array();
 
-    $hasil_pgsql = $db_pgsql->query("SELECT * from (SELECT f.so_date, a.id, f.jenis_order jns_so, f.tipe_order_import_export area, mk.nama_konsumen supplier, mk.kode_konsumen id_supplier, kode_so no_so, kode_out sj, tgl_pengeluaran bppbdate, kode_out shipping_number, '-' ws, lab_dip styleno, '-' product_group, nama_kain product_item, warna color, '-' size,  currency curr, h.nama_unit uom, qty_netto qty, Round(coalesce(harga,0),4) AS unit_price, ROUND(qty_netto * Round(coalesce(harga,0),4), 4) AS total_price, a.no_so id_so, a.id AS id_bppb, 'A' grade, '' not_sales, CONCAT(ROUND(qty_netto,2),' ',h.nama_unit) qty_pcs, TO_CHAR(ROUND(qty_netto * ROUND(coalesce(harga,0),4), 2), 'FM999,999,999,990.00') AS total, '-' invno, g.nama_unit uom_ship, qty_meter qty_ship, Round(coalesce(harga_shipment,0),4) AS unit_price_ship, ROUND(qty_meter * Round(coalesce(harga_shipment,0),4), 4) AS total_price_ship, TO_CHAR(ROUND(qty_meter * ROUND(COALESCE(harga_shipment,0),4), 2), 'FM999,999,999,990.00') AS total_ship from official_out_h a 
+    $hasil_pgsql = $db_pgsql->query("SELECT * from (SELECT f.so_date, a.id, f.jenis_order jns_so, f.tipe_order_import_export area, mk.nama_konsumen supplier, mk.kode_konsumen id_supplier, kode_so no_so, kode_out sj, tgl_pengeluaran bppbdate, kode_out shipping_number, '-' ws, lab_dip styleno, '-' product_group, nama_kain product_item, warna color, '-' size,  currency curr, h.nama_unit uom, qty_netto qty, Round(coalesce(harga,0),4) AS unit_price, ROUND(qty_netto * Round(coalesce(harga,0),4), 4) AS total_price, a.no_so id_so, a.id AS id_bppb, 'A' grade, '' not_sales, CONCAT(ROUND(qty_netto,2),' ',h.nama_unit) qty_pcs, TO_CHAR(ROUND(qty_netto * ROUND(coalesce(harga,0),4), 2), 'FM999,999,999,990.00') AS total, '-' invno, h.nama_unit uom_ship, qty_netto qty_ship, Round(coalesce(harga,0),4) AS unit_price_ship, ROUND(qty_netto * Round(coalesce(harga,0),4), 4) AS total_price_ship, TO_CHAR(ROUND(qty_netto * ROUND(coalesce(harga,0),4), 2), 'FM999,999,999,990.00') AS total_ship from official_out_h a
         inner join official_out_barcode b on b.id_official = a.id 
         inner join master_kain c on c.id = b.kain_id 
         LEFT JOIN master_kain_detail d on d.id = b.detail_kain_id 

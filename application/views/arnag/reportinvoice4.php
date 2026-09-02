@@ -244,7 +244,7 @@ CSS HEADER
 			<td class="position_top">
 				:
 			</td>
-			<td class="position_top" colspan="3">
+			<td class="position_top" colspan="3" style="word-wrap:break-word;">
 				<?= $data_invoice['alamat']; ?>
 			</td>
 			<td class="position_top" colspan="8">
