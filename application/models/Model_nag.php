@@ -2786,10 +2786,15 @@ function get_kode_alokasi()
     //ubah september
 function cari_invoice_alo($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer, $rate, $pwith)
 {
-
-
-    if ($rate == '1' and $pwith == 'IDR') {
-        $hasil = $this->db->query("(SELECT DISTINCT a.no_proforma_invoice AS no_invoice, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date, f.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL f.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
+    // Gabungkan invoice IDR & USD sekaligus, independen dari Payment With ($pwith) --
+    // sebelumnya invoice yang currency-nya beda dari $pwith tersaring habis (tidak
+    // pernah muncul di daftar), jadi bayar lintas-currency (IDR bayar USD / USD bayar
+    // IDR) tidak mungkin. amount1 (yang akhirnya tersimpan ke tbl_alokasi_detail.amount)
+    // tetap native currency invoice masing-masing supaya sisa outstanding invoice ke
+    // depannya tetap konsisten dihitung; konversi ke currency pembayaran (bagi/kali rate)
+    // dilakukan di JS (cari_data_invoic() & modal_get_amount()), bukan di sini.
+    $hasil = $this->db->query("
+(SELECT DISTINCT a.no_proforma_invoice AS no_invoice, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date, f.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL f.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
           a.status, a.id, if(h.amount is null,format(IF(a.value_dp = '0',a.total,a.value_dp), 0), format(((IF(a.value_dp = '0',a.total,a.value_dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) AS amount, if(h.amount is null,round((IF(a.value_dp = '0',a.total,a.value_dp)), 0),round(((IF(a.value_dp = '0',a.total,a.value_dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) as amountrate, if(h.amount is null,format((IF(a.value_dp = '0',a.total,a.value_dp)), 0),format(((IF(a.value_dp = '0',a.total,a.value_dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) as amountrate1, if(h.amount is null,round(IF(a.value_dp = '0',a.total,a.value_dp), 0), round(((IF(a.value_dp = '0',a.total,a.value_dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) AS amount1
           FROM  tbl_invoice_proforma_dp_cbd AS a INNER JOIN 
           mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
@@ -2853,11 +2858,9 @@ function cari_invoice_alo($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer, $rat
           if(h.amount is null,format((a.grand_total), 0),format(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)) as amountrate1,
           if(h.amount is null,round(a.grand_total, 0), round(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)) AS amount1
           from saldoawal_ar a left join tbl_alokasi_detail as h on a.no_invoice = h.no_ref left join tbl_alokasi as i on h.no_alk = i.no_alk  
-          WHERE a.id_customer = '$id_customer' and a.status = 'APPROVED' and if(h.amount is null,round(a.grand_total, 0), round(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)) != '0' and a.curr = 'IDR' ORDER BY a.id) ");
-
-return $hasil->result_array();
-}elseif ($rate != '1' and $pwith == 'USD') {
-    $hasil = $this->db->query(" (SELECT DISTINCT a.no_proforma_invoice AS no_invoice, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date, f.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL f.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
+          WHERE a.id_customer = '$id_customer' and a.status = 'APPROVED' and if(h.amount is null,round(a.grand_total, 0), round(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)) != '0' and a.curr = 'IDR' ORDER BY a.id)
+        UNION ALL
+(SELECT DISTINCT a.no_proforma_invoice AS no_invoice, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date, f.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL f.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
       a.status, a.id, if(h.amount is null,format(IF(a.dp = '0',a.total,a.dp), 0), format(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) AS amount, if(h.amount is null,round((IF(a.dp = '0',a.total,a.dp)), 0),round(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) as amountrate, if(h.amount is null,format((IF(a.dp = '0',a.total,a.dp)), 0),format(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) as amountrate1, if(h.amount is null,round(IF(a.dp = '0',a.total,a.dp), 0), round(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) AS amount1
       FROM  tbl_invoice_proforma_dp_cbd AS a INNER JOIN 
       mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
@@ -2922,83 +2925,12 @@ return $hasil->result_array();
       if(h.amount is null,format((a.grand_total  * '$rate'), 2),format(((a.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0)) as amountrate1,
       if(h.amount is null,round(a.grand_total, 2),round((a.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2)) AS amount1
       from saldoawal_ar a left join tbl_alokasi_detail as h on a.no_invoice = h.no_ref left join tbl_alokasi as i on h.no_alk = i.no_alk  
-      WHERE a.id_customer = '$id_customer' and a.status = 'APPROVED' and if(h.amount is null,round(a.grand_total, 2),round((a.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2)) != '0' and a.curr = 'USD' ORDER BY a.id) ");
+      WHERE a.id_customer = '$id_customer' and a.status = 'APPROVED' and if(h.amount is null,round(a.grand_total, 2),round((a.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2)) != '0' and a.curr = 'USD' ORDER BY a.id)
+    ");
 
-return $hasil->result_array();
-}else{
-
- $hasil = $this->db->query("(SELECT DISTINCT a.no_proforma_invoice AS no_invoice, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date, f.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL f.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
-  a.status, a.id, if(h.amount is null,format(IF(a.dp = '0',a.total,a.dp), 0), format(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) AS amount, if(h.amount is null,round((IF(a.dp = '0',a.total,a.dp)), 0),round(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) as amountrate, if(h.amount is null,format((IF(a.dp = '0',a.total,a.dp)), 0),format(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) as amountrate1, if(h.amount is null,round(IF(a.dp = '0',a.total,a.dp), 0), round(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) AS amount1
-  FROM  tbl_invoice_proforma_dp_cbd AS a INNER JOIN 
-  mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
-  tbl_type AS c ON a.id_type = c.id_type INNER JOIN
-  tbl_invoice_proforma_detail_dp_cbd as e on a.no_proforma_invoice=e.no_invoice_proforma left JOIN 
-  tbl_master_top AS f ON a.id_top = f.id left JOIN 
-  tbl_duedate AS g ON a.id = g.id_invoice left join
-  tbl_alokasi_detail as h on a.no_proforma_invoice = h.no_ref left join
-  tbl_alokasi as i on h.no_alk = i.no_alk 
-  WHERE a.tgl_proforma_inv BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.id_customer = '$id_customer' and a.status like '%APPROVED%' and if(h.amount is null,round(IF(a.dp = '0',a.total,a.dp), 0), round(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) != '0' and e.curr = '$pwith' ORDER BY a.id) union
-  (SELECT DISTINCT a.no_dn AS no_invoice, DATE_FORMAT(a.tgl_dn, '%Y-%m-%d') AS inv_date, DATEDIFF(a.due_date,a.tgl_dn) as top, a.due_date AS duedate, UPPER(b.supplier) AS customer, a.to_curr, a.status, a.id, if(h.amount is null,format(a.eqv_curr, 0), format(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) AS amount, if(h.amount is null,round((a.eqv_curr), 0),round(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) as amountrate, if(h.amount is null,format((a.eqv_curr), 0),format(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) as amountrate1, if(h.amount is null,round(a.eqv_curr, 0), round(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) AS amount1
-  FROM  tbl_debitnote_h AS a INNER JOIN 
-  mastersupplier AS b ON a.customer = b.id_supplier left JOIN 
-  tbl_alokasi_detail as h on a.no_dn = h.no_ref left join
-  tbl_alokasi as i on h.no_alk = i.no_alk 
-  WHERE a.tgl_dn BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.customer = '$id_customer' and a.status like '%APPROVED%' and if(h.amount is null,round(a.eqv_curr, 0), round(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) != '0' and a.to_curr = '$pwith' ORDER BY a.id) 
-  union
-  (SELECT DISTINCT a.no_invoice AS no_invoice, DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date, f.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(e.sj_date, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL f.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
-  a.status, a.id, if(e.curr = 'IDR',if(h.amount is null,format(d.grand_total, 0), format(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,format(d.grand_total, 2),format((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) AS amount, IF(e.curr = 'IDR',if(h.amount is null,round((d.grand_total), 0),round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round((d.grand_total  * '$rate'), 2),round(((d.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0))) as amountrate, IF(e.curr = 'IDR',if(h.amount is null,format((d.grand_total), 0),format(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,format((d.grand_total  * '$rate'), 2),format(((d.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0))) as amountrate1, if(e.curr = 'IDR',if(h.amount is null,round(d.grand_total, 0), round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round(d.grand_total, 2),round((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) AS amount1
-  FROM  tbl_book_invoice AS a INNER JOIN 
-  mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
-  tbl_type AS c ON a.id_type = c.id_type INNER JOIN
-  tbl_invoice_pot AS d ON a.id = d.id_book_invoice  INNER JOIN
-  tbl_invoice_detail as e on a.id=e.id_book_invoice left JOIN 
-  tbl_master_top AS f ON a.id_top = f.id left JOIN 
-  tbl_duedate AS g ON a.id = g.id_invoice left join
-  tbl_alokasi_detail as h on a.no_invoice = h.no_ref left join
-  tbl_alokasi as i on h.no_alk = i.no_alk left join 
-  saldoawal_ar as o on o.no_invoice = a.no_invoice
-  WHERE a.profit_center = 'NAG' and o.no_invoice is null and e.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.id_customer = '$id_customer' and e.curr = '$pwith' and a.status like '%APPROVED%' and if(e.curr = 'IDR',if(h.amount is null,round(d.grand_total, 0), round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round(d.grand_total, 2),round((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) != '0' ORDER BY a.id) 
-  union
-  (SELECT DISTINCT a.no_invoice AS no_invoice, DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date, f.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(e.sj_date, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL f.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
-  a.status, a.id, if(e.curr = 'IDR',if(h.amount is null,format(d.grand_total, 0), format(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,format(d.grand_total, 2),format((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) AS amount, IF(e.curr = 'IDR',if(h.amount is null,round((d.grand_total), 0),round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round((d.grand_total  * '$rate'), 2),round(((d.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0))) as amountrate, IF(e.curr = 'IDR',if(h.amount is null,format((d.grand_total), 0),format(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,format((d.grand_total  * '$rate'), 2),format(((d.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0))) as amountrate1, if(e.curr = 'IDR',if(h.amount is null,round(d.grand_total, 0), round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round(d.grand_total, 2),round((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) AS amount1
-  FROM  tbl_book_invoice AS a INNER JOIN 
-  mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
-  tbl_type AS c ON a.id_type = c.id_type INNER JOIN
-  tbl_invoice_pot_knitting AS d ON a.id = d.id_book_invoice  INNER JOIN
-  tbl_invoice_detail_knitting as e on a.id=e.id_book_invoice left JOIN 
-  tbl_master_top AS f ON a.id_top = f.id left JOIN 
-  tbl_duedate AS g ON a.id = g.id_invoice left join
-  tbl_alokasi_detail as h on a.no_invoice = h.no_ref left join
-  tbl_alokasi as i on h.no_alk = i.no_alk left join 
-  saldoawal_ar as o on o.no_invoice = a.no_invoice
-  WHERE a.profit_center = 'NAG' and o.no_invoice is null and e.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.id_customer = '$id_customer' and e.curr = '$pwith' and a.status like '%APPROVED%' and if(e.curr = 'IDR',if(h.amount is null,round(d.grand_total, 0), round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round(d.grand_total, 2),round((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) != '0' ORDER BY a.id) 
-  union 
-  (SELECT DISTINCT a.no_inv AS no_invoice, DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date, a.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(e.sj_date, '%Y-%m-%d'), INTERVAL a.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL a.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
-  a.status, a.id, if(e.curr = 'IDR',if(h.amount is null,format(d.grand_total, 0), format(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,format(d.grand_total, 2),format((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv)), 2))) AS amount, IF(e.curr = 'IDR',if(h.amount is null,round((d.grand_total), 0),round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,round((d.grand_total  * '$rate'), 2),round(((d.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv))), 0))) as amountrate, IF(e.curr = 'IDR',if(h.amount is null,format((d.grand_total), 0),format(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,format((d.grand_total  * '$rate'), 2),format(((d.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv))), 0))) as amountrate1, if(e.curr = 'IDR',if(h.amount is null,round(d.grand_total, 0), round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,round(d.grand_total, 2),round((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv)), 2))) AS amount1
-  FROM  tbl_invoice_nb AS a INNER JOIN 
-  mastersupplier AS b ON a.customer = b.id_supplier INNER JOIN 
-  tbl_invoice_nb_pot AS d ON a.no_inv = d.no_inv  INNER JOIN
-  tbl_invoice_nb_detail as e on a.no_inv=e.no_inv left JOIN 
-  tbl_duedate AS g ON a.id = g.id_invoice left join
-  tbl_alokasi_detail as h on a.no_inv = h.no_ref left join
-  tbl_alokasi as i on h.no_alk = i.no_alk left join 
-  saldoawal_ar as o on o.no_invoice = a.no_inv
-  WHERE o.no_invoice is null and e.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.customer = '$id_customer' and e.curr = '$pwith' and a.status like '%APPROVED%' and if(e.curr = 'IDR',if(h.amount is null,round(d.grand_total, 0), round(((d.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_inv)), 0)),if(h.amount is null,round(d.grand_total, 2),round((d.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_inv)), 2))) != '0' ORDER BY a.id)
-  union
-  (select a.no_invoice, a.sj_date, a.top, a.due_date, a.customer, a.curr, a.status, a.id,
-
-  if(a.curr = 'IDR',if(h.amount is null,format(a.grand_total, 0), format(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,format(a.grand_total, 2),format((a.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) AS amount, 
-  IF(a.curr = 'IDR',if(h.amount is null,round((a.grand_total), 0),round(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round((a.grand_total  * '$rate'), 2),round(((a.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0))) as amountrate,
-  IF(a.curr = 'IDR',if(h.amount is null,format((a.grand_total), 0),format(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,format((a.grand_total  * '$rate'), 2),format(((a.grand_total  * '$rate' - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice))), 0))) as amountrate1,
-  if(a.curr = 'IDR',if(h.amount is null,round(a.grand_total, 0), round(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round(a.grand_total, 2),round((a.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) AS amount1
-  from saldoawal_ar a left join tbl_alokasi_detail as h on a.no_invoice = h.no_ref left join tbl_alokasi as i on h.no_alk = i.no_alk  
-  WHERE a.id_customer = '$id_customer' and a.curr = '$pwith' and a.status like '%APPROVED%' and if(a.curr = 'IDR',if(h.amount is null,round(a.grand_total, 0), round(((a.grand_total) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_invoice)), 0)),if(h.amount is null,round(a.grand_total, 2),round((a.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2))) != '0' ORDER BY a.id)");
-
-return $hasil->result_array();
-
+    return $hasil->result_array();
 }
 
-}
 
 function delete_invoice_detail_alo()
 {

@@ -9452,25 +9452,41 @@ function cari_data_invoic() {
 
 		console.log(dt_dari_invkwt + ' ' + dt_sampai_invkwt + ' ' + rate + ' ' + pwith);
 
-		$.ajax({		
-			url: "cari_invoice_alo/" + dt_dari_invkwt + "/" + dt_sampai_invkwt + "/" + id_customer + "/" + rate + "/" + pwith + "/",					
+		$.ajax({
+			url: "cari_invoice_alo/" + dt_dari_invkwt + "/" + dt_sampai_invkwt + "/" + id_customer + "/" + rate + "/" + pwith + "/",
 			type: "GET",
 			dataType: "JSON",
 			success: function (response) {
 
+				var rateNum = parseFloat(rate) || 1;
 				var trHTML = '';
-				$.each(response, function (i, item) { 								
-					trHTML += '<tr>';					
+				$.each(response, function (i, item) {
+					// amount1 = native currency invoice (INI yang tersimpan ke tbl_alokasi_detail
+					// lewat mdl_amo, jangan diubah). amountAlo = konversi amount1 ke currency
+					// Payment With (pwith), cuma dipakai buat lacak sisa dana pembayaran
+					// (Outstanding Amount Alokasi) di modal_get_amount() — beda invoice-curr vs
+					// pwith artinya bayar lintas-currency, jadi perlu bagi/kali rate.
+					var amt1 = parseFloat(item.amount1) || 0;
+					var amountAlo = amt1;
+					if (item.curr !== pwith) {
+						if (item.curr === 'IDR' && pwith === 'USD') {
+							amountAlo = amt1 / rateNum;
+						} else if (item.curr === 'USD' && pwith === 'IDR') {
+							amountAlo = amt1 * rateNum;
+						}
+					}
+
+					trHTML += '<tr>';
 					trHTML += '<td>' + item.no_invoice + "</td>";
 					trHTML += '<td>' + item.inv_date + "</td>";
-					trHTML += '<td>' + item.duedate + "</td>";	
+					trHTML += '<td>' + item.duedate + "</td>";
 					trHTML += '<td>' + item.curr + "</td>";
 					trHTML += '<td style="display:none;">' + item.amount1 + "</td>";
 					trHTML += '<td style="display:none;">' + item.amountrate + "</td>";
 					trHTML += '<td>' + item.amount + "</td>";
-					trHTML += '<td>' + item.amountrate1 + "</td>";		
+					trHTML += '<td>' + item.amountrate1 + "</td>";
 					trHTML += '<td><input type="text" min="0" class="form-control" id="mdl_amo" name="mdl_amo" style="width: 80%; text-align: right" oninput="modal_input_amo(value)" readonly autocomplete="off"></td>';
-					trHTML += '<td><input type="checkbox" name="mdl_cek_kwt" id="mdl_cek_kwt" class="flat"  onclick="modal_sum_total_alo(value = ' +  item.amount1 + '); modal_get_amount(value = ' +  item.amount1 + ')"></td>';
+					trHTML += '<td><input type="checkbox" name="mdl_cek_kwt" id="mdl_cek_kwt" class="flat" data-amountalo="' + amountAlo + '" onclick="modal_sum_total_alo(value = ' +  item.amount1 + '); modal_get_amount(value = ' +  item.amount1 + ')"></td>';
 
 					trHTML += '</tr>';
 				});
@@ -9527,17 +9543,21 @@ function modal_get_amount(){
 	//    	
     		// alert(totmdl_amo);
     		for (var i = 0; i < input_kwt.length; i++) {
-    			if (input_kwt[i].checked) {	
+    			if (input_kwt[i].checked) {
     				if(totmdl_amo[i].value == ''){
     					total = parseFloat(input_kwt[i].value);
-    				}else{		
+    				}else{
     					total = parseFloat(totmdl_amo[i].value);
     				}
-    				totalas += parseFloat(input_kwt[i].value);
+    				// Outstanding Amount Alokasi dilacak dalam currency Payment With, bukan
+    				// currency invoice — pakai data-amountalo (hasil bagi/kali rate kalau
+    				// currency invoice beda dari Payment With), bukan amount1 (native) mentah.
+    				var amountAlo = parseFloat($(input_kwt[i]).data('amountalo'));
+    				totalas += isNaN(amountAlo) ? parseFloat(input_kwt[i].value) : amountAlo;
 
-    				document.getElementsByName("mdl_amo")[i].value = total;		  	
+    				document.getElementsByName("mdl_amo")[i].value = total;
     			}
-    			type: "POST";					
+    			type: "POST";
     		}
     		ost = val_alo - totalas;
 
