@@ -2372,6 +2372,15 @@ public function createinvoice_manual()
         // $this->delete_invoice_detail_temporary();
 }
 
+public function get_kode_inv_nb($tanggal)
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+
+    echo json_encode(['kode_inv' => $this->Model_nag->get_kode_inv_nb($tanggal)]);
+}
+
 public function alokasi_ar()
 {
     if (!$this->session->userdata('username')) {

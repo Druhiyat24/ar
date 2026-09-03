@@ -785,6 +785,31 @@
     <!-- /.modal-dialog -->
 </div>
 
+<!-- Invoice Number mengikuti Invoice Date -->
+<script>
+    window.addEventListener('load', function () {
+        $('#invoice_date').on('changeDate change', refreshKodeInvNb);
+    });
+
+    function refreshKodeInvNb() {
+        var tgl = document.getElementById('invoice_date').value;
+        if (!tgl) {
+            return;
+        }
+        $.ajax({
+            url: "get_kode_inv_nb/" + tgl + "/",
+            type: "GET",
+            dataType: "JSON",
+            success: function (response) {
+                document.getElementById('inv_num').value = response.kode_inv;
+            },
+            error: function () {
+                alert('Error get data from ajax');
+            }
+        });
+    }
+</script>
+
 <!-- Only Input Number In Text -->
 <script>
     function isNumber(evt) {

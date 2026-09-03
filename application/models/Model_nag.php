@@ -2464,18 +2464,15 @@ function simpankwitansi($data)
     return $this->db->insert_id();
 }
 
-function get_kode_inv_nb()
+function get_kode_inv_nb($tanggal = null)
 {
-        // $q = $this->db->query("SELECT no_invoice, MAX(LEFT(no_invoice, 4)) AS kd_max FROM tbl_book_invoice WHERE YEAR(tanggal) = YEAR(CURRENT_DATE()) AND 
-        //                        MONTH(tanggal) = MONTH(CURRENT_DATE())");
-        //
-        // $q = $this->db->query("SELECT no_invoice, MAX(LEFT(no_invoice, 4)) AS kd_max FROM tbl_book_invoice WHERE YEAR(tanggal) = YEAR(CURRENT_DATE()) AND 
-        //                        MONTH(tanggal) = MONTH(CURRENT_DATE()) AND status <> 'POST' AND status <> 'CANCEL' ");
-        //
-        // $q = $this->db->query("SELECT no_inv, MAX(LEFT(no_inv, 4)) AS kd_max FROM tbl_invoice_nb WHERE YEAR(inv_date) = YEAR(CURRENT_DATE()) AND 
-        //                           MONTH(inv_date) = MONTH(CURRENT_DATE()) ");
-    $q = $this->db->query("SELECT no_inv, MAX(LEFT(no_inv, 4)) AS kd_max FROM tbl_invoice_nb a inner join tbl_log b on b.doc_number = a.no_inv WHERE YEAR(tanggal_input) = YEAR(CURRENT_DATE()) AND 
-      MONTH(tanggal_input) = MONTH(CURRENT_DATE()) ");
+    date_default_timezone_set('Asia/Jakarta');
+    if (!$tanggal || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal)) {
+        $tanggal = date('Y-m-d');
+    }
+
+    $q = $this->db->query("SELECT no_inv, MAX(LEFT(no_inv, 4)) AS kd_max FROM tbl_invoice_nb WHERE YEAR(inv_date) = YEAR('$tanggal') AND
+      MONTH(inv_date) = MONTH('$tanggal') ");
         //
     $kd = "";
     if ($q->num_rows() > 0) {
@@ -2486,8 +2483,7 @@ function get_kode_inv_nb()
     } else {
         $kd = "0001";
     }
-    date_default_timezone_set('Asia/Jakarta');
-    return $kd . "/INM/NAG/" . date('my');
+    return $kd . "/INM/NAG/" . date('my', strtotime($tanggal));
 }
 
 function simpan_invoice_nb_detail($data, $created_by = null)
