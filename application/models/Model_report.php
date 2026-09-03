@@ -804,7 +804,9 @@ GROUP_CONCAT(
     CONCAT(
         'SUM(CASE WHEN COALESCE(b.duedate_update,a.duedate) = ''',
         tgl,
-        ''' THEN ((CASE WHEN bay4.no_invoice4 IS NOT NULL THEN COALESCE(bay4.bayar_period,0) ELSE COALESCE(b.amount,total) END) * a.rate) ELSE 0 END) AS data',
+        ''' THEN ((CASE WHEN bay4.no_invoice4 IS NOT NULL THEN COALESCE(bay4.bayar_period,0) ELSE COALESCE(b.amount,total) END) * a.rate) WHEN COALESCE(b.duedate_update,a.duedate) NOT BETWEEN @start AND @end THEN (COALESCE((SELECT SUM(px.amount) FROM tbl_alokasi_detail px INNER JOIN tbl_alokasi py ON py.no_alk = px.no_alk WHERE px.no_ref = a.no_invoice AND px.status != ''CANCEL'' AND px.total != ''0'' AND py.tgl_alk = ''',
+        tgl,
+        '''),0) * a.rate) ELSE 0 END) AS data',
         urut
     )
 ) INTO @cols
@@ -960,7 +962,9 @@ GROUP_CONCAT(
     CONCAT(
         'SUM(CASE WHEN COALESCE(b.duedate_update,a.duedate) = ''',
         tgl,
-        ''' THEN ((CASE WHEN bay4.no_invoice4 IS NOT NULL THEN COALESCE(bay4.bayar_period,0) ELSE COALESCE(b.amount,total) END) * a.rate) ELSE 0 END) AS data',
+        ''' THEN ((CASE WHEN bay4.no_invoice4 IS NOT NULL THEN COALESCE(bay4.bayar_period,0) ELSE COALESCE(b.amount,total) END) * a.rate) WHEN COALESCE(b.duedate_update,a.duedate) NOT BETWEEN @start AND @end THEN (COALESCE((SELECT SUM(px.amount) FROM tbl_alokasi_detail px INNER JOIN tbl_alokasi py ON py.no_alk = px.no_alk WHERE px.no_ref = a.no_invoice AND px.status != ''CANCEL'' AND px.total != ''0'' AND py.tgl_alk = ''',
+        tgl,
+        '''),0) * a.rate) ELSE 0 END) AS data',
         urut
     )
 ) INTO @cols
