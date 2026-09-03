@@ -804,7 +804,7 @@ GROUP_CONCAT(
     CONCAT(
         'SUM(CASE WHEN COALESCE(b.duedate_update,a.duedate) = ''',
         tgl,
-        ''' THEN (COALESCE(b.amount,total) * a.rate) ELSE 0 END) AS data',
+        ''' THEN ((CASE WHEN bay4.no_invoice4 IS NOT NULL THEN COALESCE(bay4.bayar_period,0) ELSE COALESCE(b.amount,total) END) * a.rate) ELSE 0 END) AS data',
         urut
     )
 ) INTO @cols
@@ -960,7 +960,7 @@ GROUP_CONCAT(
     CONCAT(
         'SUM(CASE WHEN COALESCE(b.duedate_update,a.duedate) = ''',
         tgl,
-        ''' THEN (COALESCE(b.amount,total) * a.rate) ELSE 0 END) AS data',
+        ''' THEN ((CASE WHEN bay4.no_invoice4 IS NOT NULL THEN COALESCE(bay4.bayar_period,0) ELSE COALESCE(b.amount,total) END) * a.rate) ELSE 0 END) AS data',
         urut
     )
 ) INTO @cols
