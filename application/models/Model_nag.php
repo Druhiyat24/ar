@@ -2038,9 +2038,16 @@ function report_return_invoice_total($id)
 
     //Debit Note
     //ubah september
-function get_kode_debitnote()
+// $pc dipakai buat prefix nomor DAN buat filter nomor urut terakhir - dulu
+// 'NAG' di-hardcode disini, jadi walau user pilih NAK di dropdown (tampilan
+// nomor sudah kelihatan benar "DN/NAK/..." karena di-swap di client), begitu
+// disimpan fungsi ini dipanggil ULANG oleh simpandn_h() buat generate nomor
+// final (cegah bentrok 2 user create bersamaan) dan SELALU balik ke NAG,
+// nimpa NAK yang sudah dipilih user.
+function get_kode_debitnote($pc = 'NAG')
 {
-    $query = $this->db->query("SELECT CONCAT('DN/NAG/',DATE_FORMAT(CURRENT_DATE(), '%m%y'),'/',LPAD((COALESCE(max(SUBSTR(no_dn,13)),0) + 1),4,0)) nomor from tbl_debitnote_h WHERE YEAR(tgl_dn) = YEAR (CURRENT_DATE())");
+    $pc = ($pc === 'NAK') ? 'NAK' : 'NAG';
+    $query = $this->db->query("SELECT CONCAT('DN/$pc/',DATE_FORMAT(CURRENT_DATE(), '%m%y'),'/',LPAD((COALESCE(max(SUBSTR(no_dn,13)),0) + 1),4,0)) nomor from tbl_debitnote_h WHERE YEAR(tgl_dn) = YEAR (CURRENT_DATE()) AND profit_center = '$pc'");
         //
     $kd = "";
     if ($query->result()) {            
@@ -3119,7 +3126,12 @@ function simpandn_h($data, $data_det = null)
     try {
         $this->db->trans_start();
 
-        $no_dn_baru = $this->get_kode_debitnote();
+        // Profit center diambil dari data header yang mau disimpan (sudah
+        // dikirim client sesuai dropdown yang dipilih) - JANGAN default ke
+        // NAG disini, itu penyebab nomor balik ke NAG pas save walau
+        // tampilannya sudah benar NAK.
+        $pc_dn = (!empty($data[0]['profit_center'])) ? $data[0]['profit_center'] : 'NAG';
+        $no_dn_baru = $this->get_kode_debitnote($pc_dn);
         foreach ($data as &$row) {
             $row['no_dn'] = $no_dn_baru;
         }

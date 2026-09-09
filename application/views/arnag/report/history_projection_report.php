@@ -36,7 +36,7 @@
                                         </div>
                                         <div class="form-group col-md-2">
                                             <label>Type</label>
-                                            <select id="hist_type" class="form-control select2bs4" onchange="apply_history_filter()">
+                                            <select id="hist_type" class="form-control select2bs4">
                                                 <option value="">All Type</option>
                                                 <option value="daily">Daily</option>
                                                 <option value="weekly">Weekly</option>
@@ -48,7 +48,6 @@
                                             <div style="position:relative;">
                                                 <input type="text" id="hist_doc_filter" class="form-control"
                                                     placeholder="Cari doc number..." autocomplete="off"
-                                                    oninput="apply_history_filter()"
                                                     style="padding-right:30px;">
                                                 <i class="fa fa-search" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#aaa;pointer-events:none;"></i>
                                             </div>
@@ -226,17 +225,20 @@ function _initHistDT(url) {
             paginate      : { first: '«', last: '»', next: '›', previous: '‹' },
             lengthMenu    : 'Tampilkan _MENU_ baris'
         },
-        dom: '<"row align-items-center mb-2"<"col-sm-4"l><"col-sm-8 text-right"f>>rt<"row mt-2 align-items-center"<"col-sm-5"i><"col-sm-7 d-flex justify-content-end"p>>',
-        initComplete: function () {
-            // Sambungkan filter Type & DocNumber ke DataTables
-            $('#hist_type').off('change').on('change', function () {
-                histDT.column(4).search(this.value ? '^' + this.value + '$' : '', true, false).draw();
-            });
-            $('#hist_doc_filter').off('input').on('input', function () {
-                histDT.column(1).search(this.value).draw();
-            });
-        }
+        dom: '<"row align-items-center mb-2"<"col-sm-4"l><"col-sm-8 text-right"f>>rt<"row mt-2 align-items-center"<"col-sm-5"i><"col-sm-7 d-flex justify-content-end"p>>'
     });
+}
+
+// Terapkan filter Type & Doc Number yang lagi diisi ke DataTables - dipanggil
+// cuma dari load_history_list() (tombol Search), BUKAN otomatis pas dropdown
+// Type dipilih/diketik di Doc Number, biar tidak "ngaco" waktu Search
+// menimpa hasil filter yang belum sempat diterapkan ke data baru.
+function _applyHistFilter() {
+    if (!histDT) return;
+    let typeVal = $('#hist_type').val();
+    let docVal  = $('#hist_doc_filter').val();
+    histDT.column(4).search(typeVal ? '^' + typeVal + '$' : '', true, false).draw(false);
+    histDT.column(1).search(docVal || '').draw(false);
 }
 
 function load_history_list() {
@@ -247,11 +249,11 @@ function load_history_list() {
     let url = 'get_history_projection_list/' + from + '/' + to + '/';
 
     if (histDT) {
+        // Muat data periode baru, lalu terapkan filter Type/Doc Number yang
+        // lagi diisi user (bukan di-reset) - jadi Search sekali jalan sekalian
+        // nge-filter, bukan menghapus filter yang sudah dipilih.
         histDT.ajax.url(url).load(function () {
-            histDT.column(4).search('', true, false).draw(false);
-            histDT.column(1).search('').draw(false);
-            $('#hist_type').val('');
-            $('#hist_doc_filter').val('');
+            _applyHistFilter();
         });
     } else {
         _initHistDT(url);
@@ -402,8 +404,6 @@ function formatDate(ymd) {
     let p = ymd.split('-');
     return p[2] + ' ' + months[parseInt(p[1]) - 1] + ' ' + p[0];
 }
-
-/* apply_history_filter dihapus — DataTables 2.x handle filter via initComplete */
 
 function cancel_history_projection(doc_number) {
     Swal.fire({
