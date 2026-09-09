@@ -2317,14 +2317,19 @@ function get_alamat($kode)
 }
 
     //ubah september
-function ubahnomor_dn($kode)
+function ubahnomor_dn($kode, $pc = 'NAG')
 {
 
         // $hasil = $this->db->query("SELECT kata,concat(kata,nomor) as nomor from (select kata, if(LENGTH(nomor) >= 3, if(LENGTH(nomor) = 3,CONCAT('0',nomor),nomor),  if(LENGTH(nomor) = 1,CONCAT('000',nomor),CONCAT('00',nomor))) as nomor from (select kata,SUBSTR(nomor,13,4) +1 as nomor from (SELECT concat('DN/NAG/',if(MONTH('$kode') >=10,MONTH('$kode'),CONCAT('0',MONTH('$kode'))),substr(YEAR('$kode'),3,2),'/') as kata, ifnull(max(a.no_dn),0) AS nomor
         //                         FROM tbl_debitnote_h a inner join tbl_log b
         //                       WHERE YEAR(a.tgl_dn) = YEAR('$kode') AND MONTH(a.tgl_dn) = MONTH('$kode')) a) b) c ");
 
-    $hasil = $this->db->query("SELECT CONCAT('DN/NAG/',DATE_FORMAT('$kode', '%m%y'),'/',LPAD((COALESCE(max(SUBSTR(no_dn,13)),0) + 1),4,0)) nomor from tbl_debitnote_h WHERE YEAR(tgl_dn) = YEAR ('$kode') ");
+    $pc = ($pc === 'NAK') ? 'NAK' : 'NAG';
+    // Nomor & pencarian nomor urut terakhir HARUS ikut profit_center yang lagi
+    // dipilih - dulu 'NAG' di-hardcode disini, jadi tiap kali tanggal DN
+    // diganti (onchange di field dn_date manggil fungsi ini), nomor yang tadinya
+    // sudah diganti ke NAK ketimpa lagi jadi NAG.
+    $hasil = $this->db->query("SELECT CONCAT('DN/$pc/',DATE_FORMAT('$kode', '%m%y'),'/',LPAD((COALESCE(max(SUBSTR(no_dn,13)),0) + 1),4,0)) nomor from tbl_debitnote_h WHERE YEAR(tgl_dn) = YEAR ('$kode') AND profit_center = '$pc' ");
     return $hasil->row();
 }
 
@@ -3093,7 +3098,13 @@ function simpanalokasi($data)
 }
 
     //ubah september
-function simpandn_h($data)
+// $data_det opsional - kalau dikirim, header + detail di-insert_batch bareng
+// dalam SATU transaksi (trans_start/trans_complete), jadi kalau salah satu
+// gagal (misal insert detail kena error), header yang baru saja masuk ikut
+// di-rollback juga - tidak ada lagi header "nyangkut" tanpa detail gara-gara
+// request detail terpisah gagal belakangan. Kalau $data_det tidak dikirim
+// (null), perilakunya sama seperti sebelumnya (cuma insert header).
+function simpandn_h($data, $data_det = null)
 {
     // Cegah 2 user dapat nomor DN yang sama kalau create bersamaan: kunci sebentar,
     // generate ulang no_dn paling baru saat mau insert (bukan pakai nomor dari saat
@@ -3105,24 +3116,49 @@ function simpandn_h($data)
         return false;
     }
 
-    $no_dn_baru = $this->get_kode_debitnote();
-    foreach ($data as &$row) {
-        $row['no_dn'] = $no_dn_baru;
+    try {
+        $this->db->trans_start();
+
+        $no_dn_baru = $this->get_kode_debitnote();
+        foreach ($data as &$row) {
+            $row['no_dn'] = $no_dn_baru;
+        }
+        unset($row);
+        $this->db->insert_batch('tbl_debitnote_h', $data);
+
+        if (!empty($data_det)) {
+            foreach ($data_det as &$row) {
+                $row['no_dn'] = $no_dn_baru;
+            }
+            unset($row);
+            $this->db->insert_batch('tbl_debitnote_det', $data_det);
+        }
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === FALSE) {
+            // Rollback sudah otomatis jalan lewat trans_complete() - user tinggal
+            // klik "Save Again", tidak perlu input ulang karena form belum direset.
+            return false;
+        }
+
+        return $no_dn_baru;
+    } finally {
+        // Lock harus dilepas apapun hasilnya (sukses/gagal/exception), biar user
+        // lain/percobaan ulang berikutnya tidak macet nunggu lock ini.
+        $this->db->query("SELECT RELEASE_LOCK('gen_no_dn')");
     }
-    unset($row);
-
-    $this->db->insert_batch('tbl_debitnote_h', $data);
-
-    $this->db->query("SELECT RELEASE_LOCK('gen_no_dn')");
-
-    return $no_dn_baru;
 }
 
     //ubah september
+// Pakai buat tambah detail ke header debit note yang SUDAH ada (mis. dari
+// halaman edit) - insert header baru (create flow) lewat simpandn_h() di atas,
+// yang detail-nya sudah digabung 1 transaksi. Balikin hasil insert_batch()
+// apa adanya (jumlah baris ke-insert, atau FALSE kalau gagal) supaya caller
+// bisa tahu beneran sukses atau tidak - sebelumnya selalu dianggap sukses.
 function simpandn_det($data)
 {
-    $this->db->insert_batch('tbl_debitnote_det', $data);
-    return $this->db->insert_id();
+    return $this->db->insert_batch('tbl_debitnote_det', $data);
 }
 
 function simpan_alokasi_detail($data)

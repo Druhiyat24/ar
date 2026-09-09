@@ -2126,9 +2126,9 @@ public function get_alamat($kode)
 }
 
 //ubah september
-public function ubahnomor_dn($kode)
-{ 
-    $data = $this->Model_nag->ubahnomor_dn($kode);
+public function ubahnomor_dn($kode, $pc = 'NAG')
+{
+    $data = $this->Model_nag->ubahnomor_dn($kode, $pc);
     echo json_encode($data);
 }
 
@@ -2483,8 +2483,8 @@ public function simpan_alokasi_detail()
 public function simpandn_det()
 {
     $data = $this->input->post('data_table');
-    $this->Model_nag->simpandn_det($data);
-    echo json_encode(array("status" => TRUE));
+    $ok   = $this->Model_nag->simpandn_det($data);
+    echo json_encode(array("status" => $ok !== FALSE));
 }
 
 
@@ -2500,13 +2500,18 @@ public function simpanalokasi()
 }
 
     //ubah september
+// Header + detail dikirim bareng dari client (lihat simpandn_h() di crud-nag.js)
+// dan di-insert dalam SATU transaksi lewat Model_nag->simpandn_h() - kalau salah
+// satu gagal, dua-duanya di-rollback, jadi tidak ada header "nyangkut" tanpa
+// detail. data_det opsional (dikosongkan array kalau tidak ada baris detail).
 public function simpandn_h()
 {
-    $data = $this->input->post('data_table');
-    $no_dn = $this->Model_nag->simpandn_h($data);
+    $data     = $this->input->post('data_table');
+    $data_det = $this->input->post('data_det');
+    $no_dn    = $this->Model_nag->simpandn_h($data, $data_det);
 
     if ($no_dn === false) {
-        echo json_encode(array("status" => FALSE, "message" => "Please try again."));
+        echo json_encode(array("status" => FALSE, "message" => "Save failed, please try again."));
         return;
     }
 

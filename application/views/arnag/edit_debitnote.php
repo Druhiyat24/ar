@@ -90,7 +90,7 @@
 
                         <div class="form-group col-md-12">
                             <label>No Request</label>
-                            <select class="form-control selectpicker" multiple="" id="no_req" name="no_req" data-dropup-auto="false" data-live-search="true" data-size="5" onchange="getdata_reqdn(value)">
+                            <select class="form-control selectpicker" multiple="" id="no_req" name="no_req" data-width="100%" data-dropup-auto="false" data-live-search="true" data-size="5" onchange="getdata_reqdn(value)">
                               <?php foreach ($data_req as $req) : ?>
                                 <option value="<?= $req['id']; ?>"><?= $req['no_req']; ?></option>
                             <?php endforeach; ?>

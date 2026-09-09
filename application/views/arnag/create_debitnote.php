@@ -36,7 +36,7 @@
               <div class="form-group col-md-12">
                 <label>Date</label>
                 <div class="input-group mb-3">
-                  <input type="text" name="dn_date" id="dn_date" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" onchange="ubahnomor_dn(this.value)" autocomplete='off'>
+                  <input type="text" name="dn_date" id="dn_date" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" onchange="ubahnomor_dn(this.value, document.getElementById('profit_center_dn').value)" autocomplete='off'>
                   <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                 </div>
               </div>
@@ -94,7 +94,7 @@
 
               <div class="form-group col-md-12">
                 <label>No Request</label>
-                <select class="form-control selectpicker" multiple="" id="no_req" name="no_req" data-dropup-auto="false" data-live-search="true" data-size="5" onchange="getdata_reqdn(value)">
+                <select class="form-control selectpicker" multiple="" id="no_req" name="no_req" data-width="100%" data-dropup-auto="false" data-live-search="true" data-size="5" onchange="getdata_reqdn(value)">
                   <?php foreach ($data_req as $req) : ?>
                     <option value="<?= $req['id']; ?>"><?= $req['no_req']; ?></option>
                   <?php endforeach; ?>
@@ -932,35 +932,31 @@
     for(var i=0; i<colCount; i++) {
       var newcell = row.insertCell(i);
       newcell.innerHTML = table.rows[0].cells[i].innerHTML;
+      // Baris template (row[0]) punya id statis (id="inputan3", "amt", dst) -
+      // di-clone innerHTML apa adanya bikin baris baru ini KEBAWA id yang sama,
+      // jadi dobel id di DOM. Selector berbasis id ($('#inputan3'), dst) selalu
+      // kena elemen PERTAMA yang match, yaitu baris template yang tersembunyi -
+      // bukan baris baru yang user isi. Hapus id-nya disini biar tidak dobel;
+      // pembacaan data pas save (collectDnDetailRows) sudah lewat posisi
+      // baris/kolom, bukan id, jadi aman tanpa id.
+      newcell.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
       var child = newcell.children;
       for(var i2=0; i2<child.length; i2++) {
-        var test = newcell.children[i2].tagName;
+        var el = newcell.children[i2];
+        var test = el.tagName;
         switch(test) {
           case "INPUT":
-          if(newcell.children[i2].type=='checkbox'){
+          if(el.type=='checkbox'){
                         // newcell.children[i2].value = "";
-                        newcell.children[i2].checked[0] = true;
-                        $('#inputan4').prop('readonly', false);
+                        el.checked = true;
 
                       }else{
-                        if (header1 == '') {
-                          $('#inputan3').prop('readonly', true);
-                        }else{
-                          $('#inputan3').prop('readonly', false);
-                        }
-
-                        if (header2 == '') {
-                          $('#inputan4').prop('readonly', true);
-                        }else{
-                          $('#inputan4').prop('readonly', false);
-                        }
-
-                        if (header3 == '') {
-                          $('#inputan5').prop('readonly', true);
-                        }else{
-                          $('#inputan5').prop('readonly', false);
-                        }
-
+                        // Set readonly di ELEMEN baris baru ini langsung (bukan
+                        // lewat $('#id') global) - kolom header1/2/3 ada di
+                        // index kolom 3/4/5.
+                        if (i === 3) { el.readOnly = (header1 == ''); }
+                        if (i === 4) { el.readOnly = (header2 == ''); }
+                        if (i === 5) { el.readOnly = (header3 == ''); }
                       }
                       break;
                       case "SELECT":
@@ -988,7 +984,7 @@
                   {
                     if (rowCount <= 1)
                     {
-                      alert("Tidak dapat menghapus semua baris.");
+                      Swal.fire({ icon: 'warning', title: 'Cannot Delete', text: 'Tidak dapat menghapus semua baris.' });
                       break;
                     }
                     table.deleteRow(i);
@@ -998,7 +994,7 @@
                 }
               } catch(e)
               {
-                alert(e);
+                Swal.fire({ icon: 'error', title: 'Error', text: String(e) });
               }
             }
 
@@ -1018,6 +1014,8 @@
                     for (h=0; h<colCount; h++){
                       var newCell = newRow.insertCell(h);
                       newCell.innerHTML = table.rows[0].cells[h].innerHTML;
+                      // Sama seperti addRow() - hapus id hasil clone biar tidak dobel di DOM.
+                      newCell.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
                       var child = newCell.children;
                       for(var i2=0; i2<child.length; i2++) {
                         var test = newCell.children[i2].tagName;
@@ -1043,7 +1041,7 @@
                 }
               } catch(e)
               {
-                alert(e);
+                Swal.fire({ icon: 'error', title: 'Error', text: String(e) });
               }
             }
 
@@ -1242,14 +1240,15 @@
         }
       </script>
       <script type="text/javascript">
-        function ubahnomor_dn(kode){
+        function ubahnomor_dn(kode, pc){
 // alert(kode);
 $('.form-group').removeClass('has-error'); // clear error class
     $('.help-block').empty(); // clear error string
     //Ajax Load data from ajax
     // alert(kode);
+    pc = pc || document.getElementById('profit_center_dn').value || 'NAG';
     $.ajax({
-      url: "ubahnomor_dn/" + kode,
+      url: "ubahnomor_dn/" + kode + "/" + pc,
       type: "GET",
       dataType: "JSON",
       success: function (data) {
@@ -1262,7 +1261,7 @@ $('.form-group').removeClass('has-error'); // clear error class
             
           },
           error: function (jqXHR, textStatus, errorThrown) {
-            alert('Error get data from ajax');
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Error get data from ajax' });
           }
         });
   }

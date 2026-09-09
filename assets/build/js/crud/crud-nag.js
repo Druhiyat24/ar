@@ -9364,22 +9364,22 @@ function simpan_data_dn() {
 	let total   = $('[name="total_value_h"]').val();
 	// alert(duedate);
 	if (duedate < date) {
-		alert("Due Date can't be smaller than Debit Note Date");
-		$("#dn_duedate").focus();	
+		Swal.fire({ icon: 'warning', title: 'Invalid Date', text: "Due Date can't be smaller than Debit Note Date" });
+		$("#dn_duedate").focus();
 		return false;
-	} 
+	}
 
 	if (attn == "") {
-		alert("Attn is required");
-		$("#txt_attn").focus();	
+		Swal.fire({ icon: 'warning', title: 'Attn Required', text: 'Attn is required' });
+		$("#txt_attn").focus();
 		return false;
-	}  
-	
-	$no_invoice = $('[name="dn_number"]').val()	
+	}
+
+	$no_invoice = $('[name="dn_number"]').val()
 
 	$('[name="no_debinote"]').val($no_invoice);
 	if (total == 0 || total == '') {
-		alert("Amount Can't be Zero");
+		Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: "Amount Can't be Zero" });
 	}else{
 		getcoa3();
 		$('#modal-simpan-dn').modal('show')	
@@ -9412,7 +9412,7 @@ function getcoa3()
 	console.log(cust_ctg);
 
 	$.ajax({
-		url: "getcoa3/" + cust_ctg + "/",		
+		url: "getcoa3/" + cust_ctg + "/",
 		type: "GET",
 		dataType: "JSON",
 		success: function (data) {
@@ -9423,7 +9423,7 @@ function getcoa3()
 
 		},
 		error: function (jqXHR, textStatus, errorThrown) {
-			alert('Error get data from ajax');
+			Swal.fire({ icon: 'error', title: 'Error', text: 'Error get data from ajax' });
 		}
 	});
 }
@@ -10301,8 +10301,15 @@ function simpandn_h() {
 				"profit_center": profit_center,															
 			})	
 			
+			// Detail ikut dikumpulkan & dikirim BARENG header (bukan request terpisah
+			// lagi) - di server header+detail di-insert dalam 1 transaksi, jadi kalau
+			// detail gagal, header yang baru ke-insert ikut di-rollback otomatis. Tidak
+			// perlu isi no_dn per baris disini, server yang nentuin & nyetel no_dn final.
+			var data_det = collectDnDetailRows();
+
 			var fdata = {
 				'data_table': data,
+				'data_det': data_det,
 				'no_dn': no_dn
 			}
 			$.ajax({
@@ -10317,28 +10324,43 @@ function simpandn_h() {
 						msg = 'Success Input Detail'
 
 						// Server generate ulang no_dn (cegah bentrok 2 user create bersamaan) -
-						// pakai nomor hasil generate ulang itu untuk detail/memo/request,
-						// baru reload setelah semuanya terkirim.
+						// pakai nomor hasil generate ulang itu untuk memo/request, baru reload
+						// setelah semuanya terkirim.
 						if (data.no_dn) {
 							$('#dn_number').val(data.no_dn);
 						}
-						simpandn_det();
 						update_memo_det();
 						// Reload cuma setelah request update_req_dn beneran selesai - sebelumnya
 						// reload langsung jalan begitu request ini didispatch, jadi kadang
 						// browser motong request-nya sebelum sempat sampai ke server (req_dn_h
-						// nggak ke-update).
+						// nggak ke-update). Swal sukses ditampilkan bareng, reload baru jalan
+						// setelah user klik OK-nya, biar nomor DN sempat kebaca.
 						$.when(update_req_dn()).always(function () {
-							window.location.href = window.location.href;
+							Swal.fire({
+								icon: 'success',
+								title: 'Debit Note Saved',
+								text: 'DN Number: ' + (data.no_dn || $('#dn_number').val())
+							}).then(function () {
+								window.location.href = window.location.href;
+							});
 						});
 					} else {
 						msg = 'Error Input Detail'
-						// Gagal dapat kunci nomor DN (jarang terjadi) - jangan reload supaya
-						// data yang sudah diisi user tidak hilang, biar bisa langsung coba lagi.
+						// Gagal simpan (kunci nomor DN gagal, atau insert header/detail gagal
+						// lalu di-rollback) - jangan reload supaya data yang sudah diisi user
+						// tidak hilang. Tombol "Save Again" manggil ulang simpandn_h() persis,
+						// user tidak perlu input ulang sama sekali.
 						Swal.fire({
 							icon: 'warning',
 							title: 'Failed to Save',
-							text: data.message || 'Please try again.'
+							text: data.message || 'Please try again.',
+							showCancelButton: true,
+							confirmButtonText: 'Save Again',
+							cancelButtonText: 'Close'
+						}).then(function (result) {
+							if (result.isConfirmed) {
+								simpandn_h();
+							}
 						});
 					}
 					// Delete Table Invoice Detail Temporary
@@ -10350,6 +10372,18 @@ function simpandn_h() {
  },
  error: function (jqXHR, textStatus, errorThrown) {
  	msg = 'Error Input Detail' + jqXHR.text
+ 	Swal.fire({
+ 		icon: 'warning',
+ 		title: 'Failed to Save',
+ 		text: 'Connection error, please try again.',
+ 		showCancelButton: true,
+ 		confirmButtonText: 'Save Again',
+ 		cancelButtonText: 'Close'
+ 	}).then(function (result) {
+ 		if (result.isConfirmed) {
+ 			simpandn_h();
+ 		}
+ 	});
  }
 });
 			resolve({
@@ -10361,82 +10395,60 @@ function simpandn_h() {
 
 }
 //ubah september
-function simpandn_det()
-{ 	
-	return new Promise(resolve => {		
-		setTimeout(() => {
-			var msg
-			var data = [];		
+// Kumpulkan baris detail dari #table-dn jadi array plain (dulu fungsi ini yang
+// langsung kirim sendiri lewat AJAX terpisah ke simpandn_det/ - sekarang
+// dikumpulkan disini lalu dikirim BARENG header oleh simpandn_h(), supaya
+// header+detail masuk dalam 1 transaksi di server). Tidak perlu isi no_dn per
+// baris, server yang nyetel no_dn final ke semua baris.
+function collectDnDetailRows()
+{
+	var data = [];
+	var table = document.getElementById("table-dn");
+	for (var i = 1; i < (table.rows.length); i++) {
 
-			var table = document.getElementById("table-dn");
-			for (var i = 1; i < (table.rows.length); i++) {
+		// Baris template awal (row[1], dipakai addRow() sebagai sumber clone)
+		// selalu ada di DOM tapi disembunyikan (style="display:none") dan
+		// tidak pernah diisi user - lewati, jangan ikut dikirim ke server.
+		if (table.rows[i].style.display === 'none') { continue; }
 
-				var deskripsi = document.getElementById("table-dn").rows[i].cells[0].children[0].value;
-				var supplier = document.getElementById("table-dn").rows[i].cells[1].children[0].value;
-				var supplier_invoice = document.getElementById("table-dn").rows[i].cells[2].children[0].value;
-				var header1 = document.getElementById("table-dn").rows[i].cells[3].children[0].value;
-				var header2 = document.getElementById("table-dn").rows[i].cells[4].children[0].value;
-				var header3 = document.getElementById("table-dn").rows[i].cells[5].children[0].value;
-				var value = document.getElementById("table-dn").rows[i].cells[6].children[0].value;
-				var rate = document.getElementById("table-dn").rows[i].cells[7].children[0].value;
-				var amount = document.getElementById("table-dn").rows[i].cells[8].children[0].value;
-				var nm_memo = document.getElementById("table-dn").rows[i].cells[12].children[0].value || '';
-				var no_coa = document.getElementById("table-dn").rows[i].cells[9].children[0].value;
-				var id_memo_det = document.getElementById("table-dn").rows[i].cells[13].children[0].value || '';
-				var customer = document.getElementById("table-dn").rows[i].cells[14].children[0].value || '';
+		var deskripsi = document.getElementById("table-dn").rows[i].cells[0].children[0].value;
+		var supplier = document.getElementById("table-dn").rows[i].cells[1].children[0].value;
+		var supplier_invoice = document.getElementById("table-dn").rows[i].cells[2].children[0].value;
+		var header1 = document.getElementById("table-dn").rows[i].cells[3].children[0].value;
+		var header2 = document.getElementById("table-dn").rows[i].cells[4].children[0].value;
+		var header3 = document.getElementById("table-dn").rows[i].cells[5].children[0].value;
+		var value = document.getElementById("table-dn").rows[i].cells[6].children[0].value;
+		var rate = document.getElementById("table-dn").rows[i].cells[7].children[0].value;
+		var amount = document.getElementById("table-dn").rows[i].cells[8].children[0].value;
+		var nm_memo = document.getElementById("table-dn").rows[i].cells[12].children[0].value || '';
+		var no_coa = document.getElementById("table-dn").rows[i].cells[9].children[0].value;
+		var id_memo_det = document.getElementById("table-dn").rows[i].cells[13].children[0].value || '';
+		var customer = document.getElementById("table-dn").rows[i].cells[14].children[0].value || '';
 
+		// Jaga-jaga tambahan - baris yang beneran kosong semua (tidak ada
+		// deskripsi/supplier/amount) dilewati juga, jangan ikut ke-insert.
+		if (!deskripsi && !supplier && !parseFloat(amount)) { continue; }
 
-				data.push({
-					"no_dn": $('#dn_number').val(),
-					"deskripsi": deskripsi,
-					"supplier": supplier,
-					"customer": customer,
-					"supplier_invoice": supplier_invoice,
-					"header1": header1,
-					"header2":header2,
-					"header3": header3,
-					"value": value,
-					"rate": rate,
-					"amount": amount,
-					"nm_memo": nm_memo,
-					"no_coa": no_coa,
-					"id_memo_det": id_memo_det,
+		data.push({
+			"deskripsi": deskripsi,
+			"supplier": supplier,
+			"customer": customer,
+			"supplier_invoice": supplier_invoice,
+			"header1": header1,
+			"header2":header2,
+			"header3": header3,
+			"value": value,
+			"rate": rate,
+			"amount": amount,
+			"nm_memo": nm_memo,
+			"no_coa": no_coa,
+			"id_memo_det": id_memo_det,
+		})
+	}
 
-				})
-			}
+	console.log(data);
 
-			var fdata = {
-				'data_table': data
-			}
-
-			console.log(data);
-
-			$.ajax({				
-				url: "simpandn_det/",
-				type: "POST",
-				data: fdata,
-				dataType: "JSON",
-				success: function (data) {
-					
-					if (data.status) //if success close modal and reload ajax table
-					{
-						msg = 'Success Input Detail'
-					} else {
-						msg = 'Error Input Detail'
-					}
-					
-				},
-				error: function (jqXHR, textStatus, errorThrown) {
-					msg = 'Error Input Detail' + jqXHR.text
-				}
-			});
-			resolve({
-				msg: msg,
-			});
-
-		}, 100);
-	});  
-
+	return data;
 }
 
 
