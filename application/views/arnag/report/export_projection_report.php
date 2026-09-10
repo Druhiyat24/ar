@@ -106,15 +106,19 @@ foreach ($period as $dt) {
             </th>
 
             <th class="bg-header" rowspan="2" style="width: 200px;">
-                Reff Number
+                Invoice No
             </th>
 
             <th class="bg-header" rowspan="2">
-                Reff Date
+                Invoice Date
             </th>
 
             <th class="bg-header" rowspan="2">
-                Category
+                Destination
+            </th>
+
+            <th class="bg-header" rowspan="2">
+                Order Type
             </th>
 
             <th class="bg-header" rowspan="2">
@@ -122,36 +126,42 @@ foreach ($period as $dt) {
             </th>
 
             <th class="bg-header" rowspan="2">
-                Due Date Update
+                Expected Collection Date
             </th>
 
             <th class="bg-header" rowspan="2">
-                TOP
+                Payment Term
             </th>
 
             <th class="bg-header" rowspan="2">
-                Curr
+                Currency
             </th>
 
             <th class="bg-header" rowspan="2" style="width: 130px;">
-                Total
+                Invoice Amount
             </th>
 
             <th class="bg-header" rowspan="2" style="width: 130px;">
                 Rate
             </th>
 
-            <th class="bg-header" rowspan="2" style="width: 130px;">
-                Total IDR
+            <th class="bg-header" colspan="5" style="width: 130px; text-align:left; vertical-align:top;">
+                Receivable Amount
             </th>
 
             <th class="bg-projection"
                 colspan="<?= count($dates); ?>">
-                Duedate Projection
+                Projected Cash Inflow from Accounts Receivable
             </th>
         </tr>
 
         <tr>
+
+            <th class="bg-header" style="width: 130px;">Tax Base</th>
+            <th class="bg-header" style="width: 130px;">VAT</th>
+            <th class="bg-header" style="width: 130px;">Total Invoice</th>
+            <th class="bg-header" style="width: 130px;">Income Tax Art 23</th>
+            <th class="bg-header" style="width: 130px;">Collection Amount</th>
 
             <?php foreach($dates as $dt): ?>
 
@@ -199,6 +209,10 @@ foreach ($period as $dt) {
                 <?= $sr['shipp']; ?>
             </td>
 
+            <td class="text-center">
+                <?= $sr['type_so'] ?: '-'; ?>
+            </td>
+
             <td class="date">
                 <?= date('d M Y', strtotime($sr['duedate'])); ?>
             </td>
@@ -234,7 +248,23 @@ foreach ($period as $dt) {
             </td>
 
             <td class="number">
-                <?= number_format((float)$sr['amount_idr'], 2); ?>
+                <?= number_format((float)$sr['tax_base'], 2); ?>
+            </td>
+
+            <td class="number">
+                <?= number_format((float)$sr['tax_vat'], 2); ?>
+            </td>
+
+            <td class="number">
+                <?= number_format((float)$sr['total_invoice'], 2); ?>
+            </td>
+
+            <td class="number">
+                <?= number_format((float)$sr['income_tax_23'], 2); ?>
+            </td>
+
+            <td class="number">
+                <?= number_format((float)$sr['collection_amount'], 2); ?>
             </td>
 
             <?php foreach($dates as $key => $dt): ?>

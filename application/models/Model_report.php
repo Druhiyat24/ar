@@ -774,6 +774,91 @@ private function _rate_dn($type, $end_date = null)
     return ($r && $r->rate) ? (float)$r->rate : 1;
 }
 
+// Lampirkan breakdown "Receivable Amount" (Tax Base, VAT, Total Invoice, Income
+// Tax Art 23, Collection Amount) ke tiap baris hasil projection - dihitung
+// TERPISAH disini (bukan disisipkan lagi ke SQL raksasa cari_projection_report),
+// biar query utamanya yang sudah sangat rapuh tidak makin berisiko.
+//
+// Invoice biasa (NAG/NAK) & Invoice Manual ambil Tax Base/VAT/Total Invoice dari
+// tbl_invoice_pot / tbl_invoice_pot_knitting / tbl_invoice_nb_pot (kolom twot =
+// dasar pengenaan pajak SETELAH discount/dp/retur, SEBELUM vat - sudah diverifikasi
+// twot + vat = grand_total di data live). Income Tax Art 23 = Tax Base x
+// persentase PPh (dari mtax, di-lookup lewat id_pph yang tersimpan di header saat
+// invoice dibuat). Debit Note TIDAK kena PPN/PPh sama sekali (arahan eksplisit) -
+// Tax Base & Total Invoice-nya sama dengan amount aslinya, VAT & PPh = 0.
+private function _attach_receivable_breakdown($rows)
+{
+    if (empty($rows)) return $rows;
+
+    $no_invoices = array_values(array_unique(array_column($rows, 'no_invoice')));
+    $esc = array_map(function ($v) { return "'" . $this->db->escape_str($v) . "'"; }, $no_invoices);
+    $in_list = implode(',', $esc);
+
+    $pot = $this->db->query("
+        SELECT bi.no_invoice, p.twot, p.vat, p.grand_total, bi.id_pph
+        FROM tbl_book_invoice bi
+        INNER JOIN tbl_invoice_pot p ON p.id_book_invoice = bi.id
+        WHERE bi.no_invoice IN ($in_list)
+        UNION ALL
+        SELECT bik.no_invoice, pk.twot, pk.vat, pk.grand_total, bik.id_pph
+        FROM tbl_book_invoice bik
+        INNER JOIN tbl_invoice_pot_knitting pk ON pk.id_book_invoice = bik.id
+        WHERE bik.no_invoice IN ($in_list)
+        UNION ALL
+        SELECT nb.no_inv AS no_invoice, np.twot, np.vat, np.grand_total, nb.id_pph
+        FROM tbl_invoice_nb nb
+        INNER JOIN tbl_invoice_nb_pot np ON np.no_inv = nb.no_inv
+        WHERE nb.no_inv IN ($in_list)
+    ")->result_array();
+
+    $potMap = [];
+    foreach ($pot as $p) { $potMap[$p['no_invoice']] = $p; }
+
+    $mtax = $this->db->query("SELECT idtax, percentage FROM mtax")->result_array();
+    $pctMap = [];
+    foreach ($mtax as $m) { $pctMap[$m['idtax']] = (float) $m['percentage']; }
+
+    foreach ($rows as &$r) {
+        // Receivable Amount ditampilkan dalam IDR (dikali rate), beda dengan
+        // kolom Invoice Amount yang tetap pakai mata uang asli invoice.
+        $rate = isset($r['rate']) ? (float) $r['rate'] : 1;
+
+        if (isset($potMap[$r['no_invoice']])) {
+            $p        = $potMap[$r['no_invoice']];
+            $taxBase  = (float) $p['twot'] * $rate;
+            $vat      = (float) $p['vat'] * $rate;
+            $totalInv = (float) $p['grand_total'] * $rate;
+            $pct      = ($p['id_pph'] !== null && isset($pctMap[$p['id_pph']])) ? $pctMap[$p['id_pph']] : 0;
+            $pph23    = round($taxBase * $pct / 100, 2);
+        } else {
+            // Debit Note (atau baris yang belum ketemu pot-nya) - tidak ada PPN/PPh.
+            $taxBase  = (float) $r['amount_idr'];
+            $vat      = 0;
+            $totalInv = (float) $r['amount_idr'];
+            $pph23    = 0;
+        }
+        $r['tax_base']          = $taxBase;
+        $r['tax_vat']           = $vat;
+        $r['total_invoice']     = $totalInv;
+        $r['income_tax_23']     = $pph23;
+        $r['collection_amount'] = $totalInv - $pph23;
+
+        // Kolom "Projected Cash Inflow" per tanggal (data1..dataN) disesuaikan
+        // proporsional ke Collection Amount (sudah dipotong PPh), bukan lagi
+        // Amount IDR mentah - biar total per tanggal nyambung ke Collection Amount.
+        $amountIdr = (float) $r['amount_idr'];
+        $factor    = (abs($amountIdr) > 0.000001) ? ($r['collection_amount'] / $amountIdr) : 0;
+        foreach ($r as $key => $val) {
+            if (preg_match('/^data\d+$/', $key)) {
+                $r[$key] = (float) $val * $factor;
+            }
+        }
+    }
+    unset($r);
+
+    return $rows;
+}
+
 public function cari_projection_report($id_customer, $start, $end, $type = 'daily')
 {
     // supaya GROUP_CONCAT panjang
@@ -897,7 +982,7 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
                 duedate as (SELECT b.no_invoice, b.duedate_update, b.amount FROM tbl_duedate_update_det b INNER JOIN tbl_duedate_update_h a ON a.doc_number = b.doc_number
 INNER JOIN (SELECT d.no_invoice, MAX(d.id) AS max_id FROM tbl_duedate_update_det d INNER JOIN tbl_duedate_update_h h ON h.doc_number = d.doc_number WHERE d.status = ''Y'' AND h.status <> ''CANCEL'' GROUP BY d.no_invoice ) x ON b.id = x.max_id)
                 
-                select a.id_customer, a.customer, a.no_invoice, a.inv_date, a.shipp, a.duedate, COALESCE(b.duedate_update,a.duedate) duedate_update, top, curr, rate, total, eqv_idr, CASE WHEN bay4.no_invoice4 IS NOT NULL THEN COALESCE(bay4.bayar_period,0) ELSE COALESCE(b.amount,total) END amount, (CASE WHEN bay4.no_invoice4 IS NOT NULL THEN COALESCE(bay4.bayar_period,0) ELSE COALESCE(b.amount,total) END * rate) amount_idr, ', @cols, ' from invoice a LEFT JOIN duedate b on b.no_invoice  = a.no_invoice LEFT JOIN (select x.no_ref as no_invoice3, sum(x.amount) as bayar_before from tbl_alokasi_detail x inner join tbl_alokasi y on y.no_alk = x.no_alk where x.status != ''CANCEL'' and y.tgl_alk < ''',@start,''' and x.total != ''0'' group by x.no_ref) bay3 on bay3.no_invoice3 = a.no_invoice LEFT JOIN (select x.no_ref as no_invoice4, sum(x.amount) as bayar_period from tbl_alokasi_detail x inner join tbl_alokasi y on y.no_alk = x.no_alk where x.status != ''CANCEL'' and y.tgl_alk BETWEEN ''',@start,''' and ''',@end,''' and x.total != ''0'' group by x.no_ref) bay4 on bay4.no_invoice4 = a.no_invoice where (COALESCE(b.duedate_update,a.duedate) BETWEEN ''',@start,''' and ''',@end,''' OR bay4.no_invoice4 IS NOT NULL) and (a.amount1 - COALESCE(bay3.bayar_before,0)) > 0 GROUP BY a.no_invoice')";
+                select a.id_customer, a.customer, a.no_invoice, a.inv_date, a.shipp, a.duedate, COALESCE(b.duedate_update,a.duedate) duedate_update, top, curr, rate, total, eqv_idr, COALESCE((SELECT type_so FROM tbl_book_invoice WHERE no_invoice = a.no_invoice LIMIT 1),(SELECT type_so FROM tbl_invoice_nb WHERE no_inv = a.no_invoice LIMIT 1),''-'') type_so, CASE WHEN bay4.no_invoice4 IS NOT NULL THEN COALESCE(bay4.bayar_period,0) ELSE COALESCE(b.amount,total) END amount, (CASE WHEN bay4.no_invoice4 IS NOT NULL THEN COALESCE(bay4.bayar_period,0) ELSE COALESCE(b.amount,total) END * rate) amount_idr, ', @cols, ' from invoice a LEFT JOIN duedate b on b.no_invoice  = a.no_invoice LEFT JOIN (select x.no_ref as no_invoice3, sum(x.amount) as bayar_before from tbl_alokasi_detail x inner join tbl_alokasi y on y.no_alk = x.no_alk where x.status != ''CANCEL'' and y.tgl_alk < ''',@start,''' and x.total != ''0'' group by x.no_ref) bay3 on bay3.no_invoice3 = a.no_invoice LEFT JOIN (select x.no_ref as no_invoice4, sum(x.amount) as bayar_period from tbl_alokasi_detail x inner join tbl_alokasi y on y.no_alk = x.no_alk where x.status != ''CANCEL'' and y.tgl_alk BETWEEN ''',@start,''' and ''',@end,''' and x.total != ''0'' group by x.no_ref) bay4 on bay4.no_invoice4 = a.no_invoice where (COALESCE(b.duedate_update,a.duedate) BETWEEN ''',@start,''' and ''',@end,''' OR bay4.no_invoice4 IS NOT NULL) and (a.amount1 - COALESCE(bay3.bayar_before,0)) > 0 GROUP BY a.no_invoice')";
 
                 // a.duedate_update BETWEEN ''',@start,''' and ''',@end,''' and
 
@@ -928,7 +1013,7 @@ INNER JOIN (SELECT d.no_invoice, MAX(d.id) AS max_id FROM tbl_duedate_update_det
     $query = $this->db->query("EXECUTE stmt");
     $this->db->query("DEALLOCATE PREPARE stmt");
 
-    return $query->result_array();
+    return $this->_attach_receivable_breakdown($query->result_array());
 }
 
 
@@ -1055,7 +1140,7 @@ select id_customer, customer, no_invoice, inv_date, ''-'' shipp, supplier vendor
                 duedate as (SELECT b.no_invoice, b.duedate_update, b.amount FROM tbl_duedate_update_det b INNER JOIN tbl_duedate_update_h a ON a.doc_number = b.doc_number
 INNER JOIN (SELECT d.no_invoice, MAX(d.id) AS max_id FROM tbl_duedate_update_det d INNER JOIN tbl_duedate_update_h h ON h.doc_number = d.doc_number WHERE d.status = ''Y'' AND h.status <> ''CANCEL'' GROUP BY d.no_invoice ) x ON b.id = x.max_id)
                 
-                select a.id_customer, a.customer, a.no_invoice, a.inv_date, a.shipp, a.duedate, COALESCE(b.duedate_update,a.duedate) duedate_update, top, curr, rate, total, eqv_idr, CASE WHEN bay4.no_invoice4 IS NOT NULL THEN COALESCE(bay4.bayar_period,0) ELSE COALESCE(b.amount,total) END amount, (CASE WHEN bay4.no_invoice4 IS NOT NULL THEN COALESCE(bay4.bayar_period,0) ELSE COALESCE(b.amount,total) END * rate) amount_idr, ', @cols, ' from invoice a LEFT JOIN duedate b on b.no_invoice  = a.no_invoice LEFT JOIN (select x.no_ref as no_invoice3, sum(x.amount) as bayar_before from tbl_alokasi_detail x inner join tbl_alokasi y on y.no_alk = x.no_alk where x.status != ''CANCEL'' and y.tgl_alk < ''',@start,''' and x.total != ''0'' group by x.no_ref) bay3 on bay3.no_invoice3 = a.no_invoice LEFT JOIN (select x.no_ref as no_invoice4, sum(x.amount) as bayar_period from tbl_alokasi_detail x inner join tbl_alokasi y on y.no_alk = x.no_alk where x.status != ''CANCEL'' and y.tgl_alk BETWEEN ''',@start,''' and ''',@end,''' and x.total != ''0'' group by x.no_ref) bay4 on bay4.no_invoice4 = a.no_invoice where (COALESCE(b.duedate_update,a.duedate) BETWEEN ''',@start,''' and ''',@end,''' OR bay4.no_invoice4 IS NOT NULL) and (a.amount1 - COALESCE(bay3.bayar_before,0)) > 0 GROUP BY a.no_invoice')";
+                select a.id_customer, a.customer, a.no_invoice, a.inv_date, a.shipp, a.duedate, COALESCE(b.duedate_update,a.duedate) duedate_update, top, curr, rate, total, eqv_idr, COALESCE((SELECT type_so FROM tbl_book_invoice WHERE no_invoice = a.no_invoice LIMIT 1),(SELECT type_so FROM tbl_invoice_nb WHERE no_inv = a.no_invoice LIMIT 1),''-'') type_so, CASE WHEN bay4.no_invoice4 IS NOT NULL THEN COALESCE(bay4.bayar_period,0) ELSE COALESCE(b.amount,total) END amount, (CASE WHEN bay4.no_invoice4 IS NOT NULL THEN COALESCE(bay4.bayar_period,0) ELSE COALESCE(b.amount,total) END * rate) amount_idr, ', @cols, ' from invoice a LEFT JOIN duedate b on b.no_invoice  = a.no_invoice LEFT JOIN (select x.no_ref as no_invoice3, sum(x.amount) as bayar_before from tbl_alokasi_detail x inner join tbl_alokasi y on y.no_alk = x.no_alk where x.status != ''CANCEL'' and y.tgl_alk < ''',@start,''' and x.total != ''0'' group by x.no_ref) bay3 on bay3.no_invoice3 = a.no_invoice LEFT JOIN (select x.no_ref as no_invoice4, sum(x.amount) as bayar_period from tbl_alokasi_detail x inner join tbl_alokasi y on y.no_alk = x.no_alk where x.status != ''CANCEL'' and y.tgl_alk BETWEEN ''',@start,''' and ''',@end,''' and x.total != ''0'' group by x.no_ref) bay4 on bay4.no_invoice4 = a.no_invoice where (COALESCE(b.duedate_update,a.duedate) BETWEEN ''',@start,''' and ''',@end,''' OR bay4.no_invoice4 IS NOT NULL) and (a.amount1 - COALESCE(bay3.bayar_before,0)) > 0 GROUP BY a.no_invoice')";
 
     // Inject rate sesuai type ke sqlMain export
     $sqlMain = str_replace(
@@ -1079,7 +1164,7 @@ INNER JOIN (SELECT d.no_invoice, MAX(d.id) AS max_id FROM tbl_duedate_update_det
     $sqlFix = $getSql['sqlku'];
     $query  = $this->db->query($sqlFix);
 
-    return $query->result_array();
+    return $this->_attach_receivable_breakdown($query->result_array());
 }
 
 
@@ -1120,13 +1205,19 @@ public function save_history_projection_report($id_customer, $from, $to, $create
                 'no_invoice'     => $r['no_invoice'],
                 'inv_date'       => $r['inv_date'],
                 'shipp'          => $r['shipp'],
+                'type_so'        => $r['type_so'],
                 'duedate'        => $r['duedate'],
                 'duedate_update' => $r['duedate_update'],
                 'top'            => $r['top'],
                 'curr'           => $r['curr'],
-                'amount'         => $r['amount'],
-                'rate'           => $r['rate'],
-                'amount_idr'     => $r['amount_idr'],
+                'amount'            => $r['amount'],
+                'rate'              => $r['rate'],
+                'amount_idr'        => $r['amount_idr'],
+                'tax_base'          => $r['tax_base'],
+                'tax_vat'           => $r['tax_vat'],
+                'total_invoice'     => $r['total_invoice'],
+                'income_tax_23'     => $r['income_tax_23'],
+                'collection_amount' => $r['collection_amount'],
             ];
         }
         $this->db->insert_batch('tbl_history_projection_det', $batch);

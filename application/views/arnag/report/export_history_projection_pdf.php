@@ -58,21 +58,27 @@ $show_dates = $dates_with_data; // kolom yang ditampilkan (sparse)
         <tr>
             <th class="bg-header" rowspan="2" style="width:18pt;">No</th>
             <th class="bg-header" rowspan="2" style="width:90pt;">Customer</th>
-            <th class="bg-header" rowspan="2" style="width:70pt;">Reff Number</th>
-            <th class="bg-header" rowspan="2" style="width:42pt;">Reff Date</th>
-            <th class="bg-header" rowspan="2" style="width:35pt;">Category</th>
+            <th class="bg-header" rowspan="2" style="width:70pt;">Invoice No</th>
+            <th class="bg-header" rowspan="2" style="width:42pt;">Invoice Date</th>
+            <th class="bg-header" rowspan="2" style="width:35pt;">Destination</th>
+            <th class="bg-header" rowspan="2" style="width:35pt;">Order Type</th>
             <th class="bg-header" rowspan="2" style="width:42pt;">Due Date</th>
-            <th class="bg-header" rowspan="2" style="width:45pt;">Due Date Update</th>
-            <th class="bg-header" rowspan="2" style="width:20pt;">TOP</th>
-            <th class="bg-header" rowspan="2" style="width:20pt;">Curr</th>
-            <th class="bg-header" rowspan="2" style="width:55pt;">Amount</th>
+            <th class="bg-header" rowspan="2" style="width:45pt;">Expected Collection Date</th>
+            <th class="bg-header" rowspan="2" style="width:20pt;">Payment Term</th>
+            <th class="bg-header" rowspan="2" style="width:20pt;">Currency</th>
+            <th class="bg-header" rowspan="2" style="width:55pt;">Invoice Amount</th>
             <th class="bg-header" rowspan="2" style="width:40pt;">Rate</th>
-            <th class="bg-header" rowspan="2" style="width:60pt;">Amount IDR</th>
+            <th class="bg-header" colspan="5" style="width:60pt; text-align:left; vertical-align:top;">Receivable Amount</th>
             <?php if (!empty($show_dates)): ?>
-            <th class="bg-proj" colspan="<?= count($show_dates); ?>">Duedate Projection</th>
+            <th class="bg-proj" colspan="<?= count($show_dates); ?>">Projected Cash Inflow from Accounts Receivable</th>
             <?php endif; ?>
         </tr>
         <tr>
+            <th class="bg-header" style="width:40pt;">Tax Base</th>
+            <th class="bg-header" style="width:40pt;">VAT</th>
+            <th class="bg-header" style="width:40pt;">Total Invoice</th>
+            <th class="bg-header" style="width:40pt;">Income Tax Art 23</th>
+            <th class="bg-header" style="width:40pt;">Collection Amount</th>
             <?php foreach ($show_dates as $dt): ?>
             <th class="bg-proj" style="width:52pt;"><?= date('d M Y', strtotime($dt)); ?></th>
             <?php endforeach; ?>
@@ -92,6 +98,7 @@ $show_dates = $dates_with_data; // kolom yang ditampilkan (sparse)
             <td><?= htmlspecialchars($r['no_invoice']); ?></td>
             <td class="text-center"><?= $r['inv_date'] ? date('d M Y', strtotime($r['inv_date'])) : ''; ?></td>
             <td class="text-center"><?= htmlspecialchars($r['shipp']); ?></td>
+            <td class="text-center"><?= htmlspecialchars($r['type_so'] ?: '-'); ?></td>
             <td class="text-center"><?= $r['duedate'] ? date('d M Y', strtotime($r['duedate'])) : ''; ?></td>
             <td class="text-center">
                 <?= (!empty($r['duedate_update']) && $r['duedate_update'] !== '0000-00-00')
@@ -101,7 +108,11 @@ $show_dates = $dates_with_data; // kolom yang ditampilkan (sparse)
             <td class="text-center"><?= htmlspecialchars($r['curr']); ?></td>
             <td class="text-right"><?= number_format((float)$r['amount'], 2); ?></td>
             <td class="text-right"><?= number_format((float)$r['rate'], 2); ?></td>
-            <td class="text-right"><?= number_format((float)$r['amount_idr'], 2); ?></td>
+            <td class="text-right"><?= number_format((float)$r['tax_base'], 2); ?></td>
+            <td class="text-right"><?= number_format((float)$r['tax_vat'], 2); ?></td>
+            <td class="text-right"><?= number_format((float)$r['total_invoice'], 2); ?></td>
+            <td class="text-right"><?= number_format((float)$r['income_tax_23'], 2); ?></td>
+            <td class="text-right"><?= number_format((float)$r['collection_amount'], 2); ?></td>
 
             <?php foreach ($show_dates as $dt):
                 $val = ($r['duedate_update'] === $dt) ? (float)$r['amount_idr'] : 0;
@@ -114,8 +125,26 @@ $show_dates = $dates_with_data; // kolom yang ditampilkan (sparse)
 
     <tfoot>
         <tr>
-            <td class="bg-header text-center" colspan="11" style="font-weight:bold;">TOTAL</td>
-            <td class="bg-header text-right" style="font-weight:bold;"><?= number_format($grand_total, 2); ?></td>
+            <td class="bg-header text-center" colspan="12" style="font-weight:bold;">TOTAL</td>
+            <?php
+                $total_tax_base          = 0;
+                $total_tax_vat           = 0;
+                $total_invoice_sum       = 0;
+                $total_income_tax_23     = 0;
+                $total_collection_amount = 0;
+                foreach ($detail as $r) {
+                    $total_tax_base          += (float)$r['tax_base'];
+                    $total_tax_vat           += (float)$r['tax_vat'];
+                    $total_invoice_sum       += (float)$r['total_invoice'];
+                    $total_income_tax_23     += (float)$r['income_tax_23'];
+                    $total_collection_amount += (float)$r['collection_amount'];
+                }
+            ?>
+            <td class="bg-header text-right" style="font-weight:bold;"><?= number_format($total_tax_base, 2); ?></td>
+            <td class="bg-header text-right" style="font-weight:bold;"><?= number_format($total_tax_vat, 2); ?></td>
+            <td class="bg-header text-right" style="font-weight:bold;"><?= number_format($total_invoice_sum, 2); ?></td>
+            <td class="bg-header text-right" style="font-weight:bold;"><?= number_format($total_income_tax_23, 2); ?></td>
+            <td class="bg-header text-right" style="font-weight:bold;"><?= number_format($total_collection_amount, 2); ?></td>
             <?php foreach ($show_dates as $dt):
                 $sub = 0;
                 foreach ($detail as $r) {

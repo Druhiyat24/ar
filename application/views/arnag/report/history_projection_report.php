@@ -78,7 +78,17 @@
                     <div class="card-header">
                         <h3 class="card-title">History List</h3>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" style="position:relative;">
+                        <div class="nag-loader-overlay" id="hist-loader">
+                            <div class="nag-loader-card">
+                                <div class="nag-loader-spinner">
+                                    <span class="nag-loader-ring nag-loader-ring-outer"></span>
+                                    <span class="nag-loader-ring nag-loader-ring-inner"></span>
+                                    <span class="nag-loader-brand">NAG</span>
+                                </div>
+                                <div class="nag-loader-caption">Memuat data...</div>
+                            </div>
+                        </div>
                         <table id="tbl-history-list" class="table table-bordered table-striped table-sm">
                             <thead>
                                 <tr>
@@ -178,7 +188,13 @@ function _initHistDT(url) {
 
     histDT = $('#tbl-history-list').DataTable({
         destroy  : true,
-        ajax     : { url: url, dataSrc: '', type: 'GET' },
+        ajax     : {
+            url: url, dataSrc: '', type: 'GET',
+            error: function () {
+                document.getElementById('hist-loader').classList.remove('show');
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal memuat data history.' });
+            }
+        },
         columns  : [
             {
                 data: null, orderable: false, width: '40px', className: 'text-center',
@@ -225,7 +241,10 @@ function _initHistDT(url) {
             paginate      : { first: '«', last: '»', next: '›', previous: '‹' },
             lengthMenu    : 'Tampilkan _MENU_ baris'
         },
-        dom: '<"row align-items-center mb-2"<"col-sm-4"l><"col-sm-8 text-right"f>>rt<"row mt-2 align-items-center"<"col-sm-5"i><"col-sm-7 d-flex justify-content-end"p>>'
+        dom: '<"row align-items-center mb-2"<"col-sm-4"l><"col-sm-8 text-right"f>>rt<"row mt-2 align-items-center"<"col-sm-5"i><"col-sm-7 d-flex justify-content-end"p>>',
+        initComplete: function () {
+            document.getElementById('hist-loader').classList.remove('show');
+        }
     });
 }
 
@@ -248,14 +267,19 @@ function load_history_list() {
 
     let url = 'get_history_projection_list/' + from + '/' + to + '/';
 
+    document.getElementById('hist-loader').classList.add('show');
+
     if (histDT) {
         // Muat data periode baru, lalu terapkan filter Type/Doc Number yang
         // lagi diisi user (bukan di-reset) - jadi Search sekali jalan sekalian
         // nge-filter, bukan menghapus filter yang sudah dipilih.
         histDT.ajax.url(url).load(function () {
             _applyHistFilter();
+            document.getElementById('hist-loader').classList.remove('show');
         });
     } else {
+        // Loader disembunyikan lewat initComplete di _initHistDT (baru jalan
+        // sekali, pas tabel pertama kali dibuat).
         _initHistDT(url);
     }
 }
@@ -311,18 +335,24 @@ function render_detail_table(res) {
     let thead = `<tr>
         <th ${th1(hdrBg)} rowspan="2">No</th>
         <th ${th1(hdrBg)} rowspan="2">Customer</th>
-        <th ${th1(hdrBg)} rowspan="2">Reff Number</th>
-        <th ${th1(hdrBg)} rowspan="2">Reff Date</th>
-        <th ${th1(hdrBg)} rowspan="2">Category</th>
+        <th ${th1(hdrBg)} rowspan="2">Invoice No</th>
+        <th ${th1(hdrBg)} rowspan="2">Invoice Date</th>
+        <th ${th1(hdrBg)} rowspan="2">Destination</th>
+        <th ${th1(hdrBg)} rowspan="2">Order Type</th>
         <th ${th1(hdrBg)} rowspan="2">Due Date</th>
-        <th ${th1(hdrBg)} rowspan="2">Due Date Update</th>
-        <th ${th1(hdrBg)} rowspan="2">TOP</th>
-        <th ${th1(hdrBg)} rowspan="2">Curr</th>
-        <th ${th1(hdrBg)} rowspan="2">Amount</th>
+        <th ${th1(hdrBg)} rowspan="2">Expected Collection Date</th>
+        <th ${th1(hdrBg)} rowspan="2">Payment Term</th>
+        <th ${th1(hdrBg)} rowspan="2">Currency</th>
+        <th ${th1(hdrBg)} rowspan="2">Invoice Amount</th>
         <th ${th1(hdrBg)} rowspan="2">Rate</th>
-        <th ${th1(hdrBg)} rowspan="2">Amount IDR</th>
-        <th ${th1(projBg)} colspan="${dates.length}">Duedate Projection</th>
+        <th ${th1(hdrBg, 'text-align:left;vertical-align:top;')} colspan="5">Receivable Amount</th>
+        <th ${th1(projBg)} colspan="${dates.length}">Projected Cash Inflow from Accounts Receivable</th>
     </tr><tr>`;
+    thead += `<th ${th2(hdrBg)}>Tax Base</th>`;
+    thead += `<th ${th2(hdrBg)}>VAT</th>`;
+    thead += `<th ${th2(hdrBg)}>Total Invoice</th>`;
+    thead += `<th ${th2(hdrBg)}>Income Tax Art 23</th>`;
+    thead += `<th ${th2(hdrBg)}>Collection Amount</th>`;
     dates.forEach(function(d) {
         thead += `<th ${th2(projBg)}>${formatDate(d)}</th>`;
     });
@@ -344,6 +374,11 @@ function render_detail_table(res) {
     // ── TBODY ──
     let tbody = '';
     let grandTotal = 0;
+    let totalTaxBase = 0;
+    let totalTaxVat = 0;
+    let totalInvoice = 0;
+    let totalIncomeTax23 = 0;
+    let totalCollectionAmount = 0;
     let dateTotals = {};
     dates.forEach(d => dateTotals[d] = 0);
 
@@ -351,19 +386,29 @@ function render_detail_table(res) {
 
     rows.forEach(function(r, i) {
         grandTotal += parseFloat(r.amount_idr || 0);
+        totalTaxBase += parseFloat(r.tax_base || 0);
+        totalTaxVat += parseFloat(r.tax_vat || 0);
+        totalInvoice += parseFloat(r.total_invoice || 0);
+        totalIncomeTax23 += parseFloat(r.income_tax_23 || 0);
+        totalCollectionAmount += parseFloat(r.collection_amount || 0);
         tbody += `<tr>
             <td ${tdStyle} text-align:center;">${i + 1}</td>
             <td ${tdStyle}">${r.customer}</td>
             <td ${tdStyle}">${r.no_invoice}</td>
             <td ${tdStyle} text-align:center;">${r.inv_date}</td>
             <td ${tdStyle} text-align:center;">${r.shipp}</td>
+            <td ${tdStyle} text-align:center;">${r.type_so || '-'}</td>
             <td ${tdStyle} text-align:center;">${r.duedate}</td>
             <td ${tdStyle} text-align:center;">${r.duedate_update || ''}</td>
             <td ${tdStyle} text-align:center;">${r.top}</td>
             <td ${tdStyle} text-align:center;">${r.curr}</td>
             <td ${tdStyle} text-align:right;">${fmt(r.amount)}</td>
             <td ${tdStyle} text-align:right;">${fmt(r.rate)}</td>
-            <td ${tdStyle} text-align:right;">${fmt(r.amount_idr)}</td>`;
+            <td ${tdStyle} text-align:right;">${fmt(r.tax_base)}</td>
+            <td ${tdStyle} text-align:right;">${fmt(r.tax_vat)}</td>
+            <td ${tdStyle} text-align:right;">${fmt(r.total_invoice)}</td>
+            <td ${tdStyle} text-align:right;">${fmt(r.income_tax_23)}</td>
+            <td ${tdStyle} text-align:right;">${fmt(r.collection_amount)}</td>`;
 
         dates.forEach(function(d) {
             let val = (r.duedate_update === d) ? parseFloat(r.amount_idr || 0) : 0.00;
@@ -376,8 +421,12 @@ function render_detail_table(res) {
 
     // ── TFOOT ──
     let tfoot = `<tr style="background-color:#FFE4C4; font-weight:bold;">
-        <td ${tdStyle} text-align:center;" colspan="11">TOTAL</td>
-        <td ${tdStyle} text-align:right;">${fmt(grandTotal)}</td>`;
+        <td ${tdStyle} text-align:center;" colspan="12">TOTAL</td>
+        <td ${tdStyle} text-align:right;">${fmt(totalTaxBase)}</td>
+        <td ${tdStyle} text-align:right;">${fmt(totalTaxVat)}</td>
+        <td ${tdStyle} text-align:right;">${fmt(totalInvoice)}</td>
+        <td ${tdStyle} text-align:right;">${fmt(totalIncomeTax23)}</td>
+        <td ${tdStyle} text-align:right;">${fmt(totalCollectionAmount)}</td>`;
     dates.forEach(function(d) {
         tfoot += `<td ${tdStyle} background-color:#90EE90; text-align:right;">${dateTotals[d] !== 0 ? fmt(dateTotals[d]) : 0}</td>`;
     });
