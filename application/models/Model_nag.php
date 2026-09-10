@@ -614,22 +614,40 @@ class Model_nag extends CI_Model
     }
 }
 
-function update_status_invoice($id_inv, $pph, $tanggal_input, $id_top, $id_bank, $type_so, $no_coa, $nama_coa, $created_by, $created_date)
+function update_status_invoice($id_inv, $pph, $tanggal_input, $id_top, $id_bank, $type_so, $no_coa, $nama_coa, $created_by, $created_date, $id_pph = null)
 {
+    // id_pph boleh kosong (opsi "NA" - tidak ada PPh, tidak match baris mtax manapun).
+    $id_pph_sql = ($id_pph === null || $id_pph === '') ? 'NULL' : "'" . $this->db->escape_str($id_pph) . "'";
 
-    $hasil = $this->db->query("UPDATE tbl_book_invoice 
-       SET status  = 'POST', 
-       pph     = '$pph', 
+    $hasil = $this->db->query("UPDATE tbl_book_invoice
+       SET status  = 'POST',
+       pph     = '$pph',
+       id_pph  = $id_pph_sql,
        tgl_inv = '$tanggal_input',
-       id_top  = '$id_top', 
-       id_bank =  '$id_bank', 
+       id_top  = '$id_top',
+       id_bank =  '$id_bank',
        type_so = '$type_so',
-       no_coa =  '$no_coa', 
+       no_coa =  '$no_coa',
        nama_coa = '$nama_coa',
-       invoice_by =  '$created_by', 
+       invoice_by =  '$created_by',
        invoice_date = '$created_date'
        WHERE id = '$id_inv' ");
     return $hasil;
+}
+
+// PPh dropdown di Create Invoice - digrup per idtax, label yang ditampilkan
+// gabungan kriteria+percentage (tax_show), tapi yang disimpan ke kolom pph
+// (existing) tetap "type" (biar konsisten sama data lama format "PPh 21" dst)
+// - idtax-nya sendiri disimpan terpisah di kolom id_pph yang baru.
+function get_pph_list()
+{
+    $hasil = $this->db->query("
+        SELECT idtax, type, kriteria, percentage, GROUP_CONCAT(kriteria,' (',percentage,'%)') as tax_show
+        FROM mtax
+        WHERE category_tax = 'PPH' AND cancel = 'N'
+        GROUP BY idtax
+    ");
+    return $hasil->result_array();
 }
 
 function update_status_bppb($id, $shipp)

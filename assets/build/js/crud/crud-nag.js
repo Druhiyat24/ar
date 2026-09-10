@@ -1982,10 +1982,11 @@ function at_ppn_inv() {
 
 function update_invoice_header() { 
 	
-	var id_inv  = $('[name="id_inv"]').val()		
-	var no_inv  = $('[name="inv_number1"]').val()	
-	var pph     = $('[name="pph"]').val()	
-	var id_top  = $('[name="id_top"]').val()			
+	var id_inv  = $('[name="id_inv"]').val()
+	var no_inv  = $('[name="inv_number1"]').val()
+	var pph     = $('[name="pph"]').val()
+	var id_pph  = $('[name="id_pph"]').val()
+	var id_top  = $('[name="id_top"]').val()
 	var id_bank = $('[name="id_bank"]').val()
 	var type_so = $('[name="type_so"]').val()
 	var no_coa = $('[name="no_coa_deb"]').val()
@@ -1995,11 +1996,12 @@ function update_invoice_header() {
 		"id_inv": id_inv,
 		"inv_number1": no_inv,
 		"pph": pph,
+		"id_pph": id_pph,
 		"id_top": id_top,
-		"id_bank": id_bank,		
+		"id_bank": id_bank,
 		"type_so": type_so,
-		"no_coa_deb": no_coa,		
-		"nama_coa_deb": nama_coa,	
+		"no_coa_deb": no_coa,
+		"nama_coa_deb": nama_coa,
 
 	};
 	
@@ -8756,6 +8758,7 @@ function simpan_invoice_nb() {
             var amount          = $('#amount').val();
             var bank            = $('#id_bank').val();
             var pph     		= $('#pph').val();
+            var id_pph     		= $('#id_pph').val();
             var type_so     	= $('#type_so').val();
             var status      	= "POST";
             var create_date		= $('#date_inv').val();
@@ -8776,6 +8779,7 @@ function simpan_invoice_nb() {
 				"amount": amount,
 				"bank": bank,
 				"pph": pph,
+				"id_pph": id_pph,
 				"type_so" : type_so,
 				"status": status,
 				"create_date": create_date,

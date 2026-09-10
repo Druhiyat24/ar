@@ -161,12 +161,17 @@
                             <!--  -->
                             <div class="form-group col-md-12">
                                 <label>PPh</label>
-                                <select class="form-control" id="pph" name="pph" required>
-                                   <option value="NA">NA</option>
-                                   <option value="PPh 21">PPh 21</option>
-                                   <option value="PPh 23">PPh 23</option>
-                                   <option value="4 Ayat 2">4 Ayat 2</option>								
+                                <!-- value tetap "type" (kolom pph existing) - idtax-nya disimpan
+                                     terpisah lewat data-idtax -> #id_pph. NA sengaja data-idtax="0"
+                                     (BUKAN dikosongkan) biar NULL (data lama) vs 0 (sengaja pilih NA)
+                                     bisa dibedain. -->
+                                <select class="form-control" id="pph" name="pph" required onchange="var v=$(this).find(':selected').data('idtax'); $('#id_pph').val(v===undefined?'':v)">
+                                   <option value="NA" data-idtax="0">NA</option>
+                                   <?php foreach ($isi_pph as $tx) : ?>
+                                       <option value="<?= $tx['type']; ?>" data-idtax="<?= $tx['idtax']; ?>"><?= $tx['tax_show']; ?></option>
+                                   <?php endforeach; ?>
                                </select>
+                               <input type="hidden" id="id_pph" name="id_pph" value="0">
                            </div>
                            <div class="form-group col-md-12">
                             <label>Type SO</label>

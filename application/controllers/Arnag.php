@@ -695,6 +695,7 @@ public function createinvoice()
     $data['title'] = 'Create Invoice';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['isi_bank'] = $this->Model_nag->load_bank();
+    $data['isi_pph'] = $this->Model_nag->get_pph_list();
     $data['buyer'] = $this->Model_nag->cari_buyer();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
     $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
@@ -763,6 +764,7 @@ public function update_invoice_header()
     $id_inv = $this->input->post('id_inv');
     $no_inv = $this->input->post('inv_number1');
     $pph    = $this->input->post('pph');
+    $id_pph = $this->input->post('id_pph');
     $tanggal_input = date('Y-m-d');
     $id_top = $this->input->post('id_top');
     $id_bank = $this->input->post('id_bank');
@@ -771,7 +773,7 @@ public function update_invoice_header()
     $nama_coa = $this->input->post('nama_coa_deb');
     $created_by = $this->session->userdata('username');
     $created_date = date('Y-m-d H:i:s');
-    $this->Model_nag->update_status_invoice($id_inv, $pph, $tanggal_input, $id_top, $id_bank, $type_so, $no_coa, $nama_coa, $created_by, $created_date);
+    $this->Model_nag->update_status_invoice($id_inv, $pph, $tanggal_input, $id_top, $id_bank, $type_so, $no_coa, $nama_coa, $created_by, $created_date, $id_pph);
         // Simpan Log
     $activity   = "Create invoice";
     $doc_number = $no_inv;
@@ -2344,6 +2346,7 @@ public function createinvoice_manual()
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['profit_center'] = $this->Model_nag->cari_profit_center();
     $data['isi_bank'] = $this->Model_nag->load_bank();
+    $data['isi_pph'] = $this->Model_nag->get_pph_list();
     $data['customer'] = $this->Model_nag->cari_customer();
     $data['kode_inv'] = $this->Model_nag->get_kode_inv_nb();
     $data['kode_id'] = $this->Model_nag->get_kode_id_nb();
@@ -4079,6 +4082,7 @@ public function createinvoice_knitting()
     $data['title'] = 'Create Invoice Knitting';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['isi_bank'] = $this->Model_nag->load_bank();
+    $data['isi_pph'] = $this->Model_nag->get_pph_list();
     $data['buyer'] = $this->Model_nag->cari_buyer();
     $data['other_charge'] = $this->Model_nag->cari_other_charges();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
