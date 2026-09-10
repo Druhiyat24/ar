@@ -1,6 +1,229 @@
 <!-- DataTables 2.x CSS — khusus halaman ini -->
 <link rel="stylesheet" href="<?= base_url('assets/plugins/datatables2/css/dataTables.bootstrap4.min.css'); ?>">
 
+<style>
+/* Palet & komponen disamakan dengan Projection Report. */
+
+/* ===== Halaman & card ===== */
+.content-wrapper .content-header { padding: 0; }
+.content-wrapper .card {
+    margin-bottom: 14px;
+    border: 1px solid #e5e9f0;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+    overflow: hidden;
+}
+.content-wrapper .card > .card-header {
+    background: #1e3a5f !important;
+    background-image: none !important;
+    border-bottom: 0;
+    display: flex;
+    align-items: center;
+    padding: 13px 18px;
+}
+.content-wrapper .card > .card-header::after { display: none; }
+.content-wrapper .card > .card-header .card-title {
+    color: #f8fafc;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: .3px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+.content-wrapper .card > .card-header .card-title i { opacity: .75; font-size: 13px; }
+
+/* ===== Form filter ===== */
+.content-wrapper .card-body label {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+.content-wrapper .card-body .form-control,
+.content-wrapper .card-body .select2-container .select2-selection--single,
+.content-wrapper .card-body .input-group-text,
+.content-wrapper .card-body .btn {
+    height: 38px;
+    border-radius: 8px;
+    border-color: #e2e8f0;
+    font-size: 13px;
+}
+.content-wrapper .card-body .select2-container { display: block; width: 100% !important; }
+/* Tema select2 mengunci tinggi pakai em - harus di-override. */
+.content-wrapper .card-body .select2-container .select2-selection--single {
+    height: 38px !important;
+    padding: 0;
+}
+.content-wrapper .card-body .select2-container .select2-selection--single .select2-selection__rendered {
+    line-height: 36px;
+    padding-left: 12px;
+    padding-right: 28px;
+}
+.content-wrapper .card-body .select2-container .select2-selection--single .select2-selection__arrow {
+    height: 36px;
+    top: 1px;
+    right: 6px;
+}
+.content-wrapper .card-body .input-group > .form-control { border-radius: 8px 0 0 8px; }
+.content-wrapper .card-body .input-group-text {
+    border-radius: 0 8px 8px 0;
+    border-left: 0;
+    background: #f8fafc;
+    color: #64748b;
+}
+/* Warna tombol tidak diubah - hanya jarak ikon, bobot huruf, dan bayangan. */
+.content-wrapper .card-body .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border-color: transparent;
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .12);
+}
+.content-wrapper .card-body .btn i { font-size: 12.5px; }
+.content-wrapper .card-body .btn:hover { filter: brightness(.93); }
+
+/* ===== Dropdown select2 & datepicker (dilampirkan ke body) ===== */
+.select2-container--bootstrap4 .select2-dropdown {
+    border-color: #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, .12);
+    overflow: hidden;
+}
+.select2-container--bootstrap4 .select2-results__option { font-size: 13px; padding: 7px 12px; color: #1e293b; }
+.select2-container--bootstrap4 .select2-results__option[aria-selected=true] {
+    background: #eef2f7;
+    color: #0f172a;
+    font-weight: 600;
+}
+.select2-container--bootstrap4 .select2-results__option--highlighted,
+.select2-container--bootstrap4 .select2-results__option--highlighted[aria-selected],
+.select2-container--bootstrap4 .select2-results__option[aria-selected=true].select2-results__option--highlighted {
+    background: #1e3a5f !important;
+    color: #f8fafc !important;
+}
+.select2-container--bootstrap4.select2-container--focus .select2-selection,
+.select2-container--bootstrap4.select2-container--open .select2-selection {
+    border-color: #2c5282 !important;
+    box-shadow: 0 0 0 3px rgba(44, 82, 130, .15);
+}
+.datepicker {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, .12);
+    padding: 8px;
+    font-size: 13px;
+}
+.datepicker table tr th.datepicker-switch,
+.datepicker table tr th.prev,
+.datepicker table tr th.next { color: #0f172a; font-weight: 600; border-radius: 8px; }
+.datepicker table tr th.datepicker-switch:hover,
+.datepicker table tr th.prev:hover,
+.datepicker table tr th.next:hover { background: #eef2f7; }
+.datepicker table tr th.dow {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+}
+.datepicker table tr td.day { border-radius: 8px; color: #1e293b; }
+.datepicker table tr td.day:hover { background: #eef2f7; }
+.datepicker table tr td.old,
+.datepicker table tr td.new { color: #cbd5e1; }
+.datepicker table tr td.today,
+.datepicker table tr td.today:hover {
+    background: #e2e8f0 !important;
+    background-image: none !important;
+    color: #0f172a !important;
+    font-weight: 600;
+}
+.datepicker table tr td.active,
+.datepicker table tr td.active:hover,
+.datepicker table tr td.active.active,
+.datepicker table tr td span.active {
+    background: #1e3a5f !important;
+    background-image: none !important;
+    color: #fff !important;
+    text-shadow: none !important;
+    border-radius: 8px;
+}
+
+/* ===== Judul tabel (menggantikan bar biru kedua) ===== */
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eef2f7;
+}
+.table-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: .3px;
+    color: #0f172a;
+}
+.table-title i { color: #1e3a5f; opacity: .55; font-size: 13px; }
+
+/* ===== Tabel list history ===== */
+#tbl-history-list thead th {
+    background: #1e3a5f;
+    color: #e2e8f0;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    border: 0;
+    padding: 9px 12px;
+    vertical-align: middle;
+}
+#tbl-history-list tbody td {
+    font-size: 12.5px;
+    padding: 8px 12px;
+    vertical-align: middle;
+    border-color: #eef2f7;
+    font-variant-numeric: tabular-nums;
+}
+#tbl-history-list tbody tr:hover td { background: #eaf2ff; }
+#tbl-history-list_wrapper .dataTables_filter input,
+#tbl-history-list_wrapper .dataTables_length select {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 13px;
+}
+#tbl-history-list_wrapper .dataTables_info,
+#tbl-history-list_wrapper label { font-size: 12.5px; color: #64748b; }
+#tbl-history-list_wrapper .page-link { font-size: 12.5px; padding: 4px 10px; }
+
+/* ===== Modal detail ===== */
+#modal-history-detail .modal-content { border-radius: 12px; overflow: hidden; }
+#modal-history-detail .modal-header {
+    background: #1e3a5f !important;
+    border-bottom: 0;
+    padding: 13px 18px;
+}
+#modal-history-detail .modal-title {
+    color: #f8fafc;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .3px;
+}
+#modal-history-detail .close { color: #f8fafc; opacity: .85; text-shadow: none; }
+#tbl-history-detail tbody tr:nth-child(even) td { background: #fafbfc; }
+</style>
+
 <div class="content-wrapper">
     <section class="content-header">
         <div class="container-fluid"></div>
@@ -13,7 +236,7 @@
                     <div class="col-md-12">
                         <div class="card card-info">
                             <div class="card-header">
-                                <h3 class="card-title"><?= $title; ?></h3>
+                                <h3 class="card-title"><i class="fas fa-history"></i><?= $title; ?></h3>
                             </div>
                             <form>
                                 <div class="card-body">
@@ -74,11 +297,11 @@
     <div class="card-body">
         <div class="row">
             <div class="col-12">
-                <div class="card card-info">
-                    <div class="card-header">
-                        <h3 class="card-title">History List</h3>
-                    </div>
+                <div class="card">
                     <div class="card-body" style="position:relative;">
+                        <div class="table-header">
+                            <span class="table-title"><i class="fas fa-table"></i>History List</span>
+                        </div>
                         <div class="nag-loader-overlay" id="hist-loader">
                             <div class="nag-loader-card">
                                 <div class="nag-loader-spinner">
@@ -119,8 +342,10 @@
     <div class="modal-dialog modal-xl" role="document" style="max-width:95%;">
         <div class="modal-content">
 
-            <div class="modal-header bg-info">
-                <h5 class="modal-title" id="modalHistoryLabel">Detail — <span id="modal-doc-number"></span></h5>
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalHistoryLabel">
+                    <i class="fas fa-file-invoice-dollar" style="opacity:.75; margin-right:8px;"></i>Detail — <span id="modal-doc-number"></span>
+                </h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -322,15 +547,18 @@ function render_detail_table(res) {
         cur.setDate(cur.getDate() + 1);
     }
 
-    // ── THEAD ──
-    let hdrBg  = '#FFE4C4';
-    let projBg = '#90EE90';
+    // ── THEAD ── (palet disamakan dengan Projection Report)
+    let hdrBg  = '#1e3a5f';
+    let recvBg = '#2c5282';
+    let subBg  = '#3563a0';
+    let projBg = '#0f766e';
+    let dateBg = '#0d9488';
     // Row-1: sticky top:0
     let th1 = (bg, extra='') =>
-        `style="white-space:nowrap;padding:4px 8px;border:1px solid #dee2e6;text-align:center;font-size:11px;background:${bg};position:sticky;top:0;z-index:3;${extra}"`;
+        `style="white-space:nowrap;padding:7px 10px;border-right:1px solid rgba(255,255,255,.10);text-align:center;font-size:10.5px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:#f8fafc;background:${bg};position:sticky;top:0;z-index:3;${extra}"`;
     // Row-2: top will be set after render via JS
     let th2 = (bg) =>
-        `class="th-row2" style="white-space:nowrap;padding:4px 8px;border:1px solid #dee2e6;text-align:center;font-size:11px;background:${bg};position:sticky;top:0;z-index:2;"`;
+        `class="th-row2" style="white-space:nowrap;padding:7px 10px;border-right:1px solid rgba(255,255,255,.10);text-align:center;font-size:10.5px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:#f8fafc;background:${bg};position:sticky;top:0;z-index:2;"`;
 
     let thead = `<tr>
         <th ${th1(hdrBg)} rowspan="2">No</th>
@@ -345,16 +573,16 @@ function render_detail_table(res) {
         <th ${th1(hdrBg)} rowspan="2">Currency</th>
         <th ${th1(hdrBg)} rowspan="2">Invoice Amount</th>
         <th ${th1(hdrBg)} rowspan="2">Rate</th>
-        <th ${th1(hdrBg, 'text-align:left;vertical-align:top;')} colspan="5">Receivable Amount</th>
+        <th ${th1(recvBg, 'text-align:left;vertical-align:top;')} colspan="5">Receivable Amount</th>
         <th ${th1(projBg)} colspan="${dates.length}">Projected Cash Inflow from Accounts Receivable</th>
     </tr><tr>`;
-    thead += `<th ${th2(hdrBg)}>Tax Base</th>`;
-    thead += `<th ${th2(hdrBg)}>VAT</th>`;
-    thead += `<th ${th2(hdrBg)}>Total Invoice</th>`;
-    thead += `<th ${th2(hdrBg)}>Income Tax Art 23</th>`;
-    thead += `<th ${th2(hdrBg)}>Collection Amount</th>`;
+    thead += `<th ${th2(subBg)}>Tax Base</th>`;
+    thead += `<th ${th2(subBg)}>VAT</th>`;
+    thead += `<th ${th2(subBg)}>Total Invoice</th>`;
+    thead += `<th ${th2(subBg)}>Income Tax Art 23</th>`;
+    thead += `<th ${th2(subBg)}>Collection Amount</th>`;
     dates.forEach(function(d) {
-        thead += `<th ${th2(projBg)}>${formatDate(d)}</th>`;
+        thead += `<th ${th2(dateBg)}>${formatDate(d)}</th>`;
     });
     thead += '</tr>';
     $('#thead-history-detail').html(thead);
