@@ -310,6 +310,115 @@
 #table-projection-report tbody td[align="right"],
 #table-projection-report tfoot td[align="right"] { text-align: right; }
 
+/* ===== Modal detail invoice ===== */
+.inv-head {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px 18px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    background: #f8fafc;
+    border: 1px solid #eef2f7;
+    border-radius: 10px;
+}
+.inv-head-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.inv-head-item span {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+    color: #64748b;
+}
+.inv-head-item b {
+    font-size: 13px;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.inv-lines-wrap { overflow-x: auto; }
+/* !important supaya lebar inline yang dipasang DataTables tidak bikin tabelnya
+   menyempit di tengah modal yang lebar. */
+.inv-lines { width: 100% !important; border-collapse: separate; border-spacing: 0; font-size: 12.5px; }
+.inv-lines thead th {
+    background: #1e3a5f;
+    color: #e2e8f0;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+    text-align: left;
+    white-space: nowrap;
+    padding: 8px 10px;
+}
+.inv-lines tbody td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #eef2f7;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+.inv-lines tbody tr:nth-child(even) td { background: #fafbfc; }
+.inv-lines .num { text-align: right; }
+.inv-lines .inv-empty { text-align: center; color: #64748b; padding: 22px 10px; }
+
+/* ===== Ringkasan potongan (khusus invoice) ===== */
+.inv-pot { display: flex; justify-content: flex-end; margin-top: 14px; }
+.inv-pot-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12.5px;
+    min-width: 340px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.inv-pot-table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid #eef2f7;
+    font-variant-numeric: tabular-nums;
+}
+.inv-pot-table tr:last-child td { border-bottom: 0; }
+.inv-pot-table td:first-child { color: #475569; }
+.inv-pot-table .cur { color: #64748b; text-align: center; width: 46px; }
+.inv-pot-table .num { text-align: right; font-weight: 600; color: #0f172a; min-width: 140px; }
+.inv-pot-table tr:nth-child(even) td { background: #fafbfc; }
+.inv-pot-table tr.grand td {
+    background: #fff;
+    border-top: 2px solid #cbd5e1;
+    font-weight: 700;
+    color: #0f172a;
+}
+.inv-pot-table tr.grand td:first-child { color: #0f172a; }
+
+.inv-lines tfoot td {
+    background: #fff;
+    color: #0f172a;
+    font-weight: 700;
+    white-space: nowrap;
+    padding: 9px 10px;
+    border-top: 2px solid #cbd5e1;
+    font-variant-numeric: tabular-nums;
+}
+.inv-lines tfoot td:first-child { text-align: right; letter-spacing: .5px; }
+
+/* Kontrol DataTables di dalam modal dibikin ringkas */
+/* .row bawaan Bootstrap punya margin negatif - di dalam wrapper ini efeknya
+   bikin isinya lebih lebar dari kontainer dan memunculkan scrollbar palsu. */
+#proj-inv-lines_wrapper .row { margin-left: 0; margin-right: 0; }
+#proj-inv-lines_wrapper .dataTables_filter { text-align: left; }
+#proj-inv-lines_wrapper .dataTables_filter input {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 13px;
+}
+#proj-inv-lines_wrapper .dataTables_info,
+#proj-inv-lines_wrapper .dataTables_filter label { font-size: 12.5px; color: #64748b; }
+#proj-inv-lines_wrapper .pagination { margin: 0; }
+#proj-inv-lines_wrapper .page-link { font-size: 12.5px; padding: 4px 10px; }
+
 /* ===== Judul tabel + search box ===== */
 .table-header {
     display: flex;
@@ -499,7 +608,326 @@
     </div>
 </div>
 
+<!-- ===== Modal Detail Invoice / Debit Note ===== -->
+<div class="modal fade" id="modal-invoice-pdf" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document" style="max-width:92%;">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#1e3a5f; color:#f8fafc;">
+                <h5 class="modal-title" style="font-size:14px; font-weight:600; letter-spacing:.3px;">
+                    <i class="fas fa-file-invoice-dollar" style="opacity:.75; margin-right:8px;"></i>
+                    <span id="proj-pdf-title"></span>
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color:#f8fafc; opacity:.85;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="proj-inv-head" class="inv-head"></div>
+                <div class="inv-lines-wrap">
+                    <!-- Kolomnya dibangun via JS: invoice dan debit note beda format. -->
+                    <table class="inv-lines" id="proj-inv-lines">
+                        <thead></thead>
+                        <tbody></tbody>
+                        <tfoot></tfoot>
+                    </table>
+                </div>
+                <div id="proj-inv-pot" class="inv-pot" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="proj-pdf-open" target="_blank" class="btn btn-primary">
+                    <i class="fa fa-file-pdf"></i> Buka PDF
+                </a>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+// Nomor invoice di tabel bisa diklik - tampilkan modal detail.
+var PROJ_DETAIL_URL = '<?= base_url('arnag/invoice_detail_json'); ?>';
+var PROJ_PDF_URL    = '<?= base_url('arnag/print_invoice_by_number'); ?>';
+
+// Diisi crud-nag-report.js tiap kali Search, supaya header modal bisa langsung
+// tampil dari data yang sudah ada di browser (tanpa nunggu server).
+var PROJ_ROWS = {};
+
+function _fmtMoney(v) {
+    if (v === null || v === '' || isNaN(parseFloat(v))) return '-';
+    return parseFloat(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+var invDT = null;
+
+function _esc(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+}
+
+// Kolom tabel rincian dibangun via JS karena invoice dan debit note beda format.
+var INV_COLS = [
+    { l: 'No', w: '34px' }, { l: 'SO Number' }, { l: 'BPPB' }, { l: 'Shipp No' },
+    { l: 'Style' }, { l: 'Item' }, { l: 'Color' }, { l: 'Size' }, { l: 'UOM' },
+    { l: 'Qty', num: true }, { l: 'Unit Price', num: true }, { l: 'Total', num: true }
+];
+
+function _setLinesHead(cols) {
+    var h = '<tr>';
+    cols.forEach(function (c) {
+        h += '<th' + (c.num ? ' class="num"' : '') +
+             (c.w ? ' style="width:' + c.w + ';"' : '') + '>' + _esc(c.l) + '</th>';
+    });
+    document.querySelector('#proj-inv-lines thead').innerHTML = h + '</tr>';
+    return cols.length;
+}
+
+// Format tabel debit note mengikuti PDF-nya: Description, Supplier, Supplier
+// Invoice, lalu kolom dinamis dari header1/2/3, dan Value/Rate/Value.
+function _dnCols(dn) {
+    var cols = [{ l: 'No', w: '34px' }, { l: 'Description' }, { l: 'Supplier' }, { l: 'Supplier Invoice' }];
+    ['header1', 'header2', 'header3'].forEach(function (k) {
+        if (dn && dn[k]) cols.push({ l: dn[k] });
+    });
+    cols.push({ l: 'Value ' + ((dn && dn.from_curr) || ''), num: true });
+    cols.push({ l: 'Rate', num: true });
+    cols.push({ l: 'Value ' + ((dn && dn.to_curr) || ''), num: true });
+    return cols;
+}
+
+function _renderDnLines(res, tbody, tfoot) {
+    var dn   = res.dn || {};
+    var cols = _dnCols(dn);
+    _setLinesHead(cols);
+
+    var html = '', totValue = 0, totAmount = 0;
+
+    res.lines.forEach(function (d, i) {
+        totValue  += parseFloat(d.value) || 0;
+        totAmount += parseFloat(d.amount) || 0;
+
+        html += '<tr>' +
+                '<td>' + (i + 1) + '</td>' +
+                '<td>' + _esc(d.deskripsi) + '</td>' +
+                '<td>' + _esc(d.supplier) + '</td>' +
+                '<td>' + _esc(d.supplier_invoice) + '</td>';
+
+        // Satu nilai per baris, sama seperti tampilan di PDF.
+        ['header1', 'header2', 'header3'].forEach(function (k) {
+            if (!dn[k]) return;
+            var isi = (d[k] || []).map(_esc).join('<br>');
+            html += '<td>' + (isi || '-') + '</td>';
+        });
+
+        html += '<td class="num">' + _fmtMoney(d.value) + '</td>' +
+                '<td class="num">' + _fmtMoney(d.rate) + '</td>' +
+                '<td class="num">' + _fmtMoney(d.amount) + '</td>' +
+                '</tr>';
+    });
+
+    tbody.innerHTML = html;
+    tfoot.innerHTML = '<tr>' +
+        '<td colspan="' + (cols.length - 3) + '">TOTAL</td>' +
+        '<td class="num">' + _fmtMoney(totValue) + '</td>' +
+        '<td></td>' +
+        '<td class="num">' + _fmtMoney(totAmount) + '</td>' +
+        '</tr>';
+}
+
+// DataTables harus dimatikan dulu sebelum isi tabel diganti manual, kalau tidak
+// state internalnya jadi tidak sinkron dengan DOM.
+function _destroyInvDataTable() {
+    if (invDT) {
+        invDT.destroy();
+        invDT = null;
+    }
+}
+
+function _initInvDataTable() {
+    _destroyInvDataTable();
+
+    invDT = $('#proj-inv-lines').DataTable({
+        destroy    : true,
+        pageLength : 5,
+        lengthChange: false,
+        order      : [],            // biarkan urut sesuai urutan aslinya
+        // Tanpa ini DataTables mengunci lebar kolom dari hasil pengukuran saat
+        // modal belum tampil penuh, jadi tabelnya jadi sempit sendiri.
+        autoWidth  : false,
+        columnDefs : [{ orderable: false, targets: 0 }],
+        language   : {
+            emptyTable      : 'Tidak ada rincian',
+            zeroRecords     : 'Tidak ada rincian yang cocok',
+            info            : 'Menampilkan _START_ - _END_ dari _TOTAL_ baris',
+            infoEmpty       : 'Tidak ada rincian',
+            infoFiltered    : '(difilter dari _MAX_ baris)',
+            search          : '',
+            searchPlaceholder: 'Cari rincian...',
+            paginate        : { first: '«', last: '»', next: '›', previous: '‹' }
+        },
+        dom: '<"row align-items-center mb-2"<"col-sm-6"f><"col-sm-6 text-right"i>>rt<"row mt-2"<"col-sm-12 d-flex justify-content-end"p>>'
+    });
+
+}
+
+// Ringkasan potongan (Total s/d Grand Total) - hanya ada untuk invoice,
+// debit note tidak punya tabel potongan jadi bloknya disembunyikan.
+function _renderInvPot(pot, curr) {
+    var box = document.getElementById('proj-inv-pot');
+
+    if (!pot) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+
+    var baris = [
+        ['Total', pot.total],
+        ['Discount', pot.discount],
+        ['Down Payment', pot.dp],
+        ['Return', pot.retur],
+        ['Total Before Value Added Tax', pot.twot]
+    ];
+
+    // Kolom other charges cuma ada di invoice knitting.
+    if (pot.total_other !== undefined && pot.total_other !== null) {
+        baris.push(['Other Charges', pot.total_other]);
+    }
+
+    baris.push(['Value Added Tax', pot.vat]);
+
+    var html = '<table class="inv-pot-table">';
+    baris.forEach(function (b) {
+        html += '<tr><td>' + b[0] + '</td><td class="cur">' + curr + '</td>' +
+                '<td class="num">' + _fmtMoney(b[1]) + '</td></tr>';
+    });
+    html += '<tr class="grand"><td>Grand Total</td><td class="cur">' + curr + '</td>' +
+            '<td class="num">' + _fmtMoney(pot.grand_total) + '</td></tr>';
+    html += '</table>';
+
+    box.innerHTML = html;
+    box.style.display = '';
+}
+
+function show_invoice_detail(no_invoice) {
+    if (!no_invoice) return;
+
+    var r = PROJ_ROWS[no_invoice] || {};
+
+    document.getElementById('proj-pdf-title').textContent = no_invoice;
+    document.getElementById('proj-pdf-open').href = PROJ_PDF_URL + '?no_invoice=' + encodeURIComponent(no_invoice);
+
+    // Header langsung dari baris tabel - instan, tanpa request.
+    var head = [
+        ['Customer', r.customer || '-'],
+        ['Invoice Date', r.inv_date || '-'],
+        ['Destination', r.shipp || '-'],
+        ['Order Type', r.type_so || '-'],
+        ['Due Date', r.duedate || '-'],
+        ['Expected Collection', r.duedate_update || '-'],
+        ['Payment Term', r.top || '-'],
+        ['Currency', r.curr || '-'],
+        ['Rate', _fmtMoney(r.rate)],
+        ['Invoice Amount', _fmtMoney(r.amount)],
+        ['Tax Base', _fmtMoney(r.tax_base)],
+        ['VAT', _fmtMoney(r.tax_vat)],
+        ['Total Invoice', _fmtMoney(r.total_invoice)],
+        ['Income Tax Art 23', _fmtMoney(r.income_tax_23)],
+        ['Collection Amount', _fmtMoney(r.collection_amount)]
+    ];
+    var headHTML = '';
+    head.forEach(function (h) {
+        headHTML += '<div class="inv-head-item"><span>' + h[0] + '</span><b>' + h[1] + '</b></div>';
+    });
+    document.getElementById('proj-inv-head').innerHTML = headHTML;
+
+    _destroyInvDataTable();
+
+    var tbody = document.querySelector('#proj-inv-lines tbody');
+    var tfoot = document.querySelector('#proj-inv-lines tfoot');
+    var nCol  = _setLinesHead(INV_COLS);
+
+    tbody.innerHTML = '<tr><td colspan="' + nCol + '" class="inv-empty"><i class="fa fa-spinner fa-spin"></i> Memuat rincian...</td></tr>';
+    tfoot.innerHTML = '';
+    _renderInvPot(null, '');
+
+    $('#modal-invoice-pdf').modal('show');
+
+    $.ajax({
+        url: PROJ_DETAIL_URL,
+        type: 'GET',
+        data: { no_invoice: no_invoice },
+        dataType: 'JSON',
+        success: function (res) {
+            if (!res.status || !res.lines.length) {
+                tbody.innerHTML = '<tr><td colspan="' + nCol + '" class="inv-empty">' +
+                    _esc(res.message || 'Rincian tidak ditemukan.') + '</td></tr>';
+                return;
+            }
+
+            // Debit note: format kolomnya beda, ikut PDF debit note.
+            if (res.type === 'dn') {
+                _renderDnLines(res, tbody, tfoot);
+                _renderInvPot(null, '');
+                _initInvDataTable();
+                return;
+            }
+
+            var html = '';
+            var totQty = 0, totAmount = 0, adaQty = false;
+
+            res.lines.forEach(function (d, i) {
+                if (d.qty !== null && d.qty !== '' && !isNaN(parseFloat(d.qty))) {
+                    totQty += parseFloat(d.qty);
+                    adaQty = true;
+                }
+                totAmount += parseFloat(d.total_price) || 0;
+
+                html += '<tr>' +
+                    '<td>' + (i + 1) + '</td>' +
+                    '<td>' + _esc(d.so_number || '-') + '</td>' +
+                    '<td>' + _esc(d.bppb_number || '-') + '</td>' +
+                    '<td>' + _esc(d.shipp_number || '-') + '</td>' +
+                    '<td>' + _esc(d.styleno || '-') + '</td>' +
+                    '<td>' + _esc(d.product_item || '-') + '</td>' +
+                    '<td>' + _esc(d.color || '-') + '</td>' +
+                    '<td>' + _esc(d.size || '-') + '</td>' +
+                    '<td>' + _esc(d.uom || '-') + '</td>' +
+                    '<td class="num">' + (d.qty === null ? '-' : d.qty) + '</td>' +
+                    '<td class="num">' + _fmtMoney(d.unit_price) + '</td>' +
+                    '<td class="num">' + _fmtMoney(d.total_price) + '</td>' +
+                    '</tr>';
+            });
+            tbody.innerHTML = html;
+
+            tfoot.innerHTML = '<tr>' +
+                '<td colspan="9">TOTAL</td>' +
+                '<td class="num">' + (adaQty ? totQty.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '-') + '</td>' +
+                '<td></td>' +
+                '<td class="num">' + _fmtMoney(totAmount) + '</td>' +
+                '</tr>';
+
+            _renderInvPot(res.pot, r.curr || 'IDR');
+            _initInvDataTable();
+        },
+        error: function () {
+            tbody.innerHTML = '<tr><td colspan="' + nCol + '" class="inv-empty">Gagal memuat rincian.</td></tr>';
+            tfoot.innerHTML = '';
+        }
+    });
+}
+
+// Pakai addEventListener biasa, BUKAN $(document).on(...): jQuery baru dimuat
+// di footer.php (setelah view ini), jadi $ belum ada waktu skrip ini jalan.
+document.addEventListener('click', function (e) {
+    var link = e.target.closest ? e.target.closest('.inv-link') : null;
+    if (link) {
+        e.preventDefault();
+        show_invoice_detail(link.dataset.no);
+    }
+});
+
 function fixProjHeaderRow2() {
     var tr1 = document.querySelector('#table-projection-report thead tr:first-child');
     if (!tr1) return;

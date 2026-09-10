@@ -848,7 +848,13 @@ function cari_projection_report(){
             // =========================
             // LOOP DATA
             // =========================
+            // Simpan tiap baris supaya modal detail bisa langsung menampilkan
+            // headernya tanpa request ulang ke server.
+            if (typeof PROJ_ROWS !== 'undefined') { PROJ_ROWS = {}; }
+
             $.each(response, function (i, item) {
+
+                if (typeof PROJ_ROWS !== 'undefined') { PROJ_ROWS[item.no_invoice] = item; }
 
                 total_amount += parseFloat(item.amount || 0);
                 total_amount_idr += parseFloat(item.amount_idr || 0);
@@ -861,7 +867,8 @@ function cari_projection_report(){
                 trHTML += '<tr>';
                 trHTML += '<td>' + (i + 1) + '</td>';                   
                 trHTML += '<td>' + item.customer + "</td>";
-                trHTML += '<td>' + item.no_invoice + "</td>";
+                trHTML += '<td><a href="javascript:void(0)" class="inv-link" data-no="' +
+                          item.no_invoice + '">' + item.no_invoice + '</a></td>';
                 trHTML += '<td>' + formatTgl(item.inv_date) + "</td>"; 
                 trHTML += '<td>' + item.shipp + "</td>";
                 trHTML += '<td>' + (item.type_so || '-') + "</td>";

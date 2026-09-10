@@ -635,6 +635,132 @@ function update_status_invoice($id_inv, $pph, $tanggal_input, $id_top, $id_bank,
     return $hasil;
 }
 
+// Projection Report cuma menyimpan NOMOR dokumen, sedangkan semua endpoint
+// cetak PDF butuh id. Cari nomornya di tabel sumber yang mungkin dan kembalikan
+// jenis + id-nya, biar pemanggil tahu PDF mana yang harus dibuka.
+function find_invoice_ref($no_invoice)
+{
+    $row = $this->db->query(
+        "SELECT id, profit_center FROM tbl_book_invoice WHERE no_invoice = ? LIMIT 1",
+        array($no_invoice)
+    )->row_array();
+    if ($row) {
+        return array(
+            'type' => ($row['profit_center'] === 'NAK') ? 'knitting' : 'nag',
+            'id'   => $row['id'],
+        );
+    }
+
+    $row = $this->db->query(
+        "SELECT id FROM tbl_invoice_nb WHERE no_inv = ? LIMIT 1",
+        array($no_invoice)
+    )->row_array();
+    if ($row) {
+        return array('type' => 'nb', 'id' => $row['id']);
+    }
+
+    $row = $this->db->query(
+        "SELECT id FROM tbl_debitnote_h WHERE no_dn = ? LIMIT 1",
+        array($no_invoice)
+    )->row_array();
+    if ($row) {
+        // Debit note dianggap MEMO kalau nomornya terdaftar di memo_det -
+        // aturan yang sama dipakai tombol Print di halaman list debit note,
+        // dan menentukan PDF mana yang dipakai.
+        $memo = $this->db->query(
+            "SELECT 1 ada FROM memo_det WHERE no_dn = ? LIMIT 1",
+            array($no_invoice)
+        )->row_array();
+
+        return array(
+            'type'    => 'dn',
+            'id'      => $row['id'],
+            'dn_memo' => !empty($memo),
+        );
+    }
+
+    return null;
+}
+
+// Rincian baris dokumen untuk modal detail di Projection Report. Bentuk kolom
+// tiap tabel sumber beda-beda, jadi di-alias supaya keluar seragam.
+function invoice_detail_lines($no_invoice)
+{
+    $ref = $this->find_invoice_ref($no_invoice);
+    if (!$ref) {
+        return null;
+    }
+
+    $kolom = "so_number, bppb_number, sj_date, shipp_number, styleno,
+              product_item, color, size, uom, qty, unit_price, total_price";
+
+    // $sql_pot = ringkasan potongan (Total s/d Grand Total). Debit note tidak
+    // punya tabel potongan, jadi dibiarkan null.
+    $sql_pot = null;
+
+    switch ($ref['type']) {
+        case 'knitting':
+            $sql = "SELECT $kolom FROM tbl_invoice_detail_knitting WHERE id_book_invoice = ?";
+            $sql_pot = "SELECT total, discount, dp, retur, twot, vat, total_other, grand_total
+                        FROM tbl_invoice_pot_knitting WHERE id_book_invoice = ?";
+            $key = $ref['id'];
+            break;
+
+        case 'nb':
+            $sql = "SELECT no_so so_number, no_bppb bppb_number, sj_date, no_shipp shipp_number,
+                           no_style styleno, prod_item product_item, color, size, uom, qty,
+                           unit_price, total total_price
+                    FROM tbl_invoice_nb_detail WHERE no_inv = ?";
+            $sql_pot = "SELECT total, diskon discount, dp, retur, twot, vat, grand_total
+                        FROM tbl_invoice_nb_pot WHERE no_inv = ?";
+            $key = $no_invoice;
+            break;
+
+        case 'dn':
+            // Format tabel debit note beda dari invoice: 3 kolom tengahnya
+            // dinamis, judulnya diambil dari header1/2/3 di tbl_debitnote_h.
+            $dn = $this->db->query(
+                "SELECT header1, header2, header3, from_curr, to_curr
+                 FROM tbl_debitnote_h WHERE id = ? LIMIT 1",
+                array($ref['id'])
+            )->row_array();
+
+            // Baris yang totalnya 0 (nilainya kecil/minus lalu jadi 0 setelah
+            // konversi) tidak perlu ditampilkan.
+            $det = $this->db->query(
+                "SELECT deskripsi, supplier, supplier_invoice, header1, header2, header3,
+                        value, rate, amount
+                 FROM tbl_debitnote_det
+                 WHERE no_dn = ? AND COALESCE(amount, 0) <> 0
+                 ORDER BY id",
+                array($no_invoice)
+            )->result_array();
+
+            // header1..3 disimpan sebagai daftar dipisah koma - dipecah supaya
+            // bisa ditampilkan satu nilai per baris, seperti di PDF-nya.
+            foreach ($det as &$d) {
+                foreach (array('header1', 'header2', 'header3') as $k) {
+                    $d[$k] = ($d[$k] === null || $d[$k] === '') ? array() : explode(',', $d[$k]);
+                }
+            }
+            unset($d);
+
+            return array('type' => 'dn', 'lines' => $det, 'pot' => null, 'dn' => $dn);
+
+        default:
+            $sql = "SELECT $kolom FROM tbl_invoice_detail WHERE id_book_invoice = ?";
+            $sql_pot = "SELECT total, discount, dp, retur, twot, vat, grand_total
+                        FROM tbl_invoice_pot WHERE id_book_invoice = ?";
+            $key = $ref['id'];
+    }
+
+    return array(
+        'type'  => $ref['type'],
+        'lines' => $this->db->query($sql, array($key))->result_array(),
+        'pot'   => $sql_pot ? $this->db->query($sql_pot, array($key))->row_array() : null,
+    );
+}
+
 // Edit Shipp (Local/Export) dari halaman Create Invoice Knitting.
 // SENGAJA cuma menyentuh kolom shipp - no_invoice tidak boleh ikut berubah
 // walaupun huruf L/E di nomornya berasal dari shipp waktu booking dulu.

@@ -3357,6 +3357,68 @@ public function getTopInvoice($id)
     ]);
 }
 
+// Rincian dokumen untuk modal detail di Projection Report. Nomor dikirim lewat
+// query string karena mengandung "/".
+public function invoice_detail_json()
+{
+    $no_invoice = $this->input->get('no_invoice');
+    $data = $no_invoice ? $this->Model_nag->invoice_detail_lines($no_invoice) : null;
+
+    if (!$data) {
+        echo json_encode(array('status' => false, 'message' => 'Detail tidak ditemukan.'));
+        return;
+    }
+
+    echo json_encode(array(
+        'status' => true,
+        'type'   => $data['type'],
+        'lines'  => $data['lines'],
+        'pot'    => $data['pot'],
+        'dn'     => isset($data['dn']) ? $data['dn'] : null,
+    ));
+}
+
+
+// Dipakai tombol "Buka PDF" di modal detail: terima NOMOR dokumen, lalu
+// teruskan ke endpoint cetak PDF yang sesuai jenis dokumennya.
+public function print_invoice_by_number()
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+
+    $no_invoice = $this->input->get('no_invoice');
+    $ref = $no_invoice ? $this->Model_nag->find_invoice_ref($no_invoice) : null;
+
+    if (!$ref) {
+        show_error('Detail untuk ' . html_escape($no_invoice) . ' tidak ditemukan.', 404, 'Tidak Ditemukan');
+        return;
+    }
+
+    switch ($ref['type']) {
+        case 'knitting':
+            $this->print_invoice_knitting($ref['id']);
+            return;
+
+        case 'nb':
+            $this->report_invoice4($ref['id']);
+            return;
+
+        case 'dn':
+            if (!empty($ref['dn_memo'])) {
+                $this->report_debit_note_memo($ref['id']);
+            } else {
+                $this->report_debit_note($ref['id']);
+            }
+            return;
+
+        default:
+            $this->report_invoice3($ref['id']);
+            return;
+    }
+}
+
+
 public function update_shipp_invoice()
 {
     $id    = $this->input->post('id_inv');
