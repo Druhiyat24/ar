@@ -709,25 +709,31 @@ while(start <= end){
 
     let thead = `
         <tr>
-            <th style="width:30px;background-color:#FFE4C4;" rowspan="2">No</th>
-            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Customer</th>
-            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Reff Number</th>
-            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Reff Date</th>
-            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Category</th>
-            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Due Date</th>
-            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Due Date Update</th>
-            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">TOP</th>
-            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Curr</th>
-            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Total</th>
-            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Rate</th>
-            <th style="width:200px;background-color:#FFE4C4;" rowspan="2">Total IDR</th>
-            <th style="background-color:#90EE90;" colspan="${colCount}">Duedate Projection</th>
+            <th style="width:30px;" rowspan="2">No</th>
+            <th style="width:200px;" rowspan="2">Customer</th>
+            <th style="width:200px;" rowspan="2">Invoice No</th>
+            <th style="width:200px;" rowspan="2">Invoice Date</th>
+            <th style="width:200px;" rowspan="2">Destination</th>
+            <th style="width:150px;" rowspan="2">Order Type</th>
+            <th style="width:200px;" rowspan="2">Due Date</th>
+            <th style="width:200px;" rowspan="2">Expected Collection Date</th>
+            <th style="width:200px;" rowspan="2">Payment Term</th>
+            <th style="width:200px;" rowspan="2">Currency</th>
+            <th style="width:200px;" rowspan="2">Invoice Amount</th>
+            <th style="width:200px;" rowspan="2">Rate</th>
+            <th class="grp-recv" colspan="5">Receivable Amount</th>
+            <th class="grp-proj" colspan="${colCount}">Projected Cash Inflow from Accounts Receivable</th>
         </tr>
         <tr>
+            <th class="sub-recv" style="width:150px;">Tax Base</th>
+            <th class="sub-recv" style="width:150px;">VAT</th>
+            <th class="sub-recv" style="width:150px;">Total Invoice</th>
+            <th class="sub-recv" style="width:150px;">Income Tax Art 23</th>
+            <th class="sub-recv" style="width:150px;">Collection Amount</th>
     `;
 
     dates.forEach(function(tgl){
-        thead += `<th style="width:150px;background-color:#90EE90;">${tgl}</th>`;
+        thead += `<th class="sub-proj" style="width:150px;">${tgl}</th>`;
     });
 
     thead += `</tr>`;
@@ -756,9 +762,23 @@ function formatTgl(dateStr){
     return tgl + ' ' + bln + ' ' + thn;
 }
 
+// Overlay-nya sendiri menutup tabel secara visual, tapi kontainer scroll di
+// belakangnya (#proj-table-wrap) tetap bisa digulir lewat wheel/scrollbar
+// selama masih loading - kelihatan aneh. Kunci overflow-nya sementara pas
+// loading tampil, kembalikan lagi setelah selesai.
+function _showProjLoader() {
+    document.getElementById('proj-loader').classList.add('show');
+    document.getElementById('proj-table-wrap').style.overflow = 'hidden';
+}
+function _hideProjLoader() {
+    document.getElementById('proj-loader').classList.remove('show');
+    document.getElementById('proj-table-wrap').style.overflow = 'auto';
+}
+
 function cari_projection_report(){
 
     $('#table-projection-report tbody tr').remove();
+    $('#table-projection-report tfoot').empty();
 
     var id_customer = $('#sr_customer').val();
     var from        = $('#filter_from').val();
@@ -807,8 +827,10 @@ function cari_projection_report(){
 
     let totalHari = renderProjectionHeader(from, to);
 
+    _showProjLoader();
+
     $.ajax({
-        url: "cari_projection_report/" + id_customer + "/" + from + "/" + to + "/" + type + "/",                  
+        url: "cari_projection_report/" + id_customer + "/" + from + "/" + to + "/" + type + "/",
         type: "GET",
         dataType: "JSON",
         success: function (response) {
@@ -816,6 +838,11 @@ function cari_projection_report(){
             let trHTML = '';
             let total_amount = 0;
             let total_amount_idr = 0;
+            let total_tax_base = 0;
+            let total_tax_vat = 0;
+            let total_invoice = 0;
+            let total_income_tax_23 = 0;
+            let total_collection_amount = 0;
             let totals = {};
 
             // =========================
@@ -825,21 +852,31 @@ function cari_projection_report(){
 
                 total_amount += parseFloat(item.amount || 0);
                 total_amount_idr += parseFloat(item.amount_idr || 0);
+                total_tax_base += parseFloat(item.tax_base || 0);
+                total_tax_vat += parseFloat(item.tax_vat || 0);
+                total_invoice += parseFloat(item.total_invoice || 0);
+                total_income_tax_23 += parseFloat(item.income_tax_23 || 0);
+                total_collection_amount += parseFloat(item.collection_amount || 0);
 
                 trHTML += '<tr>';
                 trHTML += '<td>' + (i + 1) + '</td>';                   
                 trHTML += '<td>' + item.customer + "</td>";
-                trHTML += '<td>' + item.no_invoice + "</td>";   
+                trHTML += '<td>' + item.no_invoice + "</td>";
                 trHTML += '<td>' + formatTgl(item.inv_date) + "</td>"; 
-                trHTML += '<td>' + item.shipp + "</td>";   
-                trHTML += '<td>' + formatTgl(item.duedate) + "</td>";   
+                trHTML += '<td>' + item.shipp + "</td>";
+                trHTML += '<td>' + (item.type_so || '-') + "</td>";
+                trHTML += '<td>' + formatTgl(item.duedate) + "</td>";
                 trHTML += '<td>' + formatTgl(item.duedate_update) + "</td>"; 
                 trHTML += '<td>' + item.top + "</td>"; 
                 trHTML += '<td>' + item.curr + "</td>";    
 
                 trHTML += '<td align="right">' + number_format(item.amount,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.rate,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.amount_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.tax_base,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.tax_vat,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.total_invoice,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.income_tax_23,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.collection_amount,2) + "</td>";
 
                 // =========================
                 // KOLOM DINAMIS
@@ -858,37 +895,61 @@ function cari_projection_report(){
             });
 
             // =========================
-            // TOTAL ROW
+            // TOTAL ROW - ditaruh di tfoot supaya nempel di bawah waktu discroll
+            // dan tidak ikut kesaring waktu pakai kotak Search.
             // =========================
-            trHTML += '<tr style="border-top: double 3px #000;">';
+            let tfHTML = '';
 
-            trHTML += '<td></td>';
-            trHTML += '<td align="center"><b>TOTAL</b></td>';
+            if (response.length) {
+                tfHTML += '<tr>';
 
-            for(let i = 0; i < 7; i++){
-                trHTML += '<td></td>';
+                tfHTML += '<td></td>';
+                tfHTML += '<td align="center">TOTAL</td>';
+
+                for(let i = 0; i < 8; i++){
+                    tfHTML += '<td></td>';
+                }
+
+                tfHTML += '<td align="right">' + number_format(total_amount, 2) + '</td>';
+                tfHTML += '<td></td>';
+                tfHTML += '<td align="right">' + number_format(total_tax_base, 2) + '</td>';
+                tfHTML += '<td align="right">' + number_format(total_tax_vat, 2) + '</td>';
+                tfHTML += '<td align="right">' + number_format(total_invoice, 2) + '</td>';
+                tfHTML += '<td align="right">' + number_format(total_income_tax_23, 2) + '</td>';
+                tfHTML += '<td align="right">' + number_format(total_collection_amount, 2) + '</td>';
+
+                // TOTAL DINAMIS
+                for(let j = 1; j <= totalHari; j++){
+                    let key = 'data' + j;
+                    let val = totals[key] || 0;
+
+                    tfHTML += '<td align="right">' + number_format(val, 2) + '</td>';
+                }
+
+                tfHTML += '</tr>';
             }
-
-            trHTML += '<td align="right"><b>' + number_format(total_amount, 2) + '</b></td>';
-            trHTML += '<td></td>';
-            trHTML += '<td align="right"><b>' + number_format(total_amount_idr, 2) + '</b></td>';
-
-            // TOTAL DINAMIS
-            for(let j = 1; j <= totalHari; j++){
-                let key = 'data' + j;
-                let val = totals[key] || 0;
-
-                trHTML += '<td align="right"><b>' + number_format(val, 2) + '</b></td>';
-            }
-
-            trHTML += '</tr>';
 
             $('#table-projection-report tbody').html(trHTML);
+            $('#table-projection-report tfoot').html(tfHTML);
+
+            $('#proj-row-count')
+                .text(response.length.toLocaleString('en-US') + ' rows')
+                .toggle(response.length > 0);
+
+            if (typeof setProjFreezeOffsets === 'function') {
+                setProjFreezeOffsets();
+            }
+            if (typeof fixProjHeaderRow2 === 'function') {
+                fixProjHeaderRow2();
+            }
+
+            _hideProjLoader();
         },
         error: function () {
-            alert('Error get data from ajax');
+            _hideProjLoader();
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Error get data from ajax' });
         }
-    }); 
+    });
 }
 
 function export_projection_report(){
