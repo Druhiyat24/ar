@@ -3357,6 +3357,22 @@ public function getTopInvoice($id)
     ]);
 }
 
+public function update_shipp_invoice()
+{
+    $id    = $this->input->post('id_inv');
+    $shipp = $this->input->post('shipp');
+
+    if (!$id || !in_array($shipp, ['Local', 'Export'], true)) {
+        echo json_encode(['status' => false, 'message' => 'Data tidak lengkap']);
+        return;
+    }
+
+    $this->Model_nag->update_shipp_invoice($id, $shipp);
+
+    echo json_encode(['status' => true, 'message' => 'Shipp berhasil diupdate']);
+}
+
+
 public function update_top_invoice()
 {
     $id     = $this->input->post('id_book_inv');

@@ -549,6 +549,10 @@ function cari_bi() {
 		  document.getElementById("profit_ctr_h").value = profit_center;
 		  document.getElementById("cust").value = cust.replace(/&amp;/g, "&");;
 		  document.getElementById("shipp").value = shipp;
+		  // Di Create Invoice Knitting #shipp berupa select2 - pakai event
+		  // ber-namespace biar tampilannya ikut ke-update tanpa memicu
+		  // onchange (yang akan nyimpan balik nilai yang sama ke database).
+		  $('#shipp').trigger('change.select2');
 		  document.getElementById("doc_type").value = doc_type;
 		  document.getElementById("doc_number").value = doc_number;
 		  document.getElementById("type").value = type;	
@@ -651,7 +655,7 @@ function clear_component() {
 	//cari_book_inv();
 	$('#inv_number1').val("");
 	$('#cust').val("");
-	$('#shipp').val("");
+	$('#shipp').val("").trigger('change.select2');
 	$('#doc_type').val("");
 	$('#doc_number').val("");
 	$('#amount').val("");

@@ -83,7 +83,13 @@
                             <!-- END TOP -->
                             <div class="form-group col-md-12">
                                 <label>Shipp</label>
-                                <input type="text" class="form-control" id="shipp" name="shipp" readonly required>
+                                <!-- Bisa diedit langsung: perubahannya cuma meng-update kolom shipp
+                                     di tbl_book_invoice, nomor invoice tidak ikut berubah. -->
+                                <select class="form-control select2" id="shipp" name="shipp" required onchange="update_shipp_invoice()">
+                                    <option value=""></option>
+                                    <option value="Local">Local</option>
+                                    <option value="Export">Export</option>
+                                </select>
                             </div>
                             <div class="form-group col-md-12">
                                 <label>Document Type</label>
@@ -1025,6 +1031,41 @@
 </script>
 
 <script>
+    // Shipp bisa diedit langsung di halaman ini. Yang diupdate CUMA kolom shipp
+    // di tbl_book_invoice - nomor invoice sengaja tidak disentuh.
+    // Simpan diam-diam tanpa notif; kalau gagal, pilihannya dibalikin ke nilai
+    // sebelumnya supaya tidak kelihatan tersimpan padahal tidak.
+    $(document).on('focus select2:opening', '#shipp', function () { this.dataset.prev = this.value; });
+
+    function update_shipp_invoice() {
+        var el     = document.getElementById('shipp');
+        var id_inv = $('#id_inv').val();
+        var shipp  = el.value;
+
+        // Belum ada book invoice yang dipilih - biarkan saja, nilainya nanti
+        // ikut terkirim waktu booking dibuat.
+        if (!id_inv || !shipp) return;
+
+        $.ajax({
+            url: "update_shipp_invoice/",
+            type: "POST",
+            data: { "id_inv": id_inv, "shipp": shipp },
+            dataType: "JSON",
+            success: function (data) {
+                if (data.status) {
+                    el.dataset.prev = shipp;
+                } else {
+                    $(el).val(el.dataset.prev || '').trigger('change.select2');
+                    console.error('Gagal update shipp:', data.message);
+                }
+            },
+            error: function () {
+                $(el).val(el.dataset.prev || '').trigger('change.select2');
+                console.error('Gagal update shipp: request error');
+            }
+        });
+    }
+
     function cari_shipp_num() {
         // Declare variables
         var input, filter, table, tr, td, i, txtValue;

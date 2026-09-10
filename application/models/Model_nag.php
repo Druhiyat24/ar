@@ -635,6 +635,17 @@ function update_status_invoice($id_inv, $pph, $tanggal_input, $id_top, $id_bank,
     return $hasil;
 }
 
+// Edit Shipp (Local/Export) dari halaman Create Invoice Knitting.
+// SENGAJA cuma menyentuh kolom shipp - no_invoice tidak boleh ikut berubah
+// walaupun huruf L/E di nomornya berasal dari shipp waktu booking dulu.
+function update_shipp_invoice($id, $shipp)
+{
+    return $this->db->query(
+        "UPDATE tbl_book_invoice SET shipp = ? WHERE id = ?",
+        array($shipp, $id)
+    );
+}
+
 // PPh dropdown di Create Invoice - digrup per idtax, label yang ditampilkan
 // gabungan kriteria+percentage (tax_show), tapi yang disimpan ke kolom pph
 // (existing) tetap "type" (biar konsisten sama data lama format "PPh 21" dst)
