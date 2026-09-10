@@ -33,6 +33,8 @@
   <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/apexchart/apexcharts.css">
   <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/animate/animate.min.css">
   <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css" /> -->
+  <!-- NAG Loader — komponen loading reusable (dipakai antar halaman) -->
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>build/css/nag-loader.css">
 
   <style type="text/css">
 

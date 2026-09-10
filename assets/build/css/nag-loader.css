@@ -1,0 +1,111 @@
+/* ==========================================================================
+   NAG Loader — komponen loading reusable: 2 ring berputar arah berlawanan
+   dengan teks "NAG" di tengah, dibungkus kartu putih melayang.
+
+   Cara pakai — taruh markup ini di dalam kontainer yang mau dikasih loading
+   (kontainer itu WAJIB punya position:relative, biar overlay nutup pas di
+   atas kontainer itu saja, bukan seluruh halaman):
+
+     <div class="nag-loader-overlay" id="myLoader">
+       <div class="nag-loader-card">
+         <div class="nag-loader-spinner">
+           <span class="nag-loader-ring nag-loader-ring-outer"></span>
+           <span class="nag-loader-ring nag-loader-ring-inner"></span>
+           <span class="nag-loader-brand">NAG</span>
+         </div>
+         <div class="nag-loader-caption">Memuat data...</div>
+       </div>
+     </div>
+
+   Tampilkan/sembunyikan lewat class "show":
+     document.getElementById('myLoader').classList.add('show');
+     document.getElementById('myLoader').classList.remove('show');
+
+   CSS ini di-include sekali secara global lewat templates/header.php, jadi
+   di halaman manapun tinggal pasang markup-nya saja tanpa include tambahan.
+   ========================================================================== */
+
+.nag-loader-overlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1050;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.75);
+}
+
+.nag-loader-overlay.show {
+    display: flex;
+}
+
+.nag-loader-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 28px rgba(30, 41, 59, 0.14);
+    padding: 28px 40px;
+}
+
+.nag-loader-spinner {
+    position: relative;
+    width: 62px;
+    height: 62px;
+}
+
+.nag-loader-ring {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: 50%;
+    border: 3px solid transparent;
+}
+
+.nag-loader-ring-outer {
+    border-top-color: #1e3a8a;
+    border-bottom-color: #1e3a8a;
+    animation: nag-loader-spin 1.1s linear infinite;
+}
+
+.nag-loader-ring-inner {
+    top: 9px;
+    right: 9px;
+    bottom: 9px;
+    left: 9px;
+    border-left-color: #60a5fa;
+    border-right-color: #60a5fa;
+    animation: nag-loader-spin-reverse 0.85s linear infinite;
+}
+
+.nag-loader-brand {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #1e3a8a;
+}
+
+.nag-loader-caption {
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+}
+
+@keyframes nag-loader-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes nag-loader-spin-reverse {
+    to { transform: rotate(-360deg); }
+}
