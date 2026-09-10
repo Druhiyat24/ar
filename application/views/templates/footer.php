@@ -1047,6 +1047,10 @@ function change_top_5_sales(option) {
           value: 'PEB',
           text: 'PEB'
         }));
+        $('#doc_type').append($('<option>', {
+          value: 'BC 27',
+          text: 'BC 27'
+        }));
       });
   });
 </script>
