@@ -824,10 +824,22 @@ private function _attach_receivable_breakdown($rows)
         $rate = isset($r['rate']) ? (float) $r['rate'] : 1;
 
         if (isset($potMap[$r['no_invoice']])) {
-            $p        = $potMap[$r['no_invoice']];
-            $taxBase  = (float) $p['twot'] * $rate;
-            $vat      = (float) $p['vat'] * $rate;
-            $totalInv = (float) $p['grand_total'] * $rate;
+            $p     = $potMap[$r['no_invoice']];
+            $grand = (float) $p['grand_total'];
+
+            // Yang diproyeksikan bukan nilai penuh invoice, tapi porsinya yang
+            // sama persis dengan kolom Invoice Amount: sisa tagihan setelah
+            // alokasi, atau pembayaran di periode ini kalau ada alokasinya.
+            // Tax Base & VAT dipecah proporsional dari potongan invoice-nya.
+            if ($grand != 0) {
+                $porsi    = (float) $r['amount'] / $grand;
+                $taxBase  = (float) $p['twot'] * $porsi * $rate;
+                $vat      = (float) $p['vat'] * $porsi * $rate;
+            } else {
+                $taxBase  = (float) $r['amount_idr'];
+                $vat      = 0;
+            }
+            $totalInv = (float) $r['amount_idr'];
             $pct      = ($p['id_pph'] !== null && isset($pctMap[$p['id_pph']])) ? $pctMap[$p['id_pph']] : 0;
             $pph23    = round($taxBase * $pct / 100, 2);
         } else {
