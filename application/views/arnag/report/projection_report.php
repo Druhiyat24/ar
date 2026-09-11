@@ -306,6 +306,38 @@
 #table-projection-report tfoot td:nth-child(3) { left: var(--fz3, 230px);  z-index: 35; }
 #table-projection-report tfoot td:nth-child(4) { left: var(--fz4, 430px);  z-index: 35; box-shadow: 8px 0 10px -8px rgba(0, 0, 0, .45); }
 
+/* ===== Mode tanpa freeze (class dipasang setProjFreezeOffsets di layar
+   sempit). Header tetap nempel di atas dan TOTAL tetap nempel di bawah,
+   hanya kunci ke kirinya yang dilepas. ===== */
+#table-projection-report.no-freeze thead tr:first-child th:nth-child(-n+4),
+#table-projection-report.no-freeze tfoot td:nth-child(-n+4) {
+    left: auto;
+    box-shadow: none;
+}
+#table-projection-report.no-freeze tbody td:nth-child(-n+4) {
+    position: static;
+    box-shadow: none;
+}
+#table-projection-report.no-freeze thead th.grp-recv > span,
+#table-projection-report.no-freeze thead th.grp-proj > span { left: 0; }
+
+#proj-table-wrap { -webkit-overflow-scrolling: touch; }
+
+/* ===== Layar HP ===== */
+@media (max-width: 767.98px) {
+    /* Sisakan ruang di bawah tabel supaya halamannya sendiri tetap bisa
+       digulir (inline max-height 500px hampir memenuhi layar HP). */
+    #proj-table-wrap { max-height: 70vh !important; }
+
+    /* Kotak Search (min 260px) tadinya memaksa kartu lebih lebar dari layar. */
+    .table-header { flex-wrap: wrap; }
+    .search-box,
+    .search-box input { width: 100%; min-width: 0; }
+
+    /* Tombol Search/Export/Save History turun ke baris baru kalau tidak muat. */
+    .content-wrapper .card-body .d-flex { flex-wrap: wrap; }
+}
+
 /* Angka rata kanan (baris data & total) */
 #table-projection-report tbody td[align="right"],
 #table-projection-report tfoot td[align="right"] { text-align: right; }
@@ -960,7 +992,23 @@ function setProjFreezeOffsets() {
 
     // Batas kanan area beku - dipakai label grup biar tidak ketutup kolom beku
     table.style.setProperty('--fz-end', left + 'px');
+
+    // Di layar sempit (HP/tablet) 4 kolom beku bisa lebih lebar dari layarnya
+    // sendiri, sehingga menutupi seluruh area tabel dan tabel terlihat tidak
+    // bisa digeser. Kalau area beku makan >85% lebar yang terlihat, freeze
+    // dimatikan; di laptop/desktop tetap aktif seperti biasa.
+    var wrap = document.getElementById('proj-table-wrap');
+    table.classList.toggle('no-freeze', !!wrap && left > wrap.clientWidth * 0.85);
 }
+
+// Hitung sekali saat halaman dibuka, dan ulang tiap ukuran layar berubah
+// (termasuk HP diputar landscape/portrait).
+setProjFreezeOffsets();
+var _projResizeTimer = null;
+window.addEventListener('resize', function () {
+    clearTimeout(_projResizeTimer);
+    _projResizeTimer = setTimeout(setProjFreezeOffsets, 150);
+});
 
 document.getElementById("tableSearch").addEventListener("keyup", function() {
     let value = this.value.toLowerCase().trim();
