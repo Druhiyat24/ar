@@ -1245,7 +1245,12 @@ public function get_history_projection_list($from, $to)
         SELECT h.doc_number, h.periode_dari, h.periode_sampai, h.id_customer,
                h.created_by, h.created_at, h.type,
                COUNT(d.id)        AS total_invoice,
-               SUM(d.amount_idr)  AS total_amount_idr
+               -- Total Collection Amount, rumusnya sama dengan kolom tanggal di
+               -- modal history (histNetAmount): amount_idr x collection / total
+               -- invoice, supaya dokumen lama tetap keluar angka yang benar.
+               SUM(CASE WHEN d.total_invoice <> 0
+                        THEN d.amount_idr * d.collection_amount / d.total_invoice
+                        ELSE d.amount_idr END) AS total_collection
         FROM tbl_history_projection_h h
         LEFT JOIN tbl_history_projection_det d ON d.doc_number = h.doc_number
         WHERE DATE(h.created_at) BETWEEN '$from' AND '$to'

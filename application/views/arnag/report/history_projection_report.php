@@ -321,7 +321,7 @@
                                     <th class="text-center">Periode To</th>
                                     <th class="text-center">Type</th>
                                     <th class="text-center">Total Invoice</th>
-                                    <th class="text-right">Total Amount IDR</th>
+                                    <th class="text-right">Total Collection Amount</th>
                                     <th>Saved By</th>
                                     <th class="text-center">Saved At</th>
                                     <th class="text-center">Action</th>
@@ -436,7 +436,7 @@ function _initHistDT(url) {
             },
             { data: 'total_invoice',   className: 'text-center' },
             {
-                data: 'total_amount_idr', className: 'text-right',
+                data: 'total_collection', className: 'text-right',
                 render: function (d) {
                     return parseFloat(d || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
