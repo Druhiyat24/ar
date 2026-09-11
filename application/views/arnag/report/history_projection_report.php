@@ -639,7 +639,7 @@ function render_detail_table(res) {
             <td ${tdStyle} text-align:right;">${fmt(r.collection_amount)}</td>`;
 
         dates.forEach(function(d) {
-            let val = (r.duedate_update === d) ? parseFloat(r.amount_idr || 0) : 0.00;
+            let val = (r.duedate_update === d) ? histNetAmount(r) : 0.00;
             if (val !== 0) dateTotals[d] += val;
             tbody += `<td ${tdStyle} text-align:right;">${val !== 0 ? fmt(val) : 0.00}</td>`;
         });
@@ -674,6 +674,19 @@ function export_history_pdf() {
 
 function fmt(n) {
     return parseFloat(n || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+// Nilai yang masuk ke kolom tanggal = Collection Amount (sudah dipotong PPh),
+// sama seperti Projection Report. Sengaja dihitung amount_idr x (collection /
+// total invoice), bukan collection_amount langsung: history lama menyimpan
+// Receivable Amount dari nilai penuh invoice, sedangkan amount_idr-nya sudah
+// memperhitungkan alokasi - rasio PPh-nya sama, jadi hasilnya tetap benar.
+// Samakan dengan export_history_projection_excel.php / _pdf.php.
+function histNetAmount(r) {
+    let amt = parseFloat(r.amount_idr || 0);
+    let ti  = parseFloat(r.total_invoice || 0);
+    let col = parseFloat(r.collection_amount || 0);
+    return ti !== 0 ? amt * col / ti : amt;
 }
 
 function formatDate(ymd) {

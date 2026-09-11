@@ -24,6 +24,14 @@ foreach ($all_dates as $dt) {
 
 $total_days = count($all_dates);
 $show_dates = $dates_with_data; // kolom yang ditampilkan (sparse)
+
+// Nilai kolom tanggal = Collection Amount, dihitung amount_idr x (collection /
+// total invoice) supaya history lama (Receivable Amount-nya dari nilai penuh
+// invoice) tetap benar. Alasan lengkap: histNetAmount() di history_projection_report.php.
+$netAmount = function ($r) {
+    $ti = (float) $r['total_invoice'];
+    return $ti != 0 ? (float) $r['amount_idr'] * (float) $r['collection_amount'] / $ti : (float) $r['amount_idr'];
+};
 ?>
 <style>
     body  { font-family: Arial; font-size: 7.5pt; }
@@ -115,7 +123,7 @@ $show_dates = $dates_with_data; // kolom yang ditampilkan (sparse)
             <td class="text-right"><?= number_format((float)$r['collection_amount'], 2); ?></td>
 
             <?php foreach ($show_dates as $dt):
-                $val = ($r['duedate_update'] === $dt) ? (float)$r['amount_idr'] : 0;
+                $val = ($r['duedate_update'] === $dt) ? $netAmount($r) : 0;
             ?>
             <td class="text-right"><?= $val != 0 ? number_format($val, 2) : ''; ?></td>
             <?php endforeach; ?>
@@ -148,7 +156,7 @@ $show_dates = $dates_with_data; // kolom yang ditampilkan (sparse)
             <?php foreach ($show_dates as $dt):
                 $sub = 0;
                 foreach ($detail as $r) {
-                    if ($r['duedate_update'] === $dt) $sub += (float)$r['amount_idr'];
+                    if ($r['duedate_update'] === $dt) $sub += $netAmount($r);
                 }
             ?>
             <td class="bg-proj text-right" style="font-weight:bold;"><?= $sub != 0 ? number_format($sub, 2) : ''; ?></td>
