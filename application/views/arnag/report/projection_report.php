@@ -979,7 +979,10 @@ function fixProjHeaderRow2() {
 function setProjFreezeOffsets() {
     var table = document.getElementById('table-projection-report');
     if (!table) return;
-    var row = table.querySelector('tbody tr') || table.querySelector('thead tr:first-child');
+    // Diukur dari baris header (4 kolom pertamanya rowspan 2, lebarnya = lebar
+    // kolom), BUKAN baris data pertama: baris data bisa sedang disembunyikan
+    // kotak Search, dan sel yang tersembunyi lebarnya terbaca 0.
+    var row = table.querySelector('thead tr:first-child');
     if (!row) return;
 
     var left = 0;
@@ -1010,9 +1013,15 @@ window.addEventListener('resize', function () {
     _projResizeTimer = setTimeout(setProjFreezeOffsets, 150);
 });
 
-document.getElementById("tableSearch").addEventListener("keyup", function() {
-    let value = this.value.toLowerCase().trim();
-    let rows = document.querySelectorAll("#table-projection-report tbody tr");
+// Dipanggil saat mengetik di kotak Search DAN setiap kali data baru selesai
+// dimuat (crud-nag-report.js) - kalau tidak, teks yang masih ada di kotak
+// Search tidak berlaku untuk hasil pencarian yang baru.
+function applyProjSearch() {
+    let input = document.getElementById("tableSearch");
+    let value = input ? input.value.toLowerCase().trim() : "";
+    let rows  = document.querySelectorAll("#table-projection-report tbody tr");
+    let tampil = 0;
+
     rows.forEach(function(row) {
         // Kolom teks yang ikut dicari: Customer s/d Currency.
         let colsToSearch = [1,2,3,4,5,6,7,8,9];
@@ -1025,6 +1034,22 @@ document.getElementById("tableSearch").addEventListener("keyup", function() {
             }
         }
         row.style.display = match ? "" : "none";
+        if (match) tampil++;
     });
-});
+
+    let badge = document.getElementById("proj-row-count");
+    if (badge && rows.length) {
+        let semua = rows.length.toLocaleString("en-US");
+        badge.textContent = value
+            ? tampil.toLocaleString("en-US") + " dari " + semua + " rows"
+            : semua + " rows";
+    }
+
+    // Menyembunyikan baris bisa mengubah lebar kolom (mis. nama customer
+    // terpanjang ikut tersaring), jadi posisi kolom beku harus dihitung ulang -
+    // kalau tidak, muncul celah dan kolom lain terlihat di sela kolom beku.
+    setProjFreezeOffsets();
+}
+
+document.getElementById("tableSearch").addEventListener("keyup", applyProjSearch);
 </script>

@@ -767,8 +767,14 @@ function formatTgl(dateStr){
 // selama masih loading - kelihatan aneh. Kunci overflow-nya sementara pas
 // loading tampil, kembalikan lagi setelah selesai.
 function _showProjLoader() {
+    var wrap = document.getElementById('proj-table-wrap');
+    // Overlay loader diposisikan absolute di dalam area scroll, jadi ikut
+    // tergeser. Kalau tabel sedang digeser, kartu loader-nya keluar layar dan
+    // yang terlihat cuma sisa lapisan putihnya - balikkan dulu ke kiri-atas.
+    wrap.scrollTop  = 0;
+    wrap.scrollLeft = 0;
     document.getElementById('proj-loader').classList.add('show');
-    document.getElementById('proj-table-wrap').style.overflow = 'hidden';
+    wrap.style.overflow = 'hidden';
 }
 function _hideProjLoader() {
     document.getElementById('proj-loader').classList.remove('show');
@@ -943,7 +949,11 @@ function cari_projection_report(){
                 .text(response.length.toLocaleString('en-US') + ' rows')
                 .toggle(response.length > 0);
 
-            if (typeof setProjFreezeOffsets === 'function') {
+            // Teks yang masih ada di kotak Search diterapkan lagi ke data yang
+            // baru (sekaligus menghitung ulang posisi kolom beku).
+            if (typeof applyProjSearch === 'function') {
+                applyProjSearch();
+            } else if (typeof setProjFreezeOffsets === 'function') {
                 setProjFreezeOffsets();
             }
             if (typeof fixProjHeaderRow2 === 'function') {
