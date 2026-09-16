@@ -5982,6 +5982,14 @@ public function update_debitnote($id_dn, $header, $baris)
             }
             $r = $det_lama[$id];
             unset($r['id']);
+            // Value / Rate / Amount boleh dibetulkan lewat Edit (kurs sering baru
+            // ketahuan salah setelah DN dibuat). Kolom lain tetap diambil dari
+            // database supaya kaitan ke Memo / Request tidak bisa diutak-atik.
+            foreach (array('value', 'rate', 'amount') as $kolom_nilai) {
+                if (isset($b[$kolom_nilai]) && is_scalar($b[$kolom_nilai]) && trim((string) $b[$kolom_nilai]) !== '') {
+                    $r[$kolom_nilai] = (string) $b[$kolom_nilai];
+                }
+            }
             $final[] = $r;
             $dipakai[$id] = true;
         } else {
