@@ -6,12 +6,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= $title; ?></title>
 
-  <!-- Google Font: Source Sans Pro -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+  <?php
+  // ===== Font Source Sans Pro (font tema AdminLTE), dilayani server sendiri =====
+  // Dulu diambil dari https://fonts.googleapis.com setiap halaman, jadi tampilan
+  // menunggu internet dulu. Aturan @font-face dibuat HANYA untuk file yang memang
+  // ada di assets/build/fonts/source-sans-pro/ (lihat README.txt disana), jadi
+  // tidak pernah ada permintaan file yang tidak ada.
+  //
+  // Sekarang baru ada Regular (dipakai ulang dari vendors/Invoice_Template).
+  // Tebal & miring dibuat otomatis oleh browser dari Regular; kalau mau sama
+  // persis dengan server, jalankan unduh-font.ps1 untuk melengkapi 300/700/miring.
+  $nag_font_dir = FCPATH . 'assets/build/fonts/source-sans-pro/';
+  $nag_font_url = base_url('assets/build/fonts/source-sans-pro/');
+  $nag_font_css = '';
+  foreach (array(
+    array('source-sans-pro-300', 300, 'normal'),
+    array('source-sans-pro-400', 400, 'normal'),
+    array('source-sans-pro-400italic', 400, 'italic'),
+    array('source-sans-pro-700', 700, 'normal'),
+  ) as $nag_face) {
+    list($nag_nama, $nag_berat, $nag_gaya) = $nag_face;
+    $nag_src = array();
+    foreach (array('woff2' => 'woff2', 'woff' => 'woff', 'ttf' => 'truetype') as $nag_ext => $nag_format) {
+      $nag_file = $nag_font_dir . $nag_nama . '.' . $nag_ext;
+      if (is_file($nag_file)) {
+        $nag_src[] = "url('" . $nag_font_url . $nag_nama . '.' . $nag_ext . '?v=' . filemtime($nag_file) . "') format('" . $nag_format . "')";
+      }
+    }
+    if ($nag_src) {
+      $nag_font_css .= "@font-face{font-family:'Source Sans Pro';font-style:$nag_gaya;font-weight:$nag_berat;font-display:swap;src:" . implode(',', $nag_src) . ";}";
+    }
+  }
+  ?>
+  <?php if ($nag_font_css) : ?><style><?= $nag_font_css; ?></style><?php endif; ?>
   <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/fontawesome-free/css/all.min.css">
-  <!-- IonIcons -->
-  <link rel="stylesheet" href="<?= base_url('assets/'); ?>https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
   <!-- Theme style -->
   <link rel="stylesheet" href="<?= base_url('assets/'); ?>dist/css/adminlte.min.css">
   <!-- daterange picker -->
@@ -25,16 +54,13 @@
   <!-- DataTables -->
   <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
   <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
-  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/datatables-buttons/css/buttons.bootstrap4.min.css">
   <!-- Select2 -->
   <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/select2/css/select2.min.css">
   <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/selectpicker/bootstrap-select.min.css">
   <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
   <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/apexchart/apexcharts.css">
-  <link rel="stylesheet" href="<?= base_url('assets/'); ?>plugins/animate/animate.min.css">
-  <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css" /> -->
   <!-- NAG Loader — komponen loading reusable (dipakai antar halaman) -->
-  <link rel="stylesheet" href="<?= base_url('assets/'); ?>build/css/nag-loader.css">
+  <link rel="stylesheet" href="<?= base_url('assets/'); ?>build/css/nag-loader.css?v=<?= @filemtime(FCPATH . 'assets/build/css/nag-loader.css'); ?>">
 
   <style type="text/css">
 

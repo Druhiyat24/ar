@@ -1,0 +1,5 @@
+# Kalau file aset tidak ada, biar Apache saja yang balas 404.
+# Tanpa ini, permintaan file yang tidak ada dilempar ke index.php sehingga
+# CodeIgniter + koneksi database ikut dijalankan cuma untuk menampilkan 404.
+RewriteEngine On
+RewriteRule ^ - [L]

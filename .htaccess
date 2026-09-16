@@ -2,3 +2,54 @@ RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php/$1 [L]
+
+# ===== Kompresi + cache aset statis =====
+# Dulu semua CSS/JS dikirim mentah tanpa gzip dan tanpa umur cache, jadi tiap
+# pindah halaman browser menanyakan ulang puluhan file satu per satu.
+# Blok <IfModule> bikin aman: kalau modul Apache-nya belum aktif, isinya
+# dilewati begitu saja (tidak error).
+#
+# Kalau belum aktif, di XAMPP buka apache/conf/httpd.conf lalu hapus tanda #
+# di depan:  LoadModule deflate_module ...  dan  LoadModule expires_module ...
+# lalu restart Apache.
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css
+  AddOutputFilterByType DEFLATE text/javascript application/javascript application/x-javascript
+  AddOutputFilterByType DEFLATE application/json application/xml image/svg+xml
+</IfModule>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+
+  # Halaman PHP sengaja TIDAK diberi umur cache (tidak ada aturan text/html),
+  # supaya data yang tampil selalu yang terbaru.
+  ExpiresByType text/css                 "access plus 30 days"
+  ExpiresByType text/javascript          "access plus 30 days"
+  ExpiresByType application/javascript   "access plus 30 days"
+  ExpiresByType application/x-javascript "access plus 30 days"
+
+  ExpiresByType image/png                "access plus 30 days"
+  ExpiresByType image/jpeg               "access plus 30 days"
+  ExpiresByType image/gif                "access plus 30 days"
+  ExpiresByType image/webp               "access plus 30 days"
+  ExpiresByType image/svg+xml            "access plus 30 days"
+  ExpiresByType image/x-icon             "access plus 30 days"
+
+  ExpiresByType font/woff2               "access plus 1 year"
+  ExpiresByType font/woff                "access plus 1 year"
+  ExpiresByType application/font-woff2   "access plus 1 year"
+  ExpiresByType application/font-woff    "access plus 1 year"
+  ExpiresByType font/ttf                 "access plus 1 year"
+  ExpiresByType application/x-font-ttf   "access plus 1 year"
+</IfModule>
+
+# Cadangan kalau mod_expires belum aktif tapi mod_headers aktif (bawaan XAMPP):
+# hasilnya sama - browser tidak menanyakan ulang file yang sama tiap halaman.
+<IfModule !mod_expires.c>
+  <IfModule mod_headers.c>
+    <FilesMatch "\.(css|js|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot)$">
+      Header set Cache-Control "max-age=2592000, public"
+    </FilesMatch>
+  </IfModule>
+</IfModule>
