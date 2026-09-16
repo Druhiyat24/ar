@@ -1069,21 +1069,19 @@ for ($i = 1; $i <= 5; $i++) {
 
               <div class="form-group">
                 <label for="curr1">Currency From - To</label>
-                <!-- Edit DN dari Memo / Request: currency dikunci karena Amount
-                     baris-baris itu dihitung dengan currency ini. -->
+                <!-- Currency tetap bisa diubah walau detailnya berisi baris dari
+                     Memo / Request: Amount tiap baris dihitung ulang dari Value x
+                     Rate memakai currency ini. -->
                 <div class="dn-curr">
                   <?php foreach (array('curr1' => 'from_curr', 'curr2' => 'to_curr') as $id_curr => $kolom_curr) : ?>
                     <?php if ($id_curr === 'curr2') : ?><span class="dn-curr-sep"><i class="fas fa-arrow-right"></i></span><?php endif; ?>
-                    <select class="form-control" id="<?= $id_curr; ?>" name="<?= $id_curr; ?>" required <?= $ada_terkunci ? 'disabled' : ''; ?>>
+                    <select class="form-control" id="<?= $id_curr; ?>" name="<?= $id_curr; ?>" required onchange="modal_input_rate_dn(this.value)">
                       <?php foreach (array('IDR', 'USD') as $kode_curr) : ?>
                         <option value="<?= $kode_curr; ?>" <?= ($is_edit && $dnv($kolom_curr) === $kode_curr) ? 'selected' : ''; ?>><?= $kode_curr; ?></option>
                       <?php endforeach; ?>
                     </select>
                   <?php endforeach; ?>
                 </div>
-                <?php if ($ada_terkunci) : ?>
-                  <small class="dn-hint"><i class="fas fa-lock"></i> Locked - the detail contains rows from Memo / Request.</small>
-                <?php endif; ?>
               </div>
 
               <div class="form-group">
@@ -1210,13 +1208,17 @@ for ($i = 1; $i <= 5; $i++) {
                                 $kunci = $baris_terkunci($row);
                                 $ro = $kunci ? 'readonly' : '';
                               ?>
-                                <tr data-id="<?= (int) $row['id']; ?>" data-kunci="<?= $kunci ? '1' : '0'; ?>" data-supplier="<?= $esc($row['supplier']); ?>" data-supplier-invoice="<?= $esc($row['supplier_invoice']); ?>" <?= $kunci ? 'title="From ' . (trim((string) $row['id_memo_det']) !== '' ? 'Memo' : 'Request') . ' - cannot be changed or deleted"' : ''; ?>>
+                                <tr data-id="<?= (int) $row['id']; ?>" data-kunci="<?= $kunci ? '1' : '0'; ?>" data-supplier="<?= $esc($row['supplier']); ?>" data-supplier-invoice="<?= $esc($row['supplier_invoice']); ?>" <?= $kunci ? 'title="From ' . (trim((string) $row['id_memo_det']) !== '' ? 'Memo' : 'Request') . ' - only Value &amp; Rate can be changed, and the row cannot be deleted"' : ''; ?>>
                                   <td><input style="width: 300px;" type="text" class="form-control" name="inputan0" value="<?= $esc($row['deskripsi']); ?>" autocomplete="off" <?= $ro; ?>></td>
                                   <?php for ($no_h = 1; $no_h <= 5; $no_h++) : ?>
                                     <td><input style="width: 200px" type="text" class="form-control" name="inputan<?= $no_h + 2; ?>" value="<?= $esc(isset($row['header' . $no_h]) ? $row['header' . $no_h] : ''); ?>" autocomplete="off" <?= $ro; ?>></td>
                                   <?php endfor; ?>
-                                  <td><input type="text" class="form-control" name="amt" value="<?= $esc($row['value']); ?>" style="text-align:right; width: 150px;" oninput="modal_input_amt_dn(value)" autocomplete="off" <?= $ro; ?>></td>
-                                  <td><input type="text" class="form-control" name="amt_rate" value="<?= $esc($row['rate']); ?>" style="text-align:right; width: 150px;" onkeypress="javascript:return isNumber(event)" oninput="modal_input_rate_dn(value)" autocomplete="off" <?= $ro; ?>></td>
+                                  <!-- Value & Rate tetap bisa diubah walau barisnya dari Memo /
+                                       Request: kurs sering baru ketahuan salah setelah DN dibuat.
+                                       Kolom lain (deskripsi, header, COA) tetap dikunci supaya
+                                       kaitan ke Memo / Request tidak berubah. -->
+                                  <td><input type="text" class="form-control" name="amt" value="<?= $esc($row['value']); ?>" style="text-align:right; width: 150px;" oninput="modal_input_amt_dn(value)" autocomplete="off"></td>
+                                  <td><input type="text" class="form-control" name="amt_rate" value="<?= $esc($row['rate']); ?>" style="text-align:right; width: 150px;" onkeypress="javascript:return isNumber(event)" oninput="modal_input_rate_dn(value)" autocomplete="off"></td>
                                   <td><input style="width: 150px;text-align: right;" type="text" class="form-control" name="inputan8" value="<?= $esc($row['amount']); ?>" autocomplete="off" readonly></td>
                                   <td><input style="width: 250px;" class="form-control" value="<?= $esc($row['no_coa']); ?>" list="nm_coa" name="nm_coa" oninput="dn_coa_perbarui_nama(this)" <?= $ro; ?>>
                                     <small class="dn-coa-nama"></small>
@@ -2141,11 +2143,16 @@ for ($i = 1; $i <= 5; $i++) {
              var hasil = [];
              dn_baris_tabel().each(function () {
                var row = this;
+               var isi = function (name) { var el = dn_row_input(row, name); return el ? ($(el).val() || '') : ''; };
                if (row.getAttribute('data-kunci') === '1') {
-                 hasil.push({ id_det: row.getAttribute('data-id') });
+                 // Baris Memo / Request: isinya dipakai ulang server dari database,
+                 // KECUALI Value / Rate / Amount yang boleh dibetulkan lewat Edit.
+                 hasil.push({
+                   id_det: row.getAttribute('data-id'),
+                   value: isi('amt'), rate: isi('amt_rate'), amount: isi('inputan8')
+                 });
                  return;
                }
-               var isi = function (name) { var el = dn_row_input(row, name); return el ? ($(el).val() || '') : ''; };
                var h = {};
                for (var no = 1; no <= 5; no++) { h[no] = isi(DN_HEADER_COL[no]); }
                var data = {
