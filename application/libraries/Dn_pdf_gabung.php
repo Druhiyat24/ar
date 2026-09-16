@@ -73,8 +73,12 @@ class Dn_pdf_gabung
                     $this->sambung_gambar($pdf, $path, $ext);
                 }
                 $total += $ukuran;
-            } catch (\Exception $e) {
-                $dilewati[] = array('nama' => $nama, 'alasan' => 'could not be read');
+            } catch (\Throwable $e) {
+                // Alasan aslinya JANGAN dibuang: tanpa ini, semua kegagalan
+                // tampil sama ("could not be read") dan penyebabnya tidak bisa
+                // ditelusuri dari server.
+                $dilewati[] = array('nama' => $nama, 'alasan' => $this->alasan_gagal($e));
+                $this->catat_gagal($nama, $path, $e);
             }
         }
 
@@ -86,6 +90,43 @@ class Dn_pdf_gabung
         // bisa puluhan MB dan pemanggilnya cukup membacanya bertahap.
         $pdf->Output($tujuan, 'F');
         return array('dilewati' => $dilewati);
+    }
+
+    /**
+     * Alasan yang bisa dimengerti user, dari error FPDI.
+     *
+     * Dua penyebab yang paling sering ketemu di lapangan - keduanya tetap
+     * kebuka normal di browser, jadi user bingung kenapa ditolak:
+     *   - PDF diproteksi password/izin (hasil "Protect" di Acrobat, scanner
+     *     kantor, atau invoice dari pihak lain)
+     *   - PDF memakai compressed cross-reference (PDF 1.5+ terbitan sebagian
+     *     scanner & Word). Parser bawaan FPDI yang gratis tidak membacanya.
+     */
+    private function alasan_gagal(\Throwable $e)
+    {
+        $kode = (int) $e->getCode();
+
+        if ($kode === \setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException::ENCRYPTED) {
+            return 'password-protected - remove the protection, then re-upload';
+        }
+        if ($kode === \setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException::COMPRESSED_XREF) {
+            return 'unsupported PDF format - re-save it as PDF 1.4, then re-upload';
+        }
+        if ($kode === \setasign\Fpdi\PdfParser\PdfParserException::FILE_HEADER_NOT_FOUND) {
+            return 'not a valid PDF file';
+        }
+
+        return 'could not be read';
+    }
+
+    /** Error aslinya ditulis ke log supaya bisa ditelusuri dari server. */
+    private function catat_gagal($nama, $path, \Throwable $e)
+    {
+        if (!function_exists('log_message')) {
+            return;
+        }
+        log_message('error', 'Dn_pdf_gabung: lampiran "' . $nama . '" (' . $path . ') gagal digabung - '
+            . get_class($e) . ' kode=0x' . dechex((int) $e->getCode()) . ' - ' . $e->getMessage());
     }
 
     /** Semua halaman sebuah PDF, ukuran & orientasi halaman asalnya diikuti. */
