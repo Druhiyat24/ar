@@ -8,6 +8,11 @@ application/logs/*
 
 !application/*/.htaccess
 
+# File upload user (supporting document dsb) - foldernya saja yang masuk git
+uploads/**
+!uploads/.htaccess
+!uploads/index.html
+
 composer.lock
 
 user_guide_src/build/*

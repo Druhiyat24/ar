@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150" viewBox="0 0 300 150">
+  <rect x="0.8" y="0.8" width="298.4" height="148.4" rx="10" ry="10" fill="#fdeff1" stroke="#f6cdd1" stroke-width="1.2"/>
+  <circle cx="36" cy="40" r="19" fill="#e2231a"/>
+  <path d="M27 41 L34 48 L46 31" fill="none" stroke="#ffffff" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <g font-family="Helvetica">
+    <text x="66" y="34" font-size="12" fill="#555555">ELECTRONICALLY ISSUED</text>
+    <text x="66" y="58" font-size="22" font-weight="bold" fill="#e2231a">APPROVED</text>
+    <line x1="18" y1="76" x2="282" y2="76" stroke="#f2b9bf" stroke-width="1.2"/>
+    <g font-size="11.5" fill="#5b5b5b">
+      <text x="18" y="95">This document was electronically issued</text>
+      <text x="18" y="110">through the authorized system of</text>
+      <text x="18" y="125">PT Nirwana Alabare Garment.</text>
+      <text x="18" y="140">No manual signature is required.</text>
+    </g>
+  </g>
+</svg>

@@ -175,6 +175,8 @@ class Arnag extends CI_Controller
         $query = $this->db->query("SELECT '2022-01-01' tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
         $result = $query->row();
         $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
+        // Ukuran potongan upload supporting document (ikut batas upload PHP).
+        $data['dn_doc_chunk'] = $this->_dn_doc_chunk_size();
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
         $this->load->view('arnag/create_debitnote', $data);
@@ -1573,6 +1575,8 @@ function list_debitnote()
     $query = $this->db->query("SELECT '2022-01-01' tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
     $result = $query->row();
     $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
+    // Hasil cancel dari halaman sebelumnya (lihat cancel_debnote).
+    $data['dn_cancel_flash'] = $this->session->flashdata('dn_cancel');
     $this->load->view('templates/header', $data);
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/list_debitnote', $data);
@@ -1678,16 +1682,60 @@ public function report_proforma_invoice_cbd($id)
 
 
     //ubah september
-public function report_debit_note($id)
+// ── Cetak Debit Note: PDF-nya digabung dengan supporting document ────────────
+// DN yang tanggalnya mulai dari sini dicetak dengan desain PDF baru; yang
+// lebih lama tetap memakai template lama supaya dokumen yang sudah beredar
+// tidak berubah tampilannya. Kalau batasnya bergeser, ubah tanggal ini saja.
+const DN_PDF_DESAIN_BARU_SEJAK = '2026-09-16';
+
+private function _dn_desain_baru($tgl_dn)
 {
-    if (!$this->session->userdata('username')) {
-        redirect('auth');
-    }
-        //   
-    $mpdf = new \Mpdf\Mpdf();
+    $tgl = substr(trim((string) $tgl_dn), 0, 10);
+    return $tgl !== '' && $tgl >= self::DN_PDF_DESAIN_BARU_SEJAK;
+}
+
+// mPDF untuk desain baru: marginnya lebih rapat, bagian bawah disisakan untuk
+// kaki halaman (pita + nama perusahaan), dan font tulis tangan Dancing Script
+// (OFL, ikut disimpan di assets/build/fonts) didaftarkan untuk kata "Caring".
+private function _dn_mpdf_baru()
+{
+    $bawaan = (new \Mpdf\Config\ConfigVariables())->getDefaults();
+    $font = (new \Mpdf\Config\FontVariables())->getDefaults();
+
+    $mpdf = new \Mpdf\Mpdf(array(
+        'margin_top' => 7,
+        'margin_bottom' => 30,
+        // Jarak dari tepi bawah kertas ke kaki halaman. Bawaan mPDF 9mm, dan
+        // kaki halaman tumbuh KE ATAS dari titik itu - dengan pita setinggi 16mm
+        // hasilnya menabrak isi tabel. Jaraknya dirapatkan, margin bawah
+        // dilebihkan: 30mm > 4mm + tinggi kaki halaman.
+        'margin_footer' => 4,
+        'margin_left' => 8,
+        'margin_right' => 8,
+        'fontDir' => array_merge($bawaan['fontDir'], array(FCPATH . 'assets/build/fonts/dancing-script')),
+        'fontdata' => $font['fontdata'] + array(
+            'dancingscript' => array('R' => 'DancingScript.ttf'),
+        ),
+    ));
+
+    // Catatan: setAutoBottomMargin TIDAK dipakai. mPDF menghitung tinggi kaki
+    // halaman tanpa memperhitungkan tinggi gambar pita, jadi hasilnya malah
+    // terlalu kecil (9mm) dan isi tabel tertimpa. Margin bawah dipatok manual
+    // di atas, harus >= tinggi pita + baris tulisan kaki halaman.
+
+    return $mpdf;
+}
+
+// Menyusun PDF Debit Note (isinya saja, lampiran belum disambung) beserta
+// nomornya. Dipakai bareng oleh tombol Print dan tombol Email supaya isi PDF
+// keduanya selalu sama.
+private function _dn_laporan($id, $dari_memo = false)
+{
     $data['data_debit_note'] = $this->Model_nag->report_debit_note($id);
     $data['data_debit_note_det'] = $this->Model_nag->report_debit_note_det($id);
-    $data['data_debit_note_det2'] = $this->Model_nag->report_debit_note_det2($id);
+    $data['data_debit_note_det2'] = $dari_memo
+        ? $this->Model_nag->report_debit_note_det_memo($id)
+        : $this->Model_nag->report_debit_note_det2($id);
     $data['data_proforma_invoice_total_cbd'] = $this->Model_nag->report_proforma_invoice_total_cbd($id);
     $data['data_proforma_invoice_grandtotal_cbd'] = $this->Model_nag->report_proforma_invoice_grandtotal_cbd($id);
     $data['data_proforma_diskon_cbd'] = $this->Model_nag->report_proforma_diskon_cbd($id);
@@ -1701,11 +1749,567 @@ public function report_debit_note($id)
     $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
-        //
-    $html = $this->load->view('arnag/reportdebitnote', $data, true);
-    $mpdf->setFooter('{PAGENO} / {nbpg}');
+    // DN mulai tanggal batas dicetak dengan desain baru; sebelum itu tetap
+    // memakai template lama supaya dokumen lama tidak berubah tampilannya.
+    if ($this->_dn_desain_baru($data['data_debit_note']['tgl_dn'])) {
+        $data['alamat_bank'] = $dari_memo
+            ? $data['data_debit_note']['beneficiary_address']
+            : $data['data_debit_note']['bank_address'];
+        $mpdf = $this->_dn_mpdf_baru();
+        $html = $this->load->view('arnag/reportdebitnote_v2', $data, true);
+    } else {
+        $mpdf = new \Mpdf\Mpdf();
+        $mpdf->setFooter('{PAGENO} / {nbpg}');
+        $html = $this->load->view($dari_memo ? 'arnag/reportdebitnote_memo' : 'arnag/reportdebitnote', $data, true);
+    }
     $mpdf->WriteHTML($html);
-    $mpdf->Output();
+
+    return array('mpdf' => $mpdf, 'no_dn' => $data['data_debit_note']['no_dn']);
+}
+
+private function _dn_nama_file($no_dn)
+{
+    return 'DN_' . preg_replace('/[^A-Za-z0-9._-]/', '_', (string) $no_dn) . '.pdf';
+}
+
+// Menulis PDF akhir (isi DN + lampirannya) ke folder sementara lalu
+// mengembalikan letak berkasnya. Pemanggil wajib menghapus berkas di kunci
+// 'tmp' setelah selesai.
+private function _dn_file_gabungan($mpdf, $id_dn, $no_dn, $docs = null)
+{
+    $folder_tmp = FCPATH . 'uploads/debitnote/tmp';
+    if (!is_dir($folder_tmp)) {
+        @mkdir($folder_tmp, 0755, true);
+    }
+    $tmp_dn    = $folder_tmp . '/cetak_' . (int) $id_dn . '_' . uniqid() . '.pdf';
+    $tmp_hasil = $folder_tmp . '/gabung_' . (int) $id_dn . '_' . uniqid() . '.pdf';
+    $mpdf->Output($tmp_dn, \Mpdf\Output\Destination::FILE);
+
+    $kirim = $tmp_dn;
+    $docs = $docs === null ? $this->Model_nag->get_dn_docs($id_dn) : $docs;
+    if ($docs) {
+        try {
+            $lampiran = array();
+            foreach ($docs as $doc) {
+                $lampiran[] = array(
+                    'path' => FCPATH . $doc['file_path'],
+                    'nama' => $doc['original_name'],
+                );
+            }
+
+            $this->load->library('Dn_pdf_gabung');
+            $this->dn_pdf_gabung->gabung($tmp_dn, $lampiran, $tmp_hasil, $no_dn);
+            if (is_file($tmp_hasil) && filesize($tmp_hasil) > 0) {
+                $kirim = $tmp_hasil;
+            }
+        } catch (\Exception $e) {
+            // Penggabungan gagal - Debit Note-nya sendiri tetap harus keluar.
+            log_message('error', 'Gabung PDF Debit Note gagal: ' . $e->getMessage());
+        }
+    }
+
+    return array('path' => $kirim, 'tmp' => array($tmp_dn, $tmp_hasil));
+}
+
+// Alamat tujuan dikirim lewat URL dalam bentuk base64url supaya tidak
+// bertabrakan dengan aturan karakter URI CodeIgniter.
+private function _dn_email_tujuan($sandi)
+{
+    $sandi = str_replace(array('-', '_'), array('+', '/'), (string) $sandi);
+    $sisa = strlen($sandi) % 4;
+    if ($sisa) {
+        $sandi .= str_repeat('=', 4 - $sisa);
+    }
+    $alamat = trim((string) base64_decode($sandi, true));
+
+    return filter_var($alamat, FILTER_VALIDATE_EMAIL) ? $alamat : '';
+}
+// mPDF tidak bisa mengimpor halaman dari PDF lain, jadi hasil mPDF ditulis ke
+// file sementara dulu, lalu disambung dengan lampirannya oleh library
+// Dn_pdf_gabung (FPDI + TCPDF).
+// Kalau DN belum punya lampiran, PDF-nya dikirim langsung dari mPDF seperti
+// sebelumnya - tanpa proses tambahan.
+private function _dn_cetak($mpdf, $id_dn, $no_dn)
+{
+    $nama_file = $this->_dn_nama_file($no_dn);
+    $docs = $this->Model_nag->get_dn_docs($id_dn);
+
+    // Tanpa lampiran, PDF-nya dikirim langsung dari mPDF - tidak perlu singgah
+    // ke berkas sementara.
+    if (!$docs) {
+        $mpdf->Output($nama_file, \Mpdf\Output\Destination::INLINE);
+        return;
+    }
+
+    $hasil = $this->_dn_file_gabungan($mpdf, $id_dn, $no_dn, $docs);
+    if (is_file($hasil['path']) && filesize($hasil['path']) > 0) {
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="' . $nama_file . '"');
+        header('Content-Length: ' . filesize($hasil['path']));
+        header('X-Content-Type-Options: nosniff');
+        readfile($hasil['path']);
+    }
+
+    foreach ($hasil['tmp'] as $f) {
+        if (is_file($f)) {
+            @unlink($f);
+        }
+    }
+    exit;
+}
+
+// Menyusun berkas .eml (PDF Debit Note + lampirannya menempel) - dipakai bareng
+// oleh unduhan .eml (email_debitnote) dan jalur Outlook langsung (email_siapkan).
+// Mengembalikan array('nama' => 'DN_xxx.eml', 'isi' => ...) atau null kalau
+// PDF-nya gagal disusun.
+private function _dn_susun_eml($id, $tipe, $to)
+{
+    $laporan = $this->_dn_laporan($id, $tipe === 'memo');
+    $no_dn = $laporan['no_dn'];
+    $hasil = $this->_dn_file_gabungan($laporan['mpdf'], $id, $no_dn);
+
+    $isi_pdf = (is_file($hasil['path']) && filesize($hasil['path']) > 0)
+        ? file_get_contents($hasil['path'])
+        : '';
+    foreach ($hasil['tmp'] as $f) {
+        if (is_file($f)) {
+            @unlink($f);
+        }
+    }
+    if ($isi_pdf === '') {
+        return null;
+    }
+
+    $nama_pdf = $this->_dn_nama_file($no_dn);
+    // Badan pesan sengaja dikosongkan - isinya ditulis sendiri di Outlook.
+    $isi_pesan = '';
+
+    $this->load->library('Dn_email');
+    $eml = $this->dn_email->buat_eml(array(
+        'to' => $to,
+        'subjek' => 'Debit Note ' . $no_dn,
+        'isi' => $isi_pesan,
+        'lampiran' => array(
+            array('nama' => $nama_pdf, 'tipe' => 'application/pdf', 'isi' => $isi_pdf),
+        ),
+    ));
+
+    return array('nama' => substr($nama_pdf, 0, -4) . '.eml', 'isi' => $eml);
+}
+
+// Tombol "Email" di daftar DN (jalur unduhan). Menghasilkan berkas .eml berisi
+// pesan siap kirim; di Windows berkas itu dibuka Outlook sebagai jendela tulis.
+public function email_debitnote($id, $tipe = 'biasa', $tujuan = '')
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+
+    // Segmen tujuan boleh tidak ada - berarti To sengaja dikosongkan supaya
+    // diisi langsung di Outlook. Yang ditolak cuma isian yang salah bentuk.
+    $to = '';
+    if (trim((string) $tujuan) !== '') {
+        $to = $this->_dn_email_tujuan($tujuan);
+        if ($to === '') {
+            show_error('Alamat email tujuan tidak terbaca atau tidak valid.', 400, 'Email Debit Note');
+        }
+    }
+
+    $eml = $this->_dn_susun_eml($id, $tipe, $to);
+    if ($eml === null) {
+        show_error('PDF Debit Note gagal disusun.', 500, 'Email Debit Note');
+    }
+
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    header('Content-Type: message/rfc822');
+    header('Content-Disposition: attachment; filename="' . $eml['nama'] . '"');
+    header('Content-Length: ' . strlen($eml['isi']));
+    header('X-Content-Type-Options: nosniff');
+    echo $eml['isi'];
+    exit;
+}
+
+// ── Email DN: jalur "Outlook langsung" lewat protokol nagdn: ─────────────────
+// Alur: halaman membuat KUNCI acak -> POST email_siapkan (butuh sesi) menyusun
+// .eml ke application/cache/dn_email/ -> browser membuka
+// nagdn:KUNCI/<skema>/<alamat aplikasi yang sedang dibuka>, mis. nagdn:KUNCI/http/10.10.5.60/ar/
+// -> skrip kecil di PC pengguna mencocokkan alamat itu dengan daftar server
+// yang dipasang di PC, lalu mengambil email_ambil/KUNCI dari server itu saja
+// (tanpa sesi; sekali pakai, berumur 120 detik, harus dari IP dan alamat yang
+// sama) dan membukanya di Outlook.
+// Aplikasi bisa dibuka dari beberapa alamat/server (10.10.5.60, 10.10.5.12,
+// DDNS); kunci yang dibuat lewat satu alamat hanya dilayani alamat itu.
+// Tidak ada tabel/kolom baru: status disimpan sebagai berkas di
+// application/cache, yang sudah ditolak dari web oleh application/.htaccess.
+// Berkas per kunci: .json (meta) .tmp/.eml (isi) .nama .ping (skrip sudah
+// menghubungi) .tolak (IP beda) .batal (pengguna memilih unduh) .diambil.
+
+// Umur kunci (detik, sejak email_siapkan dimulai). Halaman berhenti menunggu
+// dan membatalkan kunci sebelum batas ini; skrip PC berhenti mencoba lebih dulu.
+const DN_EMAIL_UMUR_KUNCI = 120;
+// Batas ukuran .eml yang diterima skrip PC (sama dengan BATAS_UKURAN di dn-email.vbs).
+const DN_EMAIL_MAKS_BYTE = 41943040;
+
+private function _dn_json($kode, array $data)
+{
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    set_status_header($kode);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    // Penanda bahwa jawaban ini dari aplikasi AR. Skrip PC mengabaikan jawaban
+    // tanpa penanda (halaman router, alamat/port yang salah, dll).
+    header('X-Nag-DnEmail: 2');
+    echo json_encode($data);
+    exit;
+}
+
+private function _dn_email_folder()
+{
+    $folder = APPPATH . 'cache/dn_email';
+    if (!is_dir($folder)) {
+        @mkdir($folder, 0700, true);
+    }
+    // Pelindung kalau application/.htaccess tidak dibaca server (AllowOverride None).
+    if (!is_file($folder . '/index.html')) {
+        @file_put_contents($folder . '/index.html', '');
+        @file_put_contents($folder . '/.htaccess', "Require all denied\n");
+    }
+    return $folder;
+}
+
+private function _dn_email_kunci_sah($kunci)
+{
+    // \z, bukan $: $ masih meloloskan kunci yang diakhiri baris baru.
+    return is_string($kunci) && preg_match('/^[A-Za-z0-9_-]{43}\z/', $kunci) === 1;
+}
+
+// IP pemanggil untuk ikatan kunci. Semua alamat loopback dianggap satu: di PC
+// yang sama browser bisa datang lewat ::1 sementara skrip Windows lewat
+// 127.0.0.1 - kalau dibandingkan mentah, kuncinya selalu ditolak. IPv4 yang
+// masuk lewat soket dual-stack ('::ffff:a.b.c.d') disamakan dengan IPv4 biasa.
+private function _dn_email_ip()
+{
+    $ip = (string) $this->input->ip_address();
+    if ($ip === '::1' || strpos($ip, '127.') === 0 || strcasecmp($ip, '::ffff:127.0.0.1') === 0) {
+        return 'loopback';
+    }
+    if (stripos($ip, '::ffff:') === 0 && filter_var(substr($ip, 7), FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+        return substr($ip, 7);
+    }
+    return $ip;
+}
+
+// Alamat (host[:port]) yang dipakai membuka aplikasi, dalam bentuk baku: huruf
+// kecil, tanpa :80/:443.
+private function _dn_email_host()
+{
+    $host = strtolower(trim((string) $this->input->server('HTTP_HOST')));
+    return preg_replace('/:(80|443)$/', '', $host);
+}
+
+// Penanda "PC ini sudah memasang skrip" hanya dipakai di jaringan kantor:
+// aplikasi dibuka lewat IP/localhost (bukan nama DDNS - lewat hairpin NAT semua
+// PC terlihat sebagai IP router) dan IP pemanggil privat. IP publik dipakai
+// bersama banyak PC, jadi tidak pernah ditandai.
+private function _dn_email_lan()
+{
+    $host = trim(preg_replace('/:\d+$/', '', $this->_dn_email_host()), '[]');
+    if ($host !== 'localhost' && filter_var($host, FILTER_VALIDATE_IP) === false) {
+        return false;
+    }
+    $ip = $this->_dn_email_ip();
+    if ($ip === 'loopback') {
+        return true;
+    }
+    return filter_var($ip, FILTER_VALIDATE_IP) !== false
+        && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
+}
+
+// log_threshold aplikasi 0, jadi jejak fitur ini ditulis ke berkasnya sendiri
+// (application/logs sudah tertutup dari web).
+private function _dn_email_log($pesan)
+{
+    @file_put_contents(
+        APPPATH . 'logs/dn_email-' . date('Y-m-d') . '.log',
+        date('H:i:s') . ' ' . $pesan . "\n",
+        FILE_APPEND | LOCK_EX
+    );
+}
+
+// Kunci dibuang setelah 15 menit, penanda PC setelah 90 hari.
+private function _dn_email_bersihkan($folder)
+{
+    $daftar = glob($folder . '/*');
+    foreach ($daftar ? $daftar : array() as $f) {
+        if (in_array(basename($f), array('index.html', '.htaccess'), true)) {
+            continue;
+        }
+        $umur = strpos(basename($f), 'pc_') === 0 ? 7776000 : 900;
+        if (is_file($f) && filemtime($f) < time() - $umur) {
+            @unlink($f);
+        }
+    }
+}
+
+private function _dn_email_waktu_kunci($dasar)
+{
+    $meta = is_file($dasar . '.json') ? json_decode((string) file_get_contents($dasar . '.json'), true) : null;
+    return is_array($meta) ? (int) $meta['waktu'] : 0;
+}
+
+private function _dn_email_penanda_pc()
+{
+    return $this->_dn_email_folder() . '/pc_' . md5($this->_dn_email_ip());
+}
+
+// Skrip PC tidak membawa cookie; jangan tinggalkan berkas sesi kosong tiap kali
+// skrip itu memanggil. Kalau ada cookie (dibuka dari browser), sesi dibiarkan.
+private function _dn_tanpa_sesi()
+{
+    if ($this->input->cookie($this->config->item('sess_cookie_name')) === null) {
+        $this->session->sess_destroy();
+    }
+}
+
+// POST dari halaman (bersesi): susun .eml untuk KUNCI buatan browser.
+public function email_siapkan()
+{
+    $user = (string) $this->session->userdata('username');
+    if ($user === '') {
+        $this->_dn_json(401, array('pesan' => 'Session expired. Please log in again.'));
+    }
+    // X-Requested-With hanya bisa dikirim lintas situs lewat preflight CORS yang
+    // tidak pernah dijawab server ini -> menutup CSRF (csrf_protection mati).
+    if ($this->input->method() !== 'post' || !$this->input->is_ajax_request()) {
+        $this->_dn_json(400, array('pesan' => 'Invalid request.'));
+    }
+    $kunci  = (string) $this->input->post('kunci');
+    $id     = (int) $this->input->post('id');
+    $tipe   = $this->input->post('tipe') === 'memo' ? 'memo' : 'biasa';
+    $tujuan = trim((string) $this->input->post('tujuan'));
+    if (!$this->_dn_email_kunci_sah($kunci) || $id <= 0) {
+        $this->_dn_json(400, array('pesan' => 'Invalid request.'));
+    }
+    $to = '';
+    if ($tujuan !== '') {
+        $to = $this->_dn_email_tujuan($tujuan);
+        if ($to === '') {
+            $this->_dn_json(400, array('pesan' => 'Recipient address is not valid.'));
+        }
+    }
+    // Lepas kunci berkas sesi: menyusun PDF bisa beberapa detik dan jangan
+    // menahan permintaan lain dari browser yang sama (email_status).
+    session_write_close();
+
+    $folder = $this->_dn_email_folder();
+    if (!is_dir($folder) || !is_writable($folder)) {
+        $this->_dn_email_log('siapkan GAGAL folder tidak bisa ditulis: ' . $folder);
+        // Unduhan .eml tidak memakai folder ini, jadi masih bisa dipakai.
+        $this->_dn_json(500, array('pesan' => 'The server cannot prepare emails for Outlook right now.', 'unduh' => true));
+    }
+    $this->_dn_email_bersihkan($folder);
+
+    // Mode 'x' gagal kalau berkasnya sudah ada: satu kunci hanya bisa diklaim sekali.
+    $h = @fopen($folder . '/' . $kunci . '.json', 'x');
+    if (!$h) {
+        $this->_dn_json(409, array('pesan' => 'Please try again.'));
+    }
+    fwrite($h, json_encode(array(
+        'user'  => $user,
+        'ip'    => $this->_dn_email_ip(),
+        'host'  => $this->_dn_email_host(),
+        'waktu' => time(),
+        'id'    => $id,
+    )));
+    fclose($h);
+    $this->_dn_email_log('siapkan user=' . $user . ' ip=' . $this->_dn_email_ip() . ' host=' . $this->_dn_email_host() . ' id=' . $id);
+
+    $eml = $this->_dn_susun_eml($id, $tipe, $to);
+    $dasar = $folder . '/' . $kunci;
+    if ($eml === null) {
+        @unlink($dasar . '.json');
+        $this->_dn_json(500, array('pesan' => 'The Debit Note PDF could not be built.'));
+    }
+    // Skrip PC menolak .eml di atas batas ini; lebih baik langsung ke unduhan.
+    if (strlen($eml['isi']) > self::DN_EMAIL_MAKS_BYTE) {
+        @unlink($dasar . '.json');
+        $this->_dn_json(500, array('pesan' => 'This email is too large to open in Outlook automatically.', 'unduh' => true));
+    }
+    // Pengguna sudah membatalkan / sudah lewat batas selagi PDF disusun.
+    if (is_file($dasar . '.batal') || time() - $this->_dn_email_waktu_kunci($dasar) > self::DN_EMAIL_UMUR_KUNCI) {
+        $this->_dn_json(410, array('pesan' => 'The email request has expired.'));
+    }
+    $sementara = $dasar . '.tmp';
+    $tulis = file_put_contents($sementara, $eml['isi'], LOCK_EX);
+    @file_put_contents($dasar . '.nama', $eml['nama'], LOCK_EX);
+    // rename atomik: skrip PC hanya pernah melihat .eml yang sudah utuh.
+    if ($tulis !== strlen($eml['isi']) || !@rename($sementara, $dasar . '.eml')) {
+        @unlink($sementara);
+        @unlink($dasar . '.json');
+        $this->_dn_email_log('siapkan GAGAL menulis .eml ' . $kunci);
+        $this->_dn_json(500, array('pesan' => 'The server cannot prepare emails for Outlook right now.', 'unduh' => true));
+    }
+
+    $this->_dn_json(200, array('ok' => true));
+}
+
+// GET dari skrip PC (tanpa sesi). 404 = belum siap / kunci asing di alamat ini;
+// 410 = dibatalkan, kedaluwarsa, atau sudah diambil.
+public function email_ambil($kunci = '')
+{
+    $this->_dn_tanpa_sesi();
+    if (!$this->_dn_email_kunci_sah($kunci)) {
+        $this->_dn_json(404, array());
+    }
+    $folder = $this->_dn_email_folder();
+    $dasar = $folder . '/' . $kunci;
+    if (!is_file($dasar . '.json')) {
+        $this->_dn_json(404, array());
+    }
+    $meta = json_decode((string) file_get_contents($dasar . '.json'), true);
+    // Kunci yang dibuat lewat alamat lain dianggap asing di alamat ini.
+    if (!is_array($meta) || (isset($meta['host']) && (string) $meta['host'] !== $this->_dn_email_host())) {
+        $this->_dn_json(404, array());
+    }
+    if (is_file($dasar . '.batal') || time() - (int) $meta['waktu'] > self::DN_EMAIL_UMUR_KUNCI) {
+        @unlink($dasar . '.eml');
+        $this->_dn_json(410, array('alasan' => is_file($dasar . '.batal') ? 'batal' : 'kedaluwarsa'));
+    }
+    // Skrip jalan di PC yang sama dengan browser dan lewat alamat yang sama,
+    // jadi IP-nya harus sama. Beda berarti proxy/VPN - halaman memberi tahu.
+    if ((string) $meta['ip'] !== $this->_dn_email_ip()) {
+        @touch($dasar . '.tolak');
+        $this->_dn_email_log('ambil DITOLAK ip siapkan=' . $meta['ip'] . ' ip ambil=' . $this->_dn_email_ip() . ' host=' . $this->_dn_email_host());
+        $this->_dn_json(403, array('alasan' => 'ip'));
+    }
+    // Skrip sudah menghubungi server: halaman berhenti menunggu "skrip tidak ada".
+    @touch($dasar . '.ping');
+    $eml_f = $dasar . '.eml';
+    $ambil_f = $dasar . '.diambil';
+    // Sekali pakai: yang kalah balapan rename mendapat 404.
+    if (!is_file($eml_f) || !@rename($eml_f, $ambil_f)) {
+        // Sudah diambil sebelumnya (mis. transfernya tadi terputus): jangan ditunggu lagi.
+        if (is_file($ambil_f)) {
+            $this->_dn_json(410, array('alasan' => 'diambil'));
+        }
+        $this->_dn_json(404, array());
+    }
+    $isi = (string) file_get_contents($ambil_f);
+    @file_put_contents($ambil_f, '');          // tinggal penanda untuk email_status
+    $nama = is_file($dasar . '.nama') ? (string) file_get_contents($dasar . '.nama') : 'DebitNote.eml';
+    $this->_dn_email_log('ambil OK ' . $nama . ' user=' . $meta['user'] . ' ip=' . $this->_dn_email_ip() . ' host=' . $this->_dn_email_host());
+
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    header('Content-Type: message/rfc822');
+    header('Content-Disposition: attachment; filename="DebitNote.eml"');
+    header('Content-Length: ' . strlen($isi));
+    header('X-Dn-Nama: ' . preg_replace('/[^A-Za-z0-9._-]/', '_', $nama));
+    header('X-Nag-DnEmail: 2');
+    header('Cache-Control: no-store');
+    header('X-Content-Type-Options: nosniff');
+    echo $isi;
+    exit;
+}
+
+// GET dari halaman (bersesi): sampai mana skrip PC memproses kunci ini.
+public function email_status($kunci = '')
+{
+    $user = (string) $this->session->userdata('username');
+    session_write_close();
+    if ($user === '' || !$this->_dn_email_kunci_sah($kunci)) {
+        $this->_dn_json(400, array('status' => 'tidak_ada'));
+    }
+    $dasar = $this->_dn_email_folder() . '/' . $kunci;
+    $meta = is_file($dasar . '.json') ? json_decode((string) file_get_contents($dasar . '.json'), true) : null;
+    if (!is_array($meta) || $meta['user'] !== $user) {
+        $this->_dn_json(200, array('status' => 'tidak_ada'));
+    }
+    $status = 'disusun';
+    if (is_file($dasar . '.diambil')) {
+        $status = 'diambil';
+    } elseif (is_file($dasar . '.tolak')) {
+        $status = 'ditolak';
+    } elseif (is_file($dasar . '.batal')) {
+        $status = 'dibatalkan';
+    } elseif (is_file($dasar . '.ping')) {
+        $status = 'dihubungi';
+    } elseif (is_file($dasar . '.eml')) {
+        $status = 'siap';
+    }
+    $this->_dn_json(200, array('status' => $status));
+}
+
+// GET dari halaman (bersesi): PC ini sudah memasang skrip pembantu? Hanya
+// dijawab di jaringan kantor (lihat _dn_email_lan); di luar itu halaman
+// mengandalkan ingatan browser per alamat.
+public function email_handler()
+{
+    $ada = (bool) $this->session->userdata('username');
+    session_write_close();
+    // Dipanggil tiap halaman daftar dibuka: tempat yang pas membuang kunci lama
+    // (berisi PDF DN) yang tidak pernah diambil.
+    $this->_dn_email_bersihkan($this->_dn_email_folder());
+    $f = $this->_dn_email_penanda_pc();
+    $ada = $ada && $this->_dn_email_lan() && is_file($f) && filemtime($f) > time() - 7776000;
+    $this->_dn_json(200, array('terpasang' => $ada, 'waktu' => $ada ? filemtime($f) : 0, 'versi' => 2));
+}
+
+// GET dari pemasang di PC (tanpa sesi). Hanya bisa menandai IP pemanggil
+// sendiri, dan hanya di jaringan kantor.
+public function email_handler_daftar()
+{
+    $this->_dn_tanpa_sesi();
+    $lan = $this->_dn_email_lan();
+    if ($lan) {
+        @touch($this->_dn_email_penanda_pc());
+    }
+    $this->_dn_json(200, array('ok' => true, 'ditandai' => $lan, 'versi' => 2));
+}
+
+// POST dari halaman (bersesi): batalkan kunci yang masih menunggu supaya Outlook
+// tidak terbuka dua kali. Rename .eml bersaing dengan rename di email_ambil -
+// tepat satu yang menang. Kalau skrip sudah lebih dulu mengambil, jawabannya
+// diambil:true dan halaman tidak ikut mengunduh. Penanda PC tidak dihapus.
+public function email_handler_lupa()
+{
+    $user = (string) $this->session->userdata('username');
+    session_write_close();
+    if ($user === '' || !$this->input->is_ajax_request()) {
+        $this->_dn_json(400, array());
+    }
+    $kunci = (string) $this->input->post('kunci');
+    if ($this->_dn_email_kunci_sah($kunci)) {
+        $dasar = $this->_dn_email_folder() . '/' . $kunci;
+        $meta = is_file($dasar . '.json') ? json_decode((string) file_get_contents($dasar . '.json'), true) : null;
+        if (is_array($meta) && $meta['user'] === $user) {
+            @touch($dasar . '.batal');
+            if (@rename($dasar . '.eml', $dasar . '.dibuang')) {
+                @unlink($dasar . '.dibuang');
+            } elseif (is_file($dasar . '.diambil')) {
+                $this->_dn_json(200, array('ok' => true, 'diambil' => true));
+            }
+        }
+    }
+    $this->_dn_json(200, array('ok' => true, 'diambil' => false));
+}
+public function report_debit_note($id)
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+
+    $laporan = $this->_dn_laporan($id, false);
+    // Lampiran DN ikut disambung ke PDF ini (lihat _dn_cetak).
+    $this->_dn_cetak($laporan['mpdf'], $id, $laporan['no_dn']);
 }
 
     //ubah september
@@ -1714,29 +2318,10 @@ public function report_debit_note_memo($id)
     if (!$this->session->userdata('username')) {
         redirect('auth');
     }
-        //   
-    $mpdf = new \Mpdf\Mpdf();
-    $data['data_debit_note'] = $this->Model_nag->report_debit_note($id);
-    $data['data_debit_note_det'] = $this->Model_nag->report_debit_note_det($id);
-    $data['data_debit_note_det2'] = $this->Model_nag->report_debit_note_det_memo($id);
-    $data['data_proforma_invoice_total_cbd'] = $this->Model_nag->report_proforma_invoice_total_cbd($id);
-    $data['data_proforma_invoice_grandtotal_cbd'] = $this->Model_nag->report_proforma_invoice_grandtotal_cbd($id);
-    $data['data_proforma_diskon_cbd'] = $this->Model_nag->report_proforma_diskon_cbd($id);
-    $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
-    $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
-    $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
-    $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
-    $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
-    $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
-    $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
-    $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
-    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
-        //
-    $html = $this->load->view('arnag/reportdebitnote_memo', $data, true);
-    $mpdf->setFooter('{PAGENO} / {nbpg}');
-    $mpdf->WriteHTML($html);
-    $mpdf->Output();
+    $laporan = $this->_dn_laporan($id, true);
+    // Lampiran DN ikut disambung ke PDF ini (lihat _dn_cetak).
+    $this->_dn_cetak($laporan['mpdf'], $id, $laporan['no_dn']);
 }
 
 
@@ -2064,11 +2649,36 @@ public function cancel_kwitansi()
 }
 
 //ubah september -
+// User yang boleh membatalkan Debit Note. HARUS sama dengan daftar yang
+// menyalakan tombol "Cancel Debit Note" di modal list_debitnote.php.
+private function _dn_boleh_cancel()
+{
+    return array('willy', 'yulianto', 'hady', 'hadi', 'jefri', 'ramon', 'lukman', 'oktora', 'frisca');
+}
+
+// Cancel dari modal di List Debit Note (POST id_debnote = nomor DN).
+// Memo & Req DN yang dipakai DN ikut dilepas di Model_nag::cancel_debnote(),
+// dalam satu transaksi. Hasilnya ditampilkan di halaman list lewat flashdata.
 public function cancel_debnote()
 {
-    $id = $this->input->post('id_debnote');
-    $this->Model_nag->cancel_debnote($id);
-    $this->Model_nag->update_status_memo($id);
+    $user = $this->session->userdata('username');
+    if (!$user) {
+        redirect('auth');
+    }
+    if ($this->input->method() !== 'post') {
+        redirect('arnag/list_debitnote');
+    }
+
+    if (!in_array($user, $this->_dn_boleh_cancel(), true)) {
+        $hasil = array('status' => false, 'message' => 'You are not allowed to cancel debit notes.');
+    } else {
+        $hasil = $this->Model_nag->cancel_debnote($this->input->post('id_debnote'));
+        if ($hasil['status']) {
+            log_message('info', 'Cancel Debit Note oleh ' . $user . ': ' . $hasil['message']);
+        }
+    }
+
+    $this->session->set_flashdata('dn_cancel', array('status' => (bool) $hasil['status'], 'message' => $hasil['message']));
     redirect('arnag/list_debitnote');
 }
 
@@ -2523,6 +3133,191 @@ public function simpandn_h()
     $status     = "POST";
     $this->log_booking_invoice($activity, $doc_number, $status);
     echo json_encode(array("status" => TRUE, "no_dn" => $no_dn));
+}
+
+// Upload supporting document untuk Debit Note yang baru saja tersimpan -
+// dipanggil dari create_debitnote SETELAH simpandn_h sukses (butuh nomor DN
+// final). Tidak ada batas ukuran file: file dikirim per potongan (ukurannya ikut
+// batas upload PHP, lihat _dn_doc_chunk_size) lalu disambung di
+// uploads/debitnote/tmp, jadi file ratusan MB tidak mentok upload_max_filesize /
+// post_max_size. Setelah potongan terakhir, file dipindah ke uploads/debitnote/
+// <tahun>/<bulan>/ dengan nama acak (folder uploads di-deny dari web lewat
+// .htaccess) lalu dicatat di tbl_debitnote_doc - tabel itu dibuat manual lewat
+// migrations/20260911_debitnote_supporting_document.sql.
+public function upload_dn_doc()
+{
+    if (!$this->session->userdata('username')) {
+        return $this->_dn_doc_json(false, 'Session expired, please log in again.');
+    }
+    // Request yang melebihi post_max_size dibuang PHP seluruhnya ($_POST & $_FILES kosong).
+    if (empty($_POST) && empty($_FILES) && !empty($_SERVER['CONTENT_LENGTH'])) {
+        return $this->_dn_doc_json(false, 'The upload is larger than the server allows.');
+    }
+    if (!$this->Model_nag->dn_doc_tabel_siap()) {
+        return $this->_dn_doc_json(false, 'Supporting document table is not ready yet.', array('code' => 'table_missing'));
+    }
+
+    $no_dn = trim((string) $this->input->post('no_dn'));
+    $id_dn = ($no_dn !== '') ? $this->Model_nag->cari_id_debitnote($no_dn) : null;
+    if (!$id_dn) {
+        return $this->_dn_doc_json(false, 'Debit note not found.');
+    }
+    // Lampiran dikunci setelah second approve (lihat Model_nag::dn_doc_bisa_diubah).
+    $status_dn = $this->Model_nag->dn_doc_status_dn($id_dn);
+    if (!$this->Model_nag->dn_doc_bisa_diubah($status_dn)) {
+        return $this->_dn_doc_json(false, 'This debit note is already ' . strtolower((string) $status_dn) . ' - its documents can no longer be changed.');
+    }
+
+    $upload_id = (string) $this->input->post('upload_id');
+    $nama_asli = basename(str_replace('\\', '/', (string) $this->input->post('nama')));
+    $ukuran    = (int) $this->input->post('ukuran');
+    $offset    = (int) $this->input->post('offset');
+    $ext       = strtolower(pathinfo($nama_asli, PATHINFO_EXTENSION));
+    $potongan  = isset($_FILES['potongan']) ? $_FILES['potongan'] : null;
+
+    if (!preg_match('/^[a-f0-9]{32}$/', $upload_id) || $ukuran <= 0 || $offset < 0 || $offset >= $ukuran) {
+        return $this->_dn_doc_json(false, 'Invalid upload request.');
+    }
+    if (!in_array($ext, array('pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'), true)) {
+        return $this->_dn_doc_json(false, 'Only PDF and image files are allowed.');
+    }
+    if (!$potongan || is_array($potongan['name'])) {
+        return $this->_dn_doc_json(false, 'No file received.');
+    }
+    if ($potongan['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($potongan['tmp_name'])) {
+        $terlalu_besar = in_array($potongan['error'], array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true);
+        return $this->_dn_doc_json(false, $terlalu_besar ? 'The upload is larger than the server allows.' : 'Upload failed (error ' . $potongan['error'] . ').');
+    }
+
+    $folder_tmp = FCPATH . 'uploads/debitnote/tmp';
+    if (!is_dir($folder_tmp) && !@mkdir($folder_tmp, 0755, true)) {
+        return $this->_dn_doc_json(false, 'Upload folder is not writable.');
+    }
+    $part = $folder_tmp . '/' . $upload_id . '.part';
+
+    if ($offset === 0) {
+        // Potongan pertama: cek isi file lewat byte awalnya, sekalian bersihkan
+        // sisa upload lama yang tidak pernah selesai.
+        if (!$this->_dn_doc_isi_cocok($potongan['tmp_name'], $ext)) {
+            return $this->_dn_doc_json(false, 'File content does not match its type.');
+        }
+        foreach ((array) glob($folder_tmp . '/*.part') as $lama) {
+            if (is_file($lama) && filemtime($lama) < time() - 86400) {
+                @unlink($lama);
+            }
+        }
+    } elseif (!is_file($part)) {
+        return $this->_dn_doc_json(false, 'Upload expired, please try again.');
+    }
+
+    clearstatcache(true, $part);
+    if ((is_file($part) ? filesize($part) : 0) < $offset) {
+        return $this->_dn_doc_json(false, 'Upload is out of order, please try again.');
+    }
+
+    // Tulis mulai dari offset - potongan yang dikirim ulang (retry) menimpa bagiannya sendiri.
+    $tulis = @fopen($part, 'c+');
+    $baca  = @fopen($potongan['tmp_name'], 'rb');
+    if (!$tulis || !$baca) {
+        return $this->_dn_doc_json(false, 'Failed to store the file.');
+    }
+    ftruncate($tulis, $offset);
+    fseek($tulis, $offset);
+    stream_copy_to_stream($baca, $tulis);
+    fclose($baca);
+    fclose($tulis);
+
+    clearstatcache(true, $part);
+    $diterima = filesize($part);
+    if ($diterima > $ukuran) {
+        @unlink($part);
+        return $this->_dn_doc_json(false, 'Upload size mismatch, please try again.');
+    }
+    if ($diterima < $ukuran) {
+        return $this->_dn_doc_json(true, '', array('done' => false, 'received' => $diterima));
+    }
+
+    // Potongan terakhir - pindahkan ke folder final dengan nama acak.
+    $folder = 'uploads/debitnote/' . date('Y') . '/' . date('m');
+    if (!is_dir(FCPATH . $folder) && !@mkdir(FCPATH . $folder, 0755, true)) {
+        return $this->_dn_doc_json(false, 'Upload folder is not writable.');
+    }
+    $nama   = (function_exists('random_bytes') ? bin2hex(random_bytes(16)) : md5(uniqid(mt_rand(), true))) . '.' . $ext;
+    $tujuan = FCPATH . $folder . '/' . $nama;
+    if (!@rename($part, $tujuan)) {
+        @unlink($part);
+        return $this->_dn_doc_json(false, 'Failed to store the file.');
+    }
+
+    $ok = $this->Model_nag->simpan_dn_doc(array(
+        'id_dn'         => $id_dn,
+        'no_dn'         => $no_dn,
+        'original_name' => function_exists('mb_substr') ? mb_substr($nama_asli, 0, 255) : substr($nama_asli, 0, 255),
+        'file_name'     => $nama,
+        'file_path'     => $folder . '/' . $nama,
+        'file_ext'      => $ext,
+        'file_size'     => $ukuran,
+        'mime_type'     => function_exists('mime_content_type') ? (@mime_content_type($tujuan) ?: null) : null,
+        'uploaded_by'   => $this->session->userdata('username'),
+        'uploaded_at'   => date('Y-m-d H:i:s'),
+    ));
+    if (!$ok) {
+        @unlink($tujuan);
+        return $this->_dn_doc_json(false, 'Failed to record the file.');
+    }
+
+    return $this->_dn_doc_json(true, '', array('done' => true, 'original_name' => $nama_asli));
+}
+
+private function _dn_doc_json($status, $pesan = '', $tambahan = array())
+{
+    echo json_encode(array_merge(array('status' => $status, 'message' => $pesan), $tambahan));
+}
+
+// Isi file dicek lewat byte awalnya (bukan cuma ekstensi), supaya file lain yang
+// diganti ekstensinya tidak lolos. Yang boleh cuma PDF & gambar.
+private function _dn_doc_isi_cocok($path, $ext)
+{
+    $awal = (string) @file_get_contents($path, false, null, 0, 1024);
+    switch ($ext) {
+        case 'pdf':
+            return strpos($awal, '%PDF') !== false;
+        case 'jpg':
+        case 'jpeg':
+            return strncmp($awal, "\xFF\xD8\xFF", 3) === 0;
+        case 'png':
+            return strncmp($awal, "\x89PNG", 4) === 0;
+        case 'gif':
+            return strncmp($awal, 'GIF87a', 6) === 0 || strncmp($awal, 'GIF89a', 6) === 0;
+        case 'webp':
+            return strncmp($awal, 'RIFF', 4) === 0 && substr($awal, 8, 4) === 'WEBP';
+    }
+    return false;
+}
+
+// Ukuran 1 potongan upload supporting document: 80% dari batas upload PHP
+// (upload_max_filesize / post_max_size, mana yang lebih kecil), maksimal 8 MB,
+// minimal 256 KB. Dikirim ke view create_debitnote.
+private function _dn_doc_chunk_size()
+{
+    $batas = min($this->_ini_ke_byte(ini_get('upload_max_filesize')), $this->_ini_ke_byte(ini_get('post_max_size')));
+    return (int) max(256 * 1024, min(8 * 1024 * 1024, $batas * 0.8));
+}
+
+// "40M" / "512K" / "1G" -> byte. 0 atau kosong = tidak dibatasi.
+private function _ini_ke_byte($nilai)
+{
+    $nilai = trim((string) $nilai);
+    $angka = (float) $nilai;
+    switch (strtolower(substr($nilai, -1))) {
+        case 'g':
+            $angka *= 1024;
+        case 'm':
+            $angka *= 1024;
+        case 'k':
+            $angka *= 1024;
+    }
+    return $angka > 0 ? $angka : PHP_INT_MAX;
 }
 
 public function cari_alokasi($dt_dari_kwt, $dt_sampai_kwt, $customer)
@@ -3909,11 +4704,27 @@ public function edit_debitnote($id = null) {
         redirect('auth');
     }
 
-    $data['title'] = 'Form Edit Debit Note';
+    $data['title'] = 'Edit Debit Note';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['data_dn'] = $this->Model_nag->get_debitnote_by_id($id);
+    if (!$data['data_dn']) {
+        show_404();
+    }
+
+    // Isi DN hanya bisa diubah selagi status POST. Setelah first approve
+    // halaman ini masih boleh dibuka, tapi cuma untuk mengurus lampiran -
+    // sampai sebelum second approve (lihat Model_nag::dn_doc_bisa_diubah).
+    $status_dn = $data['data_dn']['status'];
+    if (!$this->Model_nag->dn_doc_bisa_diubah($status_dn)) {
+        show_404();
+    }
+    $data['dn_hanya_dokumen'] = ($status_dn !== 'POST');
+    $data['title'] = $data['dn_hanya_dokumen'] ? 'Supporting Documents' : 'Edit Debit Note';
     $data['data_dn_det'] = $this->Model_nag->get_debitnoteDet_by_id($id);
     $data['reff_dn'] = $this->Model_nag->get_reffDN_by_id($id);
+    // Supporting document yang sudah tersimpan + ukuran potongan upload dokumen baru.
+    $data['dn_docs'] = $this->Model_nag->get_dn_docs($id);
+    $data['dn_doc_chunk'] = $this->_dn_doc_chunk_size();
 
     $data['profit_center'] = $this->Model_nag->cari_profit_center();
     $data['customer'] = $this->Model_nag->cari_customer();
@@ -3951,6 +4762,178 @@ public function edit_debitnote($id = null) {
     $this->load->view('templates/sidebar', $data);
     $this->load->view('arnag/edit_debitnote', $data);
     $this->load->view('templates/footer', $data);
+}
+
+// Simpan hasil Edit Debit Note: header + detail sekaligus dalam 1 transaksi
+// (lihat Model_nag::update_debitnote). Balikan no_dn final - berubah kalau
+// profit center diganti.
+public function update_debitnote()
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => false, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    // data_h / data_det dikirim sebagai JSON (DN dengan banyak baris bisa
+    // melewati batas max_input_vars kalau dikirim sebagai array form).
+    $header = json_decode((string) $this->input->post('data_h'), true);
+    $baris  = json_decode((string) $this->input->post('data_det'), true);
+    if (!is_array($header) || !is_array($baris)) {
+        echo json_encode(array('status' => false, 'message' => 'Invalid data, please reload the page and try again.'));
+        return;
+    }
+
+    $id_dn = (int) $this->input->post('id_dn');
+    $lama  = $this->Model_nag->get_debitnote_by_id($id_dn);
+    $hasil = $this->Model_nag->update_debitnote($id_dn, $header, $baris);
+
+    if (!empty($hasil['status'])) {
+        $keterangan = ($lama && $lama['no_dn'] !== $hasil['no_dn']) ? 'EDIT (old number ' . $lama['no_dn'] . ')' : 'EDIT';
+        $this->log_booking_invoice('Edit Debit Note', $hasil['no_dn'], $keterangan);
+    }
+    echo json_encode($hasil);
+}
+
+// Buka supporting document yang sudah tersimpan. Folder uploads di-deny dari
+// web, jadi file dikirim lewat sini setelah cek login - path-nya dipastikan
+// tetap di dalam uploads/debitnote.
+public function lihat_dn_doc($id = null)
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+
+    $doc   = $id ? $this->Model_nag->get_dn_doc((int) $id) : null;
+    $dasar = realpath(FCPATH . 'uploads/debitnote');
+    $path  = $doc ? realpath(FCPATH . $doc['file_path']) : false;
+    if (!$doc || !$dasar || !$path || strpos($path, $dasar . DIRECTORY_SEPARATOR) !== 0 || !is_file($path)) {
+        show_404();
+    }
+
+    $tipe = array('pdf' => 'application/pdf', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp');
+    $ext  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    if (!isset($tipe[$ext])) {
+        show_404();
+    }
+
+    $nama = str_replace(array('"', "\r", "\n", '\\'), '', $doc['original_name']);
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    header('Content-Type: ' . $tipe[$ext]);
+    header('Content-Length: ' . filesize($path));
+    header('Content-Disposition: inline; filename="' . $nama . '"; filename*=UTF-8\'\'' . rawurlencode($doc['original_name']));
+    header('X-Content-Type-Options: nosniff');
+    readfile($path);
+    exit;
+}
+
+// Isi modal detail waktu nomor DN di List Debit Note diklik. Sengaja ringan:
+// cuma data yang dipakai modal, tanpa merender PDF.
+public function dn_detail_json($id = null)
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => false, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    $data = $id ? $this->Model_nag->dn_detail((int) $id) : null;
+    if (!$data) {
+        echo json_encode(array('status' => false, 'message' => 'Debit note not found.'));
+        return;
+    }
+
+    $h = $data['header'];
+    $baris = array();
+    foreach ($data['baris'] as $r) {
+        $baris[] = array(
+            'deskripsi' => $r['deskripsi'],
+            'header1'   => isset($r['header1']) ? $r['header1'] : '',
+            'header2'   => isset($r['header2']) ? $r['header2'] : '',
+            'header3'   => isset($r['header3']) ? $r['header3'] : '',
+            'header4'   => isset($r['header4']) ? $r['header4'] : '',
+            'header5'   => isset($r['header5']) ? $r['header5'] : '',
+            'value'     => $r['value'],
+            'rate'      => $r['rate'],
+            'amount'    => $r['amount'],
+            'no_coa'    => $r['no_coa'],
+            'nama_coa'  => isset($r['nama_coa']) ? $r['nama_coa'] : '',
+            // Baris dari Memo / Request ditandai supaya kelihatan asalnya.
+            'terkunci'  => $this->Model_nag->dn_baris_terkunci($r) ? 1 : 0,
+        );
+    }
+
+    $lampiran = array();
+    foreach ($data['lampiran'] as $d) {
+        $lampiran[] = array(
+            'id'     => (int) $d['id'],
+            'nama'   => $d['original_name'],
+            'ukuran' => (int) $d['file_size'],
+            'url'    => base_url('arnag/lihat_dn_doc/' . (int) $d['id']),
+        );
+    }
+
+    echo json_encode(array(
+        'status' => true,
+        'header' => array(
+            'id'            => (int) $h['id'],
+            'no_dn'         => $h['no_dn'],
+            'tgl_dn'        => $h['tgl_dn'],
+            'due_date'      => $h['due_date'],
+            'status_dn'     => $h['status'],
+            'consignee'     => $h['nama_customer'],
+            'attn'          => $h['attn'],
+            'alamat'        => $h['alamat'],
+            'from_curr'     => $h['from_curr'],
+            'to_curr'       => $h['to_curr'],
+            'amount'        => $h['amount'],
+            'eqv_curr'      => $h['eqv_curr'],
+            'profit_center' => $h['profit_center'],
+            'bank'          => trim((string) $h['bank_name'] . ' ' . (string) $h['no_rekening']),
+            'sumber'        => !empty($data['sumber']['reff_doc'])
+                ? $data['sumber']['text_reff_doc'] . ': ' . $data['sumber']['reff_doc']
+                : 'Manual input',
+            // Nama kolom tambahan - dipakai sebagai judul kolom di modal.
+            'header1'       => isset($h['header1']) ? $h['header1'] : '',
+            'header2'       => isset($h['header2']) ? $h['header2'] : '',
+            'header3'       => isset($h['header3']) ? $h['header3'] : '',
+            'header4'       => isset($h['header4']) ? $h['header4'] : '',
+            'header5'       => isset($h['header5']) ? $h['header5'] : '',
+        ),
+        'baris'    => $baris,
+        'lampiran' => $lampiran,
+    ));
+}
+// Hapus 1 supporting document (dari halaman Edit Debit Note). Masih boleh
+// selama DN belum second approve - aturannya di Model_nag::dn_doc_bisa_diubah.
+public function hapus_dn_doc()
+{
+    if (!$this->session->userdata('username')) {
+        return $this->_dn_doc_json(false, 'Session expired, please log in again.');
+    }
+
+    $doc = $this->Model_nag->get_dn_doc((int) $this->input->post('id'));
+    if (!$doc) {
+        return $this->_dn_doc_json(false, 'Document not found.');
+    }
+
+    $status_dn = $this->Model_nag->dn_doc_status_dn($doc['id_dn']);
+    if (!$this->Model_nag->dn_doc_bisa_diubah($status_dn)) {
+        return $this->_dn_doc_json(false, 'This debit note is already ' . strtolower((string) $status_dn) . ' - its documents can no longer be changed.');
+    }
+
+    $this->Model_nag->hapus_dn_doc($doc['id']);
+
+    // File fisik dihapus setelah barisnya hilang, dan path-nya dipastikan
+    // masih di dalam uploads/debitnote (sama seperti lihat_dn_doc).
+    $dasar = realpath(FCPATH . 'uploads/debitnote');
+    $file  = realpath(FCPATH . $doc['file_path']);
+    if ($dasar && $file && strpos($file, $dasar . DIRECTORY_SEPARATOR) === 0 && is_file($file)) {
+        @unlink($file);
+    }
+
+    $this->log_booking_invoice('Edit Debit Note', $doc['no_dn'], 'HAPUS DOKUMEN ' . $doc['original_name']);
+    return $this->_dn_doc_json(true, 'Document removed.');
 }
 
 public function update_debitnote_h()

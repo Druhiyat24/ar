@@ -1172,7 +1172,8 @@ function cari_debitnote_second_approv($dt_dari_inv, $dt_sampai_inv, $profit_cent
       FROM tbl_debitnote_h a INNER JOIN mastersupplier b ON b.Id_Supplier = a.customer
       WHERE a.status = 'FIRST APPROVED' AND a.tgl_dn BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' $where
       GROUP BY a.no_dn");
-    return $hasil->result_array();
+    // jml_dokumen dipakai penanda "belum ada supporting document" di halaman approval
+    return $this->dn_lengkapi_jml_dokumen($hasil->result_array());
 }
 
 function cari_invoice_appv($dt_dari_inv, $dt_sampai_inv)
@@ -1217,10 +1218,13 @@ function approve_profinvoice($id)
 }
 
     //ubah september
+// Hanya DN yang masih POST yang bisa di-first approve. DN yang sudah Cancel
+// tidak boleh hidup lagi - Memo & Req DN-nya sudah dilepas waktu cancel dan
+// mungkin sudah dipakai DN lain. Mengembalikan true kalau barisnya benar berubah.
 function approve_debitnote($id)
 {
-    $hasil = $this->db->query("UPDATE tbl_debitnote_h SET status = 'FIRST APPROVED' WHERE id = '$id' ");
-    return $hasil;
+    $this->db->query("UPDATE tbl_debitnote_h SET status = 'FIRST APPROVED' WHERE id = ? AND status = 'POST'", array($id));
+    return $this->db->affected_rows() > 0;
 }
 
 function approve_invoice_second($id, $created_by, $created_date)
@@ -1314,10 +1318,12 @@ function approve_profinvoice_second($id)
     return $hasil;
 }
 
+// Second approval hanya untuk DN yang sudah FIRST APPROVED (bukan POST, bukan
+// Cancel). Mengembalikan true kalau barisnya benar berubah.
 function approve_debitnote_second($id)
 {
-    $hasil = $this->db->query("UPDATE tbl_debitnote_h SET status = 'SECOND APPROVED' WHERE id = '$id' ");
-    return $hasil;
+    $this->db->query("UPDATE tbl_debitnote_h SET status = 'SECOND APPROVED' WHERE id = ? AND status = 'FIRST APPROVED'", array($id));
+    return $this->db->affected_rows() > 0;
 }
 
     //DueDate
@@ -1682,6 +1688,35 @@ function cari_proforma_invoice_cbd($dt_dari_inv, $dt_sampai_inv, $id_customer)
 
 
     //ubah september
+// Jumlah lampiran per DN untuk penanda "belum ada dokumen" di List Debit Note.
+// Dihitung terpisah, bukan di-JOIN ke query daftarnya: query itu sudah rumit,
+// dan cara ini tetap aman kalau tabel dokumennya belum dibuat.
+private function dn_lengkapi_jml_dokumen($rows)
+{
+    if (!$rows) {
+        return $rows;
+    }
+
+    $peta = array();
+    if ($this->dn_doc_tabel_siap()) {
+        $ids = array();
+        foreach ($rows as $r) {
+            $ids[] = (int) $r['id'];
+        }
+        $hasil = $this->db->query(
+            "SELECT id_dn, COUNT(*) AS jml FROM tbl_debitnote_doc WHERE id_dn IN (" . implode(',', $ids) . ") GROUP BY id_dn"
+        );
+        foreach ($hasil->result_array() as $d) {
+            $peta[(int) $d['id_dn']] = (int) $d['jml'];
+        }
+    }
+
+    foreach ($rows as $i => $r) {
+        $id = (int) $r['id'];
+        $rows[$i]['jml_dokumen'] = isset($peta[$id]) ? $peta[$id] : 0;
+    }
+    return $rows;
+}
 function cari_debit_note($dt_dari_inv, $dt_sampai_inv, $id_customer)
 {
 
@@ -1690,13 +1725,13 @@ function cari_debit_note($dt_dari_inv, $dt_sampai_inv, $id_customer)
            WHERE a.tgl_dn BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
            GROUP BY a.no_dn) a left join
         (SELECT no_dn nodn,IF(nodn is null,'OTHER','MEMO') type_dn from (select DISTINCT a.no_dn,b.no_dn nodn from tbl_debitnote_det a left join memo_det b on a.no_dn = b.no_dn) a) b on b.nodn = a.no_dn ");
-        return $hasil->result_array();
+        return $this->dn_lengkapi_jml_dokumen($hasil->result_array());
     } else {
         $hasil = $this->db->query("SELECT * FROM (SELECT a.id,a.no_dn,a.tgl_dn,b.Supplier,a.attn,a.from_curr,a.to_curr,a.amount,a.eqv_curr,a.status from tbl_debitnote_h a INNER JOIN mastersupplier b on b.Id_Supplier = a.customer
            WHERE a.tgl_dn BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' AND a.customer = '$id_customer' 
            GROUP BY a.no_dn ) a left join
         (SELECT no_dn nodn,IF(nodn is null,'OTHER','MEMO') type_dn from (select DISTINCT a.no_dn,b.no_dn nodn from tbl_debitnote_det a left join memo_det b on a.no_dn = b.no_dn) a) b on b.nodn = a.no_dn");
-        return $hasil->result_array();
+        return $this->dn_lengkapi_jml_dokumen($hasil->result_array());
     }
 }
 
@@ -1753,7 +1788,16 @@ function report_proforma_invoice_tot_dp($id)
     //ubah september
 function report_debit_note($id)
 {
-    $hasil = $this->db->query("SELECT a.id, a.no_dn, DATE_FORMAT(a.tgl_dn, '%Y-%m-%d') AS tgl_dn, b.supplier AS customer, a.attn,a.alamat,header1,header2,header3,IF(header1 != '',1,0) as data1, IF(header2 != '',1,0) as data2, IF(header3 != '',1,0) as data3,from_curr,to_curr,FORMAT(a.amount,2) as amount2,FORMAT(a.eqv_curr,2) as eqv_curr, c.beneficiary_name,c.bank_name,c.beneficiary_address,c.bank_account,c.swift_code, c.bank_address
+    // Nama kolom tambahan (Header 1-5) - yang ke-4 & 5 hanya kalau migrasinya
+    // sudah dijalankan.
+    $kolom_header = $this->kolom_header_laporan('tbl_debitnote_h');
+    $penanda_isi = array();
+    foreach ($kolom_header as $urut => $nama) {
+        $penanda_isi[] = "IF(" . $nama . " != '',1,0) as data" . ($urut + 1);
+    }
+    $pilih_header = implode(',', $kolom_header) . ',' . implode(', ', $penanda_isi);
+
+    $hasil = $this->db->query("SELECT a.id, a.no_dn, DATE_FORMAT(a.tgl_dn, '%Y-%m-%d') AS tgl_dn, a.status, b.supplier AS customer, a.attn,a.alamat," . $pilih_header . ",from_curr,to_curr,FORMAT(a.amount,2) as amount2,FORMAT(a.eqv_curr,2) as eqv_curr, c.beneficiary_name,c.bank_name,c.beneficiary_address,c.bank_account,c.swift_code, c.bank_address
        FROM tbl_debitnote_h AS a INNER JOIN 
        mastersupplier AS b ON a.customer = b.Id_Supplier inner join
        b_masterbank c on c.bank_account = a.akun  
@@ -1772,6 +1816,18 @@ function report_debit_note($id)
     //ubah september
 function report_debit_note_det($id)
 {
+    // Isi tiap kolom tambahan boleh berisi beberapa nilai yang dipisah koma;
+    // SPLIT_STRING memecahnya jadi baris-baris supaya bisa ditumpuk di PDF.
+    $kolom_header = $this->kolom_header_laporan('tbl_debitnote_det');
+    $pecahan = array();
+    $syarat_isi = array();
+    foreach ($kolom_header as $nama) {
+        $pecahan[] = "SPLIT_STRING(a." . $nama . ", ',', n.n) AS " . $nama;
+        $syarat_isi[] = "hasil." . $nama . " != ''";
+    }
+    $pecah_header = implode(",\n            ", $pecahan) . ',';
+    $ada_isi = implode(' OR ', $syarat_isi);
+
     $hasil = $this->db->query("SELECT *
         FROM (
             SELECT 
@@ -1780,9 +1836,7 @@ function report_debit_note_det($id)
             a.deskripsi,
             a.supplier,
             a.supplier_invoice,
-            SPLIT_STRING(a.header1, ',', n.n) AS header1,
-            SPLIT_STRING(a.header2, ',', n.n) AS header2,
-            SPLIT_STRING(a.header3, ',', n.n) AS header3,
+            " . $pecah_header . "
             FORMAT(a.value, 2) AS amount,
             FORMAT(a.rate, 2) AS rate,
             FORMAT(a.amount, 2) AS amount2,
@@ -1798,7 +1852,7 @@ function report_debit_note_det($id)
                 SELECT * FROM numbers) AS n
             WHERE b.id = '$id'
             ) AS hasil
-        WHERE hasil.header1 != '' OR hasil.header2 != '' OR hasil.header3 != ''
+        WHERE " . $ada_isi . "
         ORDER BY hasil.id_det, hasil.supplier_invoice, hasil.nomor ASC;
         ");
     return $hasil->result_array();
@@ -2553,10 +2607,62 @@ function cancel_kwitansi($id)
 }
 
     //ubah september
-function cancel_debnote($id)
+// Membatalkan Debit Note sekaligus melepas Memo & Req DN yang dipakainya,
+// supaya keduanya bisa dipilih lagi di Create Debit Note.
+// - Hanya DN berstatus POST (sama dengan aturan edit di update_debitnote);
+//   cancel kedua kali otomatis ditolak tanpa mengubah apa pun.
+// - Satu transaksi: header, memo, dan req berubah bersama atau tidak sama sekali.
+// - Pelepasan hanya menyentuh baris yang no_dn-nya persis DN ini.
+// - Req DN yang sudah di-Cancel di modulnya sendiri tidak dihidupkan lagi:
+//   yang dikembalikan ke 'Post' hanya yang berstatus 'Processed'
+//   (cari_no_req menampilkan status = 'Post' AND no_dn IS NULL).
+// Mengembalikan array('status' => bool, 'message' => string, 'memo' => int, 'req' => int).
+function cancel_debnote($no_dn)
 {
-    $hasil = $this->db->query("UPDATE tbl_debitnote_h set status = 'Cancel' WHERE no_dn = '$id' ");
-    return $hasil;
+    $no_dn = trim((string) $no_dn);
+    if ($no_dn === '') {
+        return array('status' => false, 'message' => 'Debit note number is empty.', 'memo' => 0, 'req' => 0);
+    }
+
+    $this->db->trans_start();
+
+    // Kunci baris header supaya cancel/approve/edit bersamaan tidak balapan.
+    $dn = $this->db->query("SELECT id, status FROM tbl_debitnote_h WHERE no_dn = ? FOR UPDATE", array($no_dn))->result_array();
+
+    if (count($dn) !== 1 || $dn[0]['status'] !== 'POST') {
+        $this->db->trans_complete();
+        if (count($dn) === 0) {
+            $pesan = 'Debit note ' . $no_dn . ' not found.';
+        } elseif (count($dn) > 1) {
+            // Memo & Req terkait lewat nomor DN; kalau nomornya kembar, melepas
+            // berdasarkan nomor bisa mengenai DN lain - lebih aman ditolak.
+            $pesan = 'Debit note number ' . $no_dn . ' is used more than once - cancel refused.';
+        } else {
+            $pesan = 'Debit note ' . $no_dn . ' cannot be cancelled (status: ' . $dn[0]['status'] . ').';
+        }
+        return array('status' => false, 'message' => $pesan, 'memo' => 0, 'req' => 0);
+    }
+
+    $jml_memo = $this->db->query("SELECT COUNT(*) AS n FROM memo_det WHERE no_dn = ?", array($no_dn))->row_array();
+    $jml_req  = $this->db->query("SELECT COUNT(*) AS n FROM req_dn_h WHERE no_dn = ? AND status = 'Processed'", array($no_dn))->row_array();
+
+    $this->db->query("UPDATE tbl_debitnote_h SET status = 'Cancel' WHERE id = ? AND status = 'POST'", array($dn[0]['id']));
+    $this->db->query("UPDATE memo_det SET no_dn = NULL WHERE no_dn = ?", array($no_dn));
+    $this->db->query("UPDATE req_dn_h SET no_dn = NULL, status = 'Post' WHERE no_dn = ? AND status = 'Processed'", array($no_dn));
+
+    $this->db->trans_complete();
+    if ($this->db->trans_status() === FALSE) {
+        return array('status' => false, 'message' => 'Cancel failed, nothing was changed. Please try again.', 'memo' => 0, 'req' => 0);
+    }
+
+    $memo = (int) (isset($jml_memo['n']) ? $jml_memo['n'] : 0);
+    $req  = (int) (isset($jml_req['n']) ? $jml_req['n'] : 0);
+    return array(
+        'status'  => true,
+        'message' => 'Debit note ' . $no_dn . ' cancelled. Released: ' . $memo . ' memo line(s), ' . $req . ' request DN.',
+        'memo'    => $memo,
+        'req'     => $req,
+    );
 }
 
 function update_inv_kwt($id)
@@ -3266,8 +3372,49 @@ function simpanalokasi($data)
 // di-rollback juga - tidak ada lagi header "nyangkut" tanpa detail gara-gara
 // request detail terpisah gagal belakangan. Kalau $data_det tidak dikirim
 // (null), perilakunya sama seperti sebelumnya (cuma insert header).
+// Kolom header4/header5 baru ada setelah migrations/20260911_debitnote_header4_header5.sql
+// dijalankan manual. Selama belum, kedua field itu dibuang dari data yang mau
+// di-insert (cuma baca daftar kolom tabel, tidak mengubah apa-apa di database),
+// jadi simpan DN tetap jalan sebelum maupun sesudah migrasi.
+// Daftar kolom header yang boleh dipakai di query laporan. header4/header5 baru
+// ada setelah migrations/20260911_debitnote_header4_header5.sql dijalankan
+// manual; selama belum, laporan tetap jalan dengan header1-3 saja (cuma membaca
+// daftar kolom tabel, tidak mengubah apa pun di database).
+private function kolom_header_laporan($tabel)
+{
+    $kolom_tabel = $this->db->list_fields($tabel);
+    $dipakai = array('header1', 'header2', 'header3');
+    foreach (array('header4', 'header5') as $tambahan) {
+        if (in_array($tambahan, $kolom_tabel, true)) {
+            $dipakai[] = $tambahan;
+        }
+    }
+    return $dipakai;
+}
+private function buang_kolom_header_baru($table, $rows)
+{
+    if (empty($rows)) {
+        return $rows;
+    }
+
+    $kolom_tabel = $this->db->list_fields($table);
+    foreach (array('header4', 'header5') as $kolom) {
+        if (in_array($kolom, $kolom_tabel, true)) {
+            continue;
+        }
+        foreach ($rows as &$row) {
+            unset($row[$kolom]);
+        }
+        unset($row);
+    }
+    return $rows;
+}
+
 function simpandn_h($data, $data_det = null)
 {
+    $data     = $this->buang_kolom_header_baru('tbl_debitnote_h', $data);
+    $data_det = $this->buang_kolom_header_baru('tbl_debitnote_det', $data_det);
+
     // Cegah 2 user dapat nomor DN yang sama kalau create bersamaan: kunci sebentar,
     // generate ulang no_dn paling baru saat mau insert (bukan pakai nomor dari saat
     // halaman dibuka), baru lepas kunci setelah insert selesai.
@@ -3328,6 +3475,104 @@ function simpandn_det($data)
     return $this->db->insert_batch('tbl_debitnote_det', $data);
 }
 
+// ── Supporting document Debit Note ────────────────────────────────────────────
+// Tabelnya dibuat manual lewat migrations/20260911_debitnote_supporting_document.sql.
+// Selama belum dibuat, upload dilewati (cek ini cuma baca daftar tabel).
+function dn_doc_tabel_siap()
+{
+    return $this->db->table_exists('tbl_debitnote_doc');
+}
+
+function cari_id_debitnote($no_dn)
+{
+    $row = $this->db->query(
+        "SELECT id FROM tbl_debitnote_h WHERE no_dn = ? LIMIT 1",
+        array($no_dn)
+    )->row_array();
+    return $row ? $row['id'] : null;
+}
+
+function simpan_dn_doc($data)
+{
+    return $this->db->insert('tbl_debitnote_doc', $data);
+}
+
+// Dokumen yang sudah tersimpan untuk 1 Debit Note (kosong kalau tabelnya belum dibuat).
+function get_dn_docs($id_dn)
+{
+    if (!$this->dn_doc_tabel_siap()) {
+        return array();
+    }
+    return $this->db->order_by('id', 'ASC')->get_where('tbl_debitnote_doc', array('id_dn' => $id_dn))->result_array();
+}
+
+function get_dn_doc($id)
+{
+    if (!$this->dn_doc_tabel_siap()) {
+        return null;
+    }
+    return $this->db->get_where('tbl_debitnote_doc', array('id' => $id))->row_array();
+}
+
+// Isi 1 Debit Note untuk modal detail di List Debit Note: header + baris +
+// lampiran. LEFT JOIN dipakai supaya DN tetap tampil walau consignee atau
+// bank-nya sudah tidak ada di master.
+function dn_detail($id)
+{
+    $header = $this->db->query(
+        "SELECT a.*, b.Supplier AS nama_customer, c.bank_name, c.bank_account AS no_rekening
+           FROM tbl_debitnote_h a
+           LEFT JOIN mastersupplier b ON b.Id_Supplier = a.customer
+           LEFT JOIN b_masterbank   c ON c.bank_account = a.akun
+          WHERE a.id = ? LIMIT 1",
+        array($id)
+    )->row_array();
+
+    if (!$header) {
+        return null;
+    }
+
+    return array(
+        'header'   => $header,
+        'baris'    => $this->get_debitnoteDet_by_id($id),
+        'lampiran' => $this->get_dn_docs($id),
+        'sumber'   => $this->get_reffDN_by_id($id),
+    );
+}
+// Lampiran masih boleh ditambah / dihapus selama Debit Note belum second
+// approve. Edit isi DN sendiri lebih ketat: hanya status POST (lihat
+// update_debitnote), karena setelah first approve angkanya sudah dipakai.
+// Alur status: POST -> FIRST APPROVED -> SECOND APPROVED (batal -> Cancel).
+function dn_doc_bisa_diubah($status)
+{
+    return in_array($status, array('POST', 'FIRST APPROVED'), true);
+}
+
+// Status DN pemilik sebuah dokumen - dipakai untuk cek izin sebelum
+// upload / hapus. null kalau dokumen atau DN-nya tidak ada.
+function dn_doc_status_dn($id_dn)
+{
+    $row = $this->db->query(
+        "SELECT status FROM tbl_debitnote_h WHERE id = ? LIMIT 1",
+        array($id_dn)
+    )->row_array();
+    return $row ? $row['status'] : null;
+}
+
+// Hapus 1 baris dokumen. File fisiknya dihapus controller (model tidak
+// menyentuh filesystem), jadi barisnya dikembalikan untuk dipakai disana.
+function hapus_dn_doc($id)
+{
+    if (!$this->dn_doc_tabel_siap()) {
+        return null;
+    }
+    $doc = $this->get_dn_doc($id);
+    if (!$doc) {
+        return null;
+    }
+    $this->db->delete('tbl_debitnote_doc', array('id' => $doc['id']));
+    return $doc;
+}
 function simpan_alokasi_detail($data)
 {
     $this->db->insert_batch('tbl_alokasi_detail', $data);
@@ -3855,10 +4100,17 @@ function update_dn_h($id)
     return $hasil;
 }
 
+// Masih dipanggil controller cadangan (controllers/backup/Arnag.php). Pelepasan
+// memo untuk cancel yang sebenarnya sudah ada di dalam cancel_debnote(); di sini
+// dijaga supaya hanya memo milik DN yang memang sudah Cancel yang bisa dilepas.
 function update_status_memo($id)
 {
-    $hasil = $this->db->query("UPDATE memo_det SET no_dn = null WHERE no_dn = '$id' ");
-    return $hasil;
+    return $this->db->query(
+        "UPDATE memo_det m JOIN tbl_debitnote_h h ON h.no_dn = m.no_dn
+            SET m.no_dn = NULL
+          WHERE m.no_dn = ? AND h.status = 'Cancel'",
+        array($id)
+    );
 }
 
 function cari_summary_ar($dt_dari_alk, $dt_sampai_alk, $id_cus)
@@ -5645,9 +5897,9 @@ public function get_debitnote_by_id($id) {
 
 function get_reffDN_by_id($id)
 {
-    $hasil = $this->db->query("SELECT * from (select a.no_dn, GROUP_CONCAT( DISTINCT mh.nm_memo) reff_doc, 'No Memo' text_reff_doc from (select no_dn from tbl_debitnote_h where id = '$id') a INNER JOIN memo_det md on md.no_dn = a.no_dn INNER JOIN memo_h mh on mh.id_h = md.id_h GROUP BY a.no_dn
+    $hasil = $this->db->query("SELECT * from (select a.no_dn, GROUP_CONCAT( DISTINCT mh.nm_memo) reff_doc, 'No Memo' text_reff_doc from (select no_dn from tbl_debitnote_h where id = ?) a INNER JOIN memo_det md on md.no_dn = a.no_dn INNER JOIN memo_h mh on mh.id_h = md.id_h GROUP BY a.no_dn
         UNION
-        select a.no_dn, GROUP_CONCAT( DISTINCT b.no_req) reff_doc, 'No Request' text_reff_doc from (select no_dn from tbl_debitnote_h where id = '$id') a INNER JOIN req_dn_h b on b.no_dn = a.no_dn GROUP BY a.no_dn) a GROUP BY no_dn");
+        select a.no_dn, GROUP_CONCAT( DISTINCT b.no_req) reff_doc, 'No Request' text_reff_doc from (select no_dn from tbl_debitnote_h where id = ?) a INNER JOIN req_dn_h b on b.no_dn = a.no_dn GROUP BY a.no_dn) a GROUP BY no_dn", array($id, $id));
     return $hasil->row_array();
 }
 
@@ -5663,10 +5915,168 @@ function update_debitnote_h($id_dn, $dn_number, $dn_number_old, $dn_date, $dn_du
 }
 
 public function get_debitnoteDet_by_id($id) {
-    $query = $this->db->query("SELECT no_dn FROM tbl_debitnote_h WHERE id = '$id'");
-    $row = $query->row();
-    $no_dn = $row->no_dn;
-    return $this->db->get_where('tbl_debitnote_det', ['no_dn' => $no_dn])->result_array();
+    $row = $this->db->query("SELECT no_dn FROM tbl_debitnote_h WHERE id = ?", array($id))->row();
+    if (!$row) {
+        return array();
+    }
+    // nama_coa (mastercoa_v2) ikut disertakan - dipakai modal detail DN supaya
+    // COA tidak cuma tampil kodenya. tbl_debitnote_det.* ditulis eksplisit
+    // (bukan cuma *) supaya no_coa yang disimpan tidak ketiban kolom mastercoa_v2.
+    return $this->db->select('tbl_debitnote_det.*, mastercoa_v2.nama_coa')
+        ->from('tbl_debitnote_det')
+        ->join('mastercoa_v2', 'mastercoa_v2.no_coa = tbl_debitnote_det.no_coa', 'left')
+        ->where('tbl_debitnote_det.no_dn', $row->no_dn)
+        ->order_by('tbl_debitnote_det.id', 'ASC')
+        ->get()
+        ->result_array();
+}
+
+// Baris detail yang berasal dari Memo (id_memo_det terisi) atau No Request
+// (nm_memo terisi nomor BPB request) - di edit tidak boleh diubah / dihapus.
+// Baris manual kedua kolom itu kosong.
+public function dn_baris_terkunci($row)
+{
+    return trim((string) $row['id_memo_det']) !== '' || trim((string) $row['nm_memo']) !== '';
+}
+
+// Simpan hasil edit Debit Note: header + detail dalam SATU transaksi (dulu
+// detail dihapus dulu lewat request terpisah - kalau simpan barunya gagal,
+// detailnya hilang).
+// - Baris Memo/Request diambil ulang dari database berdasarkan id-nya (client
+//   cuma kirim id), jadi isinya tidak bisa diubah; semua baris itu juga WAJIB
+//   ada di kiriman (tidak boleh dihapus).
+// - Baris manual disimpan dari kiriman client (kolom memo/request dikosongkan).
+// - Total dihitung ulang dari baris final.
+// - Nomor DN hanya dibuat ulang (dengan kunci, sama seperti create) kalau
+//   profit center diganti; tabel yang menyimpan no_dn ikut diperbarui.
+// Hasil: array(status, message, no_dn).
+public function update_debitnote($id_dn, $header, $baris)
+{
+    $lama = $this->get_debitnote_by_id($id_dn);
+    if (!$lama) {
+        return array('status' => false, 'message' => 'Debit note not found.');
+    }
+    // Tombol Edit di List Debit Note cuma ada untuk status POST (belum
+    // di-approve / cancel) - dijaga juga disini.
+    if ($lama['status'] !== 'POST') {
+        return array('status' => false, 'message' => 'This debit note can no longer be edited (status: ' . $lama['status'] . ').');
+    }
+
+    $det_lama = array();
+    foreach ($this->db->get_where('tbl_debitnote_det', array('no_dn' => $lama['no_dn']))->result_array() as $r) {
+        $det_lama[$r['id']] = $r;
+    }
+
+    $kolom_manual = array('deskripsi', 'supplier', 'supplier_invoice', 'header1', 'header2', 'header3', 'header4', 'header5', 'value', 'rate', 'amount', 'no_coa');
+    $final = array();
+    $dipakai = array();
+    foreach ((array) $baris as $b) {
+        if (!is_array($b)) {
+            return array('status' => false, 'message' => 'Invalid detail row, please reload the page.');
+        }
+        if (!empty($b['id_det'])) {
+            $id = $b['id_det'];
+            // id yang sama dikirim 2x = barisnya jadi dobel.
+            if (!is_scalar($id) || !isset($det_lama[$id]) || isset($dipakai[$id]) || !$this->dn_baris_terkunci($det_lama[$id])) {
+                return array('status' => false, 'message' => 'Invalid detail row, please reload the page.');
+            }
+            $r = $det_lama[$id];
+            unset($r['id']);
+            $final[] = $r;
+            $dipakai[$id] = true;
+        } else {
+            $r = array('nm_memo' => '', 'id_memo_det' => '', 'customer' => '');
+            foreach ($kolom_manual as $k) {
+                $r[$k] = (isset($b[$k]) && is_scalar($b[$k])) ? (string) $b[$k] : '';
+            }
+            $final[] = $r;
+        }
+    }
+    foreach ($det_lama as $id => $r) {
+        if ($this->dn_baris_terkunci($r) && !isset($dipakai[$id])) {
+            return array('status' => false, 'message' => 'Rows from Memo / Request cannot be deleted.');
+        }
+    }
+    if (!$final) {
+        return array('status' => false, 'message' => 'Detail is empty.');
+    }
+
+    $total = 0;
+    $total_eqv = 0;
+    foreach ($final as $r) {
+        $total += (float) $r['value'];
+        $total_eqv += (float) $r['amount'];
+    }
+
+    $kolom_header = array('tgl_dn', 'due_date', 'customer', 'attn', 'alamat', 'from_curr', 'to_curr', 'akun', 'profit_center', 'header1', 'header2', 'header3', 'header4', 'header5');
+    $data_h = array();
+    foreach ($kolom_header as $k) {
+        $data_h[$k] = (isset($header[$k]) && is_scalar($header[$k])) ? (string) $header[$k] : '';
+    }
+    $data_h['amount'] = round($total, 2);
+    $data_h['eqv_curr'] = round($total_eqv, 2);
+
+    // header4/header5 dibuang kalau migrasinya belum dijalankan. Kolom detail
+    // yang disimpan diseragamkan (insert_batch butuh kolom yang sama di tiap
+    // baris) - hanya kolom yang memang ada di tabelnya.
+    $data_h = current($this->buang_kolom_header_baru('tbl_debitnote_h', array($data_h)));
+    $kolom_det = array_values(array_intersect(
+        array('no_dn', 'deskripsi', 'supplier', 'customer', 'supplier_invoice', 'header1', 'header2', 'header3', 'header4', 'header5', 'value', 'rate', 'amount', 'nm_memo', 'no_coa', 'id_memo_det'),
+        $this->db->list_fields('tbl_debitnote_det')
+    ));
+
+    $pc_baru = ($data_h['profit_center'] === 'NAK') ? 'NAK' : 'NAG';
+    $data_h['profit_center'] = $pc_baru;
+    $ganti_nomor = ($pc_baru !== $lama['profit_center']);
+
+    if ($ganti_nomor) {
+        $lock = $this->db->query("SELECT GET_LOCK('gen_no_dn', 10) AS locked")->row();
+        if (!$lock || (int) $lock->locked !== 1) {
+            return array('status' => false, 'message' => 'Save failed, please try again.');
+        }
+    }
+
+    try {
+        $this->db->trans_start();
+
+        $no_dn = $ganti_nomor ? $this->get_kode_debitnote($pc_baru) : $lama['no_dn'];
+        $data_h['no_dn'] = $no_dn;
+        $this->db->where('id', $lama['id'])->update('tbl_debitnote_h', $data_h);
+
+        // Salinan detail lama tetap disimpan ke tbl_debitnote_det_edit seperti
+        // proses edit sebelumnya, baru detailnya diganti.
+        $this->db->query("INSERT INTO tbl_debitnote_det_edit SELECT * FROM tbl_debitnote_det WHERE no_dn = ?", array($lama['no_dn']));
+        $this->db->delete('tbl_debitnote_det', array('no_dn' => $lama['no_dn']));
+
+        $simpan = array();
+        foreach ($final as $r) {
+            $r['no_dn'] = $no_dn;
+            $baris_baru = array();
+            foreach ($kolom_det as $k) {
+                $baris_baru[$k] = isset($r[$k]) ? $r[$k] : '';
+            }
+            $simpan[] = $baris_baru;
+        }
+        $this->db->insert_batch('tbl_debitnote_det', $simpan);
+
+        if ($no_dn !== $lama['no_dn']) {
+            $this->db->update('memo_det', array('no_dn' => $no_dn), array('no_dn' => $lama['no_dn']));
+            $this->db->update('req_dn_h', array('no_dn' => $no_dn), array('no_dn' => $lama['no_dn']));
+            if ($this->dn_doc_tabel_siap()) {
+                $this->db->update('tbl_debitnote_doc', array('no_dn' => $no_dn), array('id_dn' => $lama['id']));
+            }
+        }
+
+        $this->db->trans_complete();
+        if ($this->db->trans_status() === FALSE) {
+            return array('status' => false, 'message' => 'Save failed, please try again.');
+        }
+        return array('status' => true, 'no_dn' => $no_dn);
+    } finally {
+        if ($ganti_nomor) {
+            $this->db->query("SELECT RELEASE_LOCK('gen_no_dn')");
+        }
+    }
 }
 
 function simpandn_det_total($id_dn, $dn_total, $dn_total_eqv)

@@ -3516,11 +3516,261 @@ function approve_profinvoice_second(){
 	}
 }
 
+// ── Second Approval Debit Note ──────────────────────────────────────────────
+// Tabelnya DataTables. Pilihan disimpan per id (DN_APPV_PILIH), bukan dibaca
+// dari checkbox di DOM: dengan DataTables, baris halaman lain tidak ada di DOM,
+// jadi kalau dibaca dari DOM pilihan di halaman lain ikut hilang.
+var DN_APPV_DT = null;
+var DN_APPV_PILIH = {};   // id -> true
+var DN_APPV_DATA = {};    // id -> { no_dn, jml_dokumen }
+
+function dn_appv_dt() {
+	if (DN_APPV_DT) { return DN_APPV_DT; }
+	DN_APPV_DT = $('#table-approval-debitnote').DataTable({
+		scrollX: true,
+		autoWidth: false,
+		pageLength: 10,
+		lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+		order: [[1, 'desc']],
+		columnDefs: [
+			{
+				// Sel nomor DN berisi nomor + penanda "No attachment"; yang dipakai
+				// waktu diurutkan atau dicari cuma nomornya.
+				targets: 0,
+				render: function (data, type) {
+					if (type === 'display' || type === 'export') { return data; }
+					return $('<div>').html(data).find('.dn-no-link').text() || data;
+				}
+			},
+			{ targets: [6, 7], className: 'dn-angka' },
+			{ targets: 8, type: 'html', className: 'dn-tengah' },
+			{ targets: 9, orderable: false, searchable: false, className: 'dn-cek' }
+		],
+		language: {
+			search: '',
+			searchPlaceholder: 'Search in list...',
+			lengthMenu: 'Show _MENU_ rows',
+			info: 'Showing _START_-_END_ of _TOTAL_',
+			infoEmpty: 'No data',
+			infoFiltered: '(filtered from _MAX_)',
+			zeroRecords: 'No debit note matches the search.',
+			emptyTable: 'No data yet - set the filter above, then click Search.',
+			paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Prev' }
+		}
+	});
+
+	// Centang dipasang ulang tiap tabel digambar (pindah halaman / cari / urut).
+	DN_APPV_DT.on('draw', function () { dn_appv_pasang_centang(); dn_appv_ringkas(); });
+	$(window).on('resize.dnappv', function () { DN_APPV_DT.columns.adjust(); });
+	return DN_APPV_DT;
+}
+
+function dn_appv_loading(tampil) {
+	$('#dn-appv-loader').toggleClass('show', !!tampil);
+}
+
+// Baris tabel untuk 1 DN.
+function dn_appv_baris(item) {
+	var id = dn_list_teks(item.id);
+	return [
+		dn_list_nomor(item),
+		dn_list_teks(item.tgl_dn),
+		dn_list_teks(item.Supplier),
+		dn_list_teks(item.attn),
+		dn_list_teks(item.from_curr),
+		dn_list_teks(item.to_curr),
+		dn_list_uang(item.amount),
+		dn_list_uang(item.eqv_curr),
+		dn_list_status(item.status),
+		'<input type="checkbox" name="pilih_debitnote_approv" class="dn-appv-cek" value="' + id + '"'
+			+ ' onchange="dn_appv_pilih(this.value, this.checked)">'
+	];
+}
+
+function cari_debitnote_second_approv() {
+	var dt = dn_appv_dt();
+	var from = dn_list_tanggal_iso('#filter_from');
+	var to = dn_list_tanggal_iso('#filter_to');
+	var profit_center = $('#pc_dn').val();
+
+	dn_appv_loading(true);
+	$.ajax({
+		url: "cari_debitnote_second_approv/" + from + "/" + to + "/" + profit_center + "/",
+		type: "GET",
+		dataType: "JSON",
+		complete: function () {
+			dn_appv_loading(false);
+		},
+		success: function (response) {
+			// Daftarnya diambil ulang. Centang yang DN-nya masih ada di hasil
+			// baru dipertahankan; yang sudah tidak ada (mis. baru saja
+			// di-approve, atau di luar rentang tanggal) dibuang.
+			var pilihLama = DN_APPV_PILIH;
+			DN_APPV_PILIH = {};
+			DN_APPV_DATA = {};
+
+			var baris = [];
+			$.each(response || [], function (i, item) {
+				DN_APPV_DATA[item.id] = { no_dn: item.no_dn, jml_dokumen: +item.jml_dokumen || 0 };
+				if (pilihLama[item.id]) { DN_APPV_PILIH[item.id] = true; }
+				baris.push(dn_appv_baris(item));
+			});
+
+			dt.clear();
+			if (baris.length) { dt.rows.add(baris); }
+			dt.draw();
+			dt.columns.adjust();
+			dn_appv_ringkas();
+		},
+		error: function () {
+			Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load debit note data.' });
+		}
+	});
+}
+
+// Centang 1 baris.
+function dn_appv_pilih(id, dipilih) {
+	if (dipilih) { DN_APPV_PILIH[id] = true; } else { delete DN_APPV_PILIH[id]; }
+	dn_appv_pasang_centang();
+	dn_appv_ringkas();
+}
+
+// Id semua baris yang lolos kotak Search - termasuk yang sedang ada di halaman
+// tabel lain. Baris halaman lain tidak ada di DOM, jadi id-nya dibaca dari data
+// barisnya, bukan dari checkbox.
+function dn_appv_id_tersaring() {
+	var id = [];
+	if (!DN_APPV_DT) { return id; }
+	DN_APPV_DT.rows({ search: 'applied' }).every(function () {
+		var v = $(this.node()).find('.dn-appv-cek').val();
+		if (!v) { v = $('<div>').html(this.data()[9]).find('input').val(); }
+		if (v) { id.push(v); }
+	});
+	return id;
+}
+
+// Centang semua - yang ikut hanya baris yang lolos kotak Search, bukan seluruh
+// isi tabel, supaya tidak ada yang ter-approve diam-diam. Baris yang sedang
+// disembunyikan Search tidak ikut dilepas centangnya.
+function dn_appv_centang_semua(ele) {
+	dn_appv_dt();
+	dn_appv_id_tersaring().forEach(function (id) {
+		if (ele.checked) { DN_APPV_PILIH[id] = true; } else { delete DN_APPV_PILIH[id]; }
+	});
+	dn_appv_pasang_centang();
+	dn_appv_ringkas();
+}
+
+// Samakan tampilan centang & sorotan baris dengan pilihan yang tersimpan.
+function dn_appv_pasang_centang() {
+	$('#table-approval-debitnote tbody .dn-appv-cek').each(function () {
+		var dipilih = !!DN_APPV_PILIH[this.value];
+		this.checked = dipilih;
+		$(this).closest('tr').toggleClass('dn-dipilih', dipilih);
+	});
+}
+
+function dn_appv_terpilih() {
+	return Object.keys(DN_APPV_PILIH);
+}
+
+// DN terpilih yang belum punya supporting document.
+function dn_appv_tanpa_dokumen() {
+	return dn_appv_terpilih().filter(function (id) {
+		var d = DN_APPV_DATA[id];
+		return d && !d.jml_dokumen;
+	}).map(function (id) {
+		return DN_APPV_DATA[id].no_dn;
+	});
+}
+
+// Keterangan di samping judul tabel: berapa yang dipilih & berapa yang belum
+// punya lampiran.
+function dn_appv_ringkas() {
+	var jml = dn_appv_terpilih().length;
+	var tanpaDoc = dn_appv_tanpa_dokumen().length;
+	var teks = jml ? '<b>' + jml + '</b> selected' : 'Nothing selected yet';
+	if (tanpaDoc) {
+		teks += ' · <span class="is-perhatian"><i class="fas fa-exclamation-circle"></i> '
+			+ tanpaDoc + ' without supporting document</span>';
+	}
+
+	// Pilihan yang sedang disembunyikan kotak Search tetap ikut di-approve,
+	// jadi jumlahnya diberitahukan supaya tidak ada yang kaget.
+	var tersaring = dn_appv_id_tersaring();
+	var terpilihTersaring = tersaring.filter(function (id) { return DN_APPV_PILIH[id]; }).length;
+	var tersembunyi = jml - terpilihTersaring;
+	if (tersembunyi > 0) {
+		teks += ' · <span class="dn-appv-samar"><i class="fas fa-eye-slash"></i> '
+			+ tersembunyi + ' hidden by search, still included</span>';
+	}
+	$('#dn-appv-jumlah').html(teks);
+
+	// Centang di kepala kolom mengikuti baris yang lolos Search saja.
+	var kepala = $('#cek_debitnote_approve');
+	kepala.prop('checked', tersaring.length > 0 && terpilihTersaring === tersaring.length);
+	kepala.prop('indeterminate', terpilihTersaring > 0 && terpilihTersaring < tersaring.length);
+}
+
+// Tombol Approve. Urutannya: belum ada yang dipilih -> info; ada yang belum
+// punya lampiran -> peringatan (tetap boleh lanjut, sesuai permintaan); lalu
+// konfirmasi biasa.
+function modal_show_approve_debitnote_second() {
+	var terpilih = dn_appv_terpilih();
+	if (!terpilih.length) {
+		Swal.fire({
+			icon: 'info',
+			title: 'Nothing Selected',
+			text: 'Please tick the debit note you want to approve first.'
+		});
+		return;
+	}
+
+	var tanpaDoc = dn_appv_tanpa_dokumen();
+	if (tanpaDoc.length) {
+		Swal.fire({
+			icon: 'warning',
+			title: 'No Supporting Document',
+			html: '<div class="dn-swal-catatan">' + tanpaDoc.length + ' of ' + terpilih.length
+				+ ' selected debit note' + (terpilih.length > 1 ? 's have' : ' has') + ' no supporting document:</div>'
+				+ '<ul class="dn-swal-list">'
+				+ tanpaDoc.slice(0, 8).map(function (no) { return '<li>' + dn_list_teks(no) + '</li>'; }).join('')
+				+ (tanpaDoc.length > 8 ? '<li>and ' + (tanpaDoc.length - 8) + ' more...</li>' : '')
+				+ '</ul>'
+				+ '<div class="dn-swal-catatan">After second approval the document can no longer be attached.</div>',
+			showCancelButton: true,
+			confirmButtonText: 'Approve Anyway',
+			cancelButtonText: 'Cancel',
+			reverseButtons: true
+		}).then(function (r) {
+			if (r.isConfirmed) { dn_appv_konfirmasi(terpilih); }
+		});
+		return;
+	}
+
+	dn_appv_konfirmasi(terpilih);
+}
+
+function dn_appv_konfirmasi(terpilih) {
+	Swal.fire({
+		icon: 'question',
+		title: 'Approve Debit Note?',
+		html: '<b>' + terpilih.length + '</b> debit note' + (terpilih.length > 1 ? 's' : '') + ' will be second approved.',
+		showCancelButton: true,
+		confirmButtonText: 'Approve',
+		cancelButtonText: 'Cancel',
+		reverseButtons: true
+	}).then(function (r) {
+		if (r.isConfirmed) { refresh_dn_second(); }
+	});
+}
+
 function approve_debitnote_second(){
 	var promises = [];
-	document.getElementsByName("pilih_debitnote_approv").forEach(function(cek) {
-		if (cek.checked) {
-			var id = cek.value;
+	// Dibaca dari DN_APPV_PILIH, bukan dari checkbox: baris di halaman
+	// tabel lain tidak ada di DOM tapi tetap ikut terpilih.
+	dn_appv_terpilih().forEach(function(id) {
+		{
 			promises.push(new Promise(function(resolve) {
 				$.ajax({
 					url: "approve_debitnote_second/",
@@ -3562,22 +3812,6 @@ function approve_invoice_manual_second(){
 		}
 	});
 	return Promise.all(promises);
-}
-
-function modal_show_approve_debitnote_second() {
-	var checked = document.querySelectorAll('input[name="pilih_debitnote_approv"]:checked');
-	if (checked.length === 0) {
-		Swal.fire({ icon: 'info', title: 'Belum Ada yang Dipilih', text: 'Silakan pilih debit note terlebih dahulu.', confirmButtonText: 'OK' });
-		return;
-	}
-	Swal.fire({
-		icon: 'question', title: 'Konfirmasi Approve',
-		html: 'Anda akan approve <b>' + checked.length + ' dokumen debit note</b>.<br>Lanjutkan?',
-		confirmButtonText: 'Ya, Approve', confirmButtonColor: '#3085d6',
-		showCancelButton: true, cancelButtonText: 'Batal'
-	}).then(function(result) {
-		if (result.isConfirmed) { refresh_dn_second(); }
-	});
 }
 
 function modal_show_approve_invoice_manual_second() {
@@ -3727,8 +3961,8 @@ async function refresh_pi_second(){
 
 async function refresh_dn_second(){
 	Swal.fire({
-		title: 'Sedang memproses...',
-		html: 'Mohon tunggu, sedang approve debit note.',
+		title: 'Approving...',
+		html: 'Please wait, approving the debit note.',
 		allowOutsideClick: false, allowEscapeKey: false,
 		didOpen: function() { Swal.showLoading(); }
 	});
@@ -3738,13 +3972,13 @@ async function refresh_dn_second(){
 	if (gagal > 0) {
 		window._failedDebitNoteSecondIds = results.filter(function(r){ return !r.success; });
 		Swal.fire({
-			icon: 'warning', title: 'Sebagian Gagal',
-			html: 'Berhasil: <b>' + berhasil + ' debit note</b><br>Gagal: <b style="color:#c0392b">' + gagal + ' debit note</b>',
-			confirmButtonText: 'Tutup', showDenyButton: true, denyButtonText: 'Coba Lagi', denyButtonColor: '#e74c3c'
+			icon: 'warning', title: 'Partly Failed',
+			html: 'Approved: <b>' + berhasil + ' debit note</b><br>Failed: <b style="color:#c0392b">' + gagal + ' debit note</b>',
+			confirmButtonText: 'Close', showDenyButton: true, denyButtonText: 'Try Again', denyButtonColor: '#e74c3c'
 		}).then(function(result) { if (result.isDenied) { retry_approve_debitnote_second(); } });
 	} else {
 		window._failedDebitNoteSecondIds = [];
-		Swal.fire({ icon: 'success', title: 'Berhasil', text: berhasil + ' debit note berhasil di-approve.', timer: 2000, showConfirmButton: false });
+		Swal.fire({ icon: 'success', title: 'Approved', text: berhasil + ' debit note approved.', timer: 2000, showConfirmButton: false });
 		cari_debitnote_second_approv();
 	}
 }
@@ -3753,8 +3987,8 @@ async function retry_approve_debitnote_second(){
 	var items = window._failedDebitNoteSecondIds || [];
 	if (!items.length) return;
 	Swal.fire({
-		title: 'Sedang memproses ulang...',
-		html: 'Mohon tunggu, sedang approve ulang <b>' + items.length + ' debit note</b>.',
+		title: 'Retrying...',
+		html: 'Please wait, approving <b>' + items.length + ' debit note</b> again.',
 		allowOutsideClick: false, allowEscapeKey: false,
 		didOpen: function() { Swal.showLoading(); }
 	});
@@ -3773,13 +4007,13 @@ async function retry_approve_debitnote_second(){
 	if (gagal > 0) {
 		window._failedDebitNoteSecondIds = results.filter(function(r){ return !r.success; });
 		Swal.fire({
-			icon: 'warning', title: 'Masih Ada yang Gagal',
-			html: 'Berhasil: <b>' + berhasil + ' debit note</b><br>Gagal: <b style="color:#c0392b">' + gagal + ' debit note</b>',
-			confirmButtonText: 'Tutup', showDenyButton: true, denyButtonText: 'Coba Lagi', denyButtonColor: '#e74c3c'
+			icon: 'warning', title: 'Still Failing',
+			html: 'Approved: <b>' + berhasil + ' debit note</b><br>Failed: <b style="color:#c0392b">' + gagal + ' debit note</b>',
+			confirmButtonText: 'Close', showDenyButton: true, denyButtonText: 'Try Again', denyButtonColor: '#e74c3c'
 		}).then(function(result) { if (result.isDenied) { retry_approve_debitnote_second(); } });
 	} else {
 		window._failedDebitNoteSecondIds = [];
-		Swal.fire({ icon: 'success', title: 'Semua Berhasil', text: berhasil + ' debit note berhasil di-approve.', timer: 2000, showConfirmButton: false });
+		Swal.fire({ icon: 'success', title: 'All Approved', text: berhasil + ' debit note approved.', timer: 2000, showConfirmButton: false });
 		cari_debitnote_second_approv();
 	}
 }
@@ -3906,37 +4140,6 @@ function cari_proforma_invoice_second_approv(){
 	});
 }
 
-function cari_debitnote_second_approv(){
-	$('#table-approval-debitnote tbody tr').remove();
-	var from = $('#filter_from').val();
-	var to = $('#filter_to').val();
-	var profit_center = $('#pc_dn').val();
-	$.ajax({
-		url: "cari_debitnote_second_approv/" + from + "/" + to + "/" + profit_center + "/",
-		type: "GET",
-		dataType: "JSON",
-		success: function (response) {
-			var trHTML = '';
-			$.each(response, function (i, item) {
-				trHTML += '<tr>';
-				trHTML += '<td>' + item.no_dn + "</td>";
-				trHTML += '<td>' + item.tgl_dn + "</td>";
-				trHTML += '<td>' + item.Supplier + "</td>";
-				trHTML += '<td>' + item.attn + "</td>";
-				trHTML += '<td>' + item.from_curr + "</td>";
-				trHTML += '<td>' + item.to_curr + "</td>";
-				trHTML += '<td>' + item.amount + "</td>";
-				trHTML += '<td>' + item.eqv_curr + "</td>";
-				trHTML += '<td>' + item.status + "</td>";
-				trHTML += '<td>' + item.id + "</td>";
-				trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_debitnote_approv" id="pilih_debitnote_approv" class="flat" value="' + item.id + '"></td>';
-				trHTML += '</tr>';
-			});
-			$('#table-approval-debitnote').append(trHTML);
-		},
-		error: function () { alert('Error get data from ajax'); }
-	});
-}
 
 	function check_approv_invoice(ele) {
 
@@ -3975,9 +4178,9 @@ function check_approv_profinvoice(ele) {
 	}
 }
 
-
 //ubah september
-function check_approv_debitnote(ele) { 
+// Dipakai halaman First Approval Debit Note (tabelnya belum DataTables).
+function check_approv_debitnote(ele) {
 
 	var checkboxes = document.getElementsByTagName('input');
 	if (ele.checked) {
@@ -4282,8 +4485,8 @@ async function refresh_pi(){
 //ubah september
 async function refresh_dn(){
 	Swal.fire({
-		title: 'Sedang memproses...',
-		html: 'Mohon tunggu, sedang approve debit note.',
+		title: 'Approving...',
+		html: 'Please wait, approving the debit note.',
 		allowOutsideClick: false,
 		allowEscapeKey: false,
 		didOpen: function() { Swal.showLoading(); }
@@ -4324,8 +4527,8 @@ async function retry_approve_debitnote(){
 	if (!items.length) return;
 
 	Swal.fire({
-		title: 'Sedang memproses ulang...',
-		html: 'Mohon tunggu, sedang approve ulang <b>' + items.length + ' debit note</b>.',
+		title: 'Retrying...',
+		html: 'Please wait, approving <b>' + items.length + ' debit note</b> again.',
 		allowOutsideClick: false,
 		allowEscapeKey: false,
 		didOpen: function() { Swal.showLoading(); }
@@ -6261,84 +6464,1039 @@ function cari_proforma_invoice_cbd(){
 
 	}
 
-//ubah september
-function cari_debit_note(){
+// ===== List Debit Note =====
+// Tabelnya DataTables: pencarian, urutan, dan halaman ditangani DataTables.
+// Data diisi lewat API-nya (clear + rows.add), BUKAN menyisipkan <tr> langsung -
+// baris yang disisipkan manual tidak ikut terbaca DataTables (tidak bisa
+// dicari / diurutkan / ikut halaman).
+var DN_LIST_DT = null;
+var DN_LIST_DATA = [];        // baris terakhir - dipakai kalau tabel dibangun ulang
+var DN_LIST_ITEM = {};        // id -> data mentah dari server (dipakai tombol Email)
+var DN_LIST_MODE_HP = null;   // mode tabel yang sedang terpasang
 
-	$('#table-list-debit-note tbody tr').remove();
+// Di bawah 768px tabel 11 kolom tidak akan muat berapa pun dipangkasnya, jadi
+// tampilannya diganti mode HP - bukan sekadar dikecilkan.
+function dn_list_mode_hp(lebar) {
+	return (lebar === undefined ? $(window).width() : lebar) < 768;
+}
 
-		var from = $('#filter_from').val();
-		var to = $('#filter_to').val();
-		var id_customer = $('#list_prof_customer').val();
+// Desktop : semua kolom, geser ke kanan kalau kurang lebar (scrollX).
+// HP      : kolom yang tidak muat dilipat jadi baris detail (tombol +), jadi
+//           tidak perlu geser-geser; No DN & Action dijaga tetap tampil.
+// Ganti mode = DataTables harus dibangun ulang (scrollX/responsive tidak bisa
+// diubah setelah init), datanya diisi lagi dari DN_LIST_DATA.
+function dn_list_dt(lebar) {
+	var hp = dn_list_mode_hp(lebar);
+	if (DN_LIST_DT && DN_LIST_MODE_HP === hp) { return DN_LIST_DT; }
 
-		$.ajax({
-			url: "cari_debit_note/" + from + "/" + to + "/" + id_customer + "/",					
-			type: "GET",
-			dataType: "JSON",
-			success: function (response) {
+	if (DN_LIST_DT) {
+		DN_LIST_DT.destroy();
+		$('#table-list-debit-note tbody').empty();
+	}
+	DN_LIST_MODE_HP = hp;
 
-				var trHTML = '';
-				$.each(response, function (i, item) { 
-					if(item.status == 'POST'){					
-						trHTML += '<tr>';					
-						trHTML += '<td>' + item.no_dn + "</td>";	
-						trHTML += '<td>' + item.tgl_dn + "</td>";
-						trHTML += '<td>' + item.type_dn + "</td>";
-						trHTML += '<td>' + item.Supplier + "</td>";
-						trHTML += '<td>' + item.attn + "</td>";	
-						trHTML += '<td>' + item.from_curr + "</td>";	
-						trHTML += '<td>' + item.to_curr + "</td>";	
-						trHTML += '<td>' + item.amount + "</td>";	
-						trHTML += '<td align="right">' + item.eqv_curr + "</td>";	
-						trHTML += '<td align="right">' + item.status + "</td>";	
-						trHTML += '<td><button id="print_inv_pi" name="print_inv_pi" type="button" class="btn btn-primary btn-sm mr-1" onclick="print_debit_note(\'' + item.id + '\',\'' + item.type_dn + '\')"><i class="fa fa-print"></i> Print</button>' + ''
-						+ '<button class="btn btn-warning btn-sm" onclick="window.open(\'edit_debitnote/' + item.id + '\', \'_blank\')"><i class="fas fa-edit"></i> Edit</button> '
-						+ ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="cancel_dn(\'' + item.no_dn + '\',\'' + item.id + '\', \'' + item.status + '\')">Cancel</button></td>';					
-				// trHTML += '<td><button id="export_to_excel" name="export_to_excel" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_pi(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button></td>';					
+	DN_LIST_DT = $('#table-list-debit-note').DataTable({
+		responsive: hp,
+		scrollX: !hp,
+		autoWidth: false,
+		pageLength: 10,
+		lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+		order: [[1, 'desc']],
+		columnDefs: [
+			// Sel nomor DN berisi nomor + penanda "No attachment". Waktu diurutkan
+			// atau dicari, yang dipakai cuma nomornya.
+			{
+				targets: 0,
+				render: function (data, type) {
+					if (type === 'display' || type === 'export') { return data; }
+					return $('<div>').html(data).find('.dn-no-link').text() || data;
+				}
+			},
+			// Date: tampil "11 Sep 2026"; waktu diurutkan tetap pakai ISO, dan bisa
+			// dicari lewat dua-duanya ("2026-09" maupun "Sep").
+			{
+				targets: 1,
+				className: 'dn-tanggal',
+				render: function (data, type) {
+					if (type === 'display') { return dn_list_tgl(data); }
+					if (type === 'filter') { return data + ' ' + dn_list_tgl(data); }
+					return data;
+				}
+			},
+			{ targets: [7, 8], className: 'dn-angka' },
+			// Status & Action berisi HTML - 'html' bikin DataTables mengurutkan
+			// berdasarkan teksnya saja, bukan tag-nya.
+			{ targets: 9, type: 'html', className: 'dn-tengah' },
+			{ targets: 10, orderable: false, searchable: false, className: 'dn-tengah' + (hp ? ' all' : '') },
+			// Mode HP: kolom inline ditentukan disini, bukan diserahkan ke
+			// perhitungan Responsive - sel tabel ini nowrap, jadi Responsive
+			// mengira kolomnya masih bisa menyusut padahal tidak, dan tabelnya
+			// jadi meluber ke kanan. Yang dilipat masuk ke baris detail ('none').
+			{ targets: hp ? [2, 3, 4, 5, 6, 7, 8, 9] : [], className: 'none' }
+		],
+		language: {
+			search: '',
+			searchPlaceholder: 'Search in list...',
+			lengthMenu: 'Show _MENU_ rows',
+			info: 'Showing _START_-_END_ of _TOTAL_',
+			infoEmpty: 'No data',
+			infoFiltered: '(filtered from _MAX_)',
+			zeroRecords: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-search"></i></span>'
+				+ '<div class="dn-kosong-judul">No debit note matches the search.</div>'
+				+ '<button type="button" class="dn-kosong-aksi" data-aksi="hapus-cari">Clear search</button></div>',
+			emptyTable: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-file-invoice-dollar"></i></span>'
+				+ '<div class="dn-kosong-judul">No data yet - set the filter above, then click Search.</div>'
+				+ '<button type="button" class="dn-kosong-aksi" data-aksi="bulan-ini">Try this month</button></div>',
+			paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Prev' }
+		}
+	});
 
-				trHTML += '</tr>';
-			}else if(item.status == 'APPROVED' || item.status == 'FIRST APPROVED' || item.status == 'SECOND APPROVED'){
-				trHTML += '<tr>';					
-				trHTML += '<td>' + item.no_dn + "</td>";	
-				trHTML += '<td>' + item.tgl_dn + "</td>";
-				trHTML += '<td>' + item.type_dn + "</td>";
-				trHTML += '<td>' + item.Supplier + "</td>";
-				trHTML += '<td>' + item.attn + "</td>";	
-				trHTML += '<td>' + item.from_curr + "</td>";	
-				trHTML += '<td>' + item.to_curr + "</td>";	
-				trHTML += '<td>' + item.amount + "</td>";	
-				trHTML += '<td align="right">' + item.eqv_curr + "</td>";	
-				trHTML += '<td align="right">' + item.status + "</td>";	
-				trHTML += '<td><button id="print_inv_pi" name="print_inv_pi" type="button" class="btn btn-primary btn-sm" onclick="print_debit_note(\'' + item.id + '\',\'' + item.type_dn + '\')"><i class="fa fa-print"></i> Print</button></td>';					
-				// trHTML += '<td><button id="export_to_excel" name="export_to_excel" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_pi(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button></td>';					
-				trHTML += '</tr>';
-			}else{
-				trHTML += '<tr>';					
-				trHTML += '<td>' + item.no_dn + "</td>";	
-				trHTML += '<td>' + item.tgl_dn + "</td>";
-				trHTML += '<td>' + item.type_dn + "</td>";
-				trHTML += '<td>' + item.Supplier + "</td>";
-				trHTML += '<td>' + item.attn + "</td>";	
-				trHTML += '<td>' + item.from_curr + "</td>";	
-				trHTML += '<td>' + item.to_curr + "</td>";	
-				trHTML += '<td>' + item.amount + "</td>";	
-				trHTML += '<td align="right">' + item.eqv_curr + "</td>";	
-				trHTML += '<td align="right">' + item.status + "</td>";	
-				trHTML += '<td style="text-align: center;"><i><b>Canceled</b></i></td>';				
-				// trHTML += '<td><button id="export_to_excel" name="export_to_excel" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_pi(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button></td>';					
-				trHTML += '</tr>';
+	// Event DataTables ber-namespace .dt; handler lama dilepas dulu supaya tidak
+	// menumpuk tiap tabel dibangun ulang (destroy cuma melepas milik .DT).
+	$('#table-list-debit-note').off('.dnlist')
+		.on('draw.dt.dnlist column-sizing.dt.dnlist', dn_list_tandai_geser)
+		.on('page.dt.dnlist', function () {
+			// Pindah halaman dari bawah: gulir balik ke atas tabel.
+			var area = document.getElementById('dn-list-area');
+			if (area && area.getBoundingClientRect().top < 0) {
+				area.scrollIntoView({ behavior: 'smooth', block: 'start' });
 			}
 		});
-
-				$('#table-list-debit-note').append(trHTML);				
-
-			},
-			error: function (jqXHR, textStatus, errorThrown) {
-				alert('Error get data from ajax');
-			}
-		});	
-
+	if (!hp) {
+		$('#dn-list-area .dataTables_scrollBody').off('scroll.dnlist').on('scroll.dnlist', dn_list_tandai_geser);
 	}
 
+	if (DN_LIST_DATA.length) {
+		DN_LIST_DT.rows.add(DN_LIST_DATA);
+		dn_list_terapkan_saring_status(DN_LIST_DT);
+		DN_LIST_DT.draw();
+	}
+	if (!hp) { DN_LIST_DT.columns.adjust(); }
+	dn_list_tandai_geser();
+
+	$(window).off('resize.dnlist').on('resize.dnlist', function () {
+		if (dn_list_mode_hp() !== DN_LIST_MODE_HP) {
+			dn_list_dt();
+		} else if (!DN_LIST_MODE_HP) {
+			DN_LIST_DT.columns.adjust();
+		}
+		dn_list_tandai_geser();
+	});
+	return DN_LIST_DT;
+}
+
+// Bayangan di kolom Action cuma berarti kalau di baliknya memang ada kolom
+// yang tergeser - jadi dinyalakan hanya saat tabel masih bisa digeser ke kanan.
+function dn_list_tandai_geser() {
+	var el = $('#dn-list-area .dataTables_scrollBody')[0];
+	$('#dn-list-area').toggleClass('is-ada-kanan',
+		!!el && !DN_LIST_MODE_HP && el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+}
+
+function dn_list_loading(tampil) {
+	$('#dn-list-area').toggleClass('is-muat-ulang', !!tampil && !!DN_LIST_DT && DN_LIST_DT.rows().count() > 0);
+	$('#dn-list-loader').toggleClass('show', !!tampil);
+}
+
+// ── Preset tanggal cepat ──────────────────────────────────────────────────
+// "Hari ini" diambil dari tanggal server (data-iso awal #filter_from), bukan
+// jam komputer pengguna. Minggu dihitung Senin s/d Minggu.
+var DN_LIST_HARI_INI = null;
+
+function dn_list_iso(d) {
+	return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+
+function dn_list_hari_ini() {
+	if (!DN_LIST_HARI_INI) {
+		var p = String($('#filter_from').data('iso') || '').split('-');
+		DN_LIST_HARI_INI = p.length === 3 ? new Date(+p[0], +p[1] - 1, +p[2]) : new Date();
+	}
+	return new Date(DN_LIST_HARI_INI.getTime());
+}
+
+function dn_list_rentang_preset(jenis) {
+	var h = dn_list_hari_ini();
+	var a = new Date(h.getTime()), b = new Date(h.getTime());
+	if (jenis === 'minggu') {
+		var geser = (h.getDay() + 6) % 7;          // Senin = 0
+		a.setDate(h.getDate() - geser);
+		b = new Date(a.getTime());
+		b.setDate(a.getDate() + 6);
+	} else if (jenis === 'bulan') {
+		a = new Date(h.getFullYear(), h.getMonth(), 1);
+		b = new Date(h.getFullYear(), h.getMonth() + 1, 0);
+	} else if (jenis === 'bulan_lalu') {
+		a = new Date(h.getFullYear(), h.getMonth() - 1, 1);
+		b = new Date(h.getFullYear(), h.getMonth(), 0);
+	}
+	return [a, b];
+}
+
+function dn_list_preset(jenis) {
+	var r = dn_list_rentang_preset(jenis);
+	$('#filter_from').datepicker('update', r[0]);
+	$('#filter_to').datepicker('update', r[1]);
+	dn_list_tandai_preset();
+	cari_debit_note();
+}
+
+function dn_list_tandai_preset() {
+	var dari = dn_list_tanggal_iso('#filter_from');
+	var sampai = dn_list_tanggal_iso('#filter_to');
+	$('.dn-preset .btn-preset').each(function () {
+		var r = dn_list_rentang_preset($(this).data('preset'));
+		var cocok = dn_list_iso(r[0]) === dari && dn_list_iso(r[1]) === sampai;
+		$(this).toggleClass('is-aktif', cocok).attr('aria-pressed', cocok ? 'true' : 'false');
+	});
+}
+
+// From/To ditampilkan "14 Sep 2026" (lihat init datepicker di list_debitnote.php)
+// - dibalikkan ke yyyy-mm-dd disini karena itu yang dipakai query BETWEEN di
+// server. Fallback ke .val() kalau elemennya tidak punya datepicker (tes).
+function dn_list_tanggal_iso(sel) {
+	var $el = $(sel);
+	return $el.data('datepicker') ? $el.datepicker('getFormattedDate', 'yyyy-mm-dd') : $el.val();
+}
+
+// Tanggal ditampilkan "11 Sep 2026" - sama dengan format filter From/To.
+// Nilai aslinya (ISO) tetap dipakai untuk mengurutkan & dikirim ke server.
+var DN_BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function dn_list_tgl(iso) {
+	var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso == null ? '' : iso));
+	return m ? (+m[3]) + ' ' + DN_BULAN[+m[2] - 1] + ' ' + m[1] : dn_list_teks(iso);
+}
+
+// Nilai dari database dipasang sebagai HTML - dilewatkan escape dulu.
+function dn_list_teks(v) {
+	return $('<div>').text((v === null || v === undefined) ? '' : v).html();
+}
+
+function dn_list_uang(v) {
+	return formatMoney(v);
+}
+
+// Nomor DN dibikin bisa diklik - pintu ke modal detailnya. Di bawahnya
+// diberi penanda kalau DN itu belum punya supporting document.
+function dn_list_nomor(item) {
+	return '<span class="dn-no-link" role="button" tabindex="0" title="Show detail" onclick="dn_list_detail(' + dn_list_teks(item.id) + ', \'' + dn_list_teks(item.type_dn) + '\')">'
+		+ dn_list_teks(item.no_dn) + '</span>'
+		+ dn_list_tanda_dokumen(item.jml_dokumen, item.status);
+}
+
+// Belum ada lampiran: selagi masih POST cuma pengingat (abu), setelah masuk
+// approval jadi peringatan (merah) - saat itu lampirannya sudah seharusnya
+// ada dan waktu untuk melengkapinya tinggal sampai second approve.
+// DN yang sudah dibatalkan tidak diberi penanda apa pun.
+function dn_list_tanda_dokumen(jumlah, status) {
+	if (+jumlah > 0 || String(status).toUpperCase() === 'CANCEL') { return ''; }
+	var mendesak = (status !== 'POST');
+	return '<span class="dn-tanpa-doc' + (mendesak ? ' is-perhatian' : '') + '" title="'
+		+ (mendesak ? 'Already in approval but has no supporting document' : 'No supporting document yet')
+		+ '"><i class="fas fa-' + (mendesak ? 'exclamation-circle' : 'paperclip') + '"></i> No attachment</span>';
+}
+
+// Warnanya dibedakan per status - first & second approval dulu sama-sama
+// hijau jadi susah dibedakan sekilas.
+// ── Tombol Email ────────────────────────────────────────────────────────────
+// Dari browser tidak ada cara melampirkan berkas langsung ke Outlook ("mailto:"
+// hanya bisa mengisi tujuan/subjek/isi). Jadi server dimintai berkas .eml yang
+// PDF-nya sudah menempel; Windows membukanya dengan Outlook sebagai jendela
+// tulis pesan yang tinggal ditekan Send.
+var DN_EMAIL_KUNCI = 'dn_email_tujuan';
+
+// Alamat tujuan diingat per consignee - cuma di browser ini, tidak dikirim ke
+// server dan tidak disimpan di database.
+function dn_email_tersimpan(consignee) {
+	try {
+		var semua = JSON.parse(localStorage.getItem(DN_EMAIL_KUNCI) || '{}');
+		return semua[String(consignee).toUpperCase()] || '';
+	} catch (e) {
+		return '';
+	}
+}
+
+function dn_email_simpan(consignee, alamat) {
+	try {
+		var semua = JSON.parse(localStorage.getItem(DN_EMAIL_KUNCI) || '{}');
+		semua[String(consignee).toUpperCase()] = alamat;
+		localStorage.setItem(DN_EMAIL_KUNCI, JSON.stringify(semua));
+	} catch (e) {
+		// localStorage diblokir - alamatnya cuma tidak diingat, bukan error.
+	}
+}
+
+// base64url: tanda '+' dan '/' tidak lolos aturan karakter URI CodeIgniter.
+function dn_email_sandi(alamat) {
+	return btoa(alamat).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// Dipisah supaya jalur pembuatan URL-nya bisa diuji tanpa ikut berpindah halaman.
+function dn_email_buka(url) {
+	window.location = url;
+}
+
+// Berkas .eml selalu lewat unduhan dulu - browser tidak boleh menjalankan
+// program dari halaman web. Supaya klik berikutnya langsung membuka Outlook,
+// petunjuk ini ditampilkan sekali saja per browser.
+function dn_email_petunjuk() {
+	var kunci = 'dn_email_petunjuk';
+	try {
+		if (localStorage.getItem(kunci) === '1') { return; }
+		localStorage.setItem(kunci, '1');
+	} catch (e) {
+		return;
+	}
+	Swal.fire({
+		icon: 'info',
+		title: 'One-time Setup',
+		html: '<div class="dn-swal-catatan">The file arrives as a download. Open it once, then tick '
+			+ '<b>Always open files of this type</b> in the browser download list - after that, Email opens Outlook straight away.</div>',
+		confirmButtonText: 'Got it'
+	});
+}
+
+// ── Email DN: jalur "Outlook langsung" (protokol nagdn:) ────────────────────
+// Dipakai di PC yang sudah memasang skrip pembantu (lihat Arnag::email_*).
+// Aplikasi bisa dibuka dari beberapa alamat, masing-masing servernya sendiri,
+// jadi skema + alamat halaman ikut dikirim ke skrip: skrip hanya mengambil
+// email dari server yang sama dengan halaman, dan hanya kalau alamat itu
+// terdaftar di PC. PC tanpa skrip jatuh ke unduhan .eml, dan itu diingat per
+// alamat aplikasi.
+var DN_EMAIL_PENANDA = { terpasang: false, waktu: 0 };   // dari server (penanda pemasangan), hanya di LAN
+var DN_EMAIL_SESI = null;                                 // sesi yang sedang menunggu skrip
+var DN_EMAIL_SIBUK = false;                               // true selama DN_EMAIL_SESI berjalan
+var DN_EMAIL_JALUR = 'dn_email_jalur';                    // localStorage: {'<alamat>': {j:'outlook'|'eml', w:waktu penanda}}
+var DN_EMAIL_JALUR_MEM = {};                              // cadangan kalau localStorage diblokir
+var DN_EMAIL_BATAS_KONTAK = 6000;    // ms tanpa kabar dari skrip -> tawarkan .eml
+var DN_EMAIL_BATAS_AMBIL = 60000;    // ms setelah skrip menghubungi (PDF besar)
+var DN_EMAIL_BATAS_TOTAL = 100000;   // ms; kunci di server berumur 120 dtk dan dibatalkan saat halaman menyerah
+
+// Dipanggil sekali saat halaman daftar DN siap.
+function dn_email_cek_handler() {
+	$.getJSON('.../../email_handler').done(function (r) {
+		DN_EMAIL_PENANDA = { terpasang: !!(r && r.terpasang), waktu: (r && +r.waktu) || 0 };
+	});
+}
+
+// Alamat aplikasi yang sedang dibuka: host[:port]/path/ huruf kecil, mis.
+// "10.10.5.60/ar/". Skrip mencocokkannya dengan daftar server di PC.
+function dn_email_alamat(loc) {
+	loc = loc || window.location;
+	var path = String(loc.pathname || '/').replace(/\/(index\.php\/)?arnag(\/.*)?$/i, '/');
+	return (String(loc.host || '') + path).toLowerCase();
+}
+
+function dn_email_skema(loc) {
+	loc = loc || window.location;
+	return String(loc.protocol || '').toLowerCase() === 'https:' ? 'https' : 'http';
+}
+
+function dn_email_jalur_semua() {
+	var s = JSON.parse(localStorage.getItem(DN_EMAIL_JALUR) || 'null');
+	// Versi sebelumnya menyimpan satu nilai untuk seluruh origin.
+	if (s && (s.j === 'outlook' || s.j === 'eml')) { s = { '*': s }; }
+	return (s && typeof s === 'object') ? s : {};
+}
+
+// Ingatan jalur di browser ini untuk alamat aplikasi ini. null = belum pernah dicoba.
+function dn_email_jalur_baca() {
+	var alamat = dn_email_alamat();
+	try {
+		var semua = dn_email_jalur_semua();
+		var x = semua[alamat] || semua['*'];
+		if (x && (x.j === 'outlook' || x.j === 'eml')) { return x; }
+		if (localStorage.getItem('dn_email_handler') === '1') { return { j: 'outlook', w: 0 }; }
+		return DN_EMAIL_JALUR_MEM[alamat] || null;
+	} catch (e) {
+		// localStorage diblokir: pakai ingatan halaman ini, lalu penanda server.
+		return DN_EMAIL_JALUR_MEM[alamat]
+			|| { j: DN_EMAIL_PENANDA.terpasang ? 'outlook' : 'eml', w: DN_EMAIL_PENANDA.waktu };
+	}
+}
+
+function dn_email_jalur_simpan(j) {
+	var alamat = dn_email_alamat();
+	var nilai = { j: j, w: DN_EMAIL_PENANDA.waktu || 0 };
+	DN_EMAIL_JALUR_MEM[alamat] = nilai;
+	try {
+		var semua = dn_email_jalur_semua();
+		delete semua['*'];
+		semua[alamat] = nilai;
+		localStorage.setItem(DN_EMAIL_JALUR, JSON.stringify(semua));
+		localStorage.removeItem('dn_email_handler');
+	} catch (e) {
+		// localStorage diblokir - cukup diingat selama halaman ini terbuka.
+	}
+}
+
+// true = coba skrip pembantu, false = langsung unduh .eml.
+function dn_email_pakai_handler() {
+	if (!window.crypto || !window.crypto.getRandomValues) { return false; }
+	var s = dn_email_jalur_baca();
+	if (!s || s.j === 'outlook') { return true; }
+	// Dulu skripnya tidak ada; kalau IT memasangnya sesudah itu (penanda
+	// pemasangan di server lebih baru dari keputusan tadi), coba lagi.
+	return DN_EMAIL_PENANDA.terpasang && DN_EMAIL_PENANDA.waktu > (s.w || 0);
+}
+
+// 32 byte acak -> base64url 43 karakter (tanpa '=').
+function dn_email_kunci() {
+	var b = new Uint8Array(32);
+	window.crypto.getRandomValues(b);
+	var s = '';
+	for (var i = 0; i < b.length; i++) { s += String.fromCharCode(b[i]); }
+	return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function dn_email_lewat_handler(id, tipe, sandi, url_eml) {
+	// Klik baru selagi yang lama masih menunggu: yang lama dibatalkan, bukan
+	// klik baru yang diabaikan.
+	if (DN_EMAIL_SESI && !DN_EMAIL_SESI.selesai) { dn_email_akhiri(DN_EMAIL_SESI, true); }
+	var sesi = { kunci: dn_email_kunci(), url_eml: url_eml, mulai: Date.now(), kontak: 0, ditawarkan: false, dialog: false, selesai: false, unduh: false };
+	DN_EMAIL_SESI = sesi;
+	DN_EMAIL_SIBUK = true;
+
+	// 1) Server mulai menyusun .eml untuk kunci ini (butuh sesi login).
+	var siapkan = $.ajax({
+		url: '.../../email_siapkan',
+		type: 'POST',
+		dataType: 'json',
+		data: { id: id, tipe: tipe, tujuan: sandi, kunci: sesi.kunci }
+	});
+	// 2) Skrip pembantu dipanggil SEKARANG, masih di dalam klik pengguna: Chrome
+	//    hanya mengizinkan satu peluncuran per interaksi pengguna.
+	dn_email_buka('nagdn:' + sesi.kunci + '/' + dn_email_skema() + '/' + dn_email_alamat());
+
+	Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Preparing email...', showConfirmButton: false });
+
+	siapkan.fail(function (x) {
+		if (sesi.selesai) { return; }
+		dn_email_akhiri(sesi, true);
+		var j = (x && x.responseJSON) || {};
+		var pesan = j.pesan || 'The email could not be prepared.';
+		if (!j.unduh) {
+			Swal.fire({ icon: 'error', title: 'Email Debit Note', text: pesan });
+			return;
+		}
+		Swal.fire({
+			icon: 'error',
+			title: 'Email Debit Note',
+			text: pesan + ' Download the email file instead?',
+			showCancelButton: true,
+			confirmButtonText: 'Download .eml',
+			cancelButtonText: 'Close',
+			reverseButtons: true
+		}).then(function (r) {
+			if (r.isConfirmed) { dn_email_buka(url_eml); }
+		});
+	});
+	dn_email_tunggu(sesi);
+}
+
+function dn_email_selesai(sesi) {
+	sesi.selesai = true;
+	if (DN_EMAIL_SESI === sesi) { DN_EMAIL_SIBUK = false; }
+}
+
+// Minta server membatalkan kunci supaya skrip yang datang terlambat tidak
+// membuka Outlook. Jawaban diambil:true = skrip ternyata sudah mengambilnya.
+function dn_email_batalkan(kunci) {
+	return $.post('.../../email_handler_lupa', { kunci: kunci });
+}
+
+function dn_email_akhiri(sesi, batalkan) {
+	if (sesi.selesai) { return; }
+	dn_email_selesai(sesi);
+	if (batalkan) { dn_email_batalkan(sesi.kunci); }
+}
+
+// Pantau kunci: dihubungi (skrip ada) -> diambil (Outlook dibuka). Dialog
+// "Outlook did not open" (tanpa kabar) tidak memutus pantauan; kalau skrip
+// menyusul (mis. dialog "Open" browser baru diklik), dialognya ditutup sendiri.
+function dn_email_tunggu(sesi) {
+	if (sesi.selesai) { return; }
+	$.getJSON('.../../email_status/' + sesi.kunci).always(function (r) {
+		if (sesi.selesai) { return; }
+		var st = (r && typeof r.status === 'string') ? r.status : '';
+		var kini = Date.now();
+		if (st === 'diambil') { dn_email_berhasil(sesi); return; }
+		if (st === 'ditolak') { dn_email_gagal(sesi, 'ditolak'); return; }
+		if (st === 'dibatalkan') { dn_email_selesai(sesi); return; }
+		if (st === 'dihubungi' && !sesi.kontak) {
+			sesi.kontak = kini;
+			if (sesi.dialog) {
+				sesi.dialog = false;
+				Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Preparing email...', showConfirmButton: false });
+			}
+		}
+		if (sesi.kontak && kini - sesi.kontak > DN_EMAIL_BATAS_AMBIL) { dn_email_gagal(sesi, 'lambat'); return; }
+		if (kini - sesi.mulai > DN_EMAIL_BATAS_TOTAL) { dn_email_gagal(sesi, 'habis'); return; }
+		if (!sesi.kontak && !sesi.ditawarkan && kini - sesi.mulai > DN_EMAIL_BATAS_KONTAK) {
+			dn_email_gagal(sesi, 'tanpa_kontak');
+		}
+		setTimeout(function () { dn_email_tunggu(sesi); }, 700);
+	});
+}
+
+function dn_email_berhasil(sesi) {
+	dn_email_selesai(sesi);
+	sesi.dialog = false;
+	dn_email_jalur_simpan('outlook');
+	Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Opening in Outlook...', timer: 3000, showConfirmButton: false });
+}
+
+// tanpa_kontak: skrip belum menghubungi server (belum terpasang, dialog browser
+//               belum diklik, atau alamat ini belum terdaftar di PC)
+// ditolak    : server melihat browser dan skrip dari jaringan berbeda (proxy/VPN)
+// lambat     : skrip menghubungi tapi email tidak juga terambil
+// habis      : batas tunggu halaman lewat
+function dn_email_gagal(sesi, alasan) {
+	var teks = {
+		tanpa_kontak: 'If the browser is asking to open <b>Windows Based Script Host</b>, click <b>Open</b>.'
+			+ '<br>Otherwise the Outlook helper is not installed (or is out of date) on this PC for this address - download the email file instead.',
+		ditolak: 'The server saw this browser and the Outlook helper on different networks (proxy or VPN).'
+			+ '<br>Download the email file instead.',
+		lambat: 'The Outlook helper did not finish in time. Download the email file instead.',
+		habis: 'The Outlook helper did not respond in time. Download the email file instead.'
+	}[alasan];
+	if (alasan === 'tanpa_kontak') {
+		// Pantauan tetap jalan di belakang dialog ini.
+		sesi.ditawarkan = true;
+		sesi.dialog = true;
+	} else {
+		sesi.dialog = false;
+		dn_email_selesai(sesi);
+		// Batalkan kunci; kalau ternyata skrip baru saja mengambilnya, anggap berhasil.
+		dn_email_batalkan(sesi.kunci).done(function (j) {
+			if (j && j.diambil && !sesi.unduh) { dn_email_berhasil(sesi); }
+		});
+	}
+	Swal.fire({
+		icon: 'warning',
+		title: 'Outlook did not open',
+		customClass: { popup: 'dn-swal-kirim' },
+		html: '<div class="dn-swal-catatan">' + teks + '</div>',
+		showCancelButton: true,
+		confirmButtonText: 'Download .eml',
+		cancelButtonText: 'Close',
+		reverseButtons: true
+	}).then(function (r) {
+		if (alasan === 'tanpa_kontak') {
+			// Ditutup sendiri (skrip menyusul / diganti dialog lain) -> jangan apa-apa.
+			if (!sesi.dialog) { return; }
+			sesi.dialog = false;
+			// Ditutup pengguna: menyerah - akhiri pantauan & batalkan kunci.
+			if (!r.isConfirmed) { dn_email_akhiri(sesi, true); return; }
+		} else if (!r.isConfirmed) {
+			return;
+		}
+		if (sesi.unduh) { return; }
+		sesi.unduh = true;
+		dn_email_selesai(sesi);
+		// Batalkan dulu, baru unduh: kalau skrip ternyata sudah mengambil email,
+		// jangan ikut mengunduh (Outlook sudah terbuka).
+		dn_email_batalkan(sesi.kunci).always(function (j) {
+			if (j && j.diambil) {
+				dn_email_berhasil(sesi);
+				return;
+			}
+			// Skrip tidak ada / jaringannya selalu beda: alamat ini berikutnya
+			// langsung memakai unduhan. Kalau sekadar lambat, ingatan tidak diubah.
+			if (alasan !== 'lambat') { dn_email_jalur_simpan('eml'); }
+			dn_email_buka(sesi.url_eml);
+			dn_email_petunjuk();
+		});
+	});
+}
+
+// Setelah dialog Email dikonfirmasi: pilih jalur Outlook langsung atau unduhan .eml.
+function dn_list_email_lanjut(id, item, alamat) {
+	var tipe = String(item.type_dn).toUpperCase() === 'MEMO' ? 'memo' : 'biasa';
+	var sandi = alamat === '' ? '' : dn_email_sandi(alamat);
+	// Tanpa alamat, segmen terakhirnya tidak ikut dikirim.
+	var url_eml = '.../../email_debitnote/' + id + '/' + tipe + (sandi === '' ? '' : '/' + sandi);
+	if (dn_email_pakai_handler()) {
+		dn_email_lewat_handler(id, tipe, sandi, url_eml);
+	} else {
+		dn_email_buka(url_eml);      // jalur .eml, tidak berubah
+		dn_email_petunjuk();
+	}
+}
+
+function dn_list_email(id) {
+	var item = DN_LIST_ITEM[id] || {};
+	var no_dn = item.no_dn || '';
+	var consignee = item.Supplier || '';
+	// Alamat ini pernah jatuh ke unduhan: beri jalan untuk mencoba skrip lagi
+	// (mis. baru dipasang IT di PC ini).
+	var tawarkan_skrip = !dn_email_pakai_handler() && !!(window.crypto && window.crypto.getRandomValues);
+
+	Swal.fire({
+		icon: 'question',
+		title: 'Send Debit Note',
+		customClass: { popup: 'dn-swal-kirim' },
+		html: '<div class="dn-swal-catatan">' + dn_list_teks(no_dn)
+			+ ' and its supporting documents will be combined into one PDF and opened in Outlook as a new email.'
+			+ '<br>Leave this blank if you prefer to type the recipient in Outlook.</div>',
+		input: 'text',
+		inputValue: dn_email_tersimpan(consignee),
+		inputPlaceholder: 'name@company.com (optional)',
+		inputValidator: function (nilai) {
+			var isi = String(nilai || '').trim();
+			// Kosong sengaja diperbolehkan - To-nya diisi di Outlook.
+			if (isi !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(isi)) {
+				return 'Please enter a valid email address.';
+			}
+		},
+		footer: tawarkan_skrip
+			? '<span class="dn-email-kaki">Outlook helper installed on this PC? <a href="#" class="dn-email-pakai-skrip">Use it</a></span>'
+			: '',
+		didOpen: function (popup) {
+			$(popup).find('.dn-email-pakai-skrip').on('click', function (e) {
+				e.preventDefault();
+				dn_email_jalur_simpan('outlook');
+				$(popup).find('.dn-email-kaki').text('The Outlook helper will be used for this email.');
+			});
+		},
+		showCancelButton: true,
+		confirmButtonText: 'Open in Outlook',
+		cancelButtonText: 'Cancel',
+		reverseButtons: true
+	}).then(function (r) {
+		if (!r.isConfirmed) { return; }
+		var alamat = String(r.value || '').trim();
+		if (alamat !== '') { dn_email_simpan(consignee, alamat); }
+		dn_list_email_lanjut(id, item, alamat);
+	});
+}
+
+// Warna per status - dipakai di kolom Status tabel & chip ringkasan sekaligus.
+function dn_list_kelas_status(status) {
+	var s = String(status == null ? '' : status).trim().toUpperCase();
+	if (s === 'POST') { return 'is-post'; }
+	if (s === 'FIRST APPROVED') { return 'is-first'; }
+	if (s === 'SECOND APPROVED') { return 'is-second'; }
+	if (s === 'CANCEL' || s === 'CANCELED' || s === 'CANCELLED') { return 'is-batal'; }
+	return 'is-lain';
+}
+
+function dn_list_status(status) {
+	return '<span class="dn-badge ' + dn_list_kelas_status(status) + '">' + dn_list_teks(status) + '</span>';
+}
+
+// Tombol per baris mengikuti status DN - sama seperti sebelumnya:
+// POST bisa Print / Edit / Cancel, yang sudah approve hanya Print, sisanya
+// (sudah dibatalkan) tanpa tombol.
+function dn_list_aksi(item) {
+	var id = dn_list_teks(item.id);
+	var cetak = '<button type="button" class="btn btn-primary btn-sm" title="Print" onclick="print_debit_note(\'' + id + '\',\'' + dn_list_teks(item.type_dn) + '\')"><i class="fa fa-print"></i> <span class="dn-aksi-teks">Print</span></button>';
+	var kirim = '<button type="button" class="btn btn-dn-email btn-sm" title="Send as email attachment" onclick="dn_list_email(' + id + ')"><i class="fas fa-envelope"></i> <span class="dn-aksi-teks">Email</span></button>';
+
+	if (item.status === 'POST') {
+		return '<div class="dn-aksi">' + cetak + kirim
+			+ '<button type="button" class="btn btn-warning btn-sm" title="Edit" onclick="dn_list_ke_edit(' + id + ')"><i class="fas fa-edit"></i> <span class="dn-aksi-teks">Edit</span></button>'
+			+ '<button type="button" class="btn btn-danger btn-sm" title="Cancel" onclick="cancel_dn(\'' + dn_list_teks(item.no_dn) + '\',\'' + id + '\',\'' + dn_list_teks(item.status) + '\')"><i class="fas fa-ban"></i> <span class="dn-aksi-teks">Cancel</span></button>'
+			+ '</div>';
+	}
+	if (item.status === 'FIRST APPROVED') {
+		return '<div class="dn-aksi">' + cetak + kirim
+			+ '<button type="button" class="btn btn-dn-docs btn-sm" title="Supporting documents" onclick="dn_list_ke_edit(' + id + ')"><i class="fas fa-paperclip"></i> <span class="dn-aksi-teks">Docs</span></button>'
+			+ '</div>';
+	}
+	if (String(item.status).indexOf('APPROVED') > -1) {
+		return '<div class="dn-aksi">' + cetak + kirim + '</div>';
+	}
+	return '<span class="dn-aksi-kosong">Canceled</span>';
+}
+
+
+
+// ── Modal detail (nomor DN di daftar diklik) ────────────────────────────────
+// Isinya diambil sekali lewat arnag/dn_detail_json - ringan, tanpa merender PDF.
+var DN_DETAIL_LAMPIRAN = [];   // lampiran DN yang sedang dibuka
+var DN_DETAIL_LOADER_HTML = '';
+var DN_DETAIL_ID = 0;
+var DN_DETAIL_TYPE = '';
+
+function dn_list_detail(id, type) {
+	if (DN_DETAIL_LOADER_HTML === '') { DN_DETAIL_LOADER_HTML = $('#dn-detail-loader').html(); }
+	DN_DETAIL_ID = id;
+	DN_DETAIL_TYPE = type || '';
+	DN_DETAIL_LAMPIRAN = [];
+
+	$('#dn-detail-judul').text('Debit Note');
+	$('#dn-detail-isi').prop('hidden', true);
+	// Loader dikembalikan (bisa saja isinya pesan gagal dari pembukaan sebelumnya)
+	$('#dn-detail-loader').html(DN_DETAIL_LOADER_HTML).show();
+	dn_detail_tutup_pratinjau();
+	$('#modal-dn-detail').modal('show');
+
+	$.ajax({
+		url: 'dn_detail_json/' + id,
+		type: 'GET',
+		dataType: 'JSON'
+	}).done(function (res) {
+		if (!res || !res.status) {
+			dn_detail_gagal((res && res.message) || 'Failed to load the debit note detail.');
+			return;
+		}
+		dn_detail_render(res);
+	}).fail(function () {
+		dn_detail_gagal('Failed to load the debit note detail.');
+	});
+}
+
+// Pesannya ditaruh di dalam modal, bukan swal + tutup modal: menutup modal
+// yang animasi bukanya belum selesai bikin modalnya tersangkut.
+function dn_detail_gagal(pesan) {
+	$('#dn-detail-loader').html(
+		'<i class="fas fa-exclamation-triangle" style="font-size:22px;color:#b45309"></i>'
+		+ '<div class="nag-loader-caption">' + dn_list_teks(pesan) + '</div>'
+	).show();
+	$('#dn-detail-isi').prop('hidden', true);
+}
+
+function dn_detail_render(res) {
+	var h = res.header;
+
+	$('#dn-detail-judul').text(h.no_dn);
+	$('#dn-detail-loader').hide();
+	$('#dn-detail-isi').prop('hidden', false);
+
+	// ── Ringkasan header ──
+	var info = [
+		['Date', dn_list_tgl(h.tgl_dn)],
+		['Due Date', dn_list_tgl(h.due_date)],
+		['Status', dn_list_status(h.status_dn)],
+		['Consignee', dn_list_teks(h.consignee)],
+		['Attn', dn_list_teks(h.attn)],
+		['Profit Center', dn_list_teks(h.profit_center)],
+		['Source', dn_list_teks(h.sumber)],
+		['Bank Account', dn_list_teks(h.bank)],
+		['Address', dn_list_teks(h.alamat)],
+		['Currency', dn_list_teks(h.from_curr) + ' &rarr; ' + dn_list_teks(h.to_curr)],
+		['Amount', '<span class="is-angka">' + dn_list_uang(h.amount) + '</span>'],
+		['Equivalent', '<span class="is-angka">' + dn_list_uang(h.eqv_curr) + '</span>']
+	];
+	$('#dn-detail-info').html(info.map(function (x) {
+		return '<div><dt>' + x[0] + '</dt><dd>' + x[1] + '</dd></div>';
+	}).join(''));
+
+	// ── Tabel baris: kolom Header hanya yang dipakai DN ini ──
+	var kolomHeader = [];
+	for (var i = 1; i <= 5; i++) {
+		var nama = $.trim(h['header' + i] || '');
+		if (nama !== '') { kolomHeader.push({ key: 'header' + i, nama: nama }); }
+	}
+
+	var thead = '<tr><th>Description</th>'
+		+ kolomHeader.map(function (k) { return '<th>' + dn_list_teks(k.nama) + '</th>'; }).join('')
+		+ '<th>Value</th><th>Rate</th><th>Amount</th><th>COA</th></tr>';
+
+	var tbody = '';
+	if (!res.baris.length) {
+		tbody = '<tr><td class="dn-tengah" colspan="' + (kolomHeader.length + 5) + '">No detail row.</td></tr>';
+	} else {
+		// Baris yang keterangannya kosong ikut keterangan baris terdekat di atasnya
+		// yang terisi - sama seperti PDF (lihat reportdebitnote_v2.php). Warna
+		// latar-seling (zebra) sel yang digabung disamakan dengan baris induknya
+		// (ganjilInduk), supaya tidak ada garis warna di tengah kelompok.
+		var lanjutan = [], ganjilInduk = [];
+		var adaInduk = false, parityGanjil = true;
+		res.baris.forEach(function (r, i) {
+			var kosong = $.trim(r.deskripsi || '') === '';
+			lanjutan[i] = kosong && adaInduk;
+			if (!kosong) { adaInduk = true; parityGanjil = (i % 2 === 0); }
+			ganjilInduk[i] = parityGanjil;
+		});
+		tbody = res.baris.map(function (r, i) {
+			var digabung = lanjutan[i] || lanjutan[i + 1];
+			var kelasKet = $.trim((lanjutan[i] ? 'sambung-atas' : '') + (lanjutan[i + 1] ? ' sambung-bawah' : '')
+				+ (digabung ? (ganjilInduk[i] ? ' sambung-ganjil' : ' sambung-genap') : ''));
+			return '<tr' + (r.terkunci ? ' class="is-terkunci" title="From Memo / Request"' : '') + '>'
+				+ '<td' + (kelasKet ? ' class="' + kelasKet + '"' : '') + '>' + (lanjutan[i] ? '' : dn_list_teks(r.deskripsi)) + '</td>'
+				+ kolomHeader.map(function (k) { return '<td>' + dn_list_teks(r[k.key]) + '</td>'; }).join('')
+				+ '<td class="dn-angka">' + dn_list_uang(r.value) + '</td>'
+				+ '<td class="dn-angka">' + dn_list_uang(r.rate) + '</td>'
+				+ '<td class="dn-angka">' + dn_list_uang(r.amount) + '</td>'
+				+ '<td>' + dn_list_teks(r.no_coa) + (r.nama_coa ? '<small class="dn-coa-nama">' + dn_list_teks(r.nama_coa) + '</small>' : '') + '</td>'
+				+ '</tr>';
+		}).join('');
+	}
+
+	var tfoot = '<tr><td colspan="' + (kolomHeader.length + 1) + '">Total</td>'
+		+ '<td class="dn-angka">' + dn_list_uang(h.amount) + '</td>'
+		+ '<td></td>'
+		+ '<td class="dn-angka">' + dn_list_uang(h.eqv_curr) + '</td>'
+		+ '<td></td></tr>';
+
+	$('#dn-detail-tabel thead').html(thead);
+	$('#dn-detail-tabel tbody').html(tbody);
+	$('#dn-detail-tabel tfoot').html(tfoot);
+
+	// ── Lampiran ──
+	DN_DETAIL_LAMPIRAN = res.lampiran || [];
+	$('#dn-detail-jml-lampiran').text(DN_DETAIL_LAMPIRAN.length ? '(' + DN_DETAIL_LAMPIRAN.length + ')' : '');
+	var list = document.getElementById('dn-detail-lampiran');
+	list.innerHTML = '';
+	if (!DN_DETAIL_LAMPIRAN.length) {
+		// Aturan warnanya sama dengan penanda di daftar: abu selagi POST,
+		// merah setelah masuk approval.
+		var mendesak = (h.status_dn !== 'POST' && String(h.status_dn).toUpperCase() !== 'CANCEL');
+		list.innerHTML = '<li class="dn-att-kosong' + (mendesak ? ' is-perhatian' : '') + '">'
+			+ (mendesak
+				? 'No supporting document - this debit note is already ' + dn_list_teks(String(h.status_dn).toLowerCase()) + '.'
+				: 'No supporting document yet.')
+			+ '</li>';
+	}
+	DN_DETAIL_LAMPIRAN.forEach(function (d, i) {
+		var pdf = /\.pdf$/i.test(d.nama);
+		var li = document.createElement('li');
+		li.className = 'dn-att-item';
+		li.title = d.nama + ' - click to view';
+		li.innerHTML = '<i class="fas ' + (pdf ? 'fa-file-pdf' : 'fa-file-image') + '"></i>'
+			+ '<span class="dn-att-nama"></span><span class="dn-att-ukuran"></span>'
+			+ '<i class="fas fa-eye" style="color:#64748b"></i>';
+		// Nama file dari user - lewat textContent, bukan innerHTML.
+		li.querySelector('.dn-att-nama').textContent = d.nama;
+		li.querySelector('.dn-att-ukuran').textContent = dn_detail_ukuran(d.ukuran);
+		li.addEventListener('click', function () { dn_detail_lihat(i); });
+		list.appendChild(li);
+	});
+}
+
+function dn_detail_ukuran(byte) {
+	byte = +byte || 0;
+	if (byte < 1024) { return byte + ' B'; }
+	if (byte < 1048576) { return Math.round(byte / 1024) + ' KB'; }
+	return (byte / 1048576).toFixed(1) + ' MB';
+}
+
+// Lampiran ditampilkan di dalam modal - PDF lewat iframe, gambar lewat <img>.
+function dn_detail_lihat(i) {
+	var d = DN_DETAIL_LAMPIRAN[i];
+	if (!d) { return; }
+
+	$('#dn-detail-lampiran .dn-att-item').removeClass('is-aktif').eq(i).addClass('is-aktif');
+	$('#dn-detail-pratinjau-nama').text(d.nama);
+	$('#dn-detail-pratinjau-buka').attr('href', d.url);
+
+	var isi = document.getElementById('dn-detail-pratinjau-isi');
+	var el = document.createElement(/\.pdf$/i.test(d.nama) ? 'iframe' : 'img');
+	el.src = d.url;
+	el.title = el.alt = d.nama;
+	isi.innerHTML = '';
+	isi.appendChild(el);
+	document.getElementById('dn-detail-pratinjau').hidden = false;
+}
+
+function dn_detail_tutup_pratinjau() {
+	var kotak = document.getElementById('dn-detail-pratinjau');
+	if (!kotak) { return; }
+	kotak.hidden = true;
+	// iframe dikosongkan supaya file-nya berhenti dimuat waktu ditutup
+	document.getElementById('dn-detail-pratinjau-isi').innerHTML = '';
+	$('#dn-detail-lampiran .dn-att-item').removeClass('is-aktif');
+}
+
+// ── Filter diingat selama masih di tab yang sama ─────────────────────────────
+// Buka Edit / Docs lalu Back seharusnya kembali ke daftar yang tadi, bukan
+// mulai lagi dari tanggal hari ini. Filternya disimpan waktu meninggalkan
+// halaman, lalu dipakai sekali saat kembali (termasuk lewat tombol Back
+// browser). Masuk menu dari awal tetap mulai dari tanggal hari ini.
+var DN_LIST_KUNCI_FILTER = 'dn_list_filter';
+var DN_LIST_KUNCI_KEMBALI = 'dn_list_kembali';
+
+function dn_list_simpan_filter() {
+	try {
+		sessionStorage.setItem(DN_LIST_KUNCI_FILTER, JSON.stringify({
+			from: dn_list_tanggal_iso('#filter_from'),
+			to: dn_list_tanggal_iso('#filter_to'),
+			customer: $('#list_prof_customer').val()
+		}));
+	} catch (e) {
+		// sessionStorage bisa ditolak browser (mode privat) - filter tidak
+		// diingat, halaman tetap jalan normal.
+	}
+}
+
+// Dipanggil tombol Edit / Docs di daftar.
+function dn_list_ke_edit(id) {
+	dn_list_simpan_filter();
+	try { sessionStorage.setItem(DN_LIST_KUNCI_KEMBALI, '1'); } catch (e) {}
+	location.href = 'edit_debitnote/' + id;
+}
+
+// Balikan true kalau filter tadi dipasang lagi - pemanggilnya yang menentukan
+// datanya ikut dicari ulang atau tidak.
+function dn_list_pulihkan_filter() {
+	var simpan;
+	try {
+		if (sessionStorage.getItem(DN_LIST_KUNCI_KEMBALI) !== '1') { return false; }
+		// Dipakai sekali saja: masuk menu lagi nanti mulai dari tanggal hari ini.
+		sessionStorage.removeItem(DN_LIST_KUNCI_KEMBALI);
+		simpan = JSON.parse(sessionStorage.getItem(DN_LIST_KUNCI_FILTER) || 'null');
+	} catch (e) {
+		return false;
+	}
+	if (!simpan || !simpan.from || !simpan.to) { return false; }
+
+	$.each({ '#filter_from': simpan.from, '#filter_to': simpan.to }, function (sel, iso) {
+		var p = String(iso).split('-');
+		$(sel).datepicker('update', new Date(+p[0], +p[1] - 1, +p[2]));
+	});
+	if (simpan.customer) {
+		// .trigger('change') supaya select2 ikut memperbarui tampilannya.
+		$('#list_prof_customer').val(simpan.customer).trigger('change');
+	}
+	return true;
+}
+
+// ── Ringkasan di samping judul tabel ───────────────────────────────────────
+// Jumlah DN per status (bisa diklik untuk menyaring) dan jumlah DN yang belum
+// punya dokumen.
+// Semua dihitung dari hasil Search terakhir dari server - bukan dari kotak
+// "Search in list".
+var DN_LIST_SARING_STATUS = '';
+var DN_LIST_URUT_STATUS = ['POST', 'FIRST APPROVED', 'SECOND APPROVED', 'CANCEL'];
+
+// Pengelompokannya sama dengan warna badge di dn_list_status.
+function dn_list_kelompok_status(status) {
+	var s = String(status == null ? '' : status).trim().toUpperCase();
+	return (s === 'CANCELED' || s === 'CANCELLED') ? 'CANCEL' : s;
+}
+
+// Kolom Status berisi HTML badge; yang dicocokkan teksnya saja (tanpa beda
+// huruf besar/kecil, jadi "Cancel" dari database tetap kena).
+function dn_list_pola_status(kelompok) {
+	if (kelompok === 'CANCEL') { return '^CANCEL(L?ED)?$'; }
+	return '^' + $.fn.dataTable.util.escapeRegex(kelompok) + '$';
+}
+
+function dn_list_terapkan_saring_status(dt) {
+	dt.column(9).search(DN_LIST_SARING_STATUS ? dn_list_pola_status(DN_LIST_SARING_STATUS) : '', true, false, true);
+}
+
+function dn_list_ringkasan(data) {
+	var $wadah = $('#dn-list-ringkasan');
+	data = data || [];
+	if (!data.length) {
+		$wadah.empty();
+		return;
+	}
+
+	var jumlah = {}, urutan = [], tanpaDoc = 0;
+	$.each(data, function (i, item) {
+		var k = dn_list_kelompok_status(item.status);
+		if (!jumlah.hasOwnProperty(k)) { jumlah[k] = 0; urutan.push(k); }
+		jumlah[k]++;
+
+		// Syaratnya sama persis dengan penanda "No attachment" di bawah nomor DN.
+		if (!(+item.jml_dokumen > 0) && String(item.status).toUpperCase() !== 'CANCEL') {
+			tanpaDoc++;
+		}
+	});
+
+	// Status yang dikenal selalu tampil dengan urutan alur kerjanya.
+	urutan.sort(function (a, b) {
+		var ia = DN_LIST_URUT_STATUS.indexOf(a), ib = DN_LIST_URUT_STATUS.indexOf(b);
+		return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+	});
+
+	var chip = urutan.map(function (k) {
+		var aktif = DN_LIST_SARING_STATUS === k;
+		// Jumlahnya ditaruh DI DALAM pil berwarna, bukan angka polos di sebelahnya.
+		return '<button type="button" class="dn-ringkasan-chip' + (aktif ? ' is-aktif' : '') + '"'
+			+ ' data-status="' + dn_list_teks(k) + '" aria-pressed="' + (aktif ? 'true' : 'false') + '" title="Filter by status">'
+			+ '<span class="dn-badge ' + dn_list_kelas_status(k) + '">' + dn_list_teks(k)
+			+ '<span class="dn-ringkasan-n">' + jumlah[k] + '</span></span></button>';
+	}).join('');
+
+	var html = '<div class="dn-ringkasan-status">' + chip + '</div>';
+	if (tanpaDoc) {
+		html += '<span class="dn-ringkasan-perhatian" title="' + tanpaDoc + ' debit note(s) without supporting document">'
+			+ '<i class="fas fa-exclamation-circle"></i> ' + tanpaDoc + ' no attachment</span>';
+	}
+	$wadah.html(html);
+}
+
+// Klik chip status: saring tabel ke status itu; klik lagi untuk melepas.
+function dn_list_klik_status(kelompok) {
+	DN_LIST_SARING_STATUS = (DN_LIST_SARING_STATUS === kelompok) ? '' : kelompok;
+	$('#dn-list-ringkasan .dn-ringkasan-chip').each(function () {
+		var aktif = $(this).attr('data-status') === DN_LIST_SARING_STATUS;
+		$(this).toggleClass('is-aktif', aktif).attr('aria-pressed', aktif ? 'true' : 'false');
+	});
+	var dt = dn_list_dt();
+	dn_list_terapkan_saring_status(dt);
+	dt.draw();
+}
+
+function cari_debit_note() {
+	var $tombol = $('#find_invoice_pi');
+	// Permintaan sebelumnya belum selesai (mis. Enter di tanggal lalu klik Search).
+	if ($tombol.prop('disabled')) { return; }
+	var dt = dn_list_dt();
+	var from = dn_list_tanggal_iso('#filter_from');
+	var to = dn_list_tanggal_iso('#filter_to');
+	var id_customer = $('#list_prof_customer').val();
+
+	dn_list_simpan_filter();
+	dn_list_loading(true);
+	// Cuma kelas ikonnya yang ditukar - label "Search" tidak disentuh.
+	$tombol.prop('disabled', true).attr('aria-busy', 'true')
+		.find('i').removeClass('fa-search').addClass('fa-circle-notch fa-spin');
+	$.ajax({
+		url: "cari_debit_note/" + from + "/" + to + "/" + id_customer + "/",
+		type: "GET",
+		dataType: "JSON",
+		complete: function () {
+			dn_list_loading(false);
+			$tombol.prop('disabled', false).removeAttr('aria-busy')
+				.find('i').removeClass('fa-circle-notch fa-spin').addClass('fa-search');
+		},
+		success: function (response) {
+			var baris = [];
+			DN_LIST_ITEM = {};
+			$.each(response || [], function (i, item) {
+				DN_LIST_ITEM[item.id] = item;
+				baris.push([
+					dn_list_nomor(item),
+					dn_list_teks(item.tgl_dn),
+					dn_list_teks(item.type_dn),
+					dn_list_teks(item.Supplier),
+					dn_list_teks(item.attn),
+					dn_list_teks(item.from_curr),
+					dn_list_teks(item.to_curr),
+					dn_list_uang(item.amount),
+					dn_list_uang(item.eqv_curr),
+					dn_list_status(item.status),
+					dn_list_aksi(item)
+				]);
+			});
+
+			// Disimpan juga: kalau layar berganti mode (HP <-> desktop) tabelnya
+			// dibangun ulang dan datanya diisi lagi dari sini, bukan minta server.
+			DN_LIST_DATA = baris;
+			// Data baru = saringan status dari Search sebelumnya dilepas.
+			DN_LIST_SARING_STATUS = '';
+			dt.clear();
+			dt.column(9).search('');
+			if (baris.length) { dt.rows.add(baris); }
+			dt.draw();
+			dn_list_ringkasan(response);
+			if (!DN_LIST_MODE_HP) { dt.columns.adjust(); }
+			dn_list_tandai_geser();
+		},
+		error: function (jqXHR, textStatus, errorThrown) {
+			$('#dn-list-ringkasan').empty();
+			Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load debit note data.' });
+		}
+	});
+
+}
 //ubah september
 function cancel_dn(no_dn,id, status){ 
 
@@ -7665,7 +8823,7 @@ $('.form-group').removeClass('has-error'); // clear error class
 		},
 		error: function (jqXHR, textStatus, errorThrown) {
 			console.log(jqXHR);
-			alert('Error get data from ajax');
+			Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load the consignee address.' });
 		}
 	});
 }
@@ -9154,6 +10312,24 @@ function modal_input_amt(){
 }
 
 
+// Field di satu baris tabel detail DN dicari lewat name, BUKAN posisi kolom:
+// form create/edit_debitnote punya kolom Header 4-5 tambahan, jadi posisi
+// Value/Rate/Amount beda dari susunan lama. Bisa input atau select (kolom
+// Header bernama Supplier pakai select2).
+// Kalau di satu baris ada beberapa field dengan name sama, diambil yang paling kiri.
+function dn_row_input(row, name) {
+	return row.querySelector('[name="' + name + '"]');
+}
+
+// Nilai kolom Header ke-`no` di baris create_debitnote, HANYA kalau judul
+// Header itu = nama (tidak peduli huruf besar/kecil); selain itu kosong.
+// Header yang switch-nya off namanya kosong, jadi otomatis tidak ikut.
+function dn_nilai_header_jika(row, no, nama) {
+	var judul = $.trim($('#txt_header' + no).val() || '').toLowerCase();
+	var el = dn_row_input(row, 'inputan' + (no + 2));
+	return (judul === nama && el) ? el.value : '';
+}
+
 //ubah september
 function modal_input_amt_dn(){ 
 	var table = document.getElementById("table-dn");
@@ -9163,8 +10339,8 @@ function modal_input_amt_dn(){
 	var rate_idr = 1;
 	for (var i = 1; i < (table.rows.length); i++) {
 
-		var price = document.getElementById("table-dn").rows[i].cells[6].children[0].value || 0;
-		var rate = document.getElementById("table-dn").rows[i].cells[7].children[0].value;
+		var price = dn_row_input(table.rows[i], 'amt').value || 0;
+		var rate = dn_row_input(table.rows[i], 'amt_rate').value;
 		var curr1 = $('[name="curr1"]').val();
 		var curr2 = $('[name="curr2"]').val();
 		tota += parseFloat(price);
@@ -9177,14 +10353,14 @@ function modal_input_amt_dn(){
 		}else if(curr1 == curr2){
 			totall += parseFloat(price * 1); 
 			hasilkali = parseFloat(price * 1); 
-			document.getElementById("table-dn").rows[i].cells[7].children[0].value = rate_idr.toFixed(0);
+			dn_row_input(table.rows[i], 'amt_rate').value = rate_idr.toFixed(0);
 		}
 
 		document.getElementsByName("total_value")[0].value = formatMoney(tota.toFixed(2));
 		document.getElementsByName("total_value_h")[0].value = tota.toFixed(2);
 		document.getElementsByName("total_value_idr")[0].value = formatMoney(totall.toFixed(2));
 		document.getElementsByName("total_value_idr_h")[0].value = totall.toFixed(2);
-		document.getElementById("table-dn").rows[i].cells[8].children[0].value = hasilkali.toFixed(2);
+		dn_row_input(table.rows[i], 'inputan8').value = hasilkali.toFixed(2);
 	// document.getElementById("table-dn").rows[i].cells[4].children[0].readonly = false;
 
 }
@@ -9199,8 +10375,8 @@ function hitungRow(){
 	var rate_idr = 1;
 	for (var i = 1; i < (table.rows.length); i++) {
 
-		var price = document.getElementById("table-dn").rows[i].cells[6].children[0].value || 0;
-		var rate = document.getElementById("table-dn").rows[i].cells[7].children[0].value;
+		var price = dn_row_input(table.rows[i], 'amt').value || 0;
+		var rate = dn_row_input(table.rows[i], 'amt_rate').value;
 		var curr1 = $('[name="curr1"]').val();
 		var curr2 = $('[name="curr2"]').val();
 		tota += parseFloat(price);
@@ -9213,14 +10389,14 @@ function hitungRow(){
 		}else if(curr1 == curr2){
 			totall += parseFloat(price * 1); 
 			hasilkali = parseFloat(price * 1); 
-			document.getElementById("table-dn").rows[i].cells[7].children[0].value = rate_idr.toFixed(0);
+			dn_row_input(table.rows[i], 'amt_rate').value = rate_idr.toFixed(0);
 		}
 
 		document.getElementsByName("total_value")[0].value = formatMoney(tota.toFixed(2));
 		document.getElementsByName("total_value_h")[0].value = tota.toFixed(2);
 		document.getElementsByName("total_value_idr")[0].value = formatMoney(totall.toFixed(2));
 		document.getElementsByName("total_value_idr_h")[0].value = totall.toFixed(2);
-		document.getElementById("table-dn").rows[i].cells[8].children[0].value = hasilkali.toFixed(2);
+		dn_row_input(table.rows[i], 'inputan8').value = hasilkali.toFixed(2);
 
 	}
 }
@@ -9233,8 +10409,8 @@ function modal_input_rate_dn(){
 	var rate_idr = 1;
 	for (var i = 1; i < (table.rows.length); i++) {
 
-		var price = document.getElementById("table-dn").rows[i].cells[6].children[0].value || 0;
-		var rate = document.getElementById("table-dn").rows[i].cells[7].children[0].value;
+		var price = dn_row_input(table.rows[i], 'amt').value || 0;
+		var rate = dn_row_input(table.rows[i], 'amt_rate').value;
 		var curr1 = $('[name="curr1"]').val();
 		var curr2 = $('[name="curr2"]').val();
 		tota += parseFloat(price);
@@ -9247,14 +10423,14 @@ function modal_input_rate_dn(){
 		}else if(curr1 == curr2){
 			totall += parseFloat(price * 1); 
 			hasilkali = parseFloat(price * 1); 
-			document.getElementById("table-dn").rows[i].cells[7].children[0].value = rate_idr.toFixed(0);
+			dn_row_input(table.rows[i], 'amt_rate').value = rate_idr.toFixed(0);
 		}
 
 		document.getElementsByName("total_value")[0].value = formatMoney(tota.toFixed(2));
 		document.getElementsByName("total_value_h")[0].value = tota.toFixed(2);
 		document.getElementsByName("total_value_idr")[0].value = formatMoney(totall.toFixed(2));
 		document.getElementsByName("total_value_idr_h")[0].value = totall.toFixed(2);
-		document.getElementById("table-dn").rows[i].cells[8].children[0].value = hasilkali.toFixed(2);
+		dn_row_input(table.rows[i], 'inputan8').value = hasilkali.toFixed(2);
 
 	}
 }
@@ -9383,17 +10559,31 @@ function simpan_data_dn() {
 		return false;
 	}
 
-	$no_invoice = $('[name="dn_number"]').val()
-
-	$('[name="no_debinote"]').val($no_invoice);
 	if (total == 0 || total == '') {
 		Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: "Amount Can't be Zero" });
-	}else{
-		getcoa3();
-		$('#modal-simpan-dn').modal('show')	
+		return false;
 	}
 
-
+	getcoa3();
+	// Konfirmasi lewat swal. Nomor DN sengaja tidak ditampilkan di sini: nomor
+	// final dihitung ulang di server saat simpan (cegah bentrok 2 user create
+	// bersamaan) dan baru muncul di info setelah tersimpan. create_debitnote
+	// punya konfirmasi sendiri (ada info supporting document-nya).
+	if (typeof dn_konfirmasi_simpan === 'function') {
+		dn_konfirmasi_simpan(save_dn);
+	} else {
+		Swal.fire({
+			icon: 'question',
+			title: 'Save Debit Note?',
+			text: 'The debit note number will be generated when it is saved.',
+			showCancelButton: true,
+			confirmButtonText: 'Save',
+			cancelButtonText: 'Cancel',
+			reverseButtons: true
+		}).then(function (r) {
+			if (r.isConfirmed) { save_dn(); }
+		});
+	}
 }
 
 //ubah desember
@@ -10108,6 +11298,14 @@ function save_dn() {
 	// no_dn digenerate ulang di server (simpandn_h) supaya tidak bentrok kalau ada
 	// 2 user create bersamaan. simpandn_det/update_memo_det/update_req_dn baru
 	// dipanggil SETELAH #dn_number diperbarui dengan nomor hasil generate ulang itu.
+	// Swal "Saving..." ini nanti ditimpa swal hasil (sukses / gagal).
+	Swal.fire({
+		title: 'Saving...',
+		allowOutsideClick: false,
+		allowEscapeKey: false,
+		showConfirmButton: false,
+		didOpen: function () { Swal.showLoading(); }
+	});
 	simpandn_h();
 	//
 	$('#modal-simpan-dn').modal('hide');
@@ -10280,6 +11478,11 @@ function simpandn_h() {
             var header1        	= $('#txt_header1').val();
             var header2      	= $('#txt_header2').val();
             var header3     	= $('#txt_header3').val();
+            // Header 4-5 baru tersimpan kalau kolomnya sudah ada di database
+            // (migrations/20260911_debitnote_header4_header5.sql) - sebelum itu
+            // dibuang di Model_nag::simpandn_h().
+            var header4     	= $('#txt_header4').val() || '';
+            var header5     	= $('#txt_header5').val() || '';
             var amount      	= $('#total_value_h').val();
             var eqv_curr     	= $('#total_value_idr_h').val();
             var status      	= "POST";
@@ -10300,7 +11503,9 @@ function simpandn_h() {
 				"header1": header1,	
 				"header2": header2,					
 				"header3": header3,
-				"amount": amount,					
+				"header4": header4,
+				"header5": header5,
+				"amount": amount,
 				"eqv_curr": eqv_curr,
 				"status": status,
 				"akun": akun,
@@ -10344,13 +11549,27 @@ function simpandn_h() {
 						// nggak ke-update). Swal sukses ditampilkan bareng, reload baru jalan
 						// setelah user klik OK-nya, biar nomor DN sempat kebaca.
 						$.when(update_req_dn()).always(function () {
-							Swal.fire({
-								icon: 'success',
-								title: 'Debit Note Saved',
-								text: 'DN Number: ' + (data.no_dn || $('#dn_number').val())
-							}).then(function () {
-								window.location.href = window.location.href;
-							});
+							var no_dn_final = data.no_dn || $('#dn_number').val();
+							var tampilkan = function (info) {
+								info = info || {};
+								// Nomor DN final (hasil hitung ulang server) baru ditampilkan disini.
+								Swal.fire({
+									icon: info.icon || 'success',
+									title: 'Debit Note Saved',
+									html: '<div class="dn-swal-label">DN Number</div>' +
+										'<div class="dn-swal-nomor">' + $('<div>').text(no_dn_final).html() + '</div>' +
+										(info.html ? '<div class="dn-swal-catatan">' + info.html + '</div>' : '')
+								}).then(function () {
+									window.location.href = window.location.href;
+								});
+							};
+							// create_debitnote: supporting document di-upload dulu (butuh
+							// nomor DN final) - lihat dn_upload_dokumen() di view-nya.
+							if (typeof dn_upload_dokumen === 'function') {
+								dn_upload_dokumen(no_dn_final, tampilkan);
+							} else {
+								tampilkan();
+							}
 						});
 					} else {
 						msg = 'Error Input Detail'
@@ -10419,19 +11638,36 @@ function collectDnDetailRows()
 		// tidak pernah diisi user - lewati, jangan ikut dikirim ke server.
 		if (table.rows[i].style.display === 'none') { continue; }
 
-		var deskripsi = document.getElementById("table-dn").rows[i].cells[0].children[0].value;
-		var supplier = document.getElementById("table-dn").rows[i].cells[1].children[0].value;
-		var supplier_invoice = document.getElementById("table-dn").rows[i].cells[2].children[0].value;
-		var header1 = document.getElementById("table-dn").rows[i].cells[3].children[0].value;
-		var header2 = document.getElementById("table-dn").rows[i].cells[4].children[0].value;
-		var header3 = document.getElementById("table-dn").rows[i].cells[5].children[0].value;
-		var value = document.getElementById("table-dn").rows[i].cells[6].children[0].value;
-		var rate = document.getElementById("table-dn").rows[i].cells[7].children[0].value;
-		var amount = document.getElementById("table-dn").rows[i].cells[8].children[0].value;
-		var nm_memo = document.getElementById("table-dn").rows[i].cells[12].children[0].value || '';
-		var no_coa = document.getElementById("table-dn").rows[i].cells[9].children[0].value;
-		var id_memo_det = document.getElementById("table-dn").rows[i].cells[13].children[0].value || '';
-		var customer = document.getElementById("table-dn").rows[i].cells[14].children[0].value || '';
+		var row = table.rows[i];
+		var deskripsi = dn_row_input(row, 'inputan0').value;
+		// Kolom Supplier & Supplier Invoice sudah dihapus dari tabel. Aturan
+		// sementara: kalau Header 1 = "Supplier" / Header 2 = "Supplier Invoice",
+		// isinya juga disalin ke field lama supplier / supplier_invoice (masih
+		// dipakai PDF & laporan) - selain itu field lamanya kosong.
+		var supplier = dn_nilai_header_jika(row, 1, 'supplier');
+		var supplier_invoice = dn_nilai_header_jika(row, 2, 'supplier invoice');
+		var header1 = dn_row_input(row, 'inputan3').value;
+		var header2 = dn_row_input(row, 'inputan4').value;
+		var header3 = dn_row_input(row, 'inputan5').value;
+		// Header 4-5 baru benar-benar tersimpan setelah kolomnya ditambah lewat
+		// migrations/20260911_debitnote_header4_header5.sql - sebelum itu
+		// dibuang di Model_nag::simpandn_h().
+		var el_h4 = dn_row_input(row, 'inputan6');
+		var el_h5 = dn_row_input(row, 'inputan7');
+		var header4 = el_h4 ? el_h4.value : '';
+		var header5 = el_h5 ? el_h5.value : '';
+		var value = dn_row_input(row, 'amt').value;
+		var rate = dn_row_input(row, 'amt_rate').value;
+		var amount = dn_row_input(row, 'inputan8').value;
+		var no_coa = dn_row_input(row, 'nm_coa').value;
+		// 3 sel hidden paling kanan (nm memo, id memo det, customer) name-nya
+		// tidak seragam antar sumber baris (template / No Request / Add Memo) -
+		// diambil dari posisi relatif ke ujung baris, jadi tetap benar walau ada
+		// kolom baru disisipkan di tengah.
+		var n = row.cells.length;
+		var nm_memo = row.cells[n - 3].children[0].value || '';
+		var id_memo_det = row.cells[n - 2].children[0].value || '';
+		var customer = row.cells[n - 1].children[0].value || '';
 
 		// Jaga-jaga tambahan - baris yang beneran kosong semua (tidak ada
 		// deskripsi/supplier/amount) dilewati juga, jangan ikut ke-insert.
@@ -10445,6 +11681,8 @@ function collectDnDetailRows()
 			"header1": header1,
 			"header2":header2,
 			"header3": header3,
+			"header4": header4,
+			"header5": header5,
 			"value": value,
 			"rate": rate,
 			"amount": amount,
@@ -13536,10 +14774,16 @@ function delete_memo_temp(){
 
 		console.log(dt_dari_memo + ' ' + dt_sampai_memo + ' ' + id_customer);
 
-		$.ajax({		
-			url: "cari_invoice_memo/" + dt_dari_memo + "/" + dt_sampai_memo + "/" + id_customer + "/" ,					
+		// Loader NAG di modal Add Memo (create_debitnote) - di halaman lain
+		// elemennya tidak ada, jadi baris ini tidak berefek apa-apa.
+		$('#dn-memo-loader').addClass('show');
+		$.ajax({
+			url: "cari_invoice_memo/" + dt_dari_memo + "/" + dt_sampai_memo + "/" + id_customer + "/" ,
 			type: "GET",
 			dataType: "JSON",
+			complete: function () {
+				$('#dn-memo-loader').removeClass('show');
+			},
 			success: function (response) {
 
 				var trHTML = '';
@@ -13563,7 +14807,7 @@ function delete_memo_temp(){
 
 			},
 			error: function (jqXHR, textStatus, errorThrown) {
-				alert('Error get data from ajax');
+				Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load memo data.' });
 			}
 		});	
 
@@ -13659,7 +14903,8 @@ function duplicate_data_memo(){
 
 				},
 				error: function (jqXHR, textStatus, errorThrown) {
-					msg = 'Error Input Detail' + jqXHR.text
+					msg = 'Error Input Detail' + jqXHR.text;
+					Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to add memo data.' });
 				}
 			});
  			resolve({
@@ -13677,22 +14922,42 @@ function duplicate_data_memo(){
 
 	// $('#table-dn tbody tr').remove();
 
-	var coa = "<input style='width: 250px;' class='form-control' value='1.34.04' list='nm_coa' name='nm_coa'> <datalist id='nm_coa'> <option value = '-'>-</option><option value = '1.01.01'>1.01.01 KAS KECIL PABRIK</option> <option value = '1.01.02'>1.01.02 KAS KECIL KANTOR</option> <option value = '1.01.03'>1.01.03 KAS BESAR</option> <option value = '1.10.01'>1.10.01 BCA 008-997-1979</option> <option value = '1.10.02'>1.10.02 BCA 008-998-1982</option> <option value = '1.10.11'>1.10.11 BNI 442-244-2000</option> <option value = '1.10.21'>1.10.21 CIMB NIAGA 800-17781-4600</option> <option value = '1.10.81'>1.10.81 BCA 008-403-6249</option> <option value = '1.20.01'>1.20.01 OBLIGASI</option> <option value = '1.30.01'>1.30.01 PIUTANG USAHA PIHAK KETIGA - LOKAL</option> <option value = '1.30.02'>1.30.02 PIUTANG USAHA PIHAK KETIGA - EKSPOR</option> <option value = '1.32.01'>1.32.01 PIUTANG USAHA PIHAK BERELASI - LOKAL</option> <option value = '1.32.02'>1.32.02 PIUTANG USAHA PIHAK BERELASI - EKSPOR</option> <option value = '1.34.01'>1.34.01 PIUTANG LAIN-LAIN PIHAK KETIGA - LOKAL</option> <option value = '1.34.02'>1.34.02 PIUTANG LAIN-LAIN PIHAK KETIGA - EKSPOR</option> <option value = '1.34.03'>1.34.03 PIUTANG LAIN-LAIN PIHAK KETIGA - SPAREPARTS</option> <option value = '1.34.51'>1.34.51 PIUTANG LAIN-LAIN PIHAK KETIGA - KARYAWAN</option> <option value = '1.34.61'>1.34.61 PIUTANG LAIN-LAIN PIHAK KETIGA - PPH 23</option> <option value = '1.34.99'>1.34.99 PIUTANG LAIN-LAIN PIHAK KETIGA - LAIN-LAIN</option> <option value = '1.35.01'>1.35.01 PIUTANG LAIN-LAIN PIHAK BERELASI - LOKAL</option> <option value = '1.35.02'>1.35.02 PIUTANG LAIN-LAIN PIHAK BERELASI - EKSPOR</option> <option value = '1.35.03'>1.35.03 PIUTANG LAIN-LAIN PIHAK BERELASI - SPAREPARTS</option> <option value = '1.35.51'>1.35.51 PIUTANG LAIN-LAIN PIHAK BERELASI - DIREKSI</option> <option value = '1.35.99'>1.35.99 PIUTANG LAIN-LAIN PIHAK BERELASI - LAIN-LAIN</option> <option value = '1.36.01'>1.36.01 PERSEDIAAN KAIN</option> <option value = '1.38.01'>1.38.01 PERSEDIAAN AKSESORIS</option> <option value = '1.40.01'>1.40.01 PERSEDIAAN BARANG DALAM PROSES</option> <option value = '1.41.01'>1.41.01 PERSEDIAAN BARANG DALAM PROSES DI PEMAKLOON</option> <option value = '1.41.02'>1.41.02 PERSEDIAAN KAIN DI PEMAKLOON</option> <option value = '1.41.03'>1.41.03 PERSEDIAAN AKSESORIS DI PEMAKLOON</option> <option value = '1.41.04'>1.41.04 PERSEDIAAN BARANG JADI DI PEMAKLOON</option> <option value = '1.42.01'>1.42.01 PERSEDIAAN PAKAIAN JADI</option> <option value = '1.44.01'>1.44.01 PERSEDIAAN SPAREPARTS</option> <option value = '1.45.01'>1.45.01 PERSEDIAAN ATK</option> <option value = '1.45.02'>1.45.02 PERSEDIAAN UMUM</option> <option value = '1.49.01'>1.49.01 UANG MUKA PEMBELIAN LOKAL - ASET TETAP</option> <option value = '1.49.11'>1.49.11 UANG MUKA PEMBELIAN LOKAL - BAHAN BAKU / BAHAN PEMBANTU</option> <option value = '1.49.21'>1.49.21 UANG MUKA PEMBELIAN LOKAL - SPAREPARTS</option> <option value = '1.49.81'>1.49.81 UANG MUKA PEMBELIAN LOKAL - JASA</option> <option value = '1.49.99'>1.49.99 UANG MUKA PEMBELIAN LOKAL - LAIN-LAIN</option> <option value = '1.50.01'>1.50.01 UANG MUKA PEMBELIAN IMPORT - ASET TETAP</option> <option value = '1.50.11'>1.50.11 UANG MUKA PEMBELIAN IMPORT - BAHAN BAKU / BAHAN PEMBANTU</option> <option value = '1.50.21'>1.50.21 UANG MUKA PEMBELIAN IMPORT - SPAREPARTS</option> <option value = '1.50.81'>1.50.81 UANG MUKA PEMBELIAN IMPORT - JASA</option> <option value = '1.50.99'>1.50.99 UANG MUKA PEMBELIAN IMPORT - LAIN-LAIN</option> <option value = '1.51.01'>1.51.01 BIAYA DIBAYAR DIMUKA - SEWA</option> <option value = '1.51.02'>1.51.02 BIAYA DIBAYAR DIMUKA - ASURANSI</option> <option value = '1.51.99'>1.51.99 BIAYA DIBAYAR DIMUKA - LAIN-LAIN</option> <option value = '1.52.01'>1.52.01 PAJAK DIBAYAR DIMUKA PPH PASAL 22</option> <option value = '1.52.02'>1.52.02 PAJAK DIBAYAR DIMUKA PPH PASAL 23</option> <option value = '1.52.03'>1.52.03 PAJAK DIBAYAR DIMUKA PPH PASAL 25</option> <option value = '1.52.04'>1.52.04 PAJAK DIBAYAR DIMUKA PPN MASUKAN</option> <option value = '1.52.05'>1.52.05 PAJAK DIBAYAR DIMUKA PPH PASAL 4 AYAT 2</option> <option value = '1.52.06'>1.52.06 PAJAK DIBAYAR DIMUKA PPH PASAL 21</option> <option value = '1.52.07'>1.52.07 PAJAK DIBAYAR DIMUKA PPN MASUKAN (UNBILLED)</option> <option value = '1.53.01'>1.53.01 PPH BADAN LB PASAL 28A</option> <option value = '1.60.01'>1.60.01 TANAH</option> <option value = '1.60.11'>1.60.11 BANGUNAN</option> <option value = '1.60.21'>1.60.21 INSTALASI LISTRIK</option> <option value = '1.60.22'>1.60.22 INSTALASI AIR</option> <option value = '1.60.31'>1.60.31 MESIN</option> <option value = '1.60.41'>1.60.41 PERALATAN PABRIK</option> <option value = '1.60.51'>1.60.51 KENDARAAN</option> <option value = '1.60.61'>1.60.61 PERALATAN KANTOR</option> <option value = '1.60.62'>1.60.62 PERALATAN IT</option> <option value = '1.61.01'>1.61.01 PERANGKAT LUNAK</option> <option value = '1.70.01'>1.70.01 AKUMULASI PENYUSUTAN BANGUNAN</option> <option value = '1.70.11'>1.70.11 AKUMULASI PENYUSUTAN INSTALASI LISTRIK</option> <option value = '1.70.12'>1.70.12 AKUMULASI PENYUSUTAN INSTALASI AIR</option> <option value = '1.70.21'>1.70.21 AKUMULASI PENYUSUTAN MESIN</option> <option value = '1.70.31'>1.70.31 AKUMULASI PENYUSUTAN PERALATAN PABRIK</option> <option value = '1.70.41'>1.70.41 AKUMULASI PENYUSUTAN KENDARAAN</option> <option value = '1.70.51'>1.70.51 AKUMULASI PENYUSUTAN PERALATAN KANTOR</option> <option value = '1.70.52'>1.70.52 AKUMULASI PENYUSUTAN PERALATAN IT</option> <option value = '1.71.01'>1.71.01 AKUMULASI AMORTISASI PERANGKAT LUNAK</option> <option value = '1.80.01'>1.80.01 ASET DALAM PENYELESAIAN - BANGUNAN</option> <option value = '1.80.11'>1.80.11 ASET DALAM PENYELESAIAN - INSTALASI LISTRIK</option> <option value = '1.80.12'>1.80.12 ASET DALAM PENYELESAIAN - INSTALASI AIR</option> <option value = '1.80.91'>1.80.91 ASET DALAM PENYELESAIAN - PERANGKAT LUNAK</option> <option value = '1.90.01'>1.90.01 POS SILANG</option> <option value = '2.10.01'>2.10.01 GR/IR PIHAK KETIGA - KAIN</option> <option value = '2.10.02'>2.10.02 GR/IR PIHAK KETIGA - AKSESORIS</option> <option value = '2.10.03'>2.10.03 GR/IR PIHAK KETIGA - PAKAIAN JADI</option> <option value = '2.10.04'>2.10.04 GR/IR PIHAK KETIGA - ATK</option> <option value = '2.10.05'>2.10.05 GR/IR PIHAK KETIGA - SPAREPARTS</option> <option value = '2.10.06'>2.10.06 GR/IR PIHAK KETIGA - MAKLOON</option> <option value = '2.10.07'>2.10.07 GR/IR PIHAK KETIGA - MESIN</option> <option value = '2.10.99'>2.10.99 GR/IR PIHAK KETIGA - LAIN-LAIN</option> <option value = '2.11.01'>2.11.01 UTANG USAHA PIHAK KETIGA - KAIN</option> <option value = '2.11.02'>2.11.02 UTANG USAHA PIHAK KETIGA - AKSESORIS</option> <option value = '2.11.03'>2.11.03 UTANG USAHA PIHAK KETIGA - PAKAIAN JADI</option> <option value = '2.11.04'>2.11.04 UTANG USAHA PIHAK KETIGA - ATK</option> <option value = '2.11.05'>2.11.05 UTANG USAHA PIHAK KETIGA - SPAREPARTS</option> <option value = '2.11.06'>2.11.06 UTANG USAHA PIHAK KETIGA - MAKLOON</option> <option value = '2.11.07'>2.11.07 UTANG USAHA PIHAK KETIGA - MESIN</option> <option value = '2.11.99'>2.11.99 UTANG USAHA PIHAK KETIGA - LAIN-LAIN</option> <option value = '2.12.01'>2.12.01 GR/IR PIHAK BERELASI - KAIN</option> <option value = '2.12.02'>2.12.02 GR/IR PIHAK BERELASI - AKSESORIS</option> <option value = '2.12.03'>2.12.03 GR/IR PIHAK BERELASI - PAKAIAN JADI</option> <option value = '2.12.04'>2.12.04 GR/IR PIHAK BERELASI - ATK</option> <option value = '2.12.05'>2.12.05 GR/IR PIHAK BERELASI - SPAREPARTS</option> <option value = '2.12.06'>2.12.06 GR/IR PIHAK BERELASI - MAKLOON</option> <option value = '2.12.07'>2.12.07 GR/IR PIHAK BERELASI - MESIN</option> <option value = '2.12.99'>2.12.99 GR/IR PIHAK BERELASI - LAIN-LAIN</option> <option value = '2.13.01'>2.13.01 UTANG USAHA PIHAK BERELASI - KAIN</option> <option value = '2.13.02'>2.13.02 UTANG USAHA PIHAK BERELASI - AKSESORIS</option> <option value = '2.13.03'>2.13.03 UTANG USAHA PIHAK BERELASI - PAKAIAN JADI</option> <option value = '2.13.04'>2.13.04 UTANG USAHA PIHAK BERELASI - ATK</option> <option value = '2.13.05'>2.13.05 UTANG USAHA PIHAK BERELASI - SPAREPARTS</option> <option value = '2.13.06'>2.13.06 UTANG USAHA PIHAK BERELASI - MAKLOON</option> <option value = '2.13.07'>2.13.07 UTANG USAHA PIHAK BERELASI - MESIN</option> <option value = '2.13.99'>2.13.99 UTANG USAHA PIHAK BERELASI - LAIN-LAIN</option> <option value = '2.18.99'>2.18.99 UTANG LAIN-LAIN</option> <option value = '2.18.01'>2.18.01 UTANG LAIN-LAIN - DIREKSI</option> <option value = '2.19.99'>2.19.99 UTANG LAIN-LAIN</option> <option value = '2.20.01'>2.20.01 OVERDRAFT BCA 008-997-1979</option> <option value = '2.20.02'>2.20.02 OVERDRAFT BCA 008-998-1982</option> <option value = '2.40.01'>2.40.01 UANG MUKA PENJUALAN LOKAL</option> <option value = '2.40.02'>2.40.02 UANG MUKA PENJUALAN EKSPOR</option> <option value = '2.51.01'>2.51.01 BIAYA YANG MASIH HARUS DIBAYAR - LISTRIK</option> <option value = '2.51.02'>2.51.02 BIAYA YANG MASIH HARUS DIBAYAR - AIR</option> <option value = '2.51.11'>2.51.11 BIAYA YANG MASIH HARUS DIBAYAR - TELP</option> <option value = '2.51.12'>2.51.12 BIAYA YANG MASIH HARUS DIBAYAR - INTERNET</option> <option value = '2.51.21'>2.51.21 BIAYA YANG MASIH HARUS DIBAYAR - GAJI</option> <option value = '2.51.22'>2.51.22 BIAYA YANG MASIH HARUS DIBAYAR - THR</option> <option value = '2.51.31'>2.51.31 BIAYA YANG MASIH HARUS DIBAYAR - BPJS</option> <option value = '2.51.41'>2.51.41 BIAYA YANG MASIH HARUS DIBAYAR - SEWA</option> <option value = '2.51.51'>2.51.51 BIAYA YANG MASIH HARUS DIBAYAR - EMKL</option> <option value = '2.51.61'>2.51.61 BIAYA YANG MASIH HARUS DIBAYAR - FOTOKOPI</option> <option value = '2.52.01'>2.52.01 PAJAK YANG MASIH HARUS DIBAYAR - PPH PASAL 21</option> <option value = '2.52.02'>2.52.02 PAJAK YANG MASIH HARUS DIBAYAR - PPH PASAL 4 (2)</option> <option value = '2.52.03'>2.52.03 PAJAK YANG MASIH HARUS DIBAYAR - PPN</option> <option value = '2.52.04'>2.52.04 PAJAK YANG MASIH HARUS DIBAYAR - PPH PASAL 25/29</option> <option value = '2.52.05'>2.52.05 PAJAK YANG MASIH HARUS DIBAYAR - PPH PASAL 23</option> <option value = '2.52.06'>2.52.06 PAJAK YANG MASIH HARUS DIBAYAR - PBB</option> <option value = '2.53.01'>2.53.01 PPN KELUARAN</option> <option value = '2.60.01'>2.60.01 UTANG BANK JANGKA PANJANG</option> <option value = '3.10.01'>3.10.01 MODAL SAHAM</option> <option value = '3.20.01'>3.20.01 TAMBAHAN MODAL DISETOR (AMNESTI PAJAK)</option> <option value = '3.30.01'>3.30.01 LABA DITAHAN</option> <option value = '3.40.01'>3.40.01 LABA TAHUN BERJALAN</option> <option value = '4.01.01'>4.01.01 PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - A GRADE</option> <option value = '4.01.02'>4.01.02 PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - B GRADE</option> <option value = '4.02.01'>4.02.01 PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - A GRADE</option> <option value = '4.02.02'>4.02.02 PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - B GRADE</option> <option value = '4.09.01'>4.09.01 PENJUALAN LAINNYA PIHAK KETIGA - KAIN</option> <option value = '4.09.02'>4.09.02 PENJUALAN LAINNYA PIHAK KETIGA - AKSESORIS</option> <option value = '4.09.03'>4.09.03 PENJUALAN LAINNYA PIHAK KETIGA - SCRAP / MAJUN</option> <option value = '4.11.01'>4.11.01 PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - A GRADE</option> <option value = '4.11.02'>4.11.02 PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - B GRADE</option> <option value = '4.12.01'>4.12.01 PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - A GRADE</option> <option value = '4.12.02'>4.12.02 PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - B GRADE</option> <option value = '4.19.01'>4.19.01 PENJUALAN LAINNYA PIHAK BERELASI - KAIN</option> <option value = '4.19.02'>4.19.02 PENJUALAN LAINNYA PIHAK BERELASI - AKSESORIS</option> <option value = '4.19.03'>4.19.03 PENJUALAN LAINNYA PIHAK BERELASI - SCRAP / MAJUN</option> <option value = '4.21.01'>4.21.01 PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK KETIGA - A GRADE</option> <option value = '4.21.02'>4.21.02 PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK KETIGA - B GRADE</option> <option value = '4.22.01'>4.22.01 PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK KETIGA - A GRADE</option> <option value = '4.22.03'>4.22.03 PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK KETIGA - B GRADE</option> <option value = '4.29.01'>4.29.01 PENJUALAN JASA LAINNYA</option> <option value = '4.31.01'>4.31.01 PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK BERELASI - A GRADE</option> <option value = '4.31.02'>4.31.02 PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK BERELASI - B GRADE</option> <option value = '4.32.01'>4.32.01 PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK BERELASI - A GRADE</option> <option value = '4.32.02'>4.32.02 PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK BERELASI - B GRADE</option> <option value = '4.39.01'>4.39.01 PENJUALAN JASA LAINNYA</option> <option value = '4.41.01'>4.41.01 RETUR PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - A GRADE</option> <option value = '4.41.02'>4.41.02 RETUR PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - B GRADE</option> <option value = '4.42.01'>4.42.01 RETUR PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - A GRADE</option> <option value = '4.42.02'>4.42.02 RETUR PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - B GRADE</option> <option value = '4.49.01'>4.49.01 RETUR PENJUALAN LAINNYA PIHAK KETIGA - KAIN</option> <option value = '4.49.02'>4.49.02 RETUR PENJUALAN LAINNYA PIHAK KETIGA - AKSESORIS</option> <option value = '4.49.03'>4.49.03 RETUR PENJUALAN LAINNYA PIHAK KETIGA - SCRAP / MAJUN</option> <option value = '4.51.01'>4.51.01 RETUR PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - A GRADE</option> <option value = '4.51.02'>4.51.02 RETUR PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - B GRADE</option> <option value = '4.52.01'>4.52.01 RETUR PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - A GRADE</option> <option value = '4.52.02'>4.52.02 RETUR PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - B GRADE</option> <option value = '4.59.01'>4.59.01 RETUR PENJUALAN LAINNYA PIHAK BERELASI - KAIN</option> <option value = '4.59.02'>4.59.02 RETUR PENJUALAN LAINNYA PIHAK BERELASI - AKSESORIS</option> <option value = '4.59.03'>4.59.03 RETUR PENJUALAN LAINNYA PIHAK BERELASI - SCRAP / MAJUN</option> <option value = '4.61.01'>4.61.01 POTONGAN PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - A GRADE</option> <option value = '4.61.02'>4.61.02 POTONGAN PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - B GRADE</option> <option value = '4.62.01'>4.62.01 POTONGAN PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - A GRADE</option> <option value = '4.62.02'>4.62.02 POTONGAN PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - B GRADE</option> <option value = '4.69.01'>4.69.01 POTONGAN PENJUALAN LAINNYA PIHAK KETIGA - KAIN</option> <option value = '4.69.02'>4.69.02 POTONGAN PENJUALAN LAINNYA PIHAK KETIGA - AKSESORIS</option> <option value = '4.69.03'>4.69.03 POTONGAN PENJUALAN LAINNYA PIHAK KETIGA - SCRAP / MAJUN</option> <option value = '4.71.01'>4.71.01 POTONGAN PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - A GRADE</option> <option value = '4.71.02'>4.71.02 POTONGAN PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - B GRADE</option> <option value = '4.72.01'>4.72.01 POTONGAN PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - A GRADE</option> <option value = '4.72.02'>4.72.02 POTONGAN PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - B GRADE</option> <option value = '4.79.01'>4.79.01 POTONGAN PENJUALAN LAINNYA PIHAK BERELASI - KAIN</option> <option value = '4.79.02'>4.79.02 POTONGAN PENJUALAN LAINNYA PIHAK BERELASI - AKSESORIS</option> <option value = '4.79.03'>4.79.03 POTONGAN PENJUALAN LAINNYA PIHAK BERELASI - SCRAP / MAJUN</option> <option value = '4.81.01'>4.81.01 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK KETIGA - A GRADE</option> <option value = '4.81.02'>4.81.02 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK KETIGA - B GRADE</option> <option value = '4.82.01'>4.82.01 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK KETIGA - A GRADE</option> <option value = '4.82.02'>4.82.02 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK KETIGA - B GRADE</option> <option value = '4.89.01'>4.89.01 POTONGAN PENJUALAN JASA LAINNYA</option> <option value = '4.91.01'>4.91.01 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK BERELASI - A GRADE</option> <option value = '4.91.02'>4.91.02 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK BERELASI - B GRADE</option> <option value = '4.92.01'>4.92.01 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK BERELASI - A GRADE</option> <option value = '4.92.02'>4.92.02 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK BERELASI - B GRADE</option> <option value = '4.99.01'>4.99.01 POTONGAN PENJUALAN JASA LAINNYA</option> <option value = '5.01.01'>5.01.01 HARGA POKOK PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - A GRADE</option> <option value = '5.01.02'>5.01.02 HARGA POKOK PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - B GRADE</option> <option value = '5.02.01'>5.02.01 HARGA POKOK PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - A GRADE</option> <option value = '5.02.02'>5.02.02 HARGA POKOK PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - B GRADE</option> <option value = '5.09.01'>5.09.01 HARGA POKOK PENJUALAN LAINNYA PIHAK KETIGA - KAIN</option> <option value = '5.09.02'>5.09.02 HARGA POKOK PENJUALAN LAINNYA PIHAK KETIGA - AKSESORIS</option> <option value = '5.09.03'>5.09.03 HARGA POKOK PENJUALAN LAINNYA PIHAK KETIGA - SCRAP / MAJUN</option> <option value = '5.11.01'>5.11.01 HARGA POKOK PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - A GRADE</option> <option value = '5.11.02'>5.11.02 HARGA POKOK PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - B GRADE</option> <option value = '5.12.01'>5.12.01 HARGA POKOK PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - A GRADE</option> <option value = '5.12.02'>5.12.02 HARGA POKOK PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - B GRADE</option> <option value = '5.19.01'>5.19.01 HARGA POKOK PENJUALAN LAINNYA PIHAK BERELASI - KAIN</option> <option value = '5.19.02'>5.19.02 HARGA POKOK PENJUALAN LAINNYA PIHAK BERELASI - AKSESORIS</option> <option value = '5.19.03'>5.19.03 HARGA POKOK PENJUALAN LAINNYA PIHAK BERELASI - SCRAP / MAJUN</option> <option value = '5.21.01'>5.21.01 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK KETIGA - A GRADE</option> <option value = '5.21.02'>5.21.02 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK KETIGA - B GRADE</option> <option value = '5.22.01'>5.22.01 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK KETIGA - A GRADE</option> <option value = '5.22.02'>5.22.02 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK KETIGA - B GRADE</option> <option value = '5.29.01'>5.29.01 HARGA POKOK PENJUALAN JASA LAINNYA</option> <option value = '5.31.01'>5.31.01 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK BERELASI - A GRADE</option> <option value = '5.31.02'>5.31.02 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK BERELASI - B GRADE</option> <option value = '5.32.01'>5.32.01 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK BERELASI - A GRADE</option> <option value = '5.32.02'>5.32.02 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK BERELASI - B GRADE</option> <option value = '5.39.01'>5.39.01 HARGA POKOK PENJUALAN JASA LAINNYA</option> <option value = '5.40.01'>5.40.01 BIAYA PEMAKAIAN KAIN</option> <option value = '5.40.02'>5.40.02 BIAYA PEMAKAIAN AKSESORIS</option> <option value = '5.50.01'>5.50.01 BEBAN GAJI & UPAH TENAGA KERJA LANGSUNG</option> <option value = '5.51.01'>5.51.01 BEBAN TUNJANGAN TENAGA KERJA LANGSUNG</option> <option value = '5.52.01'>5.52.01 BEBAN LEMBUR TENAGA KERJA LANGSUNG</option> <option value = '5.53.01'>5.53.01 BPJS KETENAGAKERJAAN TENAGA KERJA LANGSUNG</option> <option value = '5.53.02'>5.53.02 BPJS KESEHATAN TENAGA KERJA LANGSUNG</option> <option value = '5.54.01'>5.54.01 THR TENAGA KERJA LANGSUNG</option> <option value = '5.54.02'>5.54.02 BONUS TENAGA KERJA LANGSUNG</option> <option value = '5.55.01'>5.55.01 BEBAN MANFAAT KARYAWAN TENAGA KERJA LANGSUNG</option> <option value = '5.60.01'>5.60.01 BEBAN GAJI & UPAH TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.61.01'>5.61.01 BEBAN TUNJANGAN TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.62.01'>5.62.01 BEBAN LEMBUR TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.63.01'>5.63.01 BPJS KETENAGAKERJAAN TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.63.02'>5.63.02 BPJS KESEHATAN TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.64.01'>5.64.01 THR TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.64.02'>5.64.02 BONUS TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.65.01'>5.65.01 BEBAN MANFAAT KARYAWAN TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.69.01'>5.69.01 BEBAN MAKLOON DYEING BENANG</option> <option value = '5.69.02'>5.69.02 BEBAN MAKLOON DYEING KAIN</option> <option value = '5.69.03'>5.69.03 BEBAN MAKLOON KNITTING</option> <option value = '5.69.04'>5.69.04 BEBAN MAKLOON PAKAIAN JADI</option> <option value = '5.69.05'>5.69.05 BEBAN MAKLOON PRINTING</option> <option value = '5.69.06'>5.69.06 BEBAN MAKLOON EMBRODEIRY</option> <option value = '5.69.07'>5.69.07 BEBAN MAKLOON WASHING</option> <option value = '5.69.08'>5.69.08 BEBAN MAKLOON KNITTING VIETER BAND</option> <option value = '5.69.09'>5.69.09 BEBAN MAKLOON BUBUT</option> <option value = '5.69.10'>5.69.10 BEBAN MAKLOON PAINTING</option> <option value = '5.69.11'>5.69.11 BEBAN MAKLOON LASER CUTTING</option> <option value = '5.69.12'>5.69.12 BEBAN MAKLOON BONDING</option> <option value = '5.69.13'>5.69.13 BEBAN MAKLOON HEATSEAL</option> <option value = '5.69.14'>5.69.14 BEBAN MAKLOON QUILTING</option> <option value = '5.69.97'>5.69.97 BEBAN MAKLOON KAIN</option> <option value = '5.69.98'>5.69.98 BEBAN MAKLOON AKSESORIS</option> <option value = '5.69.99'>5.69.99 BEBAN MAKLOON LAINNYA</option> <option value = '5.70.01'>5.70.01 BEBAN ENERGI - BATUBARA</option> <option value = '5.70.02'>5.70.02 BEBAN ENERGI - SOLAR</option> <option value = '5.70.03'>5.70.03 BEBAN ENERGI - ELPIJI</option> <option value = '5.71.01'>5.71.01 CHEMICAL IPAL</option> <option value = '5.71.02'>5.71.02 BEBAN BUANG LUMPUR</option> <option value = '5.71.03'>5.71.03 BEBAN BUANG ABU - LUMPUR</option> <option value = '5.71.04'>5.71.04 BEBAN BUANG ABU - BATU BARA</option> <option value = '5.71.05'>5.71.05 BEBAN UJI LAB LIMBAH AIR</option> <option value = '5.71.99'>5.71.99 BEBAN PENGOLAHAN LIMBAH LAINNYA</option> <option value = '5.72.01'>5.72.01 BEBAN SPAREPARTS</option> <option value = '5.73.01'>5.73.01 BEBAN IMPOR MESIN</option> <option value = '5.73.02'>5.73.02 BEBAN IMPOR SPAREPARTS</option> <option value = '5.73.03'>5.73.03 BEBAN IMPOR BAHAN BAKU</option> <option value = '5.73.04'>5.73.04 BEBAN IMPOR BAHAN PEMBANTU</option> <option value = '5.74.01'>5.74.01 BEBAN PENGUJIAN KAIN</option> <option value = '5.74.99'>5.74.99 BEBAN PENGUJIAN DAN PENELITIAN LAINNYA</option> <option value = '5.75.01'>5.75.01 BEBAN SEWA TANAH & BANGUNAN</option> <option value = '5.75.02'>5.75.02 BEBAN SEWA MESIN</option> <option value = '5.75.03'>5.75.03 BEBAN SEWA PERANGKAT LUNAK</option> <option value = '5.76.01'>5.76.01 BEBAN LISTRIK PABRIK</option> <option value = '5.77.01'>5.77.01 BEBAN TELEPON PABRIK</option> <option value = '5.77.02'>5.77.02 BEBAN INTERNET PABRIK</option> <option value = '5.78.01'>5.78.01 BEBAN IURAN AIR PJT</option> <option value = '5.78.02'>5.78.02 BEBAN PAJAK AIR PERMUKAAN</option> <option value = '5.78.99'>5.78.99 BEBAN AIR PABRIK LAINNYA</option> <option value = '5.80.01'>5.80.01 BEBAN PEMELIHARAAN BANGUNAN</option> <option value = '5.80.11'>5.80.11 BEBAN PEMELIHARAAN INSTALASI LISTRIK</option> <option value = '5.80.12'>5.80.12 BEBAN PEMELIHARAAN INSTALASI AIR</option> <option value = '5.80.21'>5.80.21 BEBAN PEMELIHARAAN MESIN</option> <option value = '5.80.31'>5.80.31 BEBAN PEMELIHARAAN PERALATAN PABRIK</option> <option value = '5.80.41'>5.80.41 BEBAN PEMELIHARAAN KENDARAAN</option> <option value = '5.80.51'>5.80.51 BEBAN PEMELIHARAAN PERALATAN KANTOR</option> <option value = '5.80.61'>5.80.61 BEBAN PEMELIHARAAN PERALATAN IT</option> <option value = '5.81.01'>5.81.01 BEBAN ASURANSI BANGUNAN</option> <option value = '5.81.11'>5.81.11 BEBAN ASURANSI INSTALASI LISTRIK</option> <option value = '5.81.12'>5.81.12 BEBAN ASURANSI INSTALASI AIR</option> <option value = '5.81.21'>5.81.21 BEBAN ASURANSI MESIN</option> <option value = '5.81.31'>5.81.31 BEBAN ASURANSI PERALATAN PABRIK</option> <option value = '5.81.41'>5.81.41 BEBAN ASURANSI KENDARAAN</option> <option value = '5.81.51'>5.81.51 BEBAN ASURANSI PERALATAN KANTOR</option> <option value = '5.81.61'>5.81.61 BEBAN ASURANSI PERALATAN IT</option> <option value = '5.81.71'>5.81.71 BEBAN ASURANSI KENDARAAN</option> <option value = '5.82.01'>5.82.01 BEBAN KEPERLUAN KANTOR</option> <option value = '5.82.02'>5.82.02 BEBAN PEMAKAIAN ATK</option> <option value = '5.82.03'>5.82.03 BEBAN FOTOKOPI</option> <option value = '5.83.01'>5.83.01 TRAINING KARYAWAN PABRIK</option> <option value = '5.83.02'>5.83.02 SERAGAM DAN PERLENGKAPAN KERJA KARYAWAN</option> <option value = '5.83.03'>5.83.03 BEBAN KESEHATAN KARYAWAN</option> <option value = '5.83.04'>5.83.04 BEBAN KECELAKAAN KERJA</option> <option value = '5.84.01'>5.84.01 BEBAN TRANSPORTASI</option> <option value = '5.84.02'>5.84.02 BEBAN PERJALANAN DINAS</option> <option value = '5.84.03'>5.84.03 BEBAN EKSPEDISI ANGKUTAN</option> <option value = '5.85.01'>5.85.01 BEBAN KEPERLUAN PABRIK</option> <option value = '5.86.01'>5.86.01 BEBAN PERIZINAN</option> <option value = '5.86.02'>5.86.02 BEBAN RETRIBUSI</option> <option value = '5.86.03'>5.86.03 BEBAN IURAN</option> <option value = '5.86.04'>5.86.04 BEBAN SUMBANGAN</option> <option value = '5.87.01'>5.87.01 BEBAN PENYUSUTAN BANGUNAN</option> <option value = '5.87.11'>5.87.11 BEBAN PENYUSUTAN INSTALASI LISTRIK</option> <option value = '5.87.12'>5.87.12 BEBAN PENYUSUTAN INSTALASI AIR</option> <option value = '5.87.21'>5.87.21 BEBAN PENYUSUTAN MESIN</option> <option value = '5.87.31'>5.87.31 BEBAN PENYUSUTAN PERALATAN PABRIK</option> <option value = '5.87.41'>5.87.41 BEBAN PENYUSUTAN KENDARAAN</option> <option value = '5.87.51'>5.87.51 BEBAN PENYUSUTAN PERALATAN KANTOR</option> <option value = '5.87.52'>5.87.52 BEBAN PENYUSUTAN PERALATAN IT</option> <option value = '5.87.91'>5.87.91 BEBAN AMORTISASI PERANGKAT LUNAK</option> <option value = '5.97.01'>5.97.01 BEBAN PEMBULATAN</option> <option value = '5.97.02'>5.97.02 BEBAN SELISIH HARGA</option> <option value = '5.97.99'>5.97.99 BEBAN PABRIK LAINNYA</option> <option value = '5.98.99'>5.98.99 BIAYA PRODUKSI BULAN BERJALAN</option> <option value = '5.99.01'>5.99.01 BEBAN PENYESUAIAN PERSEDIAAN KAIN</option> <option value = '5.99.11'>5.99.11 BEBAN PENYESUAIAN PERSEDIAAN AKSESORIS</option> <option value = '5.99.21'>5.99.21 BEBAN PENYESUAIAN PERSEDIAAN DALAM PROSES</option> <option value = '5.99.31'>5.99.31 BEBAN PENYESUAIAN PERSEDIAAN BARANG JADI</option> <option value = '6.01.01'>6.01.01 BEBAN GAJI & UPAH</option> <option value = '6.02.02'>6.02.02 BEBAN TUNJANGAN</option> <option value = '6.03.03'>6.03.03 BEBAN LEMBUR</option> <option value = '6.04.01'>6.04.01 BEBAN BPJS KETENAGAKERJAAN</option> <option value = '6.04.02'>6.04.02 BEBAN BPJS KESEHATAN</option> <option value = '6.05.01'>6.05.01 BEBAN THR</option> <option value = '6.05.02'>6.05.02 BEBAN BONUS</option> <option value = '6.06.01'>6.06.01 BEBAN MANFAAT KARYAWAN</option> <option value = '6.10.01'>6.10.01 BEBAN PROMOSI DAN IKLAN</option> <option value = '6.11.01'>6.11.01 BEBAN EKSPEDISI ANGKUTAN</option> <option value = '6.12.01'>6.12.01 BEBAN EKSPOR</option> <option value = '6.12.02'>6.12.02 BEBAN LC</option> <option value = '6.13.01'>6.13.01 BEBAN PIUTANG TIDAK TERTAGIH</option> <option value = '6.14.01'>6.14.01 BEBAN KLAIM PENJUALAN</option> <option value = '6.14.02'>6.14.02 BEBAN PINALTI PENJUALAN</option> <option value = '6.14.03'>6.14.03 BEBAN KOMISI PENJUALAN</option> <option value = '6.15.01'>6.15.01 BEBAN SAMPEL</option> <option value = '6.15.02'>6.15.02 BEBAN ENTERTAINMENT</option> <option value = '6.16.01'>6.16.01 BEBAN PEMELIHARAAN BANGUNAN</option> <option value = '6.16.11'>6.16.11 BEBAN PEMELIHARAAN INSTALASI LISTRIK</option> <option value = '6.16.12'>6.16.12 BEBAN PEMELIHARAAN INSTALASI AIR</option> <option value = '6.16.21'>6.16.21 BEBAN PEMELIHARAAN MESIN</option> <option value = '6.16.41'>6.16.41 BEBAN PEMELIHARAAN KENDARAAN</option> <option value = '6.16.51'>6.16.51 BEBAN PEMELIHARAAN PERALATAN KANTOR</option> <option value = '6.16.52'>6.16.52 BEBAN PEMELIHARAAN PERALATAN IT</option> <option value = '6.17.01'>6.17.01 BEBAN PENYUSUTAN BANGUNAN</option> <option value = '6.17.11'>6.17.11 BEBAN PENYUSUTAN INSTALASI LISTRIK</option> <option value = '6.17.12'>6.17.12 BEBAN PENYUSUTAN INSTALASI AIR</option> <option value = '6.17.21'>6.17.21 BEBAN PENYUSUTAN MESIN</option> <option value = '6.17.41'>6.17.41 BEBAN PENYUSUTAN KENDARAAN</option> <option value = '6.17.51'>6.17.51 BEBAN PENYUSUTAN PERALATAN KANTOR</option> <option value = '6.17.52'>6.17.52 BEBAN PENYUSUTAN PERALATAN IT</option> <option value = '6.17.91'>6.17.91 BEBAN AMORTISASI PERANGKAT LUNAK</option> <option value = '6.18.01'>6.18.01 BEBAN ASURANSI BANGUNAN</option> <option value = '6.18.11'>6.18.11 BEBAN ASURANSI INSTALASI LISTRIK</option> <option value = '6.18.12'>6.18.12 BEBAN ASURANSI INSTALASI AIR</option> <option value = '6.18.21'>6.18.21 BEBAN ASURANSI MESIN</option> <option value = '6.18.41'>6.18.41 BEBAN ASURANSI KENDARAAN</option> <option value = '6.18.51'>6.18.51 BEBAN ASURANSI PERALATAN KANTOR</option> <option value = '6.18.52'>6.18.52 BEBAN ASURANSI PERALATAN IT</option> <option value = '6.19.01'>6.19.01 BEBAN KEPERLUAN KANTOR</option> <option value = '6.19.02'>6.19.02 BEBAN PEMAKAIAN ATK</option> <option value = '6.19.03'>6.19.03 BEBAN FOTOKOPI</option> <option value = '6.20.01'>6.20.01 BEBAN TRAINING KARYAWAN</option> <option value = '6.21.01'>6.21.01 BEBAN TRANSPORTASI</option> <option value = '6.21.02'>6.21.02 BEBAN PERJALANAN DINAS</option> <option value = '6.22.01'>6.22.01 BEBAN RUMAH TANGGA KANTOR</option> <option value = '6.23.01'>6.23.01 BEBAN PERIZINAN</option> <option value = '6.23.02'>6.23.02 BEBAN RETRIBUSI</option> <option value = '6.23.03'>6.23.03 BEBAN IURAN</option> <option value = '6.23.04'>6.23.04 BEBAN SUMBANGAN</option> <option value = '6.24.01'>6.24.01 BEBAN SEWA KANTOR</option> <option value = '6.25.01'>6.25.01 BEBAN LISTRIK KANTOR</option> <option value = '6.26.01'>6.26.01 BEBAN TELEPON KANTOR</option> <option value = '6.26.02'>6.26.02 BEBAN INTERNET KANTOR</option> <option value = '6.28.01'>6.28.01 BEBAN JASA PROFESIONAL</option> <option value = '6.27.01'>6.27.01 BEBAN AIR KANTOR</option> <option value = '6.29.01'>6.29.01 BEBAN PENJUALAN LAINNYA</option> <option value = '7.30.01'>7.30.01 BEBAN GAJI & UPAH</option> <option value = '7.31.01'>7.31.01 BEBAN TUNJANGAN</option> <option value = '7.32.01'>7.32.01 BEBAN LEMBUR</option> <option value = '7.33.01'>7.33.01 BEBAN BPJS KETENAGAKERJAAN</option> <option value = '7.33.02'>7.33.02 BEBAN BPJS KESEHATAN</option> <option value = '7.34.01'>7.34.01 BEBAN THR</option> <option value = '7.34.02'>7.34.02 BEBAN BONUS</option> <option value = '7.35.01'>7.35.01 BEBAN MANFAAT KARYAWAN</option> <option value = '7.40.01'>7.40.01 BEBAN PAJAK</option> <option value = '7.41.01'>7.41.01 BEBAN JASA PROFESIONAL</option> <option value = '7.42.01'>7.42.01 BEBAN ENTERTAINMENT</option> <option value = '7.43.01'>7.43.01 BEBAN SEWA KANTOR</option> <option value = '7.43.02'>7.43.02 BEBAN SEWA PERALATAN KANTOR</option> <option value = '7.44.01'>7.44.01 BEBAN LISTRIK KANTOR</option> <option value = '7.45.01'>7.45.01 BEBAN TELEPON KANTOR</option> <option value = '7.45.02'>7.45.02 BEBAN INTERNET KANTOR</option> <option value = '7.46.01'>7.46.01 BEBAN AIR KANTOR</option> <option value = '7.47.01'>7.47.01 BEBAN PEMELIHARAAN BANGUNAN</option> <option value = '7.47.11'>7.47.11 BEBAN PEMELIHARAAN INSTALASI LISTRIK</option> <option value = '7.47.12'>7.47.12 BEBAN PEMELIHARAAN INSTALASI AIR</option> <option value = '7.47.21'>7.47.21 BEBAN PEMELIHARAAN MESIN</option> <option value = '7.47.41'>7.47.41 BEBAN PEMELIHARAAN KENDARAAN</option> <option value = '7.47.51'>7.47.51 BEBAN PEMELIHARAAN PERALATAN KANTOR</option> <option value = '7.47.52'>7.47.52 BEBAN PEMELIHARAAN PERALATAN IT</option> <option value = '7.48.01'>7.48.01 BEBAN PENYUSUTAN BANGUNAN</option> <option value = '7.48.11'>7.48.11 BEBAN PENYUSUTAN INSTALASI LISTRIK</option> <option value = '7.48.12'>7.48.12 BEBAN PENYUSUTAN INSTALASI AIR</option> <option value = '7.48.21'>7.48.21 BEBAN PENYUSUTAN MESIN</option> <option value = '7.48.41'>7.48.41 BEBAN PENYUSUTAN KENDARAAN</option> <option value = '7.48.51'>7.48.51 BEBAN PENYUSUTAN PERALATAN KANTOR</option> <option value = '7.48.52'>7.48.52 BEBAN PENYUSUTAN PERALATAN IT</option> <option value = '7.48.91'>7.48.91 BEBAN AMORTISASI PERANGKAT LUNAK</option> <option value = '7.49.01'>7.49.01 BEBAN ASURANSI BANGUNAN</option> <option value = '7.49.11'>7.49.11 BEBAN ASURANSI INSTALASI LISTRIK</option> <option value = '7.49.12'>7.49.12 BEBAN ASURANSI INSTALASI AIR</option> <option value = '7.49.21'>7.49.21 BEBAN ASURANSI MESIN</option> <option value = '7.49.41'>7.49.41 BEBAN ASURANSI KENDARAAN</option> <option value = '7.49.51'>7.49.51 BEBAN ASURANSI PERALATAN KANTOR</option> <option value = '7.49.52'>7.49.52 BEBAN ASURANSI PERALATAN IT</option> <option value = '7.50.01'>7.50.01 BEBAN KEPERLUAN KANTOR</option> <option value = '7.50.02'>7.50.02 BEBAN PEMAKAIAN ATK</option> <option value = '7.50.03'>7.50.03 BEBAN FOTOKOPI</option> <option value = '7.51.01'>7.51.01 BEBAN TRAINING KARYAWAN</option> <option value = '7.52.01'>7.52.01 BEBAN TRANSPORTASI</option> <option value = '7.52.02'>7.52.02 BEBAN PERJALANAN DINAS</option> <option value = '7.53.01'>7.53.01 BEBAN RUMAH TANGGA KANTOR</option> <option value = '7.54.01'>7.54.01 BEBAN PERIZINAN</option> <option value = '7.54.02'>7.54.02 BEBAN RETRIBUSI</option> <option value = '7.54.03'>7.54.03 BEBAN IURAN</option> <option value = '7.54.04'>7.54.04 BEBAN SUMBANGAN</option> <option value = '7.99.01'>7.99.01 BEBAN ADMINISTRASI & UMUM LAINNYA</option> <option value = '8.01.01'>8.01.01 LABA / (RUGI) PENJUALAN ASET TETAP</option> <option value = '8.07.01'>8.07.01 PENDAPATAN LAIN-LAIN</option> <option value = '8.02.01'>8.02.01 LABA / (RUGI) DISPOSISI ASET TETAP</option> <option value = '8.03.01'>8.03.01 PENJUALAN SPAREPARTS</option> <option value = '8.04.01'>8.04.01 PENJUALAN LAIN-LAIN</option> <option value = '8.05.01'>8.05.01 PENDAPATAN JASA GIRO</option> <option value = '8.06.01'>8.06.01 PENDAPATAN SEWA</option> <option value = '8.50.01'>8.50.01 BEBAN BUNGA BANK</option> <option value = '8.50.02'>8.50.02 BEBAN BUNGA PEMEGANG SAHAM/DIREKSI</option> <option value = '8.50.99'>8.50.99 BEBAN BUNGA LAIN-LAIN</option> <option value = '8.51.01'>8.51.01 BEBAN ADMINISTRASI BANK</option> <option value = '8.51.02'>8.51.02 BEBAN PROVISI BANK</option> <option value = '8.51.03'>8.51.03 BEBAN ADMINISTRASI REKENING</option> <option value = '8.52.01'>8.52.01 LABA / (RUGI) SELISIH KURS SUDAH TEREALISASI</option> <option value = '8.52.02'>8.52.02 LABA / (RUGI) SELISIH KURS BELUM TEREALISASI</option> <option value = '8.53.01'>8.53.01 PEMBULATAN</option> <option value = '8.54.01'>8.54.01 BEBAN LAIN-LAIN</option> <option value = '9.10.01'>9.10.01 PAJAK KINI</option> <option value = '9.10.02'>9.10.02 PAJAK TANGGUHAN</option> <option value = '1.90.02'>1.90.02 POS SILANG PIUTANG USAHA</option> <option value = '2.51.99'>2.51.99 BIAYA YANG MASIH HARUS DIBAYAR - LAIN-LAIN</option> <option value = '5.97.03'>5.97.03 BEBAN SELISIH KUANTITAS</option> <option value = '1.42.02'>1.42.02 PERSEDIAAN PAKAIAN JADI DEADSTOCK</option> <option value = '2.19.01'>2.19.01 UTANG LAIN-LAIN DIREKSI</option> <option value = '1.10.82'>1.10.82 BCA 008-412-6311</option> <option value = '7.40.02'>7.40.02 BEBAN PAJAK BUMI DAN BANGUNAN</option> <option value = '5.73.99'>5.73.99 BEBAN IMPOR LAIN-LAIN</option> <option value = '1.10.31'>1.10.31 MANDIRI 130-0002077777</option> <option value = '6.12.03'>6.12.03 BEBAN PREMI CUSTOM BOND</option> <option value = '5.85.02'>5.85.02 BEBAN ENTERTAINMENT</option> <option value = '2.18.02'>2.18.02 UTANG LAIN-LAIN - FORWARDER</option> <option value = '1.34.04'>1.34.04 PIUTANG LAIN-LAIN PIHAK KETIGA - FORWARDER</option></datalist>";
+	var coa = "<input style='width: 250px;' class='form-control' value='1.34.04' list='nm_coa' name='nm_coa' oninput='dn_coa_perbarui_nama(this)'> <small class='dn-coa-nama'></small> <datalist id='nm_coa'> <option value = '-'>-</option><option value = '1.01.01'>1.01.01 KAS KECIL PABRIK</option> <option value = '1.01.02'>1.01.02 KAS KECIL KANTOR</option> <option value = '1.01.03'>1.01.03 KAS BESAR</option> <option value = '1.10.01'>1.10.01 BCA 008-997-1979</option> <option value = '1.10.02'>1.10.02 BCA 008-998-1982</option> <option value = '1.10.11'>1.10.11 BNI 442-244-2000</option> <option value = '1.10.21'>1.10.21 CIMB NIAGA 800-17781-4600</option> <option value = '1.10.81'>1.10.81 BCA 008-403-6249</option> <option value = '1.20.01'>1.20.01 OBLIGASI</option> <option value = '1.30.01'>1.30.01 PIUTANG USAHA PIHAK KETIGA - LOKAL</option> <option value = '1.30.02'>1.30.02 PIUTANG USAHA PIHAK KETIGA - EKSPOR</option> <option value = '1.32.01'>1.32.01 PIUTANG USAHA PIHAK BERELASI - LOKAL</option> <option value = '1.32.02'>1.32.02 PIUTANG USAHA PIHAK BERELASI - EKSPOR</option> <option value = '1.34.01'>1.34.01 PIUTANG LAIN-LAIN PIHAK KETIGA - LOKAL</option> <option value = '1.34.02'>1.34.02 PIUTANG LAIN-LAIN PIHAK KETIGA - EKSPOR</option> <option value = '1.34.03'>1.34.03 PIUTANG LAIN-LAIN PIHAK KETIGA - SPAREPARTS</option> <option value = '1.34.51'>1.34.51 PIUTANG LAIN-LAIN PIHAK KETIGA - KARYAWAN</option> <option value = '1.34.61'>1.34.61 PIUTANG LAIN-LAIN PIHAK KETIGA - PPH 23</option> <option value = '1.34.99'>1.34.99 PIUTANG LAIN-LAIN PIHAK KETIGA - LAIN-LAIN</option> <option value = '1.35.01'>1.35.01 PIUTANG LAIN-LAIN PIHAK BERELASI - LOKAL</option> <option value = '1.35.02'>1.35.02 PIUTANG LAIN-LAIN PIHAK BERELASI - EKSPOR</option> <option value = '1.35.03'>1.35.03 PIUTANG LAIN-LAIN PIHAK BERELASI - SPAREPARTS</option> <option value = '1.35.51'>1.35.51 PIUTANG LAIN-LAIN PIHAK BERELASI - DIREKSI</option> <option value = '1.35.99'>1.35.99 PIUTANG LAIN-LAIN PIHAK BERELASI - LAIN-LAIN</option> <option value = '1.36.01'>1.36.01 PERSEDIAAN KAIN</option> <option value = '1.38.01'>1.38.01 PERSEDIAAN AKSESORIS</option> <option value = '1.40.01'>1.40.01 PERSEDIAAN BARANG DALAM PROSES</option> <option value = '1.41.01'>1.41.01 PERSEDIAAN BARANG DALAM PROSES DI PEMAKLOON</option> <option value = '1.41.02'>1.41.02 PERSEDIAAN KAIN DI PEMAKLOON</option> <option value = '1.41.03'>1.41.03 PERSEDIAAN AKSESORIS DI PEMAKLOON</option> <option value = '1.41.04'>1.41.04 PERSEDIAAN BARANG JADI DI PEMAKLOON</option> <option value = '1.42.01'>1.42.01 PERSEDIAAN PAKAIAN JADI</option> <option value = '1.44.01'>1.44.01 PERSEDIAAN SPAREPARTS</option> <option value = '1.45.01'>1.45.01 PERSEDIAAN ATK</option> <option value = '1.45.02'>1.45.02 PERSEDIAAN UMUM</option> <option value = '1.49.01'>1.49.01 UANG MUKA PEMBELIAN LOKAL - ASET TETAP</option> <option value = '1.49.11'>1.49.11 UANG MUKA PEMBELIAN LOKAL - BAHAN BAKU / BAHAN PEMBANTU</option> <option value = '1.49.21'>1.49.21 UANG MUKA PEMBELIAN LOKAL - SPAREPARTS</option> <option value = '1.49.81'>1.49.81 UANG MUKA PEMBELIAN LOKAL - JASA</option> <option value = '1.49.99'>1.49.99 UANG MUKA PEMBELIAN LOKAL - LAIN-LAIN</option> <option value = '1.50.01'>1.50.01 UANG MUKA PEMBELIAN IMPORT - ASET TETAP</option> <option value = '1.50.11'>1.50.11 UANG MUKA PEMBELIAN IMPORT - BAHAN BAKU / BAHAN PEMBANTU</option> <option value = '1.50.21'>1.50.21 UANG MUKA PEMBELIAN IMPORT - SPAREPARTS</option> <option value = '1.50.81'>1.50.81 UANG MUKA PEMBELIAN IMPORT - JASA</option> <option value = '1.50.99'>1.50.99 UANG MUKA PEMBELIAN IMPORT - LAIN-LAIN</option> <option value = '1.51.01'>1.51.01 BIAYA DIBAYAR DIMUKA - SEWA</option> <option value = '1.51.02'>1.51.02 BIAYA DIBAYAR DIMUKA - ASURANSI</option> <option value = '1.51.99'>1.51.99 BIAYA DIBAYAR DIMUKA - LAIN-LAIN</option> <option value = '1.52.01'>1.52.01 PAJAK DIBAYAR DIMUKA PPH PASAL 22</option> <option value = '1.52.02'>1.52.02 PAJAK DIBAYAR DIMUKA PPH PASAL 23</option> <option value = '1.52.03'>1.52.03 PAJAK DIBAYAR DIMUKA PPH PASAL 25</option> <option value = '1.52.04'>1.52.04 PAJAK DIBAYAR DIMUKA PPN MASUKAN</option> <option value = '1.52.05'>1.52.05 PAJAK DIBAYAR DIMUKA PPH PASAL 4 AYAT 2</option> <option value = '1.52.06'>1.52.06 PAJAK DIBAYAR DIMUKA PPH PASAL 21</option> <option value = '1.52.07'>1.52.07 PAJAK DIBAYAR DIMUKA PPN MASUKAN (UNBILLED)</option> <option value = '1.53.01'>1.53.01 PPH BADAN LB PASAL 28A</option> <option value = '1.60.01'>1.60.01 TANAH</option> <option value = '1.60.11'>1.60.11 BANGUNAN</option> <option value = '1.60.21'>1.60.21 INSTALASI LISTRIK</option> <option value = '1.60.22'>1.60.22 INSTALASI AIR</option> <option value = '1.60.31'>1.60.31 MESIN</option> <option value = '1.60.41'>1.60.41 PERALATAN PABRIK</option> <option value = '1.60.51'>1.60.51 KENDARAAN</option> <option value = '1.60.61'>1.60.61 PERALATAN KANTOR</option> <option value = '1.60.62'>1.60.62 PERALATAN IT</option> <option value = '1.61.01'>1.61.01 PERANGKAT LUNAK</option> <option value = '1.70.01'>1.70.01 AKUMULASI PENYUSUTAN BANGUNAN</option> <option value = '1.70.11'>1.70.11 AKUMULASI PENYUSUTAN INSTALASI LISTRIK</option> <option value = '1.70.12'>1.70.12 AKUMULASI PENYUSUTAN INSTALASI AIR</option> <option value = '1.70.21'>1.70.21 AKUMULASI PENYUSUTAN MESIN</option> <option value = '1.70.31'>1.70.31 AKUMULASI PENYUSUTAN PERALATAN PABRIK</option> <option value = '1.70.41'>1.70.41 AKUMULASI PENYUSUTAN KENDARAAN</option> <option value = '1.70.51'>1.70.51 AKUMULASI PENYUSUTAN PERALATAN KANTOR</option> <option value = '1.70.52'>1.70.52 AKUMULASI PENYUSUTAN PERALATAN IT</option> <option value = '1.71.01'>1.71.01 AKUMULASI AMORTISASI PERANGKAT LUNAK</option> <option value = '1.80.01'>1.80.01 ASET DALAM PENYELESAIAN - BANGUNAN</option> <option value = '1.80.11'>1.80.11 ASET DALAM PENYELESAIAN - INSTALASI LISTRIK</option> <option value = '1.80.12'>1.80.12 ASET DALAM PENYELESAIAN - INSTALASI AIR</option> <option value = '1.80.91'>1.80.91 ASET DALAM PENYELESAIAN - PERANGKAT LUNAK</option> <option value = '1.90.01'>1.90.01 POS SILANG</option> <option value = '2.10.01'>2.10.01 GR/IR PIHAK KETIGA - KAIN</option> <option value = '2.10.02'>2.10.02 GR/IR PIHAK KETIGA - AKSESORIS</option> <option value = '2.10.03'>2.10.03 GR/IR PIHAK KETIGA - PAKAIAN JADI</option> <option value = '2.10.04'>2.10.04 GR/IR PIHAK KETIGA - ATK</option> <option value = '2.10.05'>2.10.05 GR/IR PIHAK KETIGA - SPAREPARTS</option> <option value = '2.10.06'>2.10.06 GR/IR PIHAK KETIGA - MAKLOON</option> <option value = '2.10.07'>2.10.07 GR/IR PIHAK KETIGA - MESIN</option> <option value = '2.10.99'>2.10.99 GR/IR PIHAK KETIGA - LAIN-LAIN</option> <option value = '2.11.01'>2.11.01 UTANG USAHA PIHAK KETIGA - KAIN</option> <option value = '2.11.02'>2.11.02 UTANG USAHA PIHAK KETIGA - AKSESORIS</option> <option value = '2.11.03'>2.11.03 UTANG USAHA PIHAK KETIGA - PAKAIAN JADI</option> <option value = '2.11.04'>2.11.04 UTANG USAHA PIHAK KETIGA - ATK</option> <option value = '2.11.05'>2.11.05 UTANG USAHA PIHAK KETIGA - SPAREPARTS</option> <option value = '2.11.06'>2.11.06 UTANG USAHA PIHAK KETIGA - MAKLOON</option> <option value = '2.11.07'>2.11.07 UTANG USAHA PIHAK KETIGA - MESIN</option> <option value = '2.11.99'>2.11.99 UTANG USAHA PIHAK KETIGA - LAIN-LAIN</option> <option value = '2.12.01'>2.12.01 GR/IR PIHAK BERELASI - KAIN</option> <option value = '2.12.02'>2.12.02 GR/IR PIHAK BERELASI - AKSESORIS</option> <option value = '2.12.03'>2.12.03 GR/IR PIHAK BERELASI - PAKAIAN JADI</option> <option value = '2.12.04'>2.12.04 GR/IR PIHAK BERELASI - ATK</option> <option value = '2.12.05'>2.12.05 GR/IR PIHAK BERELASI - SPAREPARTS</option> <option value = '2.12.06'>2.12.06 GR/IR PIHAK BERELASI - MAKLOON</option> <option value = '2.12.07'>2.12.07 GR/IR PIHAK BERELASI - MESIN</option> <option value = '2.12.99'>2.12.99 GR/IR PIHAK BERELASI - LAIN-LAIN</option> <option value = '2.13.01'>2.13.01 UTANG USAHA PIHAK BERELASI - KAIN</option> <option value = '2.13.02'>2.13.02 UTANG USAHA PIHAK BERELASI - AKSESORIS</option> <option value = '2.13.03'>2.13.03 UTANG USAHA PIHAK BERELASI - PAKAIAN JADI</option> <option value = '2.13.04'>2.13.04 UTANG USAHA PIHAK BERELASI - ATK</option> <option value = '2.13.05'>2.13.05 UTANG USAHA PIHAK BERELASI - SPAREPARTS</option> <option value = '2.13.06'>2.13.06 UTANG USAHA PIHAK BERELASI - MAKLOON</option> <option value = '2.13.07'>2.13.07 UTANG USAHA PIHAK BERELASI - MESIN</option> <option value = '2.13.99'>2.13.99 UTANG USAHA PIHAK BERELASI - LAIN-LAIN</option> <option value = '2.18.99'>2.18.99 UTANG LAIN-LAIN</option> <option value = '2.18.01'>2.18.01 UTANG LAIN-LAIN - DIREKSI</option> <option value = '2.19.99'>2.19.99 UTANG LAIN-LAIN</option> <option value = '2.20.01'>2.20.01 OVERDRAFT BCA 008-997-1979</option> <option value = '2.20.02'>2.20.02 OVERDRAFT BCA 008-998-1982</option> <option value = '2.40.01'>2.40.01 UANG MUKA PENJUALAN LOKAL</option> <option value = '2.40.02'>2.40.02 UANG MUKA PENJUALAN EKSPOR</option> <option value = '2.51.01'>2.51.01 BIAYA YANG MASIH HARUS DIBAYAR - LISTRIK</option> <option value = '2.51.02'>2.51.02 BIAYA YANG MASIH HARUS DIBAYAR - AIR</option> <option value = '2.51.11'>2.51.11 BIAYA YANG MASIH HARUS DIBAYAR - TELP</option> <option value = '2.51.12'>2.51.12 BIAYA YANG MASIH HARUS DIBAYAR - INTERNET</option> <option value = '2.51.21'>2.51.21 BIAYA YANG MASIH HARUS DIBAYAR - GAJI</option> <option value = '2.51.22'>2.51.22 BIAYA YANG MASIH HARUS DIBAYAR - THR</option> <option value = '2.51.31'>2.51.31 BIAYA YANG MASIH HARUS DIBAYAR - BPJS</option> <option value = '2.51.41'>2.51.41 BIAYA YANG MASIH HARUS DIBAYAR - SEWA</option> <option value = '2.51.51'>2.51.51 BIAYA YANG MASIH HARUS DIBAYAR - EMKL</option> <option value = '2.51.61'>2.51.61 BIAYA YANG MASIH HARUS DIBAYAR - FOTOKOPI</option> <option value = '2.52.01'>2.52.01 PAJAK YANG MASIH HARUS DIBAYAR - PPH PASAL 21</option> <option value = '2.52.02'>2.52.02 PAJAK YANG MASIH HARUS DIBAYAR - PPH PASAL 4 (2)</option> <option value = '2.52.03'>2.52.03 PAJAK YANG MASIH HARUS DIBAYAR - PPN</option> <option value = '2.52.04'>2.52.04 PAJAK YANG MASIH HARUS DIBAYAR - PPH PASAL 25/29</option> <option value = '2.52.05'>2.52.05 PAJAK YANG MASIH HARUS DIBAYAR - PPH PASAL 23</option> <option value = '2.52.06'>2.52.06 PAJAK YANG MASIH HARUS DIBAYAR - PBB</option> <option value = '2.53.01'>2.53.01 PPN KELUARAN</option> <option value = '2.60.01'>2.60.01 UTANG BANK JANGKA PANJANG</option> <option value = '3.10.01'>3.10.01 MODAL SAHAM</option> <option value = '3.20.01'>3.20.01 TAMBAHAN MODAL DISETOR (AMNESTI PAJAK)</option> <option value = '3.30.01'>3.30.01 LABA DITAHAN</option> <option value = '3.40.01'>3.40.01 LABA TAHUN BERJALAN</option> <option value = '4.01.01'>4.01.01 PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - A GRADE</option> <option value = '4.01.02'>4.01.02 PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - B GRADE</option> <option value = '4.02.01'>4.02.01 PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - A GRADE</option> <option value = '4.02.02'>4.02.02 PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - B GRADE</option> <option value = '4.09.01'>4.09.01 PENJUALAN LAINNYA PIHAK KETIGA - KAIN</option> <option value = '4.09.02'>4.09.02 PENJUALAN LAINNYA PIHAK KETIGA - AKSESORIS</option> <option value = '4.09.03'>4.09.03 PENJUALAN LAINNYA PIHAK KETIGA - SCRAP / MAJUN</option> <option value = '4.11.01'>4.11.01 PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - A GRADE</option> <option value = '4.11.02'>4.11.02 PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - B GRADE</option> <option value = '4.12.01'>4.12.01 PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - A GRADE</option> <option value = '4.12.02'>4.12.02 PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - B GRADE</option> <option value = '4.19.01'>4.19.01 PENJUALAN LAINNYA PIHAK BERELASI - KAIN</option> <option value = '4.19.02'>4.19.02 PENJUALAN LAINNYA PIHAK BERELASI - AKSESORIS</option> <option value = '4.19.03'>4.19.03 PENJUALAN LAINNYA PIHAK BERELASI - SCRAP / MAJUN</option> <option value = '4.21.01'>4.21.01 PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK KETIGA - A GRADE</option> <option value = '4.21.02'>4.21.02 PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK KETIGA - B GRADE</option> <option value = '4.22.01'>4.22.01 PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK KETIGA - A GRADE</option> <option value = '4.22.03'>4.22.03 PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK KETIGA - B GRADE</option> <option value = '4.29.01'>4.29.01 PENJUALAN JASA LAINNYA</option> <option value = '4.31.01'>4.31.01 PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK BERELASI - A GRADE</option> <option value = '4.31.02'>4.31.02 PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK BERELASI - B GRADE</option> <option value = '4.32.01'>4.32.01 PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK BERELASI - A GRADE</option> <option value = '4.32.02'>4.32.02 PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK BERELASI - B GRADE</option> <option value = '4.39.01'>4.39.01 PENJUALAN JASA LAINNYA</option> <option value = '4.41.01'>4.41.01 RETUR PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - A GRADE</option> <option value = '4.41.02'>4.41.02 RETUR PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - B GRADE</option> <option value = '4.42.01'>4.42.01 RETUR PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - A GRADE</option> <option value = '4.42.02'>4.42.02 RETUR PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - B GRADE</option> <option value = '4.49.01'>4.49.01 RETUR PENJUALAN LAINNYA PIHAK KETIGA - KAIN</option> <option value = '4.49.02'>4.49.02 RETUR PENJUALAN LAINNYA PIHAK KETIGA - AKSESORIS</option> <option value = '4.49.03'>4.49.03 RETUR PENJUALAN LAINNYA PIHAK KETIGA - SCRAP / MAJUN</option> <option value = '4.51.01'>4.51.01 RETUR PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - A GRADE</option> <option value = '4.51.02'>4.51.02 RETUR PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - B GRADE</option> <option value = '4.52.01'>4.52.01 RETUR PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - A GRADE</option> <option value = '4.52.02'>4.52.02 RETUR PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - B GRADE</option> <option value = '4.59.01'>4.59.01 RETUR PENJUALAN LAINNYA PIHAK BERELASI - KAIN</option> <option value = '4.59.02'>4.59.02 RETUR PENJUALAN LAINNYA PIHAK BERELASI - AKSESORIS</option> <option value = '4.59.03'>4.59.03 RETUR PENJUALAN LAINNYA PIHAK BERELASI - SCRAP / MAJUN</option> <option value = '4.61.01'>4.61.01 POTONGAN PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - A GRADE</option> <option value = '4.61.02'>4.61.02 POTONGAN PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - B GRADE</option> <option value = '4.62.01'>4.62.01 POTONGAN PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - A GRADE</option> <option value = '4.62.02'>4.62.02 POTONGAN PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - B GRADE</option> <option value = '4.69.01'>4.69.01 POTONGAN PENJUALAN LAINNYA PIHAK KETIGA - KAIN</option> <option value = '4.69.02'>4.69.02 POTONGAN PENJUALAN LAINNYA PIHAK KETIGA - AKSESORIS</option> <option value = '4.69.03'>4.69.03 POTONGAN PENJUALAN LAINNYA PIHAK KETIGA - SCRAP / MAJUN</option> <option value = '4.71.01'>4.71.01 POTONGAN PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - A GRADE</option> <option value = '4.71.02'>4.71.02 POTONGAN PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - B GRADE</option> <option value = '4.72.01'>4.72.01 POTONGAN PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - A GRADE</option> <option value = '4.72.02'>4.72.02 POTONGAN PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - B GRADE</option> <option value = '4.79.01'>4.79.01 POTONGAN PENJUALAN LAINNYA PIHAK BERELASI - KAIN</option> <option value = '4.79.02'>4.79.02 POTONGAN PENJUALAN LAINNYA PIHAK BERELASI - AKSESORIS</option> <option value = '4.79.03'>4.79.03 POTONGAN PENJUALAN LAINNYA PIHAK BERELASI - SCRAP / MAJUN</option> <option value = '4.81.01'>4.81.01 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK KETIGA - A GRADE</option> <option value = '4.81.02'>4.81.02 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK KETIGA - B GRADE</option> <option value = '4.82.01'>4.82.01 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK KETIGA - A GRADE</option> <option value = '4.82.02'>4.82.02 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK KETIGA - B GRADE</option> <option value = '4.89.01'>4.89.01 POTONGAN PENJUALAN JASA LAINNYA</option> <option value = '4.91.01'>4.91.01 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK BERELASI - A GRADE</option> <option value = '4.91.02'>4.91.02 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK BERELASI - B GRADE</option> <option value = '4.92.01'>4.92.01 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK BERELASI - A GRADE</option> <option value = '4.92.02'>4.92.02 POTONGAN PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK BERELASI - B GRADE</option> <option value = '4.99.01'>4.99.01 POTONGAN PENJUALAN JASA LAINNYA</option> <option value = '5.01.01'>5.01.01 HARGA POKOK PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - A GRADE</option> <option value = '5.01.02'>5.01.02 HARGA POKOK PENJUALAN PAKAIAN JADI EKSPOR PIHAK KETIGA - B GRADE</option> <option value = '5.02.01'>5.02.01 HARGA POKOK PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - A GRADE</option> <option value = '5.02.02'>5.02.02 HARGA POKOK PENJUALAN PAKAIAN JADI LOKAL PIHAK KETIGA - B GRADE</option> <option value = '5.09.01'>5.09.01 HARGA POKOK PENJUALAN LAINNYA PIHAK KETIGA - KAIN</option> <option value = '5.09.02'>5.09.02 HARGA POKOK PENJUALAN LAINNYA PIHAK KETIGA - AKSESORIS</option> <option value = '5.09.03'>5.09.03 HARGA POKOK PENJUALAN LAINNYA PIHAK KETIGA - SCRAP / MAJUN</option> <option value = '5.11.01'>5.11.01 HARGA POKOK PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - A GRADE</option> <option value = '5.11.02'>5.11.02 HARGA POKOK PENJUALAN PAKAIAN JADI EKSPOR PIHAK BERELASI - B GRADE</option> <option value = '5.12.01'>5.12.01 HARGA POKOK PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - A GRADE</option> <option value = '5.12.02'>5.12.02 HARGA POKOK PENJUALAN PAKAIAN JADI LOKAL PIHAK BERELASI - B GRADE</option> <option value = '5.19.01'>5.19.01 HARGA POKOK PENJUALAN LAINNYA PIHAK BERELASI - KAIN</option> <option value = '5.19.02'>5.19.02 HARGA POKOK PENJUALAN LAINNYA PIHAK BERELASI - AKSESORIS</option> <option value = '5.19.03'>5.19.03 HARGA POKOK PENJUALAN LAINNYA PIHAK BERELASI - SCRAP / MAJUN</option> <option value = '5.21.01'>5.21.01 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK KETIGA - A GRADE</option> <option value = '5.21.02'>5.21.02 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK KETIGA - B GRADE</option> <option value = '5.22.01'>5.22.01 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK KETIGA - A GRADE</option> <option value = '5.22.02'>5.22.02 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK KETIGA - B GRADE</option> <option value = '5.29.01'>5.29.01 HARGA POKOK PENJUALAN JASA LAINNYA</option> <option value = '5.31.01'>5.31.01 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK BERELASI - A GRADE</option> <option value = '5.31.02'>5.31.02 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI EKSPOR CMT PIHAK BERELASI - B GRADE</option> <option value = '5.32.01'>5.32.01 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK BERELASI - A GRADE</option> <option value = '5.32.02'>5.32.02 HARGA POKOK PENJUALAN JASA JAHIT PAKAIAN JADI LOKAL CMT PIHAK BERELASI - B GRADE</option> <option value = '5.39.01'>5.39.01 HARGA POKOK PENJUALAN JASA LAINNYA</option> <option value = '5.40.01'>5.40.01 BIAYA PEMAKAIAN KAIN</option> <option value = '5.40.02'>5.40.02 BIAYA PEMAKAIAN AKSESORIS</option> <option value = '5.50.01'>5.50.01 BEBAN GAJI & UPAH TENAGA KERJA LANGSUNG</option> <option value = '5.51.01'>5.51.01 BEBAN TUNJANGAN TENAGA KERJA LANGSUNG</option> <option value = '5.52.01'>5.52.01 BEBAN LEMBUR TENAGA KERJA LANGSUNG</option> <option value = '5.53.01'>5.53.01 BPJS KETENAGAKERJAAN TENAGA KERJA LANGSUNG</option> <option value = '5.53.02'>5.53.02 BPJS KESEHATAN TENAGA KERJA LANGSUNG</option> <option value = '5.54.01'>5.54.01 THR TENAGA KERJA LANGSUNG</option> <option value = '5.54.02'>5.54.02 BONUS TENAGA KERJA LANGSUNG</option> <option value = '5.55.01'>5.55.01 BEBAN MANFAAT KARYAWAN TENAGA KERJA LANGSUNG</option> <option value = '5.60.01'>5.60.01 BEBAN GAJI & UPAH TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.61.01'>5.61.01 BEBAN TUNJANGAN TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.62.01'>5.62.01 BEBAN LEMBUR TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.63.01'>5.63.01 BPJS KETENAGAKERJAAN TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.63.02'>5.63.02 BPJS KESEHATAN TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.64.01'>5.64.01 THR TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.64.02'>5.64.02 BONUS TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.65.01'>5.65.01 BEBAN MANFAAT KARYAWAN TENAGA KERJA TIDAK LANGSUNG</option> <option value = '5.69.01'>5.69.01 BEBAN MAKLOON DYEING BENANG</option> <option value = '5.69.02'>5.69.02 BEBAN MAKLOON DYEING KAIN</option> <option value = '5.69.03'>5.69.03 BEBAN MAKLOON KNITTING</option> <option value = '5.69.04'>5.69.04 BEBAN MAKLOON PAKAIAN JADI</option> <option value = '5.69.05'>5.69.05 BEBAN MAKLOON PRINTING</option> <option value = '5.69.06'>5.69.06 BEBAN MAKLOON EMBRODEIRY</option> <option value = '5.69.07'>5.69.07 BEBAN MAKLOON WASHING</option> <option value = '5.69.08'>5.69.08 BEBAN MAKLOON KNITTING VIETER BAND</option> <option value = '5.69.09'>5.69.09 BEBAN MAKLOON BUBUT</option> <option value = '5.69.10'>5.69.10 BEBAN MAKLOON PAINTING</option> <option value = '5.69.11'>5.69.11 BEBAN MAKLOON LASER CUTTING</option> <option value = '5.69.12'>5.69.12 BEBAN MAKLOON BONDING</option> <option value = '5.69.13'>5.69.13 BEBAN MAKLOON HEATSEAL</option> <option value = '5.69.14'>5.69.14 BEBAN MAKLOON QUILTING</option> <option value = '5.69.97'>5.69.97 BEBAN MAKLOON KAIN</option> <option value = '5.69.98'>5.69.98 BEBAN MAKLOON AKSESORIS</option> <option value = '5.69.99'>5.69.99 BEBAN MAKLOON LAINNYA</option> <option value = '5.70.01'>5.70.01 BEBAN ENERGI - BATUBARA</option> <option value = '5.70.02'>5.70.02 BEBAN ENERGI - SOLAR</option> <option value = '5.70.03'>5.70.03 BEBAN ENERGI - ELPIJI</option> <option value = '5.71.01'>5.71.01 CHEMICAL IPAL</option> <option value = '5.71.02'>5.71.02 BEBAN BUANG LUMPUR</option> <option value = '5.71.03'>5.71.03 BEBAN BUANG ABU - LUMPUR</option> <option value = '5.71.04'>5.71.04 BEBAN BUANG ABU - BATU BARA</option> <option value = '5.71.05'>5.71.05 BEBAN UJI LAB LIMBAH AIR</option> <option value = '5.71.99'>5.71.99 BEBAN PENGOLAHAN LIMBAH LAINNYA</option> <option value = '5.72.01'>5.72.01 BEBAN SPAREPARTS</option> <option value = '5.73.01'>5.73.01 BEBAN IMPOR MESIN</option> <option value = '5.73.02'>5.73.02 BEBAN IMPOR SPAREPARTS</option> <option value = '5.73.03'>5.73.03 BEBAN IMPOR BAHAN BAKU</option> <option value = '5.73.04'>5.73.04 BEBAN IMPOR BAHAN PEMBANTU</option> <option value = '5.74.01'>5.74.01 BEBAN PENGUJIAN KAIN</option> <option value = '5.74.99'>5.74.99 BEBAN PENGUJIAN DAN PENELITIAN LAINNYA</option> <option value = '5.75.01'>5.75.01 BEBAN SEWA TANAH & BANGUNAN</option> <option value = '5.75.02'>5.75.02 BEBAN SEWA MESIN</option> <option value = '5.75.03'>5.75.03 BEBAN SEWA PERANGKAT LUNAK</option> <option value = '5.76.01'>5.76.01 BEBAN LISTRIK PABRIK</option> <option value = '5.77.01'>5.77.01 BEBAN TELEPON PABRIK</option> <option value = '5.77.02'>5.77.02 BEBAN INTERNET PABRIK</option> <option value = '5.78.01'>5.78.01 BEBAN IURAN AIR PJT</option> <option value = '5.78.02'>5.78.02 BEBAN PAJAK AIR PERMUKAAN</option> <option value = '5.78.99'>5.78.99 BEBAN AIR PABRIK LAINNYA</option> <option value = '5.80.01'>5.80.01 BEBAN PEMELIHARAAN BANGUNAN</option> <option value = '5.80.11'>5.80.11 BEBAN PEMELIHARAAN INSTALASI LISTRIK</option> <option value = '5.80.12'>5.80.12 BEBAN PEMELIHARAAN INSTALASI AIR</option> <option value = '5.80.21'>5.80.21 BEBAN PEMELIHARAAN MESIN</option> <option value = '5.80.31'>5.80.31 BEBAN PEMELIHARAAN PERALATAN PABRIK</option> <option value = '5.80.41'>5.80.41 BEBAN PEMELIHARAAN KENDARAAN</option> <option value = '5.80.51'>5.80.51 BEBAN PEMELIHARAAN PERALATAN KANTOR</option> <option value = '5.80.61'>5.80.61 BEBAN PEMELIHARAAN PERALATAN IT</option> <option value = '5.81.01'>5.81.01 BEBAN ASURANSI BANGUNAN</option> <option value = '5.81.11'>5.81.11 BEBAN ASURANSI INSTALASI LISTRIK</option> <option value = '5.81.12'>5.81.12 BEBAN ASURANSI INSTALASI AIR</option> <option value = '5.81.21'>5.81.21 BEBAN ASURANSI MESIN</option> <option value = '5.81.31'>5.81.31 BEBAN ASURANSI PERALATAN PABRIK</option> <option value = '5.81.41'>5.81.41 BEBAN ASURANSI KENDARAAN</option> <option value = '5.81.51'>5.81.51 BEBAN ASURANSI PERALATAN KANTOR</option> <option value = '5.81.61'>5.81.61 BEBAN ASURANSI PERALATAN IT</option> <option value = '5.81.71'>5.81.71 BEBAN ASURANSI KENDARAAN</option> <option value = '5.82.01'>5.82.01 BEBAN KEPERLUAN KANTOR</option> <option value = '5.82.02'>5.82.02 BEBAN PEMAKAIAN ATK</option> <option value = '5.82.03'>5.82.03 BEBAN FOTOKOPI</option> <option value = '5.83.01'>5.83.01 TRAINING KARYAWAN PABRIK</option> <option value = '5.83.02'>5.83.02 SERAGAM DAN PERLENGKAPAN KERJA KARYAWAN</option> <option value = '5.83.03'>5.83.03 BEBAN KESEHATAN KARYAWAN</option> <option value = '5.83.04'>5.83.04 BEBAN KECELAKAAN KERJA</option> <option value = '5.84.01'>5.84.01 BEBAN TRANSPORTASI</option> <option value = '5.84.02'>5.84.02 BEBAN PERJALANAN DINAS</option> <option value = '5.84.03'>5.84.03 BEBAN EKSPEDISI ANGKUTAN</option> <option value = '5.85.01'>5.85.01 BEBAN KEPERLUAN PABRIK</option> <option value = '5.86.01'>5.86.01 BEBAN PERIZINAN</option> <option value = '5.86.02'>5.86.02 BEBAN RETRIBUSI</option> <option value = '5.86.03'>5.86.03 BEBAN IURAN</option> <option value = '5.86.04'>5.86.04 BEBAN SUMBANGAN</option> <option value = '5.87.01'>5.87.01 BEBAN PENYUSUTAN BANGUNAN</option> <option value = '5.87.11'>5.87.11 BEBAN PENYUSUTAN INSTALASI LISTRIK</option> <option value = '5.87.12'>5.87.12 BEBAN PENYUSUTAN INSTALASI AIR</option> <option value = '5.87.21'>5.87.21 BEBAN PENYUSUTAN MESIN</option> <option value = '5.87.31'>5.87.31 BEBAN PENYUSUTAN PERALATAN PABRIK</option> <option value = '5.87.41'>5.87.41 BEBAN PENYUSUTAN KENDARAAN</option> <option value = '5.87.51'>5.87.51 BEBAN PENYUSUTAN PERALATAN KANTOR</option> <option value = '5.87.52'>5.87.52 BEBAN PENYUSUTAN PERALATAN IT</option> <option value = '5.87.91'>5.87.91 BEBAN AMORTISASI PERANGKAT LUNAK</option> <option value = '5.97.01'>5.97.01 BEBAN PEMBULATAN</option> <option value = '5.97.02'>5.97.02 BEBAN SELISIH HARGA</option> <option value = '5.97.99'>5.97.99 BEBAN PABRIK LAINNYA</option> <option value = '5.98.99'>5.98.99 BIAYA PRODUKSI BULAN BERJALAN</option> <option value = '5.99.01'>5.99.01 BEBAN PENYESUAIAN PERSEDIAAN KAIN</option> <option value = '5.99.11'>5.99.11 BEBAN PENYESUAIAN PERSEDIAAN AKSESORIS</option> <option value = '5.99.21'>5.99.21 BEBAN PENYESUAIAN PERSEDIAAN DALAM PROSES</option> <option value = '5.99.31'>5.99.31 BEBAN PENYESUAIAN PERSEDIAAN BARANG JADI</option> <option value = '6.01.01'>6.01.01 BEBAN GAJI & UPAH</option> <option value = '6.02.02'>6.02.02 BEBAN TUNJANGAN</option> <option value = '6.03.03'>6.03.03 BEBAN LEMBUR</option> <option value = '6.04.01'>6.04.01 BEBAN BPJS KETENAGAKERJAAN</option> <option value = '6.04.02'>6.04.02 BEBAN BPJS KESEHATAN</option> <option value = '6.05.01'>6.05.01 BEBAN THR</option> <option value = '6.05.02'>6.05.02 BEBAN BONUS</option> <option value = '6.06.01'>6.06.01 BEBAN MANFAAT KARYAWAN</option> <option value = '6.10.01'>6.10.01 BEBAN PROMOSI DAN IKLAN</option> <option value = '6.11.01'>6.11.01 BEBAN EKSPEDISI ANGKUTAN</option> <option value = '6.12.01'>6.12.01 BEBAN EKSPOR</option> <option value = '6.12.02'>6.12.02 BEBAN LC</option> <option value = '6.13.01'>6.13.01 BEBAN PIUTANG TIDAK TERTAGIH</option> <option value = '6.14.01'>6.14.01 BEBAN KLAIM PENJUALAN</option> <option value = '6.14.02'>6.14.02 BEBAN PINALTI PENJUALAN</option> <option value = '6.14.03'>6.14.03 BEBAN KOMISI PENJUALAN</option> <option value = '6.15.01'>6.15.01 BEBAN SAMPEL</option> <option value = '6.15.02'>6.15.02 BEBAN ENTERTAINMENT</option> <option value = '6.16.01'>6.16.01 BEBAN PEMELIHARAAN BANGUNAN</option> <option value = '6.16.11'>6.16.11 BEBAN PEMELIHARAAN INSTALASI LISTRIK</option> <option value = '6.16.12'>6.16.12 BEBAN PEMELIHARAAN INSTALASI AIR</option> <option value = '6.16.21'>6.16.21 BEBAN PEMELIHARAAN MESIN</option> <option value = '6.16.41'>6.16.41 BEBAN PEMELIHARAAN KENDARAAN</option> <option value = '6.16.51'>6.16.51 BEBAN PEMELIHARAAN PERALATAN KANTOR</option> <option value = '6.16.52'>6.16.52 BEBAN PEMELIHARAAN PERALATAN IT</option> <option value = '6.17.01'>6.17.01 BEBAN PENYUSUTAN BANGUNAN</option> <option value = '6.17.11'>6.17.11 BEBAN PENYUSUTAN INSTALASI LISTRIK</option> <option value = '6.17.12'>6.17.12 BEBAN PENYUSUTAN INSTALASI AIR</option> <option value = '6.17.21'>6.17.21 BEBAN PENYUSUTAN MESIN</option> <option value = '6.17.41'>6.17.41 BEBAN PENYUSUTAN KENDARAAN</option> <option value = '6.17.51'>6.17.51 BEBAN PENYUSUTAN PERALATAN KANTOR</option> <option value = '6.17.52'>6.17.52 BEBAN PENYUSUTAN PERALATAN IT</option> <option value = '6.17.91'>6.17.91 BEBAN AMORTISASI PERANGKAT LUNAK</option> <option value = '6.18.01'>6.18.01 BEBAN ASURANSI BANGUNAN</option> <option value = '6.18.11'>6.18.11 BEBAN ASURANSI INSTALASI LISTRIK</option> <option value = '6.18.12'>6.18.12 BEBAN ASURANSI INSTALASI AIR</option> <option value = '6.18.21'>6.18.21 BEBAN ASURANSI MESIN</option> <option value = '6.18.41'>6.18.41 BEBAN ASURANSI KENDARAAN</option> <option value = '6.18.51'>6.18.51 BEBAN ASURANSI PERALATAN KANTOR</option> <option value = '6.18.52'>6.18.52 BEBAN ASURANSI PERALATAN IT</option> <option value = '6.19.01'>6.19.01 BEBAN KEPERLUAN KANTOR</option> <option value = '6.19.02'>6.19.02 BEBAN PEMAKAIAN ATK</option> <option value = '6.19.03'>6.19.03 BEBAN FOTOKOPI</option> <option value = '6.20.01'>6.20.01 BEBAN TRAINING KARYAWAN</option> <option value = '6.21.01'>6.21.01 BEBAN TRANSPORTASI</option> <option value = '6.21.02'>6.21.02 BEBAN PERJALANAN DINAS</option> <option value = '6.22.01'>6.22.01 BEBAN RUMAH TANGGA KANTOR</option> <option value = '6.23.01'>6.23.01 BEBAN PERIZINAN</option> <option value = '6.23.02'>6.23.02 BEBAN RETRIBUSI</option> <option value = '6.23.03'>6.23.03 BEBAN IURAN</option> <option value = '6.23.04'>6.23.04 BEBAN SUMBANGAN</option> <option value = '6.24.01'>6.24.01 BEBAN SEWA KANTOR</option> <option value = '6.25.01'>6.25.01 BEBAN LISTRIK KANTOR</option> <option value = '6.26.01'>6.26.01 BEBAN TELEPON KANTOR</option> <option value = '6.26.02'>6.26.02 BEBAN INTERNET KANTOR</option> <option value = '6.28.01'>6.28.01 BEBAN JASA PROFESIONAL</option> <option value = '6.27.01'>6.27.01 BEBAN AIR KANTOR</option> <option value = '6.29.01'>6.29.01 BEBAN PENJUALAN LAINNYA</option> <option value = '7.30.01'>7.30.01 BEBAN GAJI & UPAH</option> <option value = '7.31.01'>7.31.01 BEBAN TUNJANGAN</option> <option value = '7.32.01'>7.32.01 BEBAN LEMBUR</option> <option value = '7.33.01'>7.33.01 BEBAN BPJS KETENAGAKERJAAN</option> <option value = '7.33.02'>7.33.02 BEBAN BPJS KESEHATAN</option> <option value = '7.34.01'>7.34.01 BEBAN THR</option> <option value = '7.34.02'>7.34.02 BEBAN BONUS</option> <option value = '7.35.01'>7.35.01 BEBAN MANFAAT KARYAWAN</option> <option value = '7.40.01'>7.40.01 BEBAN PAJAK</option> <option value = '7.41.01'>7.41.01 BEBAN JASA PROFESIONAL</option> <option value = '7.42.01'>7.42.01 BEBAN ENTERTAINMENT</option> <option value = '7.43.01'>7.43.01 BEBAN SEWA KANTOR</option> <option value = '7.43.02'>7.43.02 BEBAN SEWA PERALATAN KANTOR</option> <option value = '7.44.01'>7.44.01 BEBAN LISTRIK KANTOR</option> <option value = '7.45.01'>7.45.01 BEBAN TELEPON KANTOR</option> <option value = '7.45.02'>7.45.02 BEBAN INTERNET KANTOR</option> <option value = '7.46.01'>7.46.01 BEBAN AIR KANTOR</option> <option value = '7.47.01'>7.47.01 BEBAN PEMELIHARAAN BANGUNAN</option> <option value = '7.47.11'>7.47.11 BEBAN PEMELIHARAAN INSTALASI LISTRIK</option> <option value = '7.47.12'>7.47.12 BEBAN PEMELIHARAAN INSTALASI AIR</option> <option value = '7.47.21'>7.47.21 BEBAN PEMELIHARAAN MESIN</option> <option value = '7.47.41'>7.47.41 BEBAN PEMELIHARAAN KENDARAAN</option> <option value = '7.47.51'>7.47.51 BEBAN PEMELIHARAAN PERALATAN KANTOR</option> <option value = '7.47.52'>7.47.52 BEBAN PEMELIHARAAN PERALATAN IT</option> <option value = '7.48.01'>7.48.01 BEBAN PENYUSUTAN BANGUNAN</option> <option value = '7.48.11'>7.48.11 BEBAN PENYUSUTAN INSTALASI LISTRIK</option> <option value = '7.48.12'>7.48.12 BEBAN PENYUSUTAN INSTALASI AIR</option> <option value = '7.48.21'>7.48.21 BEBAN PENYUSUTAN MESIN</option> <option value = '7.48.41'>7.48.41 BEBAN PENYUSUTAN KENDARAAN</option> <option value = '7.48.51'>7.48.51 BEBAN PENYUSUTAN PERALATAN KANTOR</option> <option value = '7.48.52'>7.48.52 BEBAN PENYUSUTAN PERALATAN IT</option> <option value = '7.48.91'>7.48.91 BEBAN AMORTISASI PERANGKAT LUNAK</option> <option value = '7.49.01'>7.49.01 BEBAN ASURANSI BANGUNAN</option> <option value = '7.49.11'>7.49.11 BEBAN ASURANSI INSTALASI LISTRIK</option> <option value = '7.49.12'>7.49.12 BEBAN ASURANSI INSTALASI AIR</option> <option value = '7.49.21'>7.49.21 BEBAN ASURANSI MESIN</option> <option value = '7.49.41'>7.49.41 BEBAN ASURANSI KENDARAAN</option> <option value = '7.49.51'>7.49.51 BEBAN ASURANSI PERALATAN KANTOR</option> <option value = '7.49.52'>7.49.52 BEBAN ASURANSI PERALATAN IT</option> <option value = '7.50.01'>7.50.01 BEBAN KEPERLUAN KANTOR</option> <option value = '7.50.02'>7.50.02 BEBAN PEMAKAIAN ATK</option> <option value = '7.50.03'>7.50.03 BEBAN FOTOKOPI</option> <option value = '7.51.01'>7.51.01 BEBAN TRAINING KARYAWAN</option> <option value = '7.52.01'>7.52.01 BEBAN TRANSPORTASI</option> <option value = '7.52.02'>7.52.02 BEBAN PERJALANAN DINAS</option> <option value = '7.53.01'>7.53.01 BEBAN RUMAH TANGGA KANTOR</option> <option value = '7.54.01'>7.54.01 BEBAN PERIZINAN</option> <option value = '7.54.02'>7.54.02 BEBAN RETRIBUSI</option> <option value = '7.54.03'>7.54.03 BEBAN IURAN</option> <option value = '7.54.04'>7.54.04 BEBAN SUMBANGAN</option> <option value = '7.99.01'>7.99.01 BEBAN ADMINISTRASI & UMUM LAINNYA</option> <option value = '8.01.01'>8.01.01 LABA / (RUGI) PENJUALAN ASET TETAP</option> <option value = '8.07.01'>8.07.01 PENDAPATAN LAIN-LAIN</option> <option value = '8.02.01'>8.02.01 LABA / (RUGI) DISPOSISI ASET TETAP</option> <option value = '8.03.01'>8.03.01 PENJUALAN SPAREPARTS</option> <option value = '8.04.01'>8.04.01 PENJUALAN LAIN-LAIN</option> <option value = '8.05.01'>8.05.01 PENDAPATAN JASA GIRO</option> <option value = '8.06.01'>8.06.01 PENDAPATAN SEWA</option> <option value = '8.50.01'>8.50.01 BEBAN BUNGA BANK</option> <option value = '8.50.02'>8.50.02 BEBAN BUNGA PEMEGANG SAHAM/DIREKSI</option> <option value = '8.50.99'>8.50.99 BEBAN BUNGA LAIN-LAIN</option> <option value = '8.51.01'>8.51.01 BEBAN ADMINISTRASI BANK</option> <option value = '8.51.02'>8.51.02 BEBAN PROVISI BANK</option> <option value = '8.51.03'>8.51.03 BEBAN ADMINISTRASI REKENING</option> <option value = '8.52.01'>8.52.01 LABA / (RUGI) SELISIH KURS SUDAH TEREALISASI</option> <option value = '8.52.02'>8.52.02 LABA / (RUGI) SELISIH KURS BELUM TEREALISASI</option> <option value = '8.53.01'>8.53.01 PEMBULATAN</option> <option value = '8.54.01'>8.54.01 BEBAN LAIN-LAIN</option> <option value = '9.10.01'>9.10.01 PAJAK KINI</option> <option value = '9.10.02'>9.10.02 PAJAK TANGGUHAN</option> <option value = '1.90.02'>1.90.02 POS SILANG PIUTANG USAHA</option> <option value = '2.51.99'>2.51.99 BIAYA YANG MASIH HARUS DIBAYAR - LAIN-LAIN</option> <option value = '5.97.03'>5.97.03 BEBAN SELISIH KUANTITAS</option> <option value = '1.42.02'>1.42.02 PERSEDIAAN PAKAIAN JADI DEADSTOCK</option> <option value = '2.19.01'>2.19.01 UTANG LAIN-LAIN DIREKSI</option> <option value = '1.10.82'>1.10.82 BCA 008-412-6311</option> <option value = '7.40.02'>7.40.02 BEBAN PAJAK BUMI DAN BANGUNAN</option> <option value = '5.73.99'>5.73.99 BEBAN IMPOR LAIN-LAIN</option> <option value = '1.10.31'>1.10.31 MANDIRI 130-0002077777</option> <option value = '6.12.03'>6.12.03 BEBAN PREMI CUSTOM BOND</option> <option value = '5.85.02'>5.85.02 BEBAN ENTERTAINMENT</option> <option value = '2.18.02'>2.18.02 UTANG LAIN-LAIN - FORWARDER</option> <option value = '1.34.04'>1.34.04 PIUTANG LAIN-LAIN PIHAK KETIGA - FORWARDER</option></datalist>";
 
-	$.ajax({		
-		url: "load_invoice_detail_memo/",							
+	// Form create_debitnote punya kolom Header 4-5 (tersimpan setelah migrasi
+	// header4/header5 dijalankan), dan Header 1/2 baris memo di sana otomatis
+	// diisi Supplier / Supplier Invoice. Halaman tanpa judul kolom Header 4
+	// tetap memakai susunan kolom lama.
+	var halaman_create = !!document.getElementById('h_header4');
+	var kolom_header45 = halaman_create
+		? '<td><input style="width: 200px" type="text" class="form-control" name="inputan6" autocomplete="off" readonly></td>' +
+		  '<td><input style="width: 200px" type="text" class="form-control" name="inputan7" autocomplete="off" readonly></td>'
+		: '';
+
+	// Loader NAG di tabel detail create_debitnote (halaman lain: tidak ada efek).
+	$('#dn-loader').addClass('show');
+	$.ajax({
+		url: "load_invoice_detail_memo/",
 		type: "GET",
 		dataType: "JSON",
+		complete: function () {
+			$('#dn-loader').removeClass('show');
+		},
 		success: function (response) {
 			var trHTML = '';
 			$.each(response, function (i, item) {
 				trHTML += '<tr>';		
 				trHTML += '<td><input style="width: 300px;word-wrap: break-word;" type="text" class="form-control" name="inputan0" placeholder="" autocomplete="off">';		
-				trHTML += '<td><input style="width: 250px;" class="form-control" value="'+ item.supplier +'" list="supp" name="supp"> <datalist id="supp"><option value="'+ item.supplier +'">'+ item.supplier +'</option></datalist></td>';
-				trHTML += '<td><input style="width: 200px" type="text" class="form-control" name="inputan2" value="'+ item.no_invoice +'" placeholder="" autocomplete="off"></td>';
-				trHTML += '<td><input style="width: 200px" type="text" class="form-control" id="inputan3" name="inputan3" placeholder="" autocomplete="off" readonly></td>';
-				trHTML += '<td><input style="width: 200px" type="text" class="form-control" id="inputan4" name="inputan4" placeholder="" autocomplete="off" readonly></td>';
+				// create_debitnote tidak punya kolom Supplier & Supplier Invoice
+				// lagi - isinya masuk ke Header 1/2 di bawah.
+				if (!halaman_create) {
+					trHTML += '<td><input style="width: 250px;" class="form-control" value="'+ item.supplier +'" list="supp" name="supp"> <datalist id="supp"><option value="'+ item.supplier +'">'+ item.supplier +'</option></datalist></td>';
+					trHTML += '<td><input style="width: 200px" type="text" class="form-control" name="inputan2" value="'+ item.no_invoice +'" placeholder="" autocomplete="off"></td>';
+				}
+				trHTML += '<td><input style="width: 200px" type="text" class="form-control" id="inputan3" name="inputan3" value="'+ (halaman_create ? item.supplier : '') +'" placeholder="" autocomplete="off" readonly></td>';
+				trHTML += '<td><input style="width: 200px" type="text" class="form-control" id="inputan4" name="inputan4" value="'+ (halaman_create ? item.no_invoice : '') +'" placeholder="" autocomplete="off" readonly></td>';
 				trHTML += '<td><input style="width: 200px" type="text" class="form-control" id="inputan5" name="inputan5" placeholder="" autocomplete="off" readonly></td>';
+				trHTML += kolom_header45;
 				trHTML += '<td><input  type="text" class="form-control" id="amt" name="amt" value="'+ item.total +'" style="text-align:right; width: 150px;" oninput="modal_input_amt_dn(value)" autocomplete="off"></td>';
 				trHTML += '<td><input  type="text" class="form-control" id="amt_rate" name="amt_rate" style="text-align:right; width: 150px;" value="1" onkeypress="javascript:return isNumber(event)" oninput="modal_input_rate_dn(value)" autocomplete="off"></td>';										    					
 				trHTML += '<td ><input style="width: 150px;text-align: right;" type="text" class="form-control" name="inputan8" value="'+ item.total +'" placeholder="" autocomplete="off" readonly></td>';
@@ -13706,12 +14971,14 @@ function duplicate_data_memo(){
 
 			});
 			$('#table-dn').append(trHTML);
+			// create_debitnote: Header 1/2 otomatis jadi Supplier / Supplier Invoice.
+			if (typeof dn_header_supplier_otomatis === 'function') { dn_header_supplier_otomatis(); }
                         //Grand Total SO Proforma
 						// sum_grandtotal_proforma(); 
 
 					},
 					error: function (jqXHR, textStatus, errorThrown) {
-						alert('Error get data from ajax');
+						Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load memo details.' });
 					}
 				});  	  	
 
@@ -13769,8 +15036,8 @@ function update_memo_det(){
 
 	function export_list_dn() {
 		var id_customer = $('#list_prof_customer').val();
-		var from = $('#filter_from').val();
-		var to = $('#filter_to').val();
+		var from = dn_list_tanggal_iso('#filter_from');
+		var to = dn_list_tanggal_iso('#filter_to');
 		window.open(".../../export_excel_list_dn/" + from + "/" + to + "/" + "/" + id_customer + "/" );
 	}
 
@@ -14942,7 +16209,7 @@ $('.form-group').removeClass('has-error'); // clear error class
 			
 		},
 		error: function (jqXHR, textStatus, errorThrown) {
-			alert('Error get data from ajax');
+			Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load the consignee address.' });
 		}
 	});
 }
