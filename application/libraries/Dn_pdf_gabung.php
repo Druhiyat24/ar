@@ -74,6 +74,13 @@ class Dn_pdf_gabung
                 }
                 $total += $ukuran;
             } catch (\Throwable $e) {
+                // PDF 1.5+ yang daftar objeknya dimampatkan tidak bisa dibaca
+                // FPDI gratis. Dicoba dikonversi dulu ke bentuk lama; kalau
+                // tetap gagal, baru dilewati seperti biasa.
+                if ($ext === 'pdf' && $this->coba_lewat_konverter($pdf, $path, $e, dirname($tujuan))) {
+                    $total += $ukuran;
+                    continue;
+                }
                 // Alasan aslinya JANGAN dibuang: tanpa ini, semua kegagalan
                 // tampil sama ("could not be read") dan penyebabnya tidak bisa
                 // ditelusuri dari server.
@@ -90,6 +97,77 @@ class Dn_pdf_gabung
         // bisa puluhan MB dan pemanggilnya cukup membacanya bertahap.
         $pdf->Output($tujuan, 'F');
         return array('dilewati' => $dilewati);
+    }
+
+    /**
+     * Upaya terakhir untuk PDF 1.5+ yang daftar objeknya dimampatkan: file
+     * disusun ulang ke bentuk xref klasik lalu dicoba lagi.
+     *
+     * Hasil konversi TIDAK langsung ditempel. Semua halamannya diuji baca
+     * dulu di dokumen terpisah; kalau ada satu saja yang bermasalah, konversi
+     * dianggap gagal dan lampiran dilewati seperti biasa. Ini yang menjaga
+     * supaya PDF gabungan tidak pernah jadi setengah-setengah.
+     *
+     * @return bool true kalau lampiran berhasil ditempel lewat jalur ini.
+     */
+    private function coba_lewat_konverter($pdf, $path, \Throwable $e, $folder)
+    {
+        if ((int) $e->getCode() !== \setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException::COMPRESSED_XREF) {
+            return false;
+        }
+
+        require_once APPPATH . 'libraries/Dn_pdf_klasik.php';
+
+        $sementara = rtrim($folder, "/\\") . DIRECTORY_SEPARATOR . 'konversi_' . md5($path . microtime(true)) . '.pdf';
+        $bersih = function () use ($sementara) {
+            if (is_file($sementara)) { @unlink($sementara); }
+        };
+
+        try {
+            $konv = new \Dn_pdf_klasik();
+            if (!$konv->ubah($path, $sementara) || !is_file($sementara)) {
+                $bersih();
+                return false;
+            }
+            if (!$this->semua_halaman_terbaca($sementara)) {
+                $bersih();
+                return false;
+            }
+            $this->sambung_pdf($pdf, $sementara);
+        } catch (\Throwable $e2) {
+            $bersih();
+            return false;
+        }
+
+        $bersih();
+        $this->catat_pulih($path);
+        return true;
+    }
+
+    /** Uji baca seluruh halaman di dokumen terpisah - tidak menyentuh hasil. */
+    private function semua_halaman_terbaca($file)
+    {
+        try {
+            $uji = new \setasign\Fpdi\Tcpdf\Fpdi();
+            $jml = $uji->setSourceFile($file);
+            if ($jml < 1) {
+                return false;
+            }
+            for ($i = 1; $i <= $jml; $i++) {
+                $uji->importPage($i);
+            }
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function catat_pulih($path)
+    {
+        if (function_exists('log_message')) {
+            log_message('info', 'Dn_pdf_gabung: lampiran "' . $path
+                . '" dikonversi dulu dari cross-reference stream ke xref klasik, lalu berhasil digabung.');
+        }
     }
 
     /**
