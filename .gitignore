@@ -8,10 +8,13 @@ application/logs/*
 
 !application/*/.htaccess
 
-# File upload user (supporting document dsb) - foldernya saja yang masuk git
-uploads/**
-!uploads/.htaccess
-!uploads/index.html
+# Lampiran supporting document Debit Note IKUT masuk git.
+# Servernya ada 3 (10.10.5.60, 10.10.5.12, nag.ddns.net) dengan filesystem
+# sendiri-sendiri, jadi berkasnya harus ikut terbawa waktu deploy - kalau tidak,
+# lampiran cuma bisa dibuka dari server tempat file itu diunggah.
+# Yang dikecualikan cuma folder tmp: isinya potongan upload yang belum selesai.
+uploads/debitnote/tmp/*
+!uploads/debitnote/tmp/.gitkeep
 
 composer.lock
 
