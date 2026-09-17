@@ -1753,7 +1753,7 @@ private function _dn_laporan($id, $dari_memo = false)
     // memakai template lama supaya dokumen lama tidak berubah tampilannya.
     if ($this->_dn_desain_baru($data['data_debit_note']['tgl_dn'])) {
         $data['alamat_bank'] = $dari_memo
-            ? $data['data_debit_note']['beneficiary_address']
+            ? $data['data_debit_note']['bank_address']
             : $data['data_debit_note']['bank_address'];
         $mpdf = $this->_dn_mpdf_baru();
         $html = $this->load->view('arnag/reportdebitnote_v2', $data, true);

@@ -499,7 +499,7 @@ CSS HEADER
                 <td style="font-size:12px;border-top: none;border-bottom: none;border-right: none;border-left: none;"></td>
             </tr>
             <tr style="font-size:12px;">
-                <td style="font-size:12px;border-bottom: none;border-top: none;"><b>Bank Adress:</b> <?= $data_debit_note['beneficiary_address']; ?></td>
+                <td style="font-size:12px;border-bottom: none;border-top: none;"><b>Bank Adress:</b> <?= $data_debit_note['bank_address']; ?></td>
                 <td style="font-size:12px;border-top: none;border-bottom: none;border-right: none;border-left: none;"></td>
                 <td style="font-size:12px;border-top: none;border-bottom: none;border-right: none;border-left: none;"> </td>
             </tr>
