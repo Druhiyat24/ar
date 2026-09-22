@@ -1,440 +1,316 @@
-<style>
-    .table-wrapper {
-        max-height: 350px;
-        overflow-y: auto;
-        position: relative;
-    }
-
-    .table-scroll {
-        overflow-x: auto;
-    }
-
-    #table-sales-report-material {
-        border-collapse: collapse;
-        width: max-content; /* Supaya bisa scroll horizontal */
-    }
-
-/* ===== Sticky Header ===== */
-#table-sales-report-material thead th {
-    position: sticky;
-    top: 0;
-    z-index: 30; /* tinggi supaya di atas td */
-    background: #f1f1f1;
-    text-transform: capitalize;
-    vertical-align: middle;
-    text-align: center;
-    white-space: nowrap;
-    border: 1px solid #dee2e6;
-    padding: 6px 10px;
+<!-- ==========================================================================
+     Sales Report Detail Item
+     Tampilannya mengikuti menu Debit Note (skin .nag-skin di dn_skin.php).
+     Tabelnya DataTables, datanya diambil per bulan oleh
+     cari_sales_report_detail_material() di crud-nag-report.js - persentase
+     loading dihitung dari bulan yang sudah selesai. File Excel dirakit di
+     browser dari data yang sama (export_sales_report_detail_material() di JS).
+     ========================================================================== -->
+<?php $this->load->view('arnag/dn_skin'); ?>
+<style type="text/css">
+/* Khusus halaman ini */
+/* header.php membuang margin .form-group di .row.align-items-end, jadi jarak
+   tombol ke filter di atasnya diberi sendiri (sama dengan jarak antar baris filter). */
+.nag-skin .srm-aksi { margin-top: 12px; }
+.nag-skin .btn-dn-excel {
+  background: linear-gradient(135deg, #15803d, #16a34a) !important;
+  border: none !important;
+  color: #fff !important;
+}
+.nag-skin .btn-srm-print {
+  background: #475569 !important;
+  border-color: #475569 !important;
+  color: #fff !important;
 }
 
-/* Baris kedua header juga sticky */
-#table-sales-report-material thead tr:nth-child(2) th {
-    top: 35px; /* tinggi baris pertama */
-    z-index: 29;
-    background: #f9f9f9;
+/* ===== Area scroll =====
+   Dibuat DataTables (opsi dom di crud-nag-report.js) dan hanya membungkus
+   tabelnya, jadi Show/Search/halaman tidak ikut tergeser. 57 kolom tidak
+   mungkin muat selebar layar - yang digeser cuma area tabel, bukan halaman. */
+#srm-area .srm-scroll {
+  max-height: 70vh;
+  overflow: auto;
+  position: relative;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  scrollbar-color: #64748b #e2e8f0;
+}
+#srm-area .srm-scroll::-webkit-scrollbar { width: 14px; height: 14px; }
+#srm-area .srm-scroll::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 8px; }
+#srm-area .srm-scroll::-webkit-scrollbar-thumb { background: #64748b; border-radius: 8px; border: 3px solid #e2e8f0; }
+#srm-area .srm-scroll::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* ===== Kepala tabel menempel di atas area scroll =====
+   top baris kedua & left kolom beku dihitung srmAtur() dari ukuran asli
+   (lebar kolom ikut isi, jadi tidak bisa ditulis tetap disini). */
+#srm-area .dn-table thead th { position: sticky; top: 0; z-index: 5; }
+#srm-area .dn-table thead tr:nth-child(2) th { background: #264a73; }
+#srm-area .dn-table thead th.srm-grup-bill { box-shadow: inset 0 -3px 0 #22c55e; }
+#srm-area .dn-table thead th.srm-grup-ship { box-shadow: inset 0 -3px 0 #38bdf8; }
+/* Batas antar kelompok (Billing / Shipping, Original / IDR) */
+#srm-area .dn-table .srm-awal-grup { border-left: 2px solid #cbd5e1; }
+#srm-area .dn-table thead th.srm-awal-grup { border-left-color: rgba(255, 255, 255, .35); }
+
+/* Kolom terakhir di skin DN adalah Action yang ditempel di kanan - disini
+   kolom terakhir cuma angka biasa. */
+#srm-area .dn-table thead th:last-child { right: auto; z-index: 5; box-shadow: none; }
+#srm-area .dn-table thead th.srm-grup-ship:last-child { box-shadow: inset 0 -3px 0 #38bdf8; }
+#srm-area .dn-table tbody td:last-child:not(.dataTables_empty) { position: static; box-shadow: none; border-right: 0; }
+
+/* ===== Kolom beku (No s/d Shipp Number) - hanya di layar lebar; di HP lima
+   kolom itu saja sudah selebar layar. ===== */
+@media (min-width: 768px) {
+  #srm-area .dn-table thead th.srm-beku { z-index: 7; }
+  #srm-area .dn-table tbody td.srm-beku { position: sticky; z-index: 3; }
+  #srm-area .srm-scroll.is-geser .srm-beku-4 { box-shadow: 7px 0 9px -7px rgba(15, 23, 42, .3); }
 }
 
-/* ===== Body ===== */
-#table-sales-report-material tbody td {
-    vertical-align: middle;
-    border: 1px solid #dee2e6;
-    padding: 6px 10px;
-    background: #fff;
+/* ===== Keadaan kosong: ditempel di kiri area scroll supaya tidak ikut
+   ke tengah tabel yang lebarnya ribuan piksel ===== */
+#srm-area .dn-table td.dataTables_empty { text-align: left; padding: 30px 12px; }
+#srm-area .srm-kosong {
+  position: sticky;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  white-space: normal;
+  text-align: center;
+}
+#srm-area .srm-kosong-ikon {
+  width: 44px; height: 44px; border-radius: 50%; background: #eef2f7;
+  display: grid; place-items: center; color: #1e3a5f; margin-bottom: 4px;
+}
+#srm-area .srm-kosong-ikon i { opacity: .55; font-size: 17px; }
+#srm-area .srm-kosong-judul { color: #0f172a; font-weight: 700; font-size: 13.5px; }
+
+/* ===== Ringkasan di samping judul tabel ===== */
+#srm-ringkasan:empty { display: none; }
+#srm-ringkasan {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 12px; border-radius: 999px;
+  background: #eef2f7; color: #1e3a5f;
+  font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
 }
 
-#table-sales-report-material tbody tr:hover {
-    background-color: #f9f9f9;
+/* ===== Layar HP: kotak search selebar layar ===== */
+@media (max-width: 767.98px) {
+  #srm-area .dataTables_filter label { width: 100%; }
+  #srm-area .dataTables_filter input { flex: 1 1 auto; margin-left: 0; }
 }
 
-/* ===== Freeze Kolom ===== */
-/* Kolom 1 (No) */
-#table-sales-report-material th:nth-child(1) {
-    left: 0;
-    z-index: 40; /* header freeze paling tinggi */
-    background-color: #fff;
+/* Search / Export dikunci selama data masih dimuat */
+.nag-skin .srm-aksi .btn:disabled { opacity: .6; cursor: not-allowed; filter: none; }
+
+/* ===== Progress loading =====
+   Tanpa awalan .nag-skin: dipakai juga di Swal Export, yang ditaruh
+   SweetAlert2 langsung di <body> (di luar .nag-skin). */
+.srm-progress {
+  width: 240px;
+  max-width: 100%;
+  height: 6px;
+  margin-top: 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
 }
-#table-sales-report-material td:nth-child(1) {
-    left: 0;
-    z-index: 20; /* lebih rendah dari header */
-    position: sticky;
-    background-color: #fff;
+.srm-progress-bar {
+  width: 0;
+  height: 100%;
+  background: #1e3a5f;
+  transition: width .25s ease;
 }
 
-/* Kolom 2 (Customer) */
-#table-sales-report-material th:nth-child(2) {
-    left: 30px;
-    z-index: 40;
-    background-color: #fff;
-}
-#table-sales-report-material td:nth-child(2) {
-    left: 30px;
-    z-index: 20;
-    position: sticky;
-    background-color: #fff;
-}
-
-/* Kolom 3 (Invoice) */
-#table-sales-report-material th:nth-child(3) {
-    left: 230px;
-    z-index: 40;
-    background-color: #fff;
-}
-#table-sales-report-material td:nth-child(3) {
-    left: 230px;
-    z-index: 20;
-    position: sticky;
-    background-color: #fff;
-}
-
-/* Kolom 4 (Invoice Date) */
-#table-sales-report-material th:nth-child(4) {
-    left: 430px;
-    z-index: 40;
-    background-color: #fff;
-}
-#table-sales-report-material td:nth-child(4) {
-    left: 430px;
-    z-index: 20;
-    position: sticky;
-    background-color: #fff;
-}
-
-/* Kolom 4 (Invoice Date) */
-#table-sales-report-material th:nth-child(5) {
-    left: 630px;
-    z-index: 40;
-    background-color: #fff;
-}
-#table-sales-report-material td:nth-child(5) {
-    left: 630px;
-    z-index: 20;
-    position: sticky;
-    background-color: #fff;
-}
-
-/* ===== Search Input di kanan ===== */
-.table-header {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 8px;
-}
-
-.search-box {
-    position: relative;
-}
-
-.search-box input {
-    padding: 6px 30px 6px 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-.search-box i {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #888;
-    pointer-events: none;
-}
+/* ===== Swal (Export & pesan lain di halaman ini) =====
+   !important: templates/header.php menimpa .btn secara global dengan !important. */
+.srm-swal { border-radius: 14px; }
+.srm-swal .swal2-title { color: #1e3a5f; font-size: 19px; }
+.srm-swal .swal2-loader { border-color: #1e3a5f transparent #1e3a5f transparent; }
+.srm-swal .srm-swal-teks { color: #475569; font-size: 14px; font-variant-numeric: tabular-nums; }
+.srm-swal .srm-progress { margin: 12px auto 0; }
+.srm-swal .swal2-confirm { background: #1e3a5f !important; border-color: #1e3a5f !important; }
+.srm-swal .swal2-confirm:focus { box-shadow: 0 0 0 3px rgba(44, 82, 130, .35) !important; }
 </style>
-<!-- Content Wrapper. Contains page content -->
-<div class="content-wrapper">
-    <!-- Content Header (Page header) -->
-    <section class="content-header">
-        <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1><?= $title; ?></h1>
-                </div>
-            </div>
-        </div><!-- /.container-fluid -->
-    </section>
-    <!-- Main content -->
-    <div class="card_body">
-        <section class="content">
-            <div class="container-fluid">
-                <div class="row">
-                    <!-- left column -->
-                    <div class="col-md-12">
-                        <!-- general form elements -->
-                        <div class="card card-info">
-                            <div class="card-header">
-                                <h3 class="card-title">Sales Report Detail</h3>
-                            </div>
-                            <!-- /.card-header -->
-                            <!-- form start -->
-                            <form>
-                                <div class="card-body">
-                                    <!-- Row 1 -->
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>Customer</label>
-                                                <select class="form-control select2bs4" id="sr_customer_mt" name="sr_customer_mt">
-                                                    <option value="All">All Customer</option>
-                                                    <?php foreach ($customer as $cs) : ?>
-                                                        <option value="<?= $cs['Id_Supplier']; ?>"><?= $cs['Supplier']; ?></option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>Type</label>
-                                                <select class="form-control select2bs4" id="sr_type_mt" name="sr_type_mt">
-                                                    <option value="All">All</option>
-                                                    <option value="Local">Local</option>
-                                                    <option value="Export">Export</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>VAT Type</label>
-                                                <select class="form-control select2bs4" id="sr_vat_mt" name="sr_vat_mt">
-                                                    <option value="All">All</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- Row 2 -->
-                                    <div class="row">
-                                        <div class="col-md-2">
-                                            <div class="form-group mb-0">
-                                                <label>From</label>
-                                                <div class="input-group">
-                                                    <input type="text" name="filter_from" id="filter_from" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
-                                                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <div class="form-group mb-0">
-                                                <label>To</label>
-                                                <div class="input-group">
-                                                    <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
-                                                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>Invoice Type</label>
-                                                <select class="form-control select2bs4" id="sr_type_inv_mt" name="sr_type_inv_mt">
-                                                    <option value="All">All</option>
-                                                    <?php foreach ($type as $t) : ?>
-                                                        <option value="<?= $t['id_type']; ?>"><?= $t['type']; ?></option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>VAT Status</label>
-                                                <select class="form-control select2bs4" id="sr_vat_status_mt" name="sr_vat_status_mt">
-                                                    <option value="All">All</option>
-                                                    <option value="Normal">Normal</option>
-                                                    <option value="Revisi">Revisi</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- Row 3 -->
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>Currency</label>
-                                                <select class="form-control select2bs4" id="sr_curr_mt" name="sr_curr_mt">
-                                                    <option value="All">All</option>
-                                                    <option value="USD">USD</option>
-                                                    <option value="IDR">IDR</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>Group</label>
-                                                <select class="form-control select2bs4" id="sr_group_mt" name="sr_group_mt">
-                                                    <option value="All">All</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>Order Type</label>
-                                                <select class="form-control select2bs4" id="sr_order_type_mt" name="sr_order_type_mt">
-                                                    <option value="All">All</option>
-                                                    <option value="FOB">FOB</option>
-                                                    <option value="CMT">CMT</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- Button Search -->
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <button type="button" class="btn btn-primary" onclick="cari_sales_report_detail_material()"><i class="fa fa-search"></i> Search</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </form>
-                            <!-- /.card-body -->
-                        </div>
-                    </div>
-                </div>
-            </div><!-- /.container-fluid -->
-        </section>
-    </div>
-    <!-- Data Table Sales Report Material -->
-    <div class="card-body">
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">DataTable Sales Report Detail Item</h3>
-                    </div>
 
-                    <div class="card-body">
-                        <div class="table-scroll">
-                            <div class="table-header">
-                                <div class="search-box">
-                                    <input type="text" id="tableSearch" placeholder="Search...">
-                                    <i class="fas fa-search"></i>
-                                </div>
-                            </div>
-                            <div class="table-wrapper">
-                              <table id="table-sales-report-material" class="table table-bordered table-striped table-head-fixed text-nowrap">
-                                <thead>
-                                  <tr>
-                                    <th style="width:30px;background-color: #FFE4C4;" rowspan="2">No</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Customer</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Invoice</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Invoice Date</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Shipp Number</th>
-                                    <th style="width:150px;background-color: #FFE4C4;" rowspan="2">Shipp Date</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Group</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">WS</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Style</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Product Item</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Order Type</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Shipp</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Inv Type</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">VAT Number</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">VAT Date</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Currency</th>
-                                    <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Rate</th>
-                                    <th style="background-color: #90EE90;" colspan="10">Billing Invoice (Original Currency)</th>
-                                    <th style="background-color: #90EE90;" colspan="10">Billing Invoice (Equivalent IDR)</th>
-                                    <th style="background-color: #87CEFA;" colspan="10">Shipping Invoice (Original Currency)</th>
-                                    <th style="background-color: #87CEFA;" colspan="10">Shipping Invoice (Equivalent IDR)</th>
-                                </tr>
-                                <tr>
-                                    <th style="width:150px;background-color: #90EE90;">Qty</th>
-                                    <th style="width:150px;background-color: #90EE90;">UOM</th>
-                                    <th style="width:150px;background-color: #90EE90;">Price</th>
-                                    <th style="width:150px;background-color: #90EE90;">Gross Sales</th>
-                                    <th style="width:150px;background-color: #90EE90;">Others Sales</th>
-                                    <th style="width:150px;background-color: #90EE90;">Discount</th>
-                                    <th style="width:150px;background-color: #90EE90;">Net Sales</th>
-                                    <th style="width:150px;background-color: #90EE90;">Down Payment</th>
-                                    <th style="width:150px;background-color: #90EE90;">VAT</th>
-                                    <th style="width:150px;background-color: #90EE90;">Total</th>
+<div class="content-wrapper nag-skin">
+  <section class="content">
+    <div class="container-fluid">
 
-                                    <th style="width:150px;background-color: #90EE90;">Qty</th>
-                                    <th style="width:150px;background-color: #90EE90;">UOM</th>
-                                    <th style="width:150px;background-color: #90EE90;">Price</th>
-                                    <th style="width:150px;background-color: #90EE90;">Gross Sales</th>
-                                    <th style="width:150px;background-color: #90EE90;">Others Sales</th>
-                                    <th style="width:150px;background-color: #90EE90;">Discount</th>
-                                    <th style="width:150px;background-color: #90EE90;">Net Sales</th>
-                                    <th style="width:150px;background-color: #90EE90;">Down Payment</th>
-                                    <th style="width:150px;background-color: #90EE90;">VAT</th>
-                                    <th style="width:150px;background-color: #90EE90;">Total</th>
-
-                                    <th style="width:150px;background-color: #87CEFA;">Qty</th>
-                                    <th style="width:150px;background-color: #87CEFA;">UOM</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Price</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Gross Sales</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Others Sales</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Discount</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Net Sales</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Down Payment</th>
-                                    <th style="width:150px;background-color: #87CEFA;">VAT</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Total</th>
-
-                                    <th style="width:150px;background-color: #87CEFA;">Qty</th>
-                                    <th style="width:150px;background-color: #87CEFA;">UOM</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Price</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Gross Sales</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Others Sales</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Discount</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Net Sales</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Down Payment</th>
-                                    <th style="width:150px;background-color: #87CEFA;">VAT</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-                    <!-- /.card-header -->
-                    <!-- <div class="card-body table-responsive p-0" style="height: 300px;">
-                        <table id="table-sales-report-material" class="table table-head-fixed text-nowrap">
-                            <thead>
-                                <tr>
-                                    <th>Customer</th>
-                                    <th>Invoice</th>
-                                    <th>Invoice Date</th>
-                                    <th>Shipp Number</th>
-                                    <th>Shipp Date</th>
-                                    <th>Group</th>
-                                    <th>WS</th>
-                                    <th>Style</th>
-                                    <th>Product Item</th>
-                                    <th>Qty</th>
-                                    <th>Qty Shipment</th>
-                                    <th>Uom</th>
-                                    <th>Uom Shipment</th>
-                                    <th>Unit Price</th>
-                                    <th>Unit Price Shipment</th>
-                                    <th>Shipp</th>
-                                    <th>Inv Type</th>
-                                    <th>Order Type</th>
-                                    <th>Currency</th>
-                                    <th>Rate</th>
-                                    <th>Original Value</th>
-                                    <th>Original Value Shipment</th>
-                                    <th>Equiv Value</th>
-                                    <th>Equiv Value Shipment</th>
-                                    <th>No Faktur</th>
-                                    <th>Tgl Faktur</th>                                          
-                                </tr>
-                            </thead>
-                            <tbody>
-
-                            </tbody>
-                        </table>
-                    </div> -->
-                    <!-- /.card-body -->
-                </div>
-                <!-- /.card -->
-            </div>
+      <!-- Filter -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title"><i class="fas fa-chart-line"></i>Sales Report Detail</h3>
         </div>
-        <!-- Button Print -->
-        <div class="row">
-            <div class="col-md-4">
-                <button type="button" class="btn btn-primary" onclick="print_sales_report_material()"><i class="fa fa-print"></i> Print</button>
-                <button type="button" class="btn btn-info" onclick="export_sales_report_detail_material()"><i class="fa fa-download"></i> Export To Excel</button>
+        <div class="card-body">
+          <div class="row align-items-end">
+            <div class="form-group col-lg-4 col-md-6">
+              <label for="sr_customer_mt">Customer</label>
+              <select class="form-control select2bs4" id="sr_customer_mt" name="sr_customer_mt">
+                <option value="All">All Customer</option>
+                <?php foreach ($customer as $cs) : ?>
+                  <option value="<?= $cs['Id_Supplier']; ?>"><?= $cs['Supplier']; ?></option>
+                <?php endforeach; ?>
+              </select>
             </div>
+            <div class="form-group col-lg-2 col-md-3 col-6">
+              <label for="filter_from">From</label>
+              <div class="input-group dn-date-group">
+                <input type="text" name="filter_from" id="filter_from" class="form-control tanggal" value="<?= date('Y-m-d'); ?>" autocomplete="off">
+                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+              </div>
+            </div>
+            <div class="form-group col-lg-2 col-md-3 col-6">
+              <label for="filter_to">To</label>
+              <div class="input-group dn-date-group">
+                <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?= date('Y-m-d'); ?>" autocomplete="off">
+                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+              </div>
+            </div>
+            <div class="form-group col-lg-2 col-md-6 col-6">
+              <label for="sr_type_mt">Type</label>
+              <select class="form-control select2bs4" id="sr_type_mt" name="sr_type_mt">
+                <option value="All">All</option>
+                <option value="Local">Local</option>
+                <option value="Export">Export</option>
+              </select>
+            </div>
+            <div class="form-group col-lg-2 col-md-6 col-6">
+              <label for="sr_curr_mt">Currency</label>
+              <select class="form-control select2bs4" id="sr_curr_mt" name="sr_curr_mt">
+                <option value="All">All</option>
+                <option value="USD">USD</option>
+                <option value="IDR">IDR</option>
+              </select>
+            </div>
+
+            <div class="form-group col-lg-4 col-md-6">
+              <label for="sr_type_inv_mt">Invoice Type</label>
+              <select class="form-control select2bs4" id="sr_type_inv_mt" name="sr_type_inv_mt">
+                <option value="All">All</option>
+                <?php foreach ($type as $t) : ?>
+                  <option value="<?= $t['id_type']; ?>"><?= $t['type']; ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="form-group col-lg-2 col-md-6 col-6">
+              <label for="sr_order_type_mt">Order Type</label>
+              <select class="form-control select2bs4" id="sr_order_type_mt" name="sr_order_type_mt">
+                <option value="All">All</option>
+                <option value="FOB">FOB</option>
+                <option value="CMT">CMT</option>
+              </select>
+            </div>
+            <div class="form-group col-lg-2 col-md-4 col-6">
+              <label for="sr_vat_mt">VAT Type</label>
+              <select class="form-control select2bs4" id="sr_vat_mt" name="sr_vat_mt">
+                <option value="All">All</option>
+              </select>
+            </div>
+            <div class="form-group col-lg-2 col-md-4 col-6">
+              <label for="sr_vat_status_mt">VAT Status</label>
+              <select class="form-control select2bs4" id="sr_vat_status_mt" name="sr_vat_status_mt">
+                <option value="All">All</option>
+                <option value="Normal">Normal</option>
+                <option value="Revisi">Revisi</option>
+              </select>
+            </div>
+            <div class="form-group col-lg-2 col-md-4 col-6">
+              <label for="sr_group_mt">Group</label>
+              <select class="form-control select2bs4" id="sr_group_mt" name="sr_group_mt">
+                <option value="All">All</option>
+              </select>
+            </div>
+
+            <div class="form-group col-12 mb-0">
+              <div class="dn-filter-aksi srm-aksi">
+                <button type="button" id="srm-btn-search" class="btn btn-primary" onclick="cari_sales_report_detail_material()"><i class="fa fa-search"></i> Search</button>
+                <button type="button" class="btn btn-srm-print" onclick="print_sales_report_material()"><i class="fa fa-print"></i> Print</button>
+                <button type="button" id="srm-btn-export" class="btn btn-dn-excel" onclick="export_sales_report_detail_material()"><i class="fas fa-file-excel"></i> Export</button>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <!-- Data -->
+      <div class="card">
+        <div class="card-body">
+          <div class="table-header">
+            <span class="table-title"><i class="fas fa-table"></i>Data Sales Report Detail Item</span>
+            <!-- Diisi setelah Search: jumlah baris hasil -->
+            <span id="srm-ringkasan" aria-live="polite"></span>
+          </div>
+          <div class="dn-list-area" id="srm-area">
+            <!-- Loader dengan persentase: data diambil per bulan, jadi
+                 persennya dihitung dari bulan yang sudah selesai. -->
+            <div class="nag-loader-overlay" id="srm-loader">
+              <div class="nag-loader-card">
+                <div class="nag-loader-spinner">
+                  <span class="nag-loader-ring nag-loader-ring-outer"></span>
+                  <span class="nag-loader-ring nag-loader-ring-inner"></span>
+                  <span class="nag-loader-brand">NAG</span>
+                </div>
+                <div class="nag-loader-caption" id="srm-progress-text">Loading data...</div>
+                <div class="srm-progress"><div class="srm-progress-bar" id="srm-progress-bar"></div></div>
+              </div>
+            </div>
+            <?php
+            // Kolom beku: 5 kolom pertama (No s/d Shipp Number).
+            $kolom_kiri = array('No', 'Customer', 'Invoice', 'Invoice Date', 'Shipp Number', 'Shipp Date', 'Group', 'WS', 'Style',
+                                'Product Item', 'Order Type', 'Shipp', 'Inv Type', 'VAT Number', 'VAT Date', 'Currency', 'Rate');
+            $grup = array(
+                array('Billing Invoice (Original Currency)', 'srm-grup-bill'),
+                array('Billing Invoice (Equivalent IDR)', 'srm-grup-bill'),
+                array('Shipping Invoice (Original Currency)', 'srm-grup-ship'),
+                array('Shipping Invoice (Equivalent IDR)', 'srm-grup-ship'),
+            );
+            $sub = array('Qty', 'UOM', 'Price', 'Gross Sales', 'Others Sales', 'Discount', 'Net Sales', 'Down Payment', 'VAT', 'Total');
+            ?>
+            <table id="table-sales-report-material" class="dn-table text-nowrap">
+              <thead>
+                <tr>
+                  <?php foreach ($kolom_kiri as $i => $judul) : ?>
+                    <th rowspan="2"<?= $i < 5 ? ' class="srm-beku srm-beku-' . $i . '"' : ''; ?>><?= $judul; ?></th>
+                  <?php endforeach; ?>
+                  <?php foreach ($grup as $g) : ?>
+                    <th colspan="10" class="srm-awal-grup <?= $g[1]; ?>"><?= $g[0]; ?></th>
+                  <?php endforeach; ?>
+                </tr>
+                <tr>
+                  <?php foreach ($grup as $g) : ?>
+                    <?php foreach ($sub as $j => $judul) : ?>
+                      <th<?= $j === 0 ? ' class="srm-awal-grup"' : ''; ?>><?= $judul; ?></th>
+                    <?php endforeach; ?>
+                  <?php endforeach; ?>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
     </div>
+  </section>
 </div>
 
+<script>
+  // DataTables baru siap setelah script footer dimuat.
+  document.addEventListener('DOMContentLoaded', function () {
+    $(function () {
+      // Tabel kosong dulu, supaya kerangka Show/Search/halaman sudah tampil
+      // sebelum Search pertama.
+      srmTampilkan(null, [], true);
+      $(window).on('resize', srmAtur);
 
+      // Enter di kolom tanggal = klik Search.
+      $('#filter_from, #filter_to').on('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          cari_sales_report_detail_material();
+        }
+      });
+    });
+  });
+</script>

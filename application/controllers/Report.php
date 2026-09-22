@@ -409,7 +409,24 @@ class Report extends CI_Controller
     public function cari_sales_report_detail_material($dt_dari, $dt_sampai, $id_customer_mt, $shipp_mt, $type_mt, $curr_mt, $type_so_mt)
     {
         $data =  $this->Model_report->sales_report_detail_material($dt_dari, $dt_sampai, $id_customer_mt, $shipp_mt, $type_mt, $curr_mt, $type_so_mt);
-        echo json_encode($data);
+
+        // Data setahun bisa ~60 ribu baris. Nama kolom dikirim sekali saja lalu
+        // tiap baris berupa array (bukan objek yang mengulang 53 nama kolom),
+        // plus di-gzip - ukurannya turun drastis dari ~71 MB per tahun.
+        $json = json_encode(array(
+            'cols' => $data ? array_keys($data[0]) : array(),
+            'rows' => array_map('array_values', $data),
+        ));
+
+        header('Content-Type: application/json; charset=utf-8');
+        $enc = (string) $this->input->server('HTTP_ACCEPT_ENCODING');
+        if (strpos($enc, 'gzip') !== false && function_exists('gzencode')) {
+            header('Content-Encoding: gzip');
+            header('Vary: Accept-Encoding');
+            echo gzencode($json, 6);
+            return;
+        }
+        echo $json;
     }
 
 

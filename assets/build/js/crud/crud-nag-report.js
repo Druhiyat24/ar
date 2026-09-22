@@ -567,114 +567,497 @@ function cari_mut_ar(){
 }
 
 
-function cari_sales_report_detail_material() {
+// ===== Sales Report Detail Material =====
+// Data setahun bisa ~60 ribu baris x 57 kolom. Dulu semua baris dirakit jadi
+// HTML sekaligus (jutaan sel) sampai browser hang. Sekarang:
+//  - data diambil per bulan, 3 permintaan paralel, jadi persentase loading
+//    dihitung dari bulan yang sudah selesai (hasilnya sudah dibuktikan sama
+//    persis dengan ambil sekaligus - baris difilter per sj_date);
+//  - ditampilkan pakai DataTables deferRender: yang dirender cuma 1 halaman;
+//  - file Excel dirakit di browser dari data yang sama. Export lewat server
+//    (export_sales_report_detail_material) kehabisan memori PHP untuk data
+//    setahun, dan tidak bisa memberi tahu kapan file-nya selesai.
+var srmTable = null;
+var srmData = null;     // hasil Search terakhir {kunci, cols, potongan} - dipakai ulang oleh Export
+var srmSibuk = false;   // true selama Search / Export berjalan
+var SRM_PARALEL = 3;
 
-    $('#table-sales-report-material tbody tr').remove();
+// Urutan kolom = urutan header di view. (Kode lama menulis Shipping Original
+// sebelum Billing IDR, jadi angkanya salah tempat di bawah header.)
+var SRM_KOLOM_TEKS = ['customer', 'no_invoice', 'tgl_inv', 'bppb_number', 'sj_date', 'grp', 'ws',
+                      'styleno', 'produk', 'type_so', 'shipp', 'inv_type', 'no_faktur', 'tgl_faktur', 'curr'];
+var SRM_KOLOM_ANGKA = [
+    'rate',
+    'qty_bill', 'uom_bill', 'price_bill', 'gross_bill', 'other_bill', 'diskon_bill', 'net_bill', 'dp_bill', 'vat_bill', 'total_bill',
+    'qty_bill', 'uom_bill', 'price_bill_idr', 'gross_bill_idr', 'other_bill_idr', 'diskon_bill_idr', 'net_bill_idr', 'dp_bill_idr', 'vat_bill_idr', 'total_bill_idr',
+    'qty_ship', 'uom_ship', 'price_ship', 'gross_ship', 'other_ship', 'diskon_ship', 'net_ship', 'dp_ship', 'vat_ship', 'total_ship',
+    'qty_ship', 'uom_ship', 'price_ship_idr', 'gross_ship_idr', 'other_ship_idr', 'diskon_ship_idr', 'net_ship_idr', 'dp_ship_idr', 'vat_ship_idr', 'total_ship_idr'
+];
 
-    var from = $('#filter_from').val();
-    var to = $('#filter_to').val();
-    var id_customer_mt = $('#sr_customer_mt').val();
-    var shipp_mt = $('#sr_type_mt').val();
-    var type_mt = $('#sr_type_inv_mt').val();
-    var curr_mt = $('#sr_curr_mt').val();
-    var type_so_mt = $('#sr_order_type_mt').val();
+// Filter di form - dipakai Search & Export.
+function srmFilter() {
+    return {
+        from: $('#filter_from').val(),
+        to: $('#filter_to').val(),
+        customer: $('#sr_customer_mt').val(),
+        shipp: $('#sr_type_mt').val(),
+        type: $('#sr_type_inv_mt').val(),
+        curr: $('#sr_curr_mt').val(),
+        type_so: $('#sr_order_type_mt').val()
+    };
+}
 
-    console.log(id_customer_mt, shipp_mt, type_mt, curr_mt, type_so_mt);
+function srmKunci(f) {
+    return [f.from, f.to, f.customer, f.shipp, f.type, f.curr, f.type_so].join('|');
+}
 
-    $.ajax({
-        url: "cari_sales_report_detail_material/" + from + "/" + to + "/" + id_customer_mt + "/" + shipp_mt + "/" + type_mt + "/" + curr_mt + "/" + type_so_mt + "/",                    
-        type: "GET",
-        dataType: "JSON",
-        success: function (response) {
+// Pecah rentang tanggal jadi potongan per bulan kalender.
+function srmPecahBulan(from, to) {
+    var hasil = [];
+    var d = new Date(from + 'T00:00:00');
+    var akhir = new Date(to + 'T00:00:00');
+    var ymd = function (x) {
+        return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+    };
+    while (d <= akhir) {
+        var ujung = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+        if (ujung > akhir) ujung = akhir;
+        hasil.push([ymd(d), ymd(ujung)]);
+        d = new Date(ujung.getFullYear(), ujung.getMonth(), ujung.getDate() + 1);
+    }
+    return hasil;
+}
 
-            var trHTML = '';
-            $.each(response, function (i, item) {                   
-                trHTML += '<tr>';       
-                trHTML += '<td>' + (i + 1) + '</td>';           
-                trHTML += '<td>' + item.customer + "</td>";
-                trHTML += '<td>' + item.no_invoice + "</td>";
-                trHTML += '<td>' + item.tgl_inv + "</td>";
-                trHTML += '<td>' + item.bppb_number + "</td>";
-                trHTML += '<td>' + item.sj_date + "</td>";
-                trHTML += '<td>' + item.grp + "</td>";
-                trHTML += '<td>' + item.ws + "</td>";
-                trHTML += '<td>' + item.styleno + "</td>";
-                trHTML += '<td>' + item.produk + "</td>";
-                trHTML += '<td>' + item.type_so + "</td>";
-                trHTML += '<td>' + item.shipp + "</td>";
-                trHTML += '<td>' + item.inv_type + "</td>";
-                trHTML += '<td>' + item.no_faktur + "</td>";
-                trHTML += '<td>' + item.tgl_faktur + "</td>";
-                trHTML += '<td>' + item.curr + "</td>";
-                trHTML += '<td>' + item.rate + "</td>";
+// Angka 2 desimal, dibulatkan seperti number_format() PHP (1.005 -> 1.01;
+// toFixed saja memberi 1.00). Kosong/null jadi 0.00, sama dengan export lama.
+// PHP (7.4) membulatkan dulu ke 15 digit penting, baru ke 2 desimal -
+// srmSenPhp() menyalin langkah _php_math_round() itu. Nilai dari MySQL
+// biasanya teks desimal pendek ("298000.0000"): kalau digitnya <= 15, hasil
+// PHP pasti sama dengan membulatkan digitnya langsung, jadi dipakai jalur
+// cepat itu (Excel setahun = 2 juta sel angka).
+var SRM_RE_DESIMAL = /^(-?)(\d{1,13})(?:\.(\d*))?$/;
 
-                trHTML += '<td align="right">' + number_format(item.qty_bill,2) + "</td>";
-                trHTML += '<td >' + item.uom_bill + "</td>";
-                trHTML += '<td align="right">' + number_format(item.price_bill,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.gross_bill,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.other_bill,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.diskon_bill,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.net_bill,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.dp_bill,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.vat_bill,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.total_bill,2) + "</td>";
-
-                trHTML += '<td align="right">' + number_format(item.qty_ship,2) + "</td>";
-                trHTML += '<td >' + item.uom_ship + "</td>";
-                trHTML += '<td align="right">' + number_format(item.price_ship,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.gross_ship,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.other_ship,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.diskon_ship,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.net_ship,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.dp_ship,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.vat_ship,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.total_ship,2) + "</td>";
-
-                trHTML += '<td align="right">' + number_format(item.qty_bill,2) + "</td>";
-                trHTML += '<td >' + item.uom_bill + "</td>";
-                trHTML += '<td align="right">' + number_format(item.price_bill_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.gross_bill_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.other_bill_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.diskon_bill_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.net_bill_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.dp_bill_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.vat_bill_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.total_bill_idr,2) + "</td>";
-
-                trHTML += '<td align="right">' + number_format(item.qty_ship,2) + "</td>";
-                trHTML += '<td >' + item.uom_ship + "</td>";
-                trHTML += '<td align="right">' + number_format(item.price_ship_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.gross_ship_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.other_ship_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.diskon_ship_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.net_ship_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.dp_ship_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.vat_ship_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.total_ship_idr,2) + "</td>";
-                trHTML += '</tr>';
-            });
-
-
-
-            $('#table-sales-report-material').append(trHTML);               
-
-        },
-        error: function (jqXHR, textStatus, errorThrown) {
-            alert('Error get data from ajax');
+// |n| dibulatkan ke 2 desimal ala PHP; hasilnya digit sen tanpa titik ("101" = 1.01).
+function srmSenPhp(a) {
+    if (!a) return '0';
+    var presisi = 14 - Math.floor(Math.log10(a));
+    var tmp;
+    if (presisi > 2 && presisi - 15 < 2) {
+        var p = Math.max(presisi, -60);
+        tmp = Math.floor((p >= 0 ? a * Math.pow(10, p) : a / Math.pow(10, -p)) + 0.5);
+        tmp = tmp / Math.pow(10, Math.abs(Math.max(-60, 2 - p)));
+    } else {
+        tmp = a * 100;
+        // >= 10 triliun: PHP tidak membulatkan, langsung dicetak 2 desimal
+        // (printf: nilai tepat di tengah dibulatkan ke genap).
+        if (tmp >= 1e15) {
+            var bulat = Math.floor(a);
+            var x = (a - bulat) * 100;
+            var s = Math.floor(x);
+            if (x - s > 0.5 || (x - s === 0.5 && s % 2)) s++;
+            if (s === 100) { bulat++; s = 0; }
+            return String(bulat) + (s < 10 ? '0' : '') + s;
         }
-    }); 
+    }
+    return String(Math.floor(tmp + 0.5));
 }
 
-function export_sales_report_detail_material(){
-    var id_customer_mt = $('#sr_customer_mt').val();
-    var shipp_mt = $('#sr_type_mt').val();
-    var type_mt = $('#sr_type_inv_mt').val();
-    var curr_mt = $('#sr_curr_mt').val();
-    var type_so_mt = $('#sr_order_type_mt').val();
-    var from = $('#filter_from').val();
-    var to = $('#filter_to').val();
-    window.open(".../../export_sales_report_detail_material/" + from + "/" + to + "/" + "/" + id_customer_mt + "/" + shipp_mt + "/" + type_mt + "/" + curr_mt + "/" + type_so_mt + "/" );
+function srmAngka(v) {
+    var m = SRM_RE_DESIMAL.exec(v == null ? '' : v);
+    var t;
+    var minus;
+    if (m && m[2].length + (m[3] ? m[3].length : 0) <= 15) {
+        var dec = (m[3] || '') + '000';
+        t = String(Number(m[2] + dec.slice(0, 2)) + (dec.charAt(2) >= '5' ? 1 : 0));
+        minus = m[1] === '-';
+    } else {
+        var n = parseFloat(v) || 0;
+        t = srmSenPhp(Math.abs(n));
+        minus = n < 0;
+    }
+    if (t.length < 3) t = ('00' + t).slice(-3);
+    return (minus && /[1-9]/.test(t) ? '-' : '') + t.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + t.slice(-2);
 }
+
+// Ambil data per bulan, SRM_PARALEL permintaan sekaligus. onProgress(selesai, total)
+// dipanggil tiap satu bulan selesai. Berhasil: {cols, potongan}; gagal: reject(bulan yang gagal).
+function srmAmbil(f, potongan, onProgress) {
+    return new Promise(function (resolve, reject) {
+        var hasil = new Array(potongan.length);
+        var cols = null;
+        var selesai = 0;
+        var berikut = 0;
+        var gagal = false;
+
+        function ambilBerikutnya() {
+            if (gagal || berikut >= potongan.length) return;
+            var i = berikut++;
+            var p = potongan[i];
+
+            $.ajax({
+                url: "cari_sales_report_detail_material/" + p[0] + "/" + p[1] + "/" + f.customer + "/" + f.shipp + "/" + f.type + "/" + f.curr + "/" + f.type_so + "/",
+                type: "GET",
+                dataType: "JSON"
+            }).done(function (res) {
+                if (gagal) return;
+                if (res.cols && res.cols.length) cols = res.cols;
+                hasil[i] = res.rows || [];
+                selesai++;
+                onProgress(selesai, potongan.length);
+
+                if (selesai === potongan.length) {
+                    resolve({ cols: cols || [], potongan: hasil });
+                } else {
+                    ambilBerikutnya();
+                }
+            }).fail(function () {
+                if (gagal) return;
+                gagal = true;
+                reject(p);
+            });
+        }
+
+        for (var k = 0; k < Math.min(SRM_PARALEL, potongan.length); k++) {
+            ambilBerikutnya();
+        }
+    });
+}
+
+// Search & Export dikunci selama salah satunya berjalan, supaya tidak diklik dua kali.
+function srmKunciTombol(nyala, tombol) {
+    srmSibuk = nyala;
+    $('#srm-btn-search').prop('disabled', nyala).html(nyala && tombol === 'search'
+        ? '<i class="fas fa-spinner fa-spin"></i> Loading...'
+        : '<i class="fa fa-search"></i> Search');
+    $('#srm-btn-export').prop('disabled', nyala).html(nyala && tombol === 'export'
+        ? '<i class="fas fa-spinner fa-spin"></i> Exporting...'
+        : '<i class="fas fa-file-excel"></i> Export');
+}
+
+function srmPersen(selesai, total) {
+    return total ? Math.round(selesai / total * 100) : 0;
+}
+
+function srmLoader(selesai, total) {
+    var pct = srmPersen(selesai, total);
+    document.getElementById('srm-loader').classList.add('show');
+    document.getElementById('srm-progress-bar').style.width = pct + '%';
+    document.getElementById('srm-progress-text').textContent =
+        'Loading data... ' + pct + '% (' + selesai + ' of ' + total + ' months)';
+}
+
+function srmLoaderTutup() {
+    document.getElementById('srm-loader').classList.remove('show');
+}
+
+// 5 kolom pertama (No s/d Shipp Number) dibekukan di kiri.
+var SRM_BEKU = 5;
+
+function srmKolom(map) {
+    var kolom = [{
+        data: null, orderable: false, searchable: false, className: 'dn-tengah',
+        render: function (d, type, row, meta) { return meta.row + 1; }
+    }];
+
+    SRM_KOLOM_TEKS.forEach(function (k) {
+        kolom.push({ data: map[k], defaultContent: '' });
+    });
+
+    SRM_KOLOM_ANGKA.forEach(function (k, i) {
+        // Kolom pertama tiap kelompok 10 kolom (Billing/Shipping, Original/IDR)
+        var awal = (i > 0 && (i - 1) % 10 === 0) ? ' srm-awal-grup' : '';
+        if (k.indexOf('uom_') === 0) {
+            kolom.push({ data: map[k], defaultContent: '', searchable: false, className: 'dn-tengah' + awal });
+            return;
+        }
+        // Angka tidak ikut pencarian: 60 ribu baris x 40 kolom angka bikin
+        // pencarian pertama lambat, padahal yang dicari biasanya customer/invoice.
+        kolom.push({
+            data: map[k], className: 'dn-angka' + awal, searchable: false,
+            render: function (d, type) {
+                return type === 'display' ? srmAngka(d) : (parseFloat(d) || 0);
+            }
+        });
+    });
+
+    for (var b = 0; b < SRM_BEKU; b++) {
+        kolom[b].className = ((kolom[b].className || '') + ' srm-beku srm-beku-' + b).trim();
+    }
+    return kolom;
+}
+
+function srmKosong(ikon, teks) {
+    return '<div class="srm-kosong"><span class="srm-kosong-ikon"><i class="fas ' + ikon + '"></i></span>'
+        + '<div class="srm-kosong-judul">' + teks + '</div></div>';
+}
+
+// Posisi kolom beku & baris kedua kepala tabel dihitung dari ukuran aslinya:
+// lebar kolom ikut isi halaman yang tampil, jadi angka tetap di CSS bakal
+// meleset (dulu 200px per kolom, nama customer yang panjang jadi tertimpa).
+function srmAtur() {
+    var tabel = document.getElementById('table-sales-report-material');
+    var wadah = tabel ? $(tabel).closest('.srm-scroll')[0] : null;
+    if (!wadah) return;
+
+    var baris1 = tabel.tHead.rows[0];
+    var css = '';
+    var kiri = 0;
+    for (var i = 0; i < SRM_BEKU; i++) {
+        css += '#table-sales-report-material .srm-beku-' + i + '{left:' + kiri + 'px}';
+        kiri += baris1.cells[i].getBoundingClientRect().width;
+    }
+    // Tinggi baris pertama = tinggi sel judul kelompok (colspan 10). Jangan
+    // pakai selektor th[colspan]: DataTables menulis colspan="1" ke semua sel.
+    var grup = [].filter.call(baris1.cells, function (c) { return c.colSpan > 1; })[0];
+    var tinggi = grup ? grup.getBoundingClientRect().height : 0;
+
+    var gaya = document.getElementById('srm-atur-css');
+    if (!gaya) {
+        gaya = document.createElement('style');
+        gaya.id = 'srm-atur-css';
+        document.head.appendChild(gaya);
+    }
+    gaya.textContent = '@media (min-width:768px){' + css + '}'
+        + '#table-sales-report-material thead tr:nth-child(2) th{top:' + tinggi + 'px}'
+        + '#srm-area .srm-kosong{width:' + Math.max(wadah.clientWidth - 24, 200) + 'px}';
+}
+
+// awal = true: tabel kosong saat halaman baru dibuka (belum Search).
+function srmTampilkan(cols, potongan, awal) {
+    var map = {};
+    (cols || []).forEach(function (c, i) { map[c] = i; });
+    var rows = [].concat.apply([], potongan);
+
+    if (srmTable) {
+        srmTable.destroy();
+        srmTable = null;
+    }
+    $('#table-sales-report-material tbody').empty();
+
+    srmTable = $('#table-sales-report-material').DataTable({
+        data: rows,
+        columns: srmKolom(map),
+        deferRender: true,
+        autoWidth: false,
+        order: [],
+        pageLength: 10,
+        // Tanpa "All": 60 ribu baris sekaligus bikin browser hang lagi.
+        lengthMenu: [10, 25, 50, 100],
+        searchDelay: 400,
+        // Area scroll (.srm-scroll) hanya membungkus tabel, jadi kontrol
+        // Show/Search/halaman tidak ikut tergeser saat tabel di-scroll.
+        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>><"srm-scroll"t><"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+        drawCallback: srmAtur,
+        language: {
+            search: '',
+            searchPlaceholder: 'Search customer, invoice, style...',
+            lengthMenu: 'Show _MENU_ rows',
+            info: 'Showing _START_-_END_ of _TOTAL_',
+            infoEmpty: 'No data',
+            infoFiltered: '(filtered from _MAX_)',
+            zeroRecords: srmKosong('fa-search', 'No data matches the search.'),
+            emptyTable: awal
+                ? srmKosong('fa-chart-line', 'No data yet - set the filter above, then click Search.')
+                : srmKosong('fa-inbox', 'No sales data for this filter.')
+        }
+    });
+
+    // Bayangan di tepi kolom beku hanya saat ada kolom yang tergeser ke bawahnya.
+    $('#table-sales-report-material').closest('.srm-scroll').on('scroll', function () {
+        this.classList.toggle('is-geser', this.scrollLeft > 0);
+    });
+
+    $('#srm-ringkasan').text(awal ? '' : rows.length.toLocaleString('en-US') + ' rows');
+    srmLoaderTutup();
+}
+
+function srmCekTanggal(f) {
+    var potongan = srmPecahBulan(f.from, f.to);
+    if (!potongan.length) {
+        Swal.fire({ icon: 'warning', title: 'Invalid date range', text: 'From must be on or before To.', customClass: { popup: 'srm-swal' } });
+    }
+    return potongan;
+}
+
+function cari_sales_report_detail_material() {
+    if (srmSibuk) return;
+    var f = srmFilter();
+    var potongan = srmCekTanggal(f);
+    if (!potongan.length) return;
+
+    srmKunciTombol(true, 'search');
+    srmLoader(0, potongan.length);
+
+    var buka = function () { srmKunciTombol(false); };
+    srmAmbil(f, potongan, srmLoader).then(function (d) {
+        srmData = { kunci: srmKunci(f), cols: d.cols, potongan: d.potongan };
+        srmTampilkan(d.cols, d.potongan);
+    }, function (p) {
+        srmLoaderTutup();
+        Swal.fire({
+            icon: 'error',
+            title: 'Failed to load data',
+            text: 'Data for ' + p[0] + ' to ' + p[1] + ' could not be loaded. Please click Search again.',
+            customClass: { popup: 'srm-swal' }
+        });
+    }).then(buka, buka);
+}
+
+// ----- Export Excel -----
+// Isi file sama dengan export lama (arnag/report/export_sales_report_detail_material.php):
+// tabel HTML yang dibuka Excel sebagai .xls.
+var SRM_EXCEL_KIRI = ['No', 'Customer', 'Invoice', 'Invoice Date', 'Shipp Number', 'Shipp Date', 'Group', 'WS', 'Style',
+                      'Product Item', 'Order Type', 'Shipp', 'Inv Type', 'VAT Number', 'VAT Date', 'Currency', 'Rate'];
+var SRM_EXCEL_GRUP = [['Billing Invoice (Original Currency)', '#90EE90'], ['Billing Invoice (Equivalent IDR)', '#90EE90'],
+                      ['Shipping Invoice (Original Currency)', '#87CEFA'], ['Shipping Invoice (Equivalent IDR)', '#87CEFA']];
+var SRM_EXCEL_SUB = ['Qty', 'UOM', 'Price', 'Gross Sales', 'Others Sales', 'Discount', 'Net Sales', 'Down Payment', 'VAT', 'Total'];
+
+function srmTeks(v) {
+    return v == null ? '' : String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function srmExcelKepala(f) {
+    var h = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Sales Report</title>'
+        + '<style>table{border-collapse:collapse;width:100%;margin:auto}td,th{padding:1px;text-align:left}'
+        + 'th{text-align:center;padding:10px}.header_title{width:100%;text-align:left;font-weight:bold;font-size:11pt}</style>'
+        + '</head><body><div class="header_title">SALES REPORT DETAIL<br />Period : ' + srmTeks(f.from) + ' To ' + srmTeks(f.to) + '</div><br />'
+        + '<table style="width:100%;font-size:11pt;" border="1"><tr>';
+    SRM_EXCEL_KIRI.forEach(function (j) {
+        h += '<th style="background-color: #FFE4C4;" rowspan="2">' + j + '</th>';
+    });
+    SRM_EXCEL_GRUP.forEach(function (g) {
+        h += '<th style="background-color: ' + g[1] + ';" colspan="10">' + g[0] + '</th>';
+    });
+    h += '</tr><tr>';
+    SRM_EXCEL_GRUP.forEach(function (g) {
+        SRM_EXCEL_SUB.forEach(function (j) {
+            h += '<th style="width:150px;background-color: ' + g[1] + ';">' + j + '</th>';
+        });
+    });
+    return h + '</tr>\n';
+}
+
+function srmExcelBaris(r, map, no) {
+    var h = '<tr><td>' + no + '</td>';
+    SRM_KOLOM_TEKS.forEach(function (k) { h += '<td>' + srmTeks(r[map[k]]) + '</td>'; });
+    h += '<td>' + srmTeks(r[map.rate]) + '</td>';
+    for (var i = 1; i < SRM_KOLOM_ANGKA.length; i++) {
+        var k = SRM_KOLOM_ANGKA[i];
+        h += k.indexOf('uom_') === 0
+            ? '<td>' + srmTeks(r[map[k]]) + '</td>'
+            : '<td style="text-align:right">' + srmAngka(r[map[k]]) + '</td>';
+    }
+    return h + '</tr>';
+}
+
+// Dirakit per 3000 baris dengan jeda, supaya persentase di Swal sempat
+// diperbarui dan browser tidak terlihat hang.
+function srmBuatExcel(cols, potongan, f, onProgress) {
+    return new Promise(function (resolve, reject) {
+        var map = {};
+        cols.forEach(function (c, i) { map[c] = i; });
+        var rows = [].concat.apply([], potongan);
+        var bagian = [srmExcelKepala(f)];
+        var i = 0;
+
+        (function lanjut() {
+            try {
+                var akhir = Math.min(i + 3000, rows.length);
+                var buf = [];
+                for (; i < akhir; i++) buf.push(srmExcelBaris(rows[i], map, i + 1));
+                bagian.push(buf.join('\n'));
+                onProgress(i, rows.length);
+                if (i < rows.length) {
+                    setTimeout(lanjut, 0);
+                } else {
+                    bagian.push('\n</table></body></html>');
+                    resolve(new Blob(bagian, { type: 'application/vnd.ms-excel' }));
+                }
+            } catch (e) {
+                reject(e);
+            }
+        })();
+    });
+}
+
+function srmUnduh(blob, nama) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = nama;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+}
+
+function srmSwalProgres(teks, pct) {
+    var t = document.getElementById('srm-swal-teks');
+    var b = document.getElementById('srm-swal-bar');
+    if (t) t.textContent = teks;
+    if (b) b.style.width = pct + '%';
+}
+
+function export_sales_report_detail_material() {
+    if (srmSibuk) return;
+    var f = srmFilter();
+    var potongan = srmCekTanggal(f);
+    if (!potongan.length) return;
+
+    srmKunciTombol(true, 'export');
+    Swal.fire({
+        title: 'Exporting to Excel',
+        html: '<div id="srm-swal-teks" class="srm-swal-teks">Preparing...</div>'
+            + '<div class="srm-progress"><div class="srm-progress-bar" id="srm-swal-bar"></div></div>',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        customClass: { popup: 'srm-swal' },
+        didOpen: function () { Swal.showLoading(); }
+    });
+
+    // Filter sama dengan Search terakhir: datanya dipakai ulang, tidak diambil lagi.
+    var data = (srmData && srmData.kunci === srmKunci(f))
+        ? Promise.resolve(srmData)
+        : srmAmbil(f, potongan, function (s, t) {
+            var pct = srmPersen(s, t);
+            srmSwalProgres('Loading data... ' + pct + '% (' + s + ' of ' + t + ' months)', pct);
+        });
+
+    var buka = function () { srmKunciTombol(false); };
+    data.then(function (d) {
+        var total = d.potongan.reduce(function (n, p) { return n + p.length; }, 0);
+        if (!total) {
+            Swal.fire({ icon: 'info', title: 'No data to export', text: 'There is no sales data for this filter.', customClass: { popup: 'srm-swal' } });
+            return;
+        }
+        return srmBuatExcel(d.cols, d.potongan, f, function (s, t) {
+            var pct = srmPersen(s, t);
+            srmSwalProgres('Creating Excel file... ' + pct + '%', pct);
+        }).then(function (blob) {
+            srmUnduh(blob, 'sales_report_detail_' + f.from + '_' + f.to + '.xls');
+            Swal.fire({
+                icon: 'success',
+                title: 'Excel file ready',
+                text: total.toLocaleString('en-US') + ' rows exported.',
+                timer: 2500,
+                showConfirmButton: false,
+                customClass: { popup: 'srm-swal' }
+            });
+        });
+    }, function (p) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Export failed',
+            text: 'Data for ' + p[0] + ' to ' + p[1] + ' could not be loaded. Please try again.',
+            customClass: { popup: 'srm-swal' }
+        });
+    }).then(buka, function () {
+        buka();
+        Swal.fire({ icon: 'error', title: 'Export failed', text: 'The Excel file could not be created. Please try again.', customClass: { popup: 'srm-swal' } });
+    });
+}
+
 
 function export_mut_ar(){ 
     var id_customer = $('#sr_customer').val();
