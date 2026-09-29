@@ -1122,7 +1122,7 @@ for ($i = 1; $i <= 5; $i++) {
             <?php endif; ?>
           </div>
           <!-- <?php if ($ada_terkunci) : ?>
-            <small class="dn-hint dn-hint-tabel"><i class="fas fa-lock"></i> Grey rows come from Memo / Request and cannot be changed or deleted. New rows can still be added.</small>
+            <small class="dn-hint dn-hint-tabel"><i class="fas fa-lock"></i> Grey rows come from Memo / Request - only Description, Value &amp; Rate can be changed, and they cannot be deleted. New rows can still be added.</small>
           <?php endif; ?> -->
           <div class="dn-table-wrap" id="dn-table-wrap">
             <div class="nag-loader-overlay" id="dn-loader">
@@ -1200,16 +1200,21 @@ for ($i = 1; $i <= 5; $i++) {
                               <?php
                               // Edit: baris detail yang sudah tersimpan - susunan sel sama dengan
                               // baris template. Baris Memo / Request dikunci (data-kunci="1"):
-                              // semua input readonly & tanpa checkbox, jadi tidak bisa diubah /
-                              // dihapus (server juga memakai ulang isi baris ini dari database).
+                              // tanpa checkbox (tidak bisa dihapus) dan hanya Deskripsi, Value &
+                              // Rate yang bisa diubah - kolom lain readonly dan diambil ulang
+                              // server dari database.
                               // data-supplier(-invoice) = nilai field lama, dipakai waktu save kalau
                               // Header 1/2 bukan Supplier / Supplier Invoice supaya tidak hilang.
                               foreach ($dn_det as $row) :
                                 $kunci = $baris_terkunci($row);
                                 $ro = $kunci ? 'readonly' : '';
                               ?>
-                                <tr data-id="<?= (int) $row['id']; ?>" data-kunci="<?= $kunci ? '1' : '0'; ?>" data-supplier="<?= $esc($row['supplier']); ?>" data-supplier-invoice="<?= $esc($row['supplier_invoice']); ?>" <?= $kunci ? 'title="From ' . (trim((string) $row['id_memo_det']) !== '' ? 'Memo' : 'Request') . ' - only Value &amp; Rate can be changed, and the row cannot be deleted"' : ''; ?>>
-                                  <td><input style="width: 300px;" type="text" class="form-control" name="inputan0" value="<?= $esc($row['deskripsi']); ?>" autocomplete="off" <?= $ro; ?>></td>
+                                <tr data-id="<?= (int) $row['id']; ?>" data-kunci="<?= $kunci ? '1' : '0'; ?>" data-supplier="<?= $esc($row['supplier']); ?>" data-supplier-invoice="<?= $esc($row['supplier_invoice']); ?>" <?= $kunci ? 'title="From ' . (trim((string) $row['id_memo_det']) !== '' ? 'Memo' : 'Request') . ' - only Description, Value &amp; Rate can be changed, and the row cannot be deleted"' : ''; ?>>
+                                  <!-- Deskripsi tetap bisa diubah walau barisnya dari Memo /
+                                       Request: kalimatnya kadang perlu dibetulkan sebelum DN
+                                       dikirim ke customer. Kaitan ke Memo / Request tidak ikut
+                                       berubah karena yang disimpan cuma teksnya. -->
+                                  <td><input style="width: 300px;" type="text" class="form-control" name="inputan0" value="<?= $esc($row['deskripsi']); ?>" autocomplete="off"></td>
                                   <?php for ($no_h = 1; $no_h <= 5; $no_h++) : ?>
                                     <td><input style="width: 200px" type="text" class="form-control" name="inputan<?= $no_h + 2; ?>" value="<?= $esc(isset($row['header' . $no_h]) ? $row['header' . $no_h] : ''); ?>" autocomplete="off" <?= $ro; ?>></td>
                                   <?php endfor; ?>
@@ -2146,9 +2151,11 @@ for ($i = 1; $i <= 5; $i++) {
                var isi = function (name) { var el = dn_row_input(row, name); return el ? ($(el).val() || '') : ''; };
                if (row.getAttribute('data-kunci') === '1') {
                  // Baris Memo / Request: isinya dipakai ulang server dari database,
-                 // KECUALI Value / Rate / Amount yang boleh dibetulkan lewat Edit.
+                 // KECUALI Deskripsi dan Value / Rate / Amount yang boleh
+                 // dibetulkan lewat Edit.
                  hasil.push({
                    id_det: row.getAttribute('data-id'),
+                   deskripsi: isi('inputan0'),
                    value: isi('amt'), rate: isi('amt_rate'), amount: isi('inputan8')
                  });
                  return;

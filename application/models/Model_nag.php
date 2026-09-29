@@ -5982,10 +5982,13 @@ public function update_debitnote($id_dn, $header, $baris)
             }
             $r = $det_lama[$id];
             unset($r['id']);
-            // Value / Rate / Amount boleh dibetulkan lewat Edit (kurs sering baru
-            // ketahuan salah setelah DN dibuat). Kolom lain tetap diambil dari
-            // database supaya kaitan ke Memo / Request tidak bisa diutak-atik.
-            foreach (array('value', 'rate', 'amount') as $kolom_nilai) {
+            // Deskripsi dan Value / Rate / Amount boleh dibetulkan lewat Edit
+            // (kurs sering baru ketahuan salah setelah DN dibuat, dan kalimat
+            // deskripsinya kadang perlu dirapikan sebelum dikirim ke customer).
+            // Kolom lain tetap diambil dari database supaya kaitan ke Memo /
+            // Request tidak bisa diutak-atik. Isian kosong diabaikan - yang lama
+            // dipakai lagi, supaya tidak terhapus karena kolomnya tidak terkirim.
+            foreach (array('deskripsi', 'value', 'rate', 'amount') as $kolom_nilai) {
                 if (isset($b[$kolom_nilai]) && is_scalar($b[$kolom_nilai]) && trim((string) $b[$kolom_nilai]) !== '') {
                     $r[$kolom_nilai] = (string) $b[$kolom_nilai];
                 }
@@ -6053,7 +6056,23 @@ public function update_debitnote($id_dn, $header, $baris)
 
         // Salinan detail lama tetap disimpan ke tbl_debitnote_det_edit seperti
         // proses edit sebelumnya, baru detailnya diganti.
-        $this->db->query("INSERT INTO tbl_debitnote_det_edit SELECT * FROM tbl_debitnote_det WHERE no_dn = ?", array($lama['no_dn']));
+        //
+        // Kolomnya ditulis satu per satu, bukan "SELECT *": tabel salinan ini
+        // tidak ikut ditambah waktu tbl_debitnote_det dapat kolom baru
+        // (id_invoice_exim & no_invoice_exim dari migrasi 20260925), dan
+        // jumlah kolom yang tidak sama bikin seluruh proses simpan gagal.
+        // Yang disalin cuma kolom yang ada di kedua tabel.
+        $kolom_salin = array_values(array_intersect(
+            $this->db->list_fields('tbl_debitnote_det'),
+            $this->db->list_fields('tbl_debitnote_det_edit')
+        ));
+        if ($kolom_salin) {
+            $daftar = '`' . implode('`, `', $kolom_salin) . '`';
+            $this->db->query(
+                "INSERT INTO tbl_debitnote_det_edit ($daftar) SELECT $daftar FROM tbl_debitnote_det WHERE no_dn = ?",
+                array($lama['no_dn'])
+            );
+        }
         $this->db->delete('tbl_debitnote_det', array('no_dn' => $lama['no_dn']));
 
         $simpan = array();
