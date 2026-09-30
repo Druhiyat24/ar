@@ -3520,6 +3520,30 @@ function approve_profinvoice_second(){
 // Tabelnya DataTables. Pilihan disimpan per id (DN_APPV_PILIH), bukan dibaca
 // dari checkbox di DOM: dengan DataTables, baris halaman lain tidak ada di DOM,
 // jadi kalau dibaca dari DOM pilihan di halaman lain ikut hilang.
+/**
+ * Nilai sel "No Debit Note" untuk DataTables.
+ *
+ * Selnya berisi nomor DN + penanda "No attachment", jadi yang dipakai
+ * mengurutkan & mencari cuma nomornya - bukan teks penandanya.
+ *
+ * Untuk MENGURUTKAN yang dibandingkan ruas terakhirnya saja (nomor urutnya).
+ * Nomor DN berbentuk DN/NAG/0926/0830: awalannya memuat profit center, jadi
+ * membandingkan seluruh teksnya bikin semua NAK jatuh di bawah semua NAG -
+ * terlihat tidak urut. Angkanya diberi nol di depan supaya tetap benar walau
+ * DataTables memperlakukannya sebagai teks (tanpa itu "1000" < "830").
+ *
+ * Untuk MENCARI tetap nomor utuhnya - user mengetik "NAK" atau "0926" juga.
+ */
+function dn_nilai_nomor(data, type) {
+	if (type === 'display' || type === 'export') { return data; }
+
+	var no = $('<div>').html(data).find('.dn-no-link').text() || data;
+	if (type !== 'sort' && type !== 'type') { return no; }
+
+	var ruas = String(no).split('/');
+	var akhir = ruas[ruas.length - 1].replace(/\D/g, '');
+	return akhir === '' ? no : ('0000000000' + akhir).slice(-10);
+}
 var DN_APPV_DT = null;
 var DN_APPV_PILIH = {};   // id -> true
 var DN_APPV_DATA = {};    // id -> { no_dn, jml_dokumen }
@@ -3531,16 +3555,15 @@ function dn_appv_dt() {
 		autoWidth: false,
 		pageLength: 10,
 		lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
-		order: [[1, 'desc']],
+		// Diurutkan nomor DN dari kecil ke besar, bukan tanggal: dalam satu
+		// hari bisa terbit banyak DN, jadi urutan tanggal bikin nomornya
+		// terlihat melompat. Yang dibandingkan nomornya saja - penanda
+		// "No attachment" di sel yang sama dibuang oleh render kolom 0.
+		order: [[0, 'asc']],
 		columnDefs: [
 			{
-				// Sel nomor DN berisi nomor + penanda "No attachment"; yang dipakai
-				// waktu diurutkan atau dicari cuma nomornya.
 				targets: 0,
-				render: function (data, type) {
-					if (type === 'display' || type === 'export') { return data; }
-					return $('<div>').html(data).find('.dn-no-link').text() || data;
-				}
+				render: dn_nilai_nomor
 			},
 			{ targets: [6, 7], className: 'dn-angka' },
 			{ targets: 8, type: 'html', className: 'dn-tengah' },
@@ -6501,16 +6524,15 @@ function dn_list_dt(lebar) {
 		autoWidth: false,
 		pageLength: 10,
 		lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
-		order: [[1, 'desc']],
+		// Diurutkan nomor DN dari kecil ke besar, bukan tanggal: dalam satu
+		// hari bisa terbit banyak DN, jadi urutan tanggal bikin nomornya
+		// terlihat melompat. Yang dibandingkan nomornya saja - penanda
+		// "No attachment" di sel yang sama dibuang oleh render kolom 0.
+		order: [[0, 'asc']],
 		columnDefs: [
-			// Sel nomor DN berisi nomor + penanda "No attachment". Waktu diurutkan
-			// atau dicari, yang dipakai cuma nomornya.
 			{
 				targets: 0,
-				render: function (data, type) {
-					if (type === 'display' || type === 'export') { return data; }
-					return $('<div>').html(data).find('.dn-no-link').text() || data;
-				}
+				render: dn_nilai_nomor
 			},
 			// Date: tampil "11 Sep 2026"; waktu diurutkan tetap pakai ISO, dan bisa
 			// dicari lewat dua-duanya ("2026-09" maupun "Sep").
