@@ -441,6 +441,22 @@ for ($i = 1; $i <= 5; $i++) {
 }
 #dn-table-wrap  { min-height: 220px; max-height: 420px; }
 #dn-memo-wrap   { min-height: 200px; max-height: 320px; }
+/* Modal Add Invoice Export - tingginya disamakan dengan modal Add Memo. */
+#dn-inv-wrap    { min-height: 200px; max-height: 320px; }
+/* Invoice yang barisnya sudah ada di tabel detail: tidak ditawarkan lagi,
+   tapi tetap tampil supaya jelas sudah masuk - bukan hilang begitu saja. */
+.nag-skin #table-inv-exim tbody tr.dn-inv-sudah { background: #f1f5f9; color: #64748b; }
+.nag-skin #table-inv-exim .dn-inv-ikon { color: #16a34a; }
+/* Sudah pernah ditagih di DN lain - boleh saja, tapi diberi tahu. */
+.nag-skin #table-inv-exim .dn-inv-catatan {
+  display: block;
+  margin-top: 2px;
+  color: #b45309;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.nag-skin #table-inv-exim tbody td { vertical-align: middle; }
 /* Scrollbar dibikin tebal & kontras - tabel detail lebar, kalau tipis/pucat
    user tidak sadar kalau masih ada kolom di kanan. */
 .nag-skin .dn-table-wrap { scrollbar-color: #64748b #e2e8f0; scrollbar-width: auto; }
@@ -1032,6 +1048,19 @@ for ($i = 1; $i <= 5; $i++) {
                   <?php endforeach; ?>
                 </select>
               </div>
+
+              <!-- Sumber keempat: beberapa Invoice Export EXIM sekaligus. Tiap
+                   invoice jadi satu baris detail berisi Invoice Number, REFF,
+                   PO, Qty Inv & Price. -->
+              <div class="form-group">
+                <label for="no_inv_exim">No Invoice Export</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" id="no_inv_exim" name="no_inv_exim" placeholder="None selected yet" readonly>
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-info" onclick="dn_inv_exim_buka()"><i class="fas fa-plus"></i> Add Invoice</button>
+                  </div>
+                </div>
+              </div>
               <?php endif; ?>
 
               <!-- Supporting document: tidak wajib, bisa lebih dari 1 file. File baru
@@ -1183,7 +1212,9 @@ for ($i = 1; $i <= 5; $i++) {
                                 <datalist id="nm_coa"> <option value="-" data-nama=""> - </option> <?php foreach ($coa as $coa) : ?> <option value="<?= $coa["id_coa"]; ?>" data-nama="<?= $esc($coa["coa_name"]); ?>"><?= $coa["id_coa"]; ?> - <?= $coa["coa_name"]; ?> </option><?php endforeach; ?> </datalist></td>
 
                                 <td><input name="chk_a[]" type="checkbox" class="checkall_a" value=""/></td>
-                                <!-- <td style="visibility:hidden;"><input style="width: 150px;text-align: right;" type="hidden" class="form-control" name="inputan10" value="" placeholder="" autocomplete="off" readonly></td> -->
+                                <!-- <td style="visibility:hidden;"><input style="width: 150px;text-align: right;" type="hidden" class="form-control" name="inputan10" value="" placeholder="" autocomplete="off" readonly></td> Kaitan ke Invoice Export EXIM (kosong untuk baris lain). -->
+                                <td hidden><input type="hidden" name="dn_inv_exim_id" value=""></td>
+                                <td hidden><input type="hidden" name="dn_inv_exim_no" value=""></td>
                                 <td style="visibility:hidden;">
                                   <input type="hidden" class="form-control" name="inputan8" placeholder="" autocomplete='off' readonly> 
                                 </td>
@@ -1234,6 +1265,8 @@ for ($i = 1; $i <= 5; $i++) {
                                     <td><input name="chk_a[]" type="checkbox" class="checkall_a" value=""/></td>
                                   <?php endif; ?>
                                   <td hidden><input type="hidden" value=""></td>
+                                  <td hidden><input type="hidden" name="dn_inv_exim_id" value="<?= $esc(isset($row['id_invoice_exim']) ? $row['id_invoice_exim'] : ''); ?>"></td>
+                                  <td hidden><input type="hidden" name="dn_inv_exim_no" value="<?= $esc(isset($row['no_invoice_exim']) ? $row['no_invoice_exim'] : ''); ?>"></td>
                                   <td hidden><input type="hidden" value="<?= $esc($row['nm_memo']); ?>"></td>
                                   <td hidden><input type="hidden" value="<?= $esc($row['id_memo_det']); ?>"></td>
                                   <td hidden><input type="hidden" value="<?= $esc(isset($row['customer']) ? $row['customer'] : ''); ?>"></td>
@@ -1243,7 +1276,7 @@ for ($i = 1; $i <= 5; $i++) {
             </table>
             <div class="dn-empty">
               <i class="fas fa-inbox"></i>
-              <?= $is_edit ? 'No detail rows yet - click Add Row.' : 'No detail rows yet - choose a No Request, add a memo, or click Add Row.'; ?>
+              <?= $is_edit ? 'No detail rows yet - click Add Row.' : 'No detail rows yet - choose a No Request, add a memo, add an invoice export, or click Add Row.'; ?>
             </div>
           </div>
         </div>
@@ -1515,7 +1548,121 @@ for ($i = 1; $i <= 5; $i++) {
   </div>
   <!-- /.modal-dialog -->
 </div>
-<?php endif; ?>
+
+<!-- ==========================================================================
+     Add Invoice Export - sumber baris Debit Note yang keempat.
+     Beberapa invoice boleh dicentang sekaligus; tiap invoice jadi satu baris
+     detail. Isinya dibaca Arnag::cari_inv_exim_export_dn() dan disisipkan ke
+     tabel detail oleh dn_inv_exim_tambah() di crud-nag.js.
+     ========================================================================== -->
+<div class="modal fade nag-skin dn-modal" id="modal-add-inv-exim">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title"><i class="fas fa-file-invoice-dollar"></i>Add Invoice Export</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="dn-filter">
+          <div class="row align-items-end">
+            <!-- Consignee-nya ikut yang dipilih di form Debit Note, tidak bisa
+                 diganti disini: satu Debit Note ditujukan ke satu consignee,
+                 jadi invoice milik consignee lain memang tidak boleh ikut. -->
+            <div class="form-group col-md-4">
+              <label for="dn_inv_cust_nama">Consignee</label>
+              <input type="text" class="form-control" id="dn_inv_cust_nama" placeholder="Pick a consignee first" readonly>
+              <input type="hidden" id="dn_inv_cust" name="dn_inv_cust">
+            </div>
+            <!-- Profit center-nya juga ikut Debit Note ini. -->
+            <div class="form-group col-md-2">
+              <label for="dn_inv_pc_nama">Profit Center</label>
+              <input type="text" class="form-control" id="dn_inv_pc_nama" readonly>
+              <input type="hidden" id="dn_inv_pc">
+            </div>
+            <div class="form-group col-md-2">
+              <label for="dn_inv_from">From</label>
+              <div class="input-group">
+                <input type="text" id="dn_inv_from" name="dn_inv_from" class="form-control tanggal" value="<?= date('Y-m-d'); ?>" autocomplete="off">
+                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+              </div>
+            </div>
+            <div class="form-group col-md-2">
+              <label for="dn_inv_to">To</label>
+              <div class="input-group">
+                <input type="text" id="dn_inv_to" name="dn_inv_to" class="form-control tanggal" value="<?= date('Y-m-d'); ?>" autocomplete="off">
+                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+              </div>
+            </div>
+            <div class="form-group col-md-2">
+              <button type="button" id="dn_inv_cari" class="btn btn-info btn-block" onclick="dn_inv_exim_cari()"><i class="fa fa-search"></i> Search</button>
+            </div>
+            <!-- Satu deskripsi untuk semua invoice yang dicentang. Disusun
+                 sendiri dari tanggal invoice-nya (lihat dn_inv_exim_deskripsi
+                 di crud-nag.js) dan tetap boleh diketik ulang - begitu
+                 diketik, susunan otomatisnya berhenti menimpa. -->
+            <div class="form-group col-md-12 mb-0">
+              <label for="dn_inv_desk">Description <small class="text-muted">(filled in from the ticked invoice dates - you can still change it)</small></label>
+              <input type="text" class="form-control" id="dn_inv_desk" autocomplete="off" placeholder="WASHING CHARGES (SHIPMENT 31 AUGUST &amp; 03 SEPTEMBER 2026)">
+            </div>
+          </div>
+        </div>
+
+        <div class="table-header">
+          <span class="table-title"><i class="fas fa-list"></i>Invoice Export List</span>
+          <div class="search-box">
+            <input type="text" id="dn_inv_saring" autocomplete="off" placeholder="Search invoice number / REFF / PO..." onkeyup="dn_inv_exim_saring()">
+            <i class="fas fa-search"></i>
+          </div>
+        </div>
+        <div class="dn-table-wrap" id="dn-inv-wrap">
+          <div class="nag-loader-overlay" id="dn-inv-loader">
+            <div class="nag-loader-card">
+              <div class="nag-loader-spinner">
+                <span class="nag-loader-ring nag-loader-ring-outer"></span>
+                <span class="nag-loader-ring nag-loader-ring-inner"></span>
+                <span class="nag-loader-brand">NAG</span>
+              </div>
+              <div class="nag-loader-caption">Loading data...</div>
+            </div>
+          </div>
+          <table id="table-inv-exim" class="dn-table text-nowrap">
+            <thead>
+              <tr>
+                <th class="dn-tengah"><input type="checkbox" id="dn_inv_cek_semua" onclick="dn_inv_exim_cek_semua(this)"></th>
+                <th>Invoice Number</th>
+                <th>Inv Date</th>
+                <th>Customer</th>
+                <th>REFF</th>
+                <th>PO</th>
+                <th class="dn-angka">Qty Inv</th>
+                <th class="dn-angka">Price</th>
+                <th class="dn-angka">Amount</th>
+                <th>Curr</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="dn-empty" id="dn-inv-kosong">
+            <i class="fas fa-search"></i>
+            No invoice yet - set the customer and date range, then click Search.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <div class="dn-sum-row dn-sum-inline">
+          <span id="dn-inv-ringkas">No invoice ticked yet</span>
+        </div>
+        <div class="dn-footer-actions">
+          <button type="button" class="btn btn-light" data-dismiss="modal">Close</button>
+          <button type="button" id="dn_inv_tambah" class="btn btn-primary" onclick="dn_inv_exim_tambah()"><i class="fas fa-plus"></i> Add Data</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><?php endif; ?>
 
 <!-- Modal Preview Supporting Document (file masih di browser, belum di-upload).
      Kiri: daftar semua dokumen, kanan: preview dokumen yang dipilih. -->

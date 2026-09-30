@@ -15,6 +15,9 @@ application/logs/*
 # Yang dikecualikan cuma folder tmp: isinya potongan upload yang belum selesai.
 uploads/debitnote/tmp/*
 !uploads/debitnote/tmp/.gitkeep
+# Sama untuk lampiran Create Invoice.
+uploads/invoice/tmp/*
+!uploads/invoice/tmp/.gitkeep
 
 composer.lock
 

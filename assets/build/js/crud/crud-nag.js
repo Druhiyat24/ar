@@ -415,14 +415,672 @@ function loadbookinvoice(){
 
 }
 
-function cancel_invoice(id, no_invoice, status){ 
+// ── Modal detail invoice (List Invoice) ─────────────────────────────────────
+// Dibuka dengan mengklik nomor invoice di daftar. Bentuknya mengikuti modal
+// detail Debit Note: ringkasan kepala, tabel baris SJ, rekap angka, lalu
+// lampirannya - semuanya dari satu permintaan (arnag/inv_detail_json).
+// Modal lama (#modal-inv-detail + cari_inv_detail) sengaja dibiarkan, masih
+// dipakai layar lain seperti Kartu AR & Reverse.
+var INV_DETAIL_ID = 0;
+var INV_DETAIL_NAK = false;
+var INV_DETAIL_LAMPIRAN = [];
+var INV_DETAIL_SJ = [];        // PDF Surat Jalan (tautan program lain, bukan lampiran)
+var INV_DETAIL_LOADER_HTML = '';
 
-	let status_inv  = status;		
+function inv_detail_angka(nilai, desimal) {
+	var n = parseFloat(String(nilai === undefined || nilai === null ? '' : nilai).replace(/,/g, ''));
+	if (isNaN(n)) { return desimal === 0 ? '0' : (0).toFixed(desimal === undefined ? 2 : desimal); }
+	return n.toLocaleString('en-US', {
+		minimumFractionDigits: desimal === undefined ? 2 : desimal,
+		maximumFractionDigits: desimal === undefined ? 2 : desimal
+	});
+}
 
-	$('#txt_cancel_book').val(no_invoice);
-	$('#id_book_inv').val(id);
-	$('#modal-cancel-inv').modal('show');  
+function inv_detail_nilai(v) {
+	var n = parseFloat(String(v === undefined || v === null ? '' : v).replace(/,/g, ''));
+	return isNaN(n) ? 0 : n;
+}
 
+// Tanggal ditulis "18 Sep 2026" - lebih cepat terbaca daripada 2026-09-18,
+// dan sama dengan yang tercetak di PDF invoice-nya.
+function inv_detail_tgl(v) {
+	var t = $.trim(String(v === null || v === undefined ? '' : v));
+	if (t === '' || t.indexOf('0000') === 0) { return ''; }
+	var p = t.split('-');
+	if (p.length !== 3) { return t; }
+	var bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+	var b = parseInt(p[1], 10);
+	if (!b || b < 1 || b > 12) { return t; }
+	return p[2].slice(0, 2) + ' ' + bulan[b - 1] + ' ' + p[0];
+}
+
+function inv_detail_isi(v, bawaan) {
+	var t = $.trim(String(v === null || v === undefined ? '' : v));
+	return t === '' ? (bawaan || '-') : inv_list_teks(t);
+}
+
+function inv_detail_buka(id) {
+	if (INV_DETAIL_LOADER_HTML === '') { INV_DETAIL_LOADER_HTML = $('#inv-detail-loader').html(); }
+	INV_DETAIL_ID = id;
+	INV_DETAIL_LAMPIRAN = [];
+
+	$('#inv-detail-judul').text('Invoice');
+	$('#inv-detail-status').html('');
+	$('#inv-detail-isi').prop('hidden', true);
+	$('#inv-detail-loader').html(INV_DETAIL_LOADER_HTML).show();
+	inv_detail_tutup_pratinjau();
+	$('#modal-inv-detail-v2').modal('show');
+
+	$.ajax({ url: 'inv_detail_json/' + id + '/', type: 'GET', dataType: 'JSON' })
+		.done(function (res) {
+			if (!res || !res.status) {
+				inv_detail_gagal((res && res.message) || 'Failed to load the invoice detail.');
+				return;
+			}
+			inv_detail_render(res);
+		})
+		.fail(function () { inv_detail_gagal('Failed to load the invoice detail.'); });
+}
+
+// Pesannya ditaruh di dalam modal - menutup modal yang animasi bukanya belum
+// selesai membuat modalnya tersangkut.
+function inv_detail_gagal(pesan) {
+	$('#inv-detail-loader').html(
+		'<i class="fas fa-exclamation-triangle" style="font-size:22px;color:#b45309"></i>'
+		+ '<div class="nag-loader-caption">' + inv_list_teks(pesan) + '</div>'
+	).show();
+	$('#inv-detail-isi').prop('hidden', true);
+}
+
+function inv_detail_render(res) {
+	var h = res.header || {};
+	var baris = res.baris || [];
+	var pot = res.pot || {};
+	var curr = $.trim(h.curr || '') || $.trim(h.curr_bank || '');
+
+	INV_DETAIL_NAK = String(h.profit_center || '').trim().toUpperCase() === 'NAK';
+
+	$('#inv-detail-judul').text(h.no_invoice || 'Invoice');
+	$('#inv-detail-status').html(inv_list_status(h.status));
+	$('#inv-detail-loader').hide();
+	$('#inv-detail-isi').prop('hidden', false);
+
+	/* ---- ringkasan kepala ----
+	   Penerima tagihan & nilai invoice dipisah di atas (isinya boleh panjang),
+	   sisanya keterangan pendek yang tingginya seragam - supaya barisnya rata
+	   walau alamatnya memakan dua baris. */
+	$('#inv-detail-customer').text($.trim(h.customer || '') || '-');
+	$('#inv-detail-alamat').text($.trim(h.alamat || '') === '-' ? '' : $.trim(h.alamat || ''));
+	$('#inv-detail-grand').text((curr ? curr + ' ' : '') + inv_detail_angka(pot.grand_total));
+
+	// Jatuh tempo cuma ditulis kalau memang ada - kolomnya terisi, atau bisa
+	// dihitung dari tanggal invoice + TOP (dihitung di Model_nag). Kalau tidak
+	// ada, bagian "Due" tidak ditampilkan sama sekali.
+	var tglInv = inv_detail_tgl(h.sj_date);
+	var tglDue = inv_detail_tgl(h.due_date);
+	$('#inv-detail-tanggal').html('Invoice <b>' + (tglInv || '-') + '</b>'
+		+ (tglDue ? ' <span class="inv-detail-titik">&middot;</span> Due <b>' + tglDue + '</b>' : ''));
+
+	var disetujui = h.second_approve_by
+		? inv_detail_isi(h.second_approve_by)
+			+ '<small>Second approved ' + (inv_detail_tgl(h.second_approve_date) || '-') + '</small>'
+		: (h.first_approve_by
+			? inv_detail_isi(h.first_approve_by)
+				+ '<small>First approved ' + (inv_detail_tgl(h.first_approve_date) || '-') + '</small>'
+			: '<span style="color:#94a3b8">Not approved yet</span>');
+
+	var info = [
+		['Profit Center', inv_detail_isi(h.profit_center)],
+		['Shipment', inv_detail_isi(h.shipp)],
+		['Document', inv_detail_isi(h.doc_type)
+			+ ($.trim(h.doc_number || '') !== '' ? '<small>' + inv_list_teks(h.doc_number) + '</small>' : '')],
+		['Type', inv_detail_isi(h.type)
+			+ ($.trim(h.type_so || '') !== '' ? '<small>SO type ' + inv_list_teks(h.type_so) + '</small>' : '')],
+		['Terms Of Payment', h.top ? inv_detail_isi(h.top) + ' days' : '-'],
+		['Bank', inv_detail_isi(h.nama_bank)
+			+ ($.trim(h.no_rek || '') !== '' ? '<small>' + inv_list_teks(h.no_rek) + '</small>' : '')],
+		['Created', inv_detail_tgl(h.tgl_input) || '-'],
+		['Approval', disetujui]
+	];
+	$('#inv-detail-info').html(info.map(function (x) {
+		return '<div><dt>' + x[0] + '</dt><dd>' + x[1] + '</dd></div>';
+	}).join(''));
+
+	/* ---- tabel baris SJ ----
+	   Kolom digabung bertingkat (nomor utama di atas, keterangannya di bawah)
+	   supaya lima belas kolom lama muat tanpa perlu digeser ke samping. */
+	var adaDisc = baris.some(function (r) { return inv_detail_nilai(r.disc) !== 0; });
+	var uom = $.trim((baris[0] && baris[0].uom) || '');
+
+	var thead = '<tr>'
+		+ '<th>SO / SJ</th><th>WS#</th><th>Product</th><th>Style / Color</th>'
+		+ '<th class="dn-angka">Qty' + (uom ? ' (' + inv_list_teks(uom) + ')' : '') + '</th>'
+		+ '<th class="dn-angka">Unit Price' + (curr ? ' (' + inv_list_teks(curr) + ')' : '') + '</th>'
+		+ (adaDisc ? '<th class="dn-angka">Disc %</th>' : '')
+		+ '<th class="dn-angka">Total' + (curr ? ' (' + inv_list_teks(curr) + ')' : '') + '</th>'
+		+ '</tr>';
+
+	var jml = baris.length;
+	var totalQty = 0;
+	var totalNilai = 0;
+	var tbody = '';
+
+	if (!jml) {
+		tbody = '<tr><td class="dn-tengah" colspan="' + (adaDisc ? 8 : 7) + '">'
+			+ 'No SJ row on this invoice.</td></tr>';
+	} else {
+		tbody = baris.map(function (r) {
+			totalQty += inv_detail_nilai(r.qty);
+			totalNilai += inv_detail_nilai(r.total_price);
+
+			// Nilai kosong / "-" tidak ikut ditulis, dan nomor yang kembar
+			// (SJ knitting: bppb_number = shipp_number) cukup sekali.
+			var pakai = function (daftar) {
+				var hasil = [];
+				daftar.forEach(function (v) {
+					var t = $.trim(String(v === null || v === undefined ? '' : v));
+					if (t !== '' && t !== '-' && hasil.indexOf(t) === -1) { hasil.push(t); }
+				});
+				return hasil;
+			};
+			var sub = pakai([r.bppb_Number, r.shipp_number]);
+			var warna = pakai([r.color, r.size]);
+			var grup = pakai([r.product_group]);
+
+			return '<tr>'
+				+ '<td><span class="inv-utama">' + inv_detail_isi(r.so_number) + '</span>'
+				+ (sub.length ? '<span class="inv-sub">' + inv_list_teks(sub.join(' · ')) + '</span>' : '') + '</td>'
+				+ '<td>' + inv_detail_isi(r.ws) + '</td>'
+				+ '<td><span class="inv-utama">' + inv_detail_isi(r.product_item) + '</span>'
+				+ (grup.length ? '<span class="inv-sub">' + inv_list_teks(grup[0]) + '</span>' : '') + '</td>'
+				+ '<td><span class="inv-utama">' + inv_detail_isi(r.styleno) + '</span>'
+				+ (warna.length ? '<span class="inv-sub">' + inv_list_teks(warna.join(' · ')) + '</span>' : '') + '</td>'
+				+ '<td class="dn-angka">' + inv_detail_angka(r.qty) + '</td>'
+				+ '<td class="dn-angka">' + inv_detail_angka(r.unit_price, 3) + '</td>'
+				+ (adaDisc ? '<td class="dn-angka">' + inv_detail_angka(r.disc) + '</td>' : '')
+				+ '<td class="dn-angka">' + inv_detail_angka(r.total_price) + '</td>'
+				+ '</tr>';
+		}).join('');
+	}
+
+	var tfoot = jml
+		? '<tr><td colspan="4">Total</td>'
+			+ '<td class="dn-angka">' + inv_detail_angka(totalQty) + '</td>'
+			+ '<td></td>' + (adaDisc ? '<td></td>' : '')
+			+ '<td class="dn-angka">' + inv_detail_angka(totalNilai) + '</td></tr>'
+		: '';
+
+	$('#inv-detail-tabel thead').html(thead);
+	$('#inv-detail-tabel tbody').html(tbody);
+	$('#inv-detail-tabel tfoot').html(tfoot);
+	$('#inv-detail-jml-baris').text(jml ? '(' + jml + ' row' + (jml > 1 ? 's' : '') + ')' : '');
+
+	/* ---- rekap angka ----
+	   Bawaannya cuma Grand Total; rinciannya dibuka kalau perlu - sama
+	   seperti kartu Summary di layar Create Invoice. */
+	var rekap = [
+		['Total', pot.total],
+		['Discount', pot.discount],
+		['Down Payment', pot.dp],
+		['Return', pot.retur],
+		['Total Before Value Added Tax', pot.twot],
+		['Value Added Tax', pot.vat]
+	];
+	$('#inv-detail-rekap-rinci').html(rekap.map(function (x) {
+		return '<div><span>' + x[0] + '</span><b>' + inv_detail_angka(x[1]) + '</b></div>';
+	}).join('')).prop('hidden', true);
+	$('#inv-detail-rekap-grand').html('<span>Grand Total' + (curr ? ' (' + inv_list_teks(curr) + ')' : '')
+		+ '</span><b>' + inv_detail_angka(pot.grand_total) + '</b>');
+
+	$('#inv-detail-rekap-toggle').removeClass('is-buka')
+		.find('span').text('Show details').end()
+		.off('click.invdetail').on('click.invdetail', function () {
+			var $rinci = $('#inv-detail-rekap-rinci');
+			var buka = $rinci.prop('hidden');
+			$rinci.prop('hidden', !buka);
+			$(this).toggleClass('is-buka', buka).find('span').text(buka ? 'Hide details' : 'Show details');
+		});
+
+	/* ---- lampiran ---- */
+	INV_DETAIL_LAMPIRAN = res.lampiran || [];
+	$('#inv-detail-jml-lampiran').text(INV_DETAIL_LAMPIRAN.length ? '(' + INV_DETAIL_LAMPIRAN.length + ')' : '');
+	var daftar = document.getElementById('inv-detail-lampiran');
+	daftar.innerHTML = '';
+	if (!INV_DETAIL_LAMPIRAN.length) {
+		daftar.innerHTML = '<li class="inv-att-kosong">No supporting document attached to this invoice.</li>';
+	}
+	INV_DETAIL_LAMPIRAN.forEach(function (d, i) {
+		var pdf = /\.pdf$/i.test(d.nama);
+		var li = document.createElement('li');
+		li.className = 'inv-att-item';
+		li.title = d.nama + ' - click to view';
+		li.innerHTML = '<i class="fas ' + (pdf ? 'fa-file-pdf' : 'fa-file-image') + '"></i>'
+			+ '<span class="inv-att-nama"></span><span class="inv-att-ukuran"></span>'
+			+ '<i class="fas fa-eye" style="color:#64748b"></i>';
+		// Nama file dari user - lewat textContent, bukan innerHTML.
+		li.querySelector('.inv-att-nama').textContent = d.nama;
+		li.querySelector('.inv-att-ukuran').textContent = inv_detail_ukuran(d.ukuran);
+		li.addEventListener('click', function () { inv_detail_lihat(i); });
+		daftar.appendChild(li);
+	});
+
+	/* ---- PDF Surat Jalan ----
+	   Berkasnya milik program pengiriman: cuma ditautkan (buka tab baru),
+	   tidak dihitung sebagai supporting document dan tidak ikut digabung
+	   ke PDF invoice. */
+	inv_detail_sj_dok(res.sj_dok || []);
+
+	/* ---- tombol cetak ---- */
+	$('#inv-detail-cetak').off('click.invdetail').on('click.invdetail', function () {
+		print_invoice_v2(INV_DETAIL_ID);
+	});
+	$('#inv-detail-cetak-knitting').prop('hidden', !INV_DETAIL_NAK)
+		.off('click.invdetail').on('click.invdetail', function () {
+			print_invoice_knitting_v2(INV_DETAIL_ID);
+		});
+}
+
+/**
+ * Daftar PDF Surat Jalan milik invoice ini.
+ *
+ * Bukan lampiran: tidak diunggah ke AR, tidak masuk hitungan Supporting
+ * Documents, dan tidak ikut digabung waktu invoice dicetak - cuma tautan ke
+ * program pengiriman supaya SJ-nya bisa dilihat tanpa pindah aplikasi.
+ * SJ yang jenisnya belum punya halaman cetak tetap ditampilkan, tapi mati.
+ */
+function inv_detail_sj_dok(daftar) {
+	INV_DETAIL_SJ = daftar || [];
+	// Bagian SJ cuma tampil kalau invoice ini memang punya SJ.
+	$('#inv-detail-sj-dok').prop('hidden', !INV_DETAIL_SJ.length);
+	$('#inv-detail-jml-sj').text(INV_DETAIL_SJ.length ? '(' + INV_DETAIL_SJ.length + ')' : '');
+
+	var list = document.getElementById('inv-detail-sj-list');
+	if (!list) { return; }
+	list.innerHTML = '';
+
+	INV_DETAIL_SJ.forEach(function (d, i) {
+		var li = document.createElement('li');
+		li.className = 'inv-att-item is-luar' + (d.url ? '' : ' is-mati');
+		li.title = d.url ? d.sj + ' - click to view' : 'No print page for this delivery type yet';
+		li.innerHTML = '<i class="fas fa-file-pdf"></i>'
+			+ '<span class="inv-att-nama"></span>'
+			+ '<span class="inv-att-ukuran"></span>'
+			+ (d.url ? '<i class="fas fa-eye" style="color:#64748b"></i>' : '');
+		// Nomor SJ & nomor internalnya dari data - lewat textContent.
+		li.querySelector('.inv-att-nama').textContent = d.sj;
+		li.querySelector('.inv-att-ukuran').textContent = d.intern && d.intern !== d.sj ? d.intern : '';
+		if (d.url) { li.addEventListener('click', function () { inv_detail_lihat_sj(i); }); }
+		list.appendChild(li);
+	});
+
+	// Jumlah di tab Documents: lampiran + cetakan SJ, jadi kelihatan ada isinya
+	// tanpa harus pindah halaman dulu.
+	var jml = INV_DETAIL_LAMPIRAN.length + INV_DETAIL_SJ.length;
+	$('#inv-detail-jml-dok').text(jml ? '(' + jml + ')' : '');
+
+	// Tab Journal cuma ada di layar Second Approval, dan isinya dikosongkan
+	// dulu - jurnal invoice sebelumnya tidak boleh tertinggal di layar.
+	inv_detail_jurnal_siap();
+
+	// Tiap invoice dibuka, yang tampil duluan invoice-nya.
+	inv_detail_tab('detail');
+}
+
+/**
+ * Pindah halaman modal: 'detail' (Bill To, baris SJ, Grand Total) atau
+ * 'dokumen' (lampiran, cetakan SJ, dan penampilnya).
+ *
+ * Penampil dokumennya TIDAK ikut ditutup waktu pindah halaman: letaknya di
+ * dalam halaman dokumen, jadi ia cuma ikut tersembunyi lalu tampil lagi
+ * persis seperti ditinggalkan. Dulu ditutup, dan berkas yang sedang dibaca
+ * hilang cuma gara-gara menengok halaman invoice sebentar. Yang menutupnya
+ * sekarang: tombol Close di bar penampil, invoice lain dibuka, atau
+ * modalnya ditutup.
+ */
+function inv_detail_tab(nama) {
+	if (nama === 'jurnal' && $('#inv-detail-tab-jurnal').prop('hidden')) { nama = 'detail'; }
+	$('.inv-dok-tombol').each(function () {
+		$(this).toggleClass('is-aktif', $(this).data('tab') === nama);
+	});
+	$('#inv-detail-panel-detail').prop('hidden', nama !== 'detail');
+	$('#inv-detail-panel-dok').prop('hidden', nama !== 'dokumen');
+	$('#inv-detail-panel-jurnal').prop('hidden', nama !== 'jurnal');
+	// Jurnalnya baru diminta waktu tab-nya dibuka - kalau tidak dilihat, tidak
+	// perlu membebani server.
+	if (nama === 'jurnal') { inv_detail_jurnal_muat(); }
+}
+
+// ── Tab Journal (cuma di layar Second Approval) ──────────────────────────────
+// Layar approval menyalakannya lewat window.INV_DETAIL_JURNAL. Isinya jurnal
+// yang AKAN terbentuk kalau invoice ini di-approve - kalau kosong, approve-nya
+// nanti pasti gagal, jadi lebih baik ketahuan dari sini.
+var INV_DETAIL_JURNAL_ID = 0;   // invoice yang jurnalnya sudah dimuat
+
+function inv_detail_jurnal_siap() {
+	var pakai = (typeof window.INV_DETAIL_JURNAL !== 'undefined' && window.INV_DETAIL_JURNAL);
+	$('#inv-detail-tab-jurnal').prop('hidden', !pakai);
+	$('#inv-detail-jml-jurnal').text('');
+	$('#inv-detail-jurnal-tabel tbody').html('');
+	$('#inv-detail-jurnal-tabel tfoot').html('');
+	$('#inv-detail-jurnal-catatan').prop('hidden', true).html('');
+	INV_DETAIL_JURNAL_ID = 0;
+}
+
+function inv_detail_jurnal_muat() {
+	if (!INV_DETAIL_ID || INV_DETAIL_JURNAL_ID === INV_DETAIL_ID) { return; }
+
+	$('#inv-detail-jurnal-tabel tbody').html('<tr><td colspan="9" class="dn-tengah">'
+		+ '<i class="fas fa-circle-notch fa-spin"></i> Loading journal...</td></tr>');
+	var id = INV_DETAIL_ID;
+
+	$.ajax({ url: 'jurnal_pratinjau_json/' + id + '/', type: 'GET', dataType: 'JSON' })
+		.done(function (res) {
+			if (id !== INV_DETAIL_ID) { return; }   // invoice lain sudah dibuka
+			if (!res || res.status === false) {
+				inv_detail_jurnal_gagal((res && res.message) || 'The journal preview could not be loaded.');
+				return;
+			}
+			INV_DETAIL_JURNAL_ID = id;
+			inv_detail_jurnal_render(res);
+		})
+		.fail(function () {
+			if (id !== INV_DETAIL_ID) { return; }
+			inv_detail_jurnal_gagal('The journal preview could not be loaded.');
+		});
+}
+
+function inv_detail_jurnal_gagal(pesan) {
+	$('#inv-detail-jurnal-tabel tbody').html('<tr><td colspan="9" class="dn-tengah">'
+		+ inv_list_teks(pesan) + '</td></tr>');
+	$('#inv-detail-jurnal-tabel tfoot').html('');
+	$('#inv-detail-jml-jurnal').text('');
+}
+
+// Cost center satu baris jurnal - COA beban punya, yang lain diisi '-'.
+function inv_detail_jurnal_cc(b) {
+	var no = $.trim(String(b.no_cc || ''));
+	var nama = $.trim(String(b.nama_cc || ''));
+	if (no === '' || no === '-') { return '<span class="inv-kosong">-</span>'; }
+	return inv_list_teks(no)
+		+ (nama && nama !== '-' ? '<span class="inv-jurnal-nama">' + inv_list_teks(nama) + '</span>' : '');
+}
+
+function inv_detail_jurnal_render(res) {
+	var baris = res.baris || [];
+	$('#inv-detail-jml-jurnal').text(baris.length ? '(' + baris.length + ')' : '');
+
+	if (!baris.length) {
+		$('#inv-detail-jurnal-tabel tbody').html('<tr><td colspan="9" class="dn-tengah">'
+			+ 'No journal row would be formed.</td></tr>');
+		$('#inv-detail-jurnal-tabel tfoot').html('');
+		$('#inv-detail-jurnal-catatan').prop('hidden', false).html('<i class="fas fa-exclamation-circle"></i> '
+			+ 'This invoice would not produce any journal, so the approval will fail. '
+			+ 'Please check the COA mapping (mastercoa_v2) for its shipment, SO type, customer category and grade.');
+		return;
+	}
+
+	var curr = inv_list_teks(baris[0].curr || '');
+	$('#inv-detail-jurnal-tabel tbody').html(baris.map(function (b) {
+		var tambahan = b.sumber === 'service_charge';
+		return '<tr' + (tambahan ? ' class="is-tambahan"' : '') + '>'
+			+ '<td class="is-coa">' + inv_list_teks(b.no_coa)
+			+ (tambahan ? '<span class="inv-jurnal-tanda">service charge</span>' : '')
+			+ '<span class="inv-jurnal-nama">' + inv_list_teks(b.nama_coa) + '</span></td>'
+			+ '<td class="is-cc">' + inv_detail_jurnal_cc(b) + '</td>'
+			+ '<td class="dn-tengah">' + inv_list_teks(b.curr) + '</td>'
+			+ '<td class="dn-angka">' + inv_detail_angka(b.rate) + '</td>'
+			+ '<td class="dn-angka">' + (+b.debit ? inv_detail_angka(b.debit) : '') + '</td>'
+			+ '<td class="dn-angka">' + (+b.credit ? inv_detail_angka(b.credit) : '') + '</td>'
+			+ '<td class="dn-angka is-idr">' + (+b.debit_idr ? inv_detail_angka(b.debit_idr) : '') + '</td>'
+			+ '<td class="dn-angka is-idr">' + (+b.credit_idr ? inv_detail_angka(b.credit_idr) : '') + '</td>'
+			+ '<td class="is-ket">' + inv_list_teks(b.keterangan) + '</td>'
+			+ '</tr>';
+	}).join(''));
+
+	var selisih = Math.abs((+res.debit || 0) - (+res.credit || 0));
+	$('#inv-detail-jurnal-tabel tfoot').html('<tr><td colspan="4">Total'
+		+ (curr ? ' (' + curr + ')' : '') + '</td>'
+		+ '<td class="dn-angka">' + inv_detail_angka(res.debit) + '</td>'
+		+ '<td class="dn-angka">' + inv_detail_angka(res.credit) + '</td>'
+		+ '<td class="dn-angka is-idr">' + inv_detail_angka(res.debit_idr) + '</td>'
+		+ '<td class="dn-angka is-idr">' + inv_detail_angka(res.credit_idr) + '</td>'
+		+ '<td></td></tr>');
+
+	// Debit & credit mestinya sama - kalau tidak, lebih baik diberitahukan.
+	if (selisih > 0.01) {
+		$('#inv-detail-jurnal-catatan').prop('hidden', false)
+			.html('<i class="fas fa-exclamation-circle"></i> Debit and credit do not match '
+				+ '(difference ' + inv_detail_angka(selisih) + ').');
+	} else {
+		$('#inv-detail-jurnal-catatan').prop('hidden', true).html('');
+	}
+}
+
+/** Lampiran & SJ dilihat di penampil yang sama - yang bertanda aktif satu. */
+function inv_detail_tandai_aktif($item) {
+	$('#inv-detail-lampiran .inv-att-item, #inv-detail-sj-list .inv-att-item').removeClass('is-aktif');
+	if ($item) { $item.addClass('is-aktif'); }
+}
+
+/**
+ * SJ dibuka di penampil yang sama dengan lampiran (iframe di dalam modal).
+ * Berkasnya milik program lain, jadi kalau server-nya menolak dibingkai,
+ * tombol Open in New Tab di bar pratinjau tetap bisa dipakai.
+ */
+function inv_detail_lihat_sj(i) {
+	var d = INV_DETAIL_SJ[i];
+	if (!d || !d.url) { return; }
+
+	inv_detail_tandai_aktif($('#inv-detail-sj-list .inv-att-item').eq(i));
+	$('#inv-detail-pratinjau-nama').text(d.sj + (d.intern && d.intern !== d.sj ? ' · ' + d.intern : ''));
+	$('#inv-detail-pratinjau-buka').attr('href', d.url);
+	$('#inv-detail-pratinjau-ket').prop('hidden', false);
+
+	var isi = document.getElementById('inv-detail-pratinjau-isi');
+	var el = document.createElement('iframe');
+	el.src = d.url;
+	el.title = d.sj;
+	isi.innerHTML = '';
+	isi.appendChild(el);
+	document.getElementById('inv-detail-pratinjau').hidden = false;
+}
+
+function inv_detail_ukuran(byte) {
+	byte = +byte || 0;
+	if (byte < 1024) { return byte + ' B'; }
+	if (byte < 1048576) { return Math.round(byte / 1024) + ' KB'; }
+	return (byte / 1048576).toFixed(1) + ' MB';
+}
+
+// Lampiran dilihat di dalam modal - PDF lewat iframe, gambar lewat <img>.
+function inv_detail_lihat(i) {
+	var d = INV_DETAIL_LAMPIRAN[i];
+	if (!d) { return; }
+
+	inv_detail_tandai_aktif($('#inv-detail-lampiran .inv-att-item').eq(i));
+	$('#inv-detail-pratinjau-nama').text(d.nama);
+	$('#inv-detail-pratinjau-buka').attr('href', d.url);
+	$('#inv-detail-pratinjau-ket').prop('hidden', true);
+
+	var isi = document.getElementById('inv-detail-pratinjau-isi');
+	var el = document.createElement(/\.pdf$/i.test(d.nama) ? 'iframe' : 'img');
+	el.src = d.url;
+	el.title = el.alt = d.nama;
+	isi.innerHTML = '';
+	isi.appendChild(el);
+	document.getElementById('inv-detail-pratinjau').hidden = false;
+}
+
+// Penampilnya cuma dibersihkan waktu modalnya ditutup - selama modalnya
+// terbuka, berkas yang sedang dibaca tetap ada walau halamannya berganti.
+// Dipasang lewat document: view modalnya di tengah body, sedangkan jQuery
+// baru dimuat di footer.
+$(document).ready(function () {
+	$(document).on('hidden.bs.modal', '#modal-inv-detail-v2', function () {
+		inv_detail_tutup_pratinjau();
+	});
+});
+
+function inv_detail_tutup_pratinjau() {
+	var kotak = document.getElementById('inv-detail-pratinjau');
+	if (!kotak) { return; }
+	kotak.hidden = true;
+	// iframe dikosongkan supaya berkasnya berhenti dimuat waktu ditutup.
+	document.getElementById('inv-detail-pratinjau-isi').innerHTML = '';
+	$('#inv-detail-pratinjau-ket').prop('hidden', true);
+	inv_detail_tandai_aktif(null);
+}
+
+// ── Cancel Invoice (List Invoice) ───────────────────────────────────────────
+// Dulu memakai modal Bootstrap berisi form yang langsung POST lalu halamannya
+// pindah - tidak ada keterangan apa yang terjadi, dan hasilnya tidak pernah
+// diberitahukan. Sekarang lewat SweetAlert: dijelaskan dulu akibatnya,
+// dikerjakan lewat AJAX, lalu hasil sebenarnya dari server ditampilkan
+// (statusnya kembali DRAFT, dan berapa SJ yang bebas lagi).
+function inv_cancel_teks(v) {
+	return $('<div>').text((v === null || v === undefined) ? '' : v).html();
+}
+
+function cancel_invoice(id, no_invoice, status) {
+	var no = inv_cancel_teks(no_invoice);
+	var st = String(status || '').trim().toUpperCase();
+
+	// Tanpa SweetAlert (mis. halaman uji) - jangan sampai Cancel jadi tidak bisa dipakai.
+	if (typeof Swal === 'undefined') {
+		if (confirm('Cancel invoice ' + no_invoice + '?')) { inv_cancel_kirim(id, no_invoice); }
+		return;
+	}
+
+	if (window.INV_BOLEH_CANCEL === false) {
+		Swal.fire({
+			icon: 'info',
+			title: 'Not allowed',
+			html: 'Your user cannot cancel invoices.<p class="inv-swal-catatan">Please ask the finance'
+				+ ' admin to cancel <b>' + no + '</b> for you.</p>',
+			confirmButtonText: 'OK',
+			customClass: { popup: 'inv-swal' }
+		});
+		return;
+	}
+
+	if (st !== 'POST') {
+		Swal.fire({
+			icon: 'warning',
+			title: 'This invoice cannot be cancelled',
+			html: 'Only invoices with status <b>POST</b> can be cancelled from here.'
+				+ '<div class="inv-swal-ringkas"><div><span>Invoice</span><b>' + no + '</b></div>'
+				+ '<div><span>Status now</span><b>' + inv_cancel_teks(status) + '</b></div></div>'
+				+ '<p class="inv-swal-catatan">An invoice that is already approved has to go back'
+				+ ' through the approval process.</p>',
+			width: 500,
+			confirmButtonText: 'OK',
+			customClass: { popup: 'inv-swal' }
+		});
+		return;
+	}
+
+	Swal.fire({
+		icon: 'warning',
+		title: 'Cancel this invoice?',
+		html: '<div class="inv-swal-ringkas">'
+			+ '<div><span>Invoice</span><b>' + no + '</b></div>'
+			+ '<div><span>Status</span><b>POST &rarr; DRAFT</b></div>'
+			+ '</div>'
+			+ '<p class="inv-swal-catatan">The invoice number is kept and goes back to <b>DRAFT</b>,'
+			+ ' so it can be created again. Its rows and totals are archived first, then removed,'
+			+ ' and every SJ on it becomes available again for a new invoice.</p>',
+		width: 520,
+		showCancelButton: true,
+		confirmButtonText: '<i class="fa fa-ban"></i> Yes, cancel it',
+		cancelButtonText: 'Keep it',
+		confirmButtonColor: '#dc2626',
+		reverseButtons: true,
+		focusCancel: true,
+		allowOutsideClick: false,
+		customClass: { popup: 'inv-swal' }
+	}).then(function (pilih) {
+		if (pilih && pilih.isConfirmed) { inv_cancel_kirim(id, no_invoice); }
+	});
+}
+
+function inv_cancel_kirim(id, no_invoice) {
+	var no = inv_cancel_teks(no_invoice);
+
+	if (typeof Swal !== 'undefined') {
+		Swal.fire({
+			title: 'Cancelling...',
+			html: 'Invoice <b>' + no + '</b> is being cancelled.',
+			allowOutsideClick: false,
+			allowEscapeKey: false,
+			showConfirmButton: false,
+			customClass: { popup: 'inv-swal' },
+			didOpen: function () { Swal.showLoading(); }
+		});
+	}
+
+	$.ajax({
+		url: 'cancel_invoice_json/',
+		type: 'POST',
+		data: { id_book_inv: id },
+		dataType: 'JSON',
+		timeout: 120000
+	}).done(function (d) {
+		if (!d || !d.status) {
+			inv_cancel_gagal(no, (d && d.pesan) ? d.pesan : 'The server did not confirm the cancellation.');
+			return;
+		}
+
+		var sj = d.sj || {};
+		var lepas = (sj.jumlah !== undefined && sj.jumlah !== null) ? sj.jumlah : 0;
+		var isi = '<div class="inv-swal-ringkas">'
+			+ '<div><span>Invoice</span><b>' + inv_cancel_teks(d.no_invoice || no_invoice) + '</b></div>'
+			+ '<div><span>Status</span><b>' + inv_cancel_teks(d.status_lama) + ' &rarr; '
+			+ inv_cancel_teks(d.status_baru) + '</b></div>'
+			+ '<div><span>SJ released</span><b>' + lepas + ' row' + (lepas === 1 ? '' : 's') + '</b></div>'
+			+ '</div>'
+			+ '<p class="inv-swal-catatan">The booking is back in the <b>DRAFT</b> list, so it can be'
+			+ ' picked again in Create Invoice, and its SJ rows can be selected again.</p>';
+
+		if (sj.sisa) {
+			isi += '<div class="inv-swal-sisa"><b>' + sj.sisa + ' SJ row' + (sj.sisa === 1 ? '' : 's')
+				+ '</b> could not be released and may still look "already invoiced".'
+				+ ' Please note this invoice number and tell IT.</div>';
+		}
+
+		if (typeof Swal === 'undefined') {
+			cari_invoice();
+			return;
+		}
+		Swal.fire({
+			icon: 'success',
+			title: 'Invoice cancelled',
+			html: isi,
+			width: 520,
+			confirmButtonText: 'OK',
+			customClass: { popup: 'inv-swal' }
+		}).then(function () { cari_invoice(); });
+	}).fail(function (xhr) {
+		var sebab = (xhr && xhr.statusText === 'timeout')
+			? 'The server took too long to answer.'
+			: ((xhr && xhr.status) ? 'The server answered with HTTP ' + xhr.status + '.' : 'Connection failed.');
+		inv_cancel_gagal(no, sebab);
+	});
+}
+
+function inv_cancel_gagal(no, sebab) {
+	if (typeof Swal === 'undefined') {
+		alert('Cancel failed: ' + String(sebab).replace(/<[^>]+>/g, ''));
+		return;
+	}
+	Swal.fire({
+		icon: 'error',
+		title: 'Cancel failed',
+		html: 'Invoice <b>' + no + '</b> was not cancelled.'
+			+ '<p class="inv-swal-catatan">' + sebab + ' Nothing was changed - you can try again.</p>',
+		width: 500,
+		confirmButtonText: 'Close',
+		customClass: { popup: 'inv-swal' }
+	}).then(function () { cari_invoice(); });
 }
 
 //ubah september
@@ -2203,100 +2861,421 @@ function update_status_bppb() {
 
 		}
 
-		function cari_invoice() {
+// ── List Invoice: DataTables + loader ────────────────────────────────────────
+// Bentuknya sama dengan List Debit Note (dn_list_*): datanya diambil sekali
+// lewat Search, lalu pencarian, urutan & halaman ditangani DataTables.
+var INV_LIST_DT = null;
+var INV_LIST_DATA = [];
+var INV_LIST_MODE_HP = null;
+// Halaman tabel yang harus dipakai lagi sesudah data selesai dimuat. Diisi
+// cuma waktu memulihkan tampilan (lihat inv_list_pulihkan), bukan waktu user
+// menekan Search sendiri - kalau Search ditekan, wajar mulai dari halaman 1.
+var INV_LIST_HALAMAN = -1;
+var INV_LIST_KUNCI = 'inv_list_filter';
 
-			$('#table-invoice tbody tr').remove();
-
-		var from = $('#filter_from').val();
-		var to = $('#filter_to').val();
-		var id_customer = $('#customer').val();
-		var status = $('#status').val();
-		console.log(id_customer + ' ' + status);
-
-		$.ajax({
-			url: "cari_invoice/" + from + "/" + to + "/" + id_customer + "/" + status + "/",					
-			type: "GET",
-			dataType: "JSON",
-			success: function (response) {
-
-				var trHTML = '';
-				$.each(response, function (i, item) { 					
-					if(item.status == 'POST' ){				
-						trHTML += '<tr>';					
-						trHTML += '<td>' + item.no_invoice + "</td>";
-						trHTML += '<td>' + item.customer + "</td>";	
-						trHTML += '<td>' + item.shipp + "</td>";
-						trHTML += '<td>' + item.doc_type + "</td>";
-						trHTML += '<td>' + item.doc_number + "</td>";
-						trHTML += '<td>' + item.inv_date + "</td>";
-						trHTML += '<td>' + item.tgl_inv + "</td>";	
-						trHTML += '<td>' + item.type + "</td>";	
-						trHTML += '<td>' + item.status + "</td>";
-						trHTML += '<td align="right">' + item.amount + "</td>";
-						trHTML += '<td><button id="inv_detail" name="inv_detail" type="button" class="btn btn-info btn-sm" onclick="cari_inv_detail(' + item.id + ')" ><i class="fas fa-eye"></i> Detail</button> ' + '' 
-						// + ' <button type="button" class="btn btn-sm btn-warning swalDefaultError" href="javascript:void(0)" onclick="UpdateInvoice(\'' + item.id + '\', \'' + item.status + '\', \'' + item.inv_date + '\')"><i class="fas fa-edit"></i> Update</button>' + ' '
-						+ '<button class="btn btn-warning btn-sm" onclick="window.open(\'edit_invoice/' + item.id + '\', \'_blank\')"><i class="fas fa-edit"></i> Edit</button> '
-						+ `<div class="btn-group">
-						<button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-						<i class="fa fa-print"></i> Print
-						</button>
-						<div class="dropdown-menu">
-						<a class="dropdown-item" href="#" onclick="print_invoice(` + item.id + `)">
-						<i class="fa fa-print"></i> Print Invoice
-						</a>
-						<a class="dropdown-item" href="#" onclick="print_invoice_knitting(` + item.id + `)">
-						<i class="fa fa-print"></i> Print Invoice Knitting
-						</a>
-						</div>
-						</div>
-						` + ''
-						+ '<button id="export_to_excel_invoice" name="export_to_excel_invoice" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_invoice(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button> ' + ''				
-						+ ' <button type="button" class="btn btn-sm btn-danger" href="javascript:void(0)" onclick="cancel_invoice(\'' + item.id + '\',\'' + item.no_invoice + '\',\'' + item.status + '\')"><i class="fas fa-trash-alt"></i> Cancel</button></td> </td>';
-
-						trHTML += '</tr>';
-					}else{
-						trHTML += '<tr>';					
-						trHTML += '<td>' + item.no_invoice + "</td>";
-						trHTML += '<td>' + item.customer + "</td>";	
-						trHTML += '<td>' + item.shipp + "</td>";
-						trHTML += '<td>' + item.doc_type + "</td>";
-						trHTML += '<td>' + item.doc_number + "</td>";
-						trHTML += '<td>' + item.inv_date + "</td>";
-						trHTML += '<td>' + item.tgl_inv + "</td>";	
-						trHTML += '<td>' + item.type + "</td>";	
-						trHTML += '<td>' + item.status + "</td>";
-						trHTML += '<td align="right">' + item.amount + "</td>";
-						trHTML += '<td><button id="inv_detail" name="inv_detail" type="button" class="btn btn-info btn-sm" onclick="cari_inv_detail(' + item.id + ')" ><i class="fas fa-eye"></i> Detail</button> ' + '' 
-						+ `<div class="btn-group">
-						<button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-						<i class="fa fa-print"></i> Print
-						</button>
-						<div class="dropdown-menu">
-						<a class="dropdown-item" href="#" onclick="print_invoice(` + item.id + `)">
-						<i class="fa fa-print"></i> Print Invoice
-						</a>
-						<a class="dropdown-item" href="#" onclick="print_invoice_knitting(` + item.id + `)">
-						<i class="fa fa-print"></i> Print Invoice Knitting
-						</a>
-						</div>
-						</div>
-						` + ''
-						+ '<button id="export_to_excel_invoice" name="export_to_excel_invoice" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_invoice(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button> </td>';
-
-						trHTML += '</tr>';
-					}
-				});
-
-				$('#table-invoice').append(trHTML);				
-
-			},
-			error: function (jqXHR, textStatus, errorThrown) {
-				alert('Error get data from ajax');
-			}
-		});	
-
+function inv_list_mode_hp(lebar) {
+	return (lebar || $(window).width()) < 768;
 }
 
+// ── Mengingat tampilan terakhir ──────────────────────────────────────────────
+// Menekan Create membuka halaman lain, dan tombol Back memuat ulang List
+// Invoice dari nol - filternya harus diisi & dicari ulang. Isian filternya
+// dititipkan di sessionStorage (umur satu tab, tidak ikut tersimpan permanen),
+// lalu dipulihkan waktu halaman ini dibuka lagi. Kotak pencarian, urutan,
+// jumlah baris, dan halamannya diurus DataTables lewat stateSave.
+function inv_list_simpan_filter() {
+	try {
+		sessionStorage.setItem(INV_LIST_KUNCI, JSON.stringify({
+			customer: $('#customer').val(),
+			status: $('#status').val(),
+			from: $('#filter_from').val(),
+			to: $('#filter_to').val()
+		}));
+	} catch (e) { /* penyimpanan browser dimatikan - biarkan saja */ }
+}
+
+function inv_list_baca_filter() {
+	try {
+		var isi = sessionStorage.getItem(INV_LIST_KUNCI);
+		return isi ? JSON.parse(isi) : null;
+	} catch (e) { return null; }
+}
+
+// Buka layar Edit Invoice di tab yang sama. Filter daftarnya dititipkan dulu,
+// jadi tombol Back (atau Back to List sesudah menyimpan) kembali ke daftar
+// yang tadi - bukan daftar kosong.
+function inv_list_ke_edit(id) {
+	inv_list_simpan_filter();
+	location.href = 'edit_invoice_v2/' + id;
+}
+
+// Dipanggil sekali waktu halaman dibuka.
+function inv_list_pulihkan() {
+	var f = inv_list_baca_filter();
+	if (!f) { return; }
+
+	if (f.from) { $('#filter_from').val(f.from); }
+	if (f.to) { $('#filter_to').val(f.to); }
+	// select2 baru menampilkan pilihannya sesudah 'change' - kalau select2-nya
+	// belum dipasang, trigger ini tidak berpengaruh apa-apa.
+	if (f.customer) { $('#customer').val(f.customer).trigger('change'); }
+	if (f.status) { $('#status').val(f.status).trigger('change'); }
+
+	var st = INV_LIST_DT ? INV_LIST_DT.state.loaded() : null;
+	var panjang = INV_LIST_DT ? INV_LIST_DT.page.len() : 0;
+	INV_LIST_HALAMAN = (st && st.start && panjang > 0) ? Math.floor(st.start / panjang) : -1;
+
+	cari_invoice();
+}
+
+function inv_list_teks(v) {
+	return $('<div>').text((v === null || v === undefined) ? '' : v).html();
+}
+
+// Sel yang boleh kosong (mis. Doc Number) diisi garis, supaya kolomnya tidak
+// terlihat melompong - sama seperti Created By yang belum tercatat.
+function inv_list_isi(v) {
+	var s = String(v === null || v === undefined ? '' : v).trim();
+	return s ? inv_list_teks(s) : '<span class="inv-kosong">-</span>';
+}
+
+// Nomor invoice = pintu ke detailnya. Tombol mata di kolom Action dihapus -
+// satu pintu saja supaya tidak ada dua tombol dengan tujuan sama. Di bawahnya
+// diberi penanda kalau invoice itu belum punya lampiran.
+function inv_list_nomor(item) {
+	return '<span class="dn-no-link" role="button" tabindex="0" title="Show detail" onclick="inv_detail_buka('
+		+ inv_list_teks(item.id) + ')">' + inv_list_teks(item.no_invoice) + '</span>'
+		+ inv_list_tanda_dokumen(item.jml_dokumen, item.status);
+}
+
+// Belum ada lampiran: selagi masih DRAFT/POST cuma pengingat (abu), di FIRST
+// APPROVED jadi peringatan (merah) - tinggal itu kesempatan terakhir
+// melengkapinya sebelum approval kedua.
+//
+// Yang sudah SECOND APPROVED / CANCEL tidak ditandai: lampirannya memang
+// sudah tidak bisa ditambah lagi (lihat inv_doc_bisa_diubah di Model_nag),
+// jadi penandanya cuma jadi ramai - apalagi invoice lama semuanya dibuat
+// sebelum fitur lampiran ada.
+function inv_list_tanda_dokumen(jumlah, status) {
+	var s = String(status || '').trim().toUpperCase();
+	var bisa = (s === 'DRAFT' || s === 'POST' || s === 'FIRST APPROVED');
+	if (+jumlah > 0 || !bisa) { return ''; }
+	var mendesak = (s === 'FIRST APPROVED');
+	return '<span class="dn-tanpa-doc' + (mendesak ? ' is-perhatian' : '') + '" title="'
+		+ (mendesak ? 'Already in approval but has no attachment' : 'No attachment yet')
+		+ '"><i class="fas fa-' + (mendesak ? 'exclamation-circle' : 'paperclip') + '"></i> No attachment</span>';
+}
+
+// Kolom Created By: nama pembuat invoice di atas, tanggal & jam di bawahnya.
+// Invoice lama (sebelum pembuatnya mulai dicatat, pertengahan Juni 2026)
+// kolomnya kosong - ditampilkan sebagai garis, bukan dibiarkan melompong.
+function inv_list_dibuat(item) {
+	var nama = String(item.invoice_by || '').trim();
+	if (!nama) { return '<span class="inv-kosong">-</span>'; }
+	var waktu = String(item.dibuat_tgl || '').trim();
+	return '<div class="inv-dibuat"><b>' + inv_list_teks(nama) + '</b>'
+		+ (waktu ? '<small>' + inv_list_teks(waktu) + '</small>' : '') + '</div>';
+}
+
+// Pil status - kelasnya sama dengan yang dipakai Debit Note.
+function inv_list_status(status) {
+	var s = String(status || '').trim().toUpperCase();
+	var kelas = 'is-lain';
+	if (s === 'POST') { kelas = 'is-post'; }
+	else if (s === 'FIRST APPROVED') { kelas = 'is-first'; }
+	else if (s.indexOf('SECOND') === 0) { kelas = 'is-second'; }
+	else if (s === 'CANCEL' || s === 'CANCELED' || s === 'CANCELLED') { kelas = 'is-batal'; }
+	return '<span class="dn-badge ' + kelas + '">' + inv_list_teks(status) + '</span>';
+}
+
+// Tombol per baris: Edit, Print, Export, Cancel - semuanya kelihatan, hanya
+// labelnya dilepas (ikon + tooltip) supaya kolom Action tidak jadi kolom
+// paling lebar. Tombol Detail dihilangkan: detailnya dibuka dengan mengklik
+// nomor invoice-nya.
+function inv_list_aksi(item) {
+	var id = inv_list_teks(item.id);
+	var no = inv_list_teks(item.no_invoice);
+	var status = inv_list_teks(item.status);
+	var post = String(item.status || '').trim().toUpperCase() === 'POST';
+	// Cetakan "Invoice Knitting" hanya ada di NAK.
+	var nak = String(item.profit_center || '').trim().toUpperCase() === 'NAK';
+
+	var pilihan = function (aksi, ikon, judul, ket) {
+		return '<a class="dropdown-item" href="#" onclick="' + aksi + ' return false;">'
+			+ '<i class="fa ' + ikon + '"></i><span><b>' + judul + '</b><small>' + ket + '</small></span></a>';
+	};
+
+	// Pilihan pertama = desain baru (gaya Debit Note), pilihan kedua = cetakan
+	// lama untuk invoice yang sudah terlanjur beredar dengan tampilan itu.
+	var cetak = '<div class="btn-group dropdown">'
+		+ '<button type="button" class="btn btn-primary btn-sm dn-aksi-ikon dropdown-toggle" data-toggle="dropdown" data-display="static" aria-haspopup="true" aria-expanded="false" title="Print">'
+		+ '<i class="fa fa-print"></i></button>'
+		+ '<div class="dropdown-menu inv-menu">'
+		+ pilihan('print_invoice_v2(' + id + ');', 'fa-file-invoice', 'Invoice', 'New layout, same as Debit Note')
+		+ pilihan('print_invoice(' + id + ');', 'fa-file-alt', 'Invoice (Classic)', 'Previous layout')
+		+ (nak
+			? pilihan('print_invoice_knitting_v2(' + id + ');', 'fa-scroll', 'Invoice Knitting', 'New layout, knitting format (NAK)')
+				+ pilihan('print_invoice_knitting(' + id + ');', 'fa-file-alt', 'Invoice Knitting (Classic)', 'Previous layout')
+			: '')
+		+ '</div></div>';
+
+	// Excel-nya sama polanya dengan Print: bentuk baru (mengikuti PDF desain
+	// baru) dan bentuk Classic yang lama, plus berkas knitting khusus NAK.
+	var xls = '<div class="btn-group dropdown">'
+		+ '<button type="button" class="btn btn-success btn-sm dn-aksi-ikon dropdown-toggle" data-toggle="dropdown" data-display="static" aria-haspopup="true" aria-expanded="false" title="Export to Excel">'
+		+ '<i class="fas fa-file-excel"></i></button>'
+		+ '<div class="dropdown-menu inv-menu">'
+		+ pilihan('export_excel_invoice_v2(' + id + ');', 'fa-file-invoice', 'Invoice', 'New layout, same as the PDF')
+		+ pilihan('export_to_excel_invoice(' + id + ');', 'fa-file-alt', 'Invoice (Classic)', 'Previous layout')
+		+ (nak
+			? pilihan('export_excel_invoice_v2(' + id + ', \'knitting\');', 'fa-scroll', 'Invoice Knitting', 'New layout, knitting format (NAK)')
+			: '')
+		+ '</div></div>';
+
+	// Sudah FIRST APPROVED: isinya tidak boleh diubah lagi, tapi supporting
+	// document masih boleh dilengkapi - sesudah approval kedua tidak bisa.
+	// Layarnya sama dengan Edit, bedanya semua isian dikunci.
+	if (String(item.status || '').trim().toUpperCase() === 'FIRST APPROVED') {
+		return '<div class="dn-aksi">'
+			+ '<button type="button" class="btn btn-secondary btn-sm dn-aksi-ikon" title="Supporting documents"'
+			+ ' onclick="inv_list_ke_edit(' + id + ')"><i class="fas fa-paperclip"></i></button>'
+			+ cetak + xls
+			+ '</div>';
+	}
+
+	// Edit & Cancel cuma untuk invoice yang masih POST - sama seperti dulu.
+	if (post) {
+		return '<div class="dn-aksi">'
+			// Layar Edit yang alurnya sama dengan Create Invoice. Dibuka di tab
+			// yang sama supaya tombol Back kembali ke daftar ini lengkap dengan
+			// filternya. Layar edit lama tetap ada di 'edit_invoice/<id>'.
+			+ '<button type="button" class="btn btn-warning btn-sm dn-aksi-ikon" title="Edit" onclick="inv_list_ke_edit(' + id + ')">'
+			+ '<i class="fas fa-edit"></i></button>'
+			+ cetak + xls
+			+ '<button type="button" class="btn btn-danger btn-sm dn-aksi-ikon" title="Cancel" onclick="cancel_invoice(\''
+			+ id + '\',\'' + no + '\',\'' + status + '\')">'
+			+ '<i class="fas fa-ban"></i></button>'
+			+ '</div>';
+	}
+	return '<div class="dn-aksi">' + cetak + xls + '</div>';
+}
+
+// Menu Print di dalam tabel ber-scroll ikut terpotong kotak gulirnya. Waktu
+// dibuka, menunya dititipkan ke <body> dan ditaruh tepat di bawah tombol;
+// begitu ditutup dikembalikan lagi ke tempat asalnya.
+function inv_list_dropdown_lepas() {
+	$(document)
+		.off('show.bs.dropdown.invdrop hidden.bs.dropdown.invdrop')
+		.on('show.bs.dropdown.invdrop', '#inv-list-area .dn-aksi .dropdown', function () {
+			var tombol = $(this).children('.dropdown-toggle')[0];
+			var $menu = $(this).find('.dropdown-menu');
+			if (!tombol || !$menu.length) { return; }
+			var r = tombol.getBoundingClientRect();
+			var lebar = $menu.outerWidth() || 200;
+			$menu.data('invAsal', this).appendTo('body').css({
+				position: 'fixed',
+				top: Math.round(r.bottom + 2) + 'px',
+				left: Math.round(Math.min(r.left, $(window).width() - lebar - 8)) + 'px',
+				margin: 0,
+				zIndex: 1080
+			});
+		})
+		.on('hidden.bs.dropdown.invdrop', '#inv-list-area .dn-aksi .dropdown', function () {
+			var $menu = $('body > .dropdown-menu').filter(function () {
+				return $(this).data('invAsal') !== undefined;
+			});
+			$menu.each(function () {
+				var asal = $(this).data('invAsal');
+				$(this).removeAttr('style').removeData('invAsal').appendTo(asal);
+			});
+		});
+}
+
+function inv_list_loading(tampil) {
+	$('#inv-list-area').toggleClass('is-muat-ulang', !!tampil && !!INV_LIST_DT && INV_LIST_DT.rows().count() > 0);
+	$('#inv-list-loader').toggleClass('show', !!tampil);
+}
+
+// Bayangan kolom Action dinyalakan hanya kalau tabelnya memang masih bisa
+// digeser ke kanan - sama seperti di List Debit Note.
+function inv_list_tandai_geser() {
+	var el = $('#inv-list-area .dataTables_scrollBody')[0];
+	$('#inv-list-area').toggleClass('is-ada-kanan',
+		!!el && !INV_LIST_MODE_HP && el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+}
+
+function inv_list_dt(lebar) {
+	var hp = inv_list_mode_hp(lebar);
+	if (INV_LIST_DT && INV_LIST_MODE_HP === hp) { return INV_LIST_DT; }
+
+	if (INV_LIST_DT) {
+		INV_LIST_DT.destroy();
+		$('#table-invoice tbody').empty();
+	}
+	INV_LIST_MODE_HP = hp;
+	inv_list_dropdown_lepas();
+	// Nomor invoice juga bisa dibuka lewat papan ketik.
+	$('#inv-list-area').off('keydown.invlist').on('keydown.invlist', '.dn-no-link', function (e) {
+		if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(this).trigger('click'); }
+	});
+
+	INV_LIST_DT = $('#table-invoice').DataTable({
+		responsive: hp,
+		scrollX: !hp,
+		autoWidth: false,
+		// Kotak pencarian, urutan, jumlah baris & halaman diingat selama tab
+		// browsernya masih terbuka (stateDuration -1 = sessionStorage), supaya
+		// kembali dari Create Invoice tampilannya sama seperti tadi.
+		stateSave: true,
+		stateDuration: -1,
+		pageLength: 10,
+		lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+		order: [[1, 'desc']],
+		// Susunan kolom pernah berubah (Inv Date pindah ke depan, Create Date
+		// jadi Created By, Status & Amount ditukar). Tanpa penanda ini, urutan
+		// tersimpan dari susunan lama akan dipakai di kolom yang salah.
+		stateSaveParams: function (s, data) { data.invKolom = 2; },
+		stateLoadParams: function (s, data) { if (data.invKolom !== 2) { return false; } },
+		columnDefs: [
+			// Sel nomor invoice berisi tautan + penanda lampiran; yang dipakai
+			// mengurutkan & mencari cuma nomornya.
+			{
+				targets: 0,
+				render: function (data, type) {
+					if (type === 'display' || type === 'export') { return data; }
+					return $('<div>').html(data).find('.dn-no-link').text() || data;
+				}
+			},
+			// Doc Number bisa berisi garis (kosong) - 'html' bikin DataTables
+			// mengurutkan & mencari berdasarkan teksnya, bukan tagnya.
+			{ targets: 6, type: 'html' },
+			// Created By berisi nama + waktu; dicari & diurutkan pakai teksnya saja.
+			{
+				targets: 7,
+				render: function (data, type) {
+					if (type === 'display' || type === 'export') { return data; }
+					return $('<div>').html(data).text() || data;
+				}
+			},
+			{ targets: 8, className: 'dn-angka' },
+			{ targets: 9, type: 'html', className: 'dn-tengah' },
+			{ targets: 10, orderable: false, searchable: false, className: 'dn-tengah' + (hp ? ' all' : '') },
+			// Mode HP: kolom yang dilipat ditentukan di sini (sel tabelnya nowrap,
+			// jadi Responsive tidak bisa menghitungnya sendiri).
+			{ targets: hp ? [2, 3, 4, 5, 6, 7, 8, 9] : [], className: 'none' }
+		],
+		language: {
+			search: '',
+			searchPlaceholder: 'Search in list...',
+			lengthMenu: 'Show _MENU_ rows',
+			info: 'Showing _START_-_END_ of _TOTAL_',
+			infoEmpty: 'No data',
+			infoFiltered: '(filtered from _MAX_)',
+			zeroRecords: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-search"></i></span>'
+				+ '<div class="dn-kosong-judul">No invoice matches the search.</div></div>',
+			emptyTable: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-file-invoice"></i></span>'
+				+ '<div class="dn-kosong-judul">No data yet - set the filter above, then click Search.</div></div>',
+			paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Prev' }
+		}
+	});
+
+	$('#table-invoice').off('.invlist')
+		.on('draw.dt.invlist column-sizing.dt.invlist', inv_list_tandai_geser)
+		.on('page.dt.invlist', function () {
+			var area = document.getElementById('inv-list-area');
+			if (area && area.getBoundingClientRect().top < 0) {
+				area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		});
+	if (!hp) {
+		$('#inv-list-area .dataTables_scrollBody').off('scroll.invlist').on('scroll.invlist', inv_list_tandai_geser);
+	}
+
+	if (INV_LIST_DATA.length) {
+		INV_LIST_DT.rows.add(INV_LIST_DATA).draw();
+	}
+	if (!hp) { INV_LIST_DT.columns.adjust(); }
+	inv_list_tandai_geser();
+
+	$(window).off('resize.invlist').on('resize.invlist', function () {
+		if (inv_list_mode_hp() !== INV_LIST_MODE_HP) {
+			inv_list_dt();
+		} else if (!INV_LIST_MODE_HP) {
+			INV_LIST_DT.columns.adjust();
+		}
+		inv_list_tandai_geser();
+	});
+	return INV_LIST_DT;
+}
+
+function cari_invoice() {
+	var $tombol = $('#find_invoice');
+	// Permintaan sebelumnya belum selesai - jangan menembak dua kali.
+	if ($tombol.prop('disabled')) { return; }
+
+	var dt = inv_list_dt();
+	var from = $('#filter_from').val();
+	var to = $('#filter_to').val();
+	var id_customer = $('#customer').val();
+	var status = $('#status').val();
+
+	// Filter terakhir diingat - dipakai lagi kalau halaman ini dibuka ulang
+	// (mis. sesudah menekan Create lalu Back).
+	inv_list_simpan_filter();
+
+	inv_list_loading(true);
+	$tombol.prop('disabled', true).attr('aria-busy', 'true')
+		.find('i').removeClass('fa-search').addClass('fa-circle-notch fa-spin');
+
+	$.ajax({
+		url: "cari_invoice/" + from + "/" + to + "/" + id_customer + "/" + status + "/",
+		type: "GET",
+		dataType: "JSON",
+		complete: function () {
+			inv_list_loading(false);
+			$tombol.prop('disabled', false).removeAttr('aria-busy')
+				.find('i').removeClass('fa-circle-notch fa-spin').addClass('fa-search');
+		},
+		success: function (response) {
+			var baris = [];
+			$.each(response || [], function (i, item) {
+				// Urutan kolom = urutan <th> di listinvoice.php
+				baris.push([
+					inv_list_nomor(item),
+					inv_list_teks(item.inv_date),
+					inv_list_teks(item.type),
+					inv_list_teks(item.customer),
+					inv_list_teks(item.shipp),
+					inv_list_teks(item.doc_type),
+					inv_list_isi(item.doc_number),
+					inv_list_dibuat(item),
+					inv_list_teks(item.amount),
+					inv_list_status(item.status),
+					inv_list_aksi(item)
+				]);
+			});
+
+			// Disimpan supaya waktu layar berganti mode (HP <-> desktop) tabelnya
+			// bisa dibangun ulang tanpa minta data lagi ke server.
+			INV_LIST_DATA = baris;
+			dt.clear();
+			if (baris.length) { dt.rows.add(baris); }
+			dt.draw();
+
+			// Halaman terakhir baru bisa dipakai lagi sesudah barisnya masuk -
+			// waktu DataTables dipasang, tabelnya masih kosong.
+			if (INV_LIST_HALAMAN > 0 && INV_LIST_HALAMAN < dt.page.info().pages) {
+				dt.page(INV_LIST_HALAMAN).draw(false);
+			}
+			INV_LIST_HALAMAN = -1;
+
+			if (!INV_LIST_MODE_HP) { dt.columns.adjust(); }
+		},
+		error: function () {
+			alert('Error get data from ajax');
+		}
+	});
+}
 function UpdateInvoice(id, status, inv_date) {
 
 	console.log(id);
@@ -3477,24 +4456,23 @@ function cari_debitnote_post(){
 
 function approve_invoice_second(){
 	var promises = [];
-	document.getElementsByName("pilih_inv_approv").forEach(function(cek) {
-		if (cek.checked) {
-			var id = cek.value;
-			promises.push(new Promise(function(resolve) {
-				$.ajax({
-					url: "approve_invoice_second/",
-					type: "POST",
-					data: { "id_inv": id },
-					dataType: "JSON",
-					success: function(data) {
-						resolve({ id: id, success: !!(data && data.status), reason: (data && data.reason) || '', no_doc: (data && data.no_doc) || null });
-					},
-					error: function() {
-						resolve({ id: id, success: false, reason: 'error', no_doc: null });
-					}
-				});
-			}));
-		}
+	// Dibaca dari INV_APPV_PILIH, bukan dari checkbox: baris di halaman
+	// tabel lain tidak ada di DOM tapi tetap ikut terpilih.
+	inv_appv_terpilih().forEach(function(id) {
+		promises.push(new Promise(function(resolve) {
+			$.ajax({
+				url: "approve_invoice_second/",
+				type: "POST",
+				data: { "id_inv": id },
+				dataType: "JSON",
+				success: function(data) {
+					resolve({ id: id, success: !!(data && data.status), reason: (data && data.reason) || '', no_doc: (data && data.no_doc) || null });
+				},
+				error: function() {
+					resolve({ id: id, success: false, reason: 'error', no_doc: null });
+				}
+			});
+		}));
 	});
 	return Promise.all(promises);
 }
@@ -3853,34 +4831,62 @@ function modal_show_approve_invoice_manual_second() {
 	});
 }
 
+// Tombol Approve. Urutannya: belum ada yang dipilih -> info; ada yang belum
+// punya lampiran -> peringatan (tetap boleh lanjut); lalu konfirmasi biasa.
 function modal_show_approve_invoice_second() {
-	var checked = document.querySelectorAll('input[name="pilih_inv_approv"]:checked');
-	if (checked.length === 0) {
+	var terpilih = inv_appv_terpilih();
+	if (!terpilih.length) {
 		Swal.fire({
 			icon: 'info',
-			title: 'Belum Ada yang Dipilih',
-			text: 'Silakan pilih invoice terlebih dahulu.',
-			confirmButtonText: 'OK'
+			title: 'Nothing Selected',
+			text: 'Please tick the invoice you want to approve first.'
 		});
 		return;
 	}
+
+	var tanpaDoc = inv_appv_tanpa_dokumen();
+	if (tanpaDoc.length) {
+		Swal.fire({
+			icon: 'warning',
+			title: 'No Supporting Document',
+			html: '<div class="dn-swal-catatan">' + tanpaDoc.length + ' of ' + terpilih.length
+				+ ' selected invoice' + (terpilih.length > 1 ? 's have' : ' has') + ' no supporting document:</div>'
+				+ '<ul class="dn-swal-list">'
+				+ tanpaDoc.slice(0, 8).map(function (no) { return '<li>' + inv_list_teks(no) + '</li>'; }).join('')
+				+ (tanpaDoc.length > 8 ? '<li>and ' + (tanpaDoc.length - 8) + ' more...</li>' : '')
+				+ '</ul>'
+				+ '<div class="dn-swal-catatan">After second approval the document can no longer be attached.</div>',
+			showCancelButton: true,
+			confirmButtonText: 'Approve Anyway',
+			cancelButtonText: 'Cancel',
+			reverseButtons: true
+		}).then(function (r) {
+			if (r.isConfirmed) { inv_appv_konfirmasi(terpilih); }
+		});
+		return;
+	}
+
+	inv_appv_konfirmasi(terpilih);
+}
+
+function inv_appv_konfirmasi(terpilih) {
 	Swal.fire({
 		icon: 'question',
-		title: 'Konfirmasi Approve',
-		html: 'Anda akan approve <b>' + checked.length + ' dokumen invoice</b>.<br>Lanjutkan?',
-		confirmButtonText: 'Ya, Approve',
-		confirmButtonColor: '#3085d6',
+		title: 'Approve Invoice?',
+		html: '<b>' + terpilih.length + '</b> invoice' + (terpilih.length > 1 ? 's' : '') + ' will be second approved.',
 		showCancelButton: true,
-		cancelButtonText: 'Batal'
-	}).then(function(result) {
-		if (result.isConfirmed) { refresh_second(); }
+		confirmButtonText: 'Approve',
+		cancelButtonText: 'Cancel',
+		reverseButtons: true
+	}).then(function (r) {
+		if (r.isConfirmed) { refresh_second(); }
 	});
 }
 
 async function refresh_second(){
 	Swal.fire({
-		title: 'Sedang memproses...',
-		html: 'Mohon tunggu, sedang approve invoice.',
+		title: 'Approving...',
+		html: 'Please wait, approving the invoice.',
 		allowOutsideClick: false,
 		allowEscapeKey: false,
 		didOpen: function() { Swal.showLoading(); }
@@ -3895,21 +4901,23 @@ async function refresh_second(){
 		window._failedInvoiceSecondIds = results.filter(function(r){ return !r.success; });
 		Swal.fire({
 			icon: 'warning',
-			title: 'Sebagian Gagal',
-			html: 'Berhasil: <b>' + berhasil + ' invoice</b><br>Gagal: <b style="color:#c0392b">' + gagal + ' invoice</b>',
-			confirmButtonText: 'Tutup',
-			showDenyButton: true,
-			denyButtonText: 'Coba Lagi',
-			denyButtonColor: '#e74c3c'
+			title: 'Partly Failed',
+			html: 'Approved: <b>' + berhasil + ' invoice</b><br>Failed: <b style="color:#c0392b">' + gagal + ' invoice</b>',
+			// Tombolnya sebentuk dengan dialog lain di layar ini: pilihan
+			// utama di kanan, penutup di kiri - bukan biru/merah berbeda ukuran.
+			showCancelButton: true,
+			confirmButtonText: 'Try Again',
+			cancelButtonText: 'Close',
+			reverseButtons: true
 		}).then(function(result) {
-			if (result.isDenied) { retry_approve_invoice_second(); }
+			if (result.isConfirmed) { retry_approve_invoice_second(); }
 		});
 	} else {
 		window._failedInvoiceSecondIds = [];
 		Swal.fire({
 			icon: 'success',
-			title: 'Berhasil',
-			text: berhasil + ' invoice berhasil di-approve.',
+			title: 'Approved',
+			text: berhasil + ' invoice approved.',
 			timer: 2000,
 			showConfirmButton: false
 		});
@@ -3922,8 +4930,8 @@ async function retry_approve_invoice_second(){
 	if (!items.length) return;
 
 	Swal.fire({
-		title: 'Sedang memproses ulang...',
-		html: 'Mohon tunggu, sedang approve ulang <b>' + items.length + ' invoice</b>.',
+		title: 'Retrying...',
+		html: 'Please wait, approving <b>' + items.length + ' invoice</b> again.',
 		allowOutsideClick: false,
 		allowEscapeKey: false,
 		didOpen: function() { Swal.showLoading(); }
@@ -3954,21 +4962,23 @@ async function retry_approve_invoice_second(){
 		window._failedInvoiceSecondIds = results.filter(function(r){ return !r.success; });
 		Swal.fire({
 			icon: 'warning',
-			title: 'Masih Ada yang Gagal',
-			html: 'Berhasil: <b>' + berhasil + ' invoice</b><br>Gagal: <b style="color:#c0392b">' + gagal + ' invoice</b>',
-			confirmButtonText: 'Tutup',
-			showDenyButton: true,
-			denyButtonText: 'Coba Lagi',
-			denyButtonColor: '#e74c3c'
+			title: 'Still Failing',
+			html: 'Approved: <b>' + berhasil + ' invoice</b><br>Failed: <b style="color:#c0392b">' + gagal + ' invoice</b>',
+			// Tombolnya sebentuk dengan dialog lain di layar ini: pilihan
+			// utama di kanan, penutup di kiri - bukan biru/merah berbeda ukuran.
+			showCancelButton: true,
+			confirmButtonText: 'Try Again',
+			cancelButtonText: 'Close',
+			reverseButtons: true
 		}).then(function(result) {
-			if (result.isDenied) { retry_approve_invoice_second(); }
+			if (result.isConfirmed) { retry_approve_invoice_second(); }
 		});
 	} else {
 		window._failedInvoiceSecondIds = [];
 		Swal.fire({
 			icon: 'success',
-			title: 'Semua Berhasil',
-			text: berhasil + ' invoice berhasil di-approve.',
+			title: 'All Approved',
+			text: berhasil + ' invoice approved.',
 			timer: 2000,
 			showConfirmButton: false
 		});
@@ -4100,36 +5110,206 @@ async function retry_approve_invoice_manual_second(){
 	}
 }
 
-function cari_invoice_second_approv(){
-	$('#table-approval-invoice tbody tr').remove();
-	var from = $('#filter_from').val();
-	var to = $('#filter_to').val();
+// ── Second Approval Invoice ──────────────────────────────────────────────────
+// Bentuknya sama dengan Second Approval Debit Note (dn_appv_*): DataTables,
+// nomor invoice bisa diklik untuk melihat detail + dokumennya, dan yang belum
+// punya supporting document ditandai lalu diperingatkan sebelum approve -
+// sesudah approval kedua lampirannya memang tidak bisa ditambah lagi.
+//
+// Pilihan disimpan per id (INV_APPV_PILIH), bukan dibaca dari checkbox di DOM:
+// baris halaman tabel lain tidak ada di DOM, jadi kalau dibaca dari DOM
+// pilihan di halaman lain ikut hilang.
+var INV_APPV_DT = null;
+var INV_APPV_PILIH = {};   // id -> true
+var INV_APPV_DATA = {};    // id -> { no_invoice, jml_dokumen }
+
+function inv_appv_dt() {
+	if (INV_APPV_DT) { return INV_APPV_DT; }
+	INV_APPV_DT = $('#table-approval-invoice').DataTable({
+		scrollX: true,
+		autoWidth: false,
+		pageLength: 10,
+		lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+		// Tanggal invoice terbaru duluan - sama dengan List Invoice.
+		order: [[1, 'desc']],
+		columnDefs: [
+			{
+				// Sel nomor invoice berisi nomor + penanda "No attachment"; yang
+				// dipakai waktu diurutkan atau dicari cuma nomornya.
+				targets: 0,
+				render: function (data, type) {
+					if (type === 'display' || type === 'export') { return data; }
+					return $('<div>').html(data).find('.dn-no-link').text() || data;
+				}
+			},
+			// Doc Number bisa berisi garis (kosong) - 'html' bikin DataTables
+			// mengurutkan & mencari berdasarkan teksnya, bukan tagnya.
+			{ targets: 6, type: 'html' },
+			{ targets: 7, className: 'dn-angka' },
+			{ targets: 8, orderable: false, searchable: false, className: 'dn-cek' }
+		],
+		language: {
+			search: '',
+			searchPlaceholder: 'Search in list...',
+			lengthMenu: 'Show _MENU_ rows',
+			info: 'Showing _START_-_END_ of _TOTAL_',
+			infoEmpty: 'No data',
+			infoFiltered: '(filtered from _MAX_)',
+			zeroRecords: 'No invoice matches the search.',
+			emptyTable: 'No data yet - set the filter above, then click Search.',
+			paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Prev' }
+		}
+	});
+
+	// Centang dipasang ulang tiap tabel digambar (pindah halaman / cari / urut).
+	INV_APPV_DT.on('draw', function () { inv_appv_pasang_centang(); inv_appv_ringkas(); });
+	$(window).on('resize.invappv', function () { INV_APPV_DT.columns.adjust(); });
+	return INV_APPV_DT;
+}
+
+function inv_appv_loading(tampil) {
+	$('#inv-appv-loader').toggleClass('show', !!tampil);
+}
+
+// Baris tabel untuk 1 invoice - susunannya mengikuti List Invoice.
+function inv_appv_baris(item) {
+	var id = inv_list_teks(item.id);
+	return [
+		inv_list_nomor(item),
+		inv_list_teks(item.inv_date),
+		inv_list_teks(item.type),
+		inv_list_teks(item.customer),
+		inv_list_teks(item.shipp),
+		inv_list_teks(item.doc_type),
+		inv_list_isi(item.doc_number),
+		inv_list_teks(item.total),
+		'<input type="checkbox" name="pilih_inv_approv" class="inv-appv-cek" value="' + id + '"'
+			+ ' onchange="inv_appv_pilih(this.value, this.checked)">'
+	];
+}
+
+function cari_invoice_second_approv() {
+	var dt = inv_appv_dt();
+	var from = dn_list_tanggal_iso('#filter_from');
+	var to = dn_list_tanggal_iso('#filter_to');
 	var profit_center = $('#pc_invoice').val();
+
+	inv_appv_loading(true);
 	$.ajax({
 		url: "cari_invoice_second_approv/" + from + "/" + to + "/" + profit_center + "/",
 		type: "GET",
 		dataType: "JSON",
-		success: function (response) {
-			var trHTML = '';
-			$.each(response, function (i, item) {
-				trHTML += '<tr>';
-				trHTML += '<td>' + item.no_invoice + "</td>";
-				trHTML += '<td>' + item.customer + "</td>";
-				trHTML += '<td>' + item.shipp + "</td>";
-				trHTML += '<td>' + item.doc_type + "</td>";
-				trHTML += '<td>' + item.doc_number + "</td>";
-				trHTML += '<td>' + item.inv_date + "</td>";
-				trHTML += '<td>' + item.type + "</td>";
-				trHTML += '<td>' + item.total + "</td>";
-				trHTML += '<td>' + item.status + "</td>";
-				trHTML += '<td>' + item.id + "</td>";
-				trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_inv_approv" id="pilih_inv_approv" class="flat" value="' + item.id + '"></td>';
-				trHTML += '</tr>';
-			});
-			$('#table-approval-invoice').append(trHTML);
+		complete: function () {
+			inv_appv_loading(false);
 		},
-		error: function () { alert('Error get data from ajax'); }
+		success: function (response) {
+			// Daftarnya diambil ulang. Centang yang invoice-nya masih ada di
+			// hasil baru dipertahankan; yang sudah tidak ada (mis. baru saja
+			// di-approve, atau di luar rentang tanggal) dibuang.
+			var pilihLama = INV_APPV_PILIH;
+			INV_APPV_PILIH = {};
+			INV_APPV_DATA = {};
+
+			var baris = [];
+			$.each(response || [], function (i, item) {
+				INV_APPV_DATA[item.id] = { no_invoice: item.no_invoice, jml_dokumen: +item.jml_dokumen || 0 };
+				if (pilihLama[item.id]) { INV_APPV_PILIH[item.id] = true; }
+				baris.push(inv_appv_baris(item));
+			});
+
+			dt.clear();
+			if (baris.length) { dt.rows.add(baris); }
+			dt.draw();
+			dt.columns.adjust();
+			inv_appv_ringkas();
+		},
+		error: function () {
+			Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load invoice data.' });
+		}
 	});
+}
+
+// Centang 1 baris.
+function inv_appv_pilih(id, dipilih) {
+	if (dipilih) { INV_APPV_PILIH[id] = true; } else { delete INV_APPV_PILIH[id]; }
+	inv_appv_pasang_centang();
+	inv_appv_ringkas();
+}
+
+// Id semua baris yang lolos kotak Search - termasuk yang sedang ada di halaman
+// tabel lain. Baris halaman lain tidak ada di DOM, jadi id-nya dibaca dari data
+// barisnya, bukan dari checkbox.
+function inv_appv_id_tersaring() {
+	var id = [];
+	if (!INV_APPV_DT) { return id; }
+	INV_APPV_DT.rows({ search: 'applied' }).every(function () {
+		var v = $(this.node()).find('.inv-appv-cek').val();
+		if (!v) { v = $('<div>').html(this.data()[8]).find('input').val(); }
+		if (v) { id.push(v); }
+	});
+	return id;
+}
+
+// Centang semua - yang ikut hanya baris yang lolos kotak Search, bukan seluruh
+// isi tabel, supaya tidak ada yang ter-approve diam-diam.
+function inv_appv_centang_semua(ele) {
+	inv_appv_dt();
+	inv_appv_id_tersaring().forEach(function (id) {
+		if (ele.checked) { INV_APPV_PILIH[id] = true; } else { delete INV_APPV_PILIH[id]; }
+	});
+	inv_appv_pasang_centang();
+	inv_appv_ringkas();
+}
+
+// Samakan tampilan centang & sorotan baris dengan pilihan yang tersimpan.
+function inv_appv_pasang_centang() {
+	$('#table-approval-invoice tbody .inv-appv-cek').each(function () {
+		var dipilih = !!INV_APPV_PILIH[this.value];
+		this.checked = dipilih;
+		$(this).closest('tr').toggleClass('dn-dipilih', dipilih);
+	});
+}
+
+function inv_appv_terpilih() {
+	return Object.keys(INV_APPV_PILIH);
+}
+
+// Invoice terpilih yang belum punya supporting document.
+function inv_appv_tanpa_dokumen() {
+	return inv_appv_terpilih().filter(function (id) {
+		var d = INV_APPV_DATA[id];
+		return d && !d.jml_dokumen;
+	}).map(function (id) {
+		return INV_APPV_DATA[id].no_invoice;
+	});
+}
+
+// Keterangan di samping judul tabel: berapa yang dipilih & berapa yang belum
+// punya lampiran.
+function inv_appv_ringkas() {
+	var jml = inv_appv_terpilih().length;
+	var tanpaDoc = inv_appv_tanpa_dokumen().length;
+	var teks = jml ? '<b>' + jml + '</b> selected' : 'Nothing selected yet';
+	if (tanpaDoc) {
+		teks += ' &middot; <span class="is-perhatian"><i class="fas fa-exclamation-circle"></i> '
+			+ tanpaDoc + ' without supporting document</span>';
+	}
+
+	// Pilihan yang sedang disembunyikan kotak Search tetap ikut di-approve,
+	// jadi jumlahnya diberitahukan supaya tidak ada yang kaget.
+	var tersaring = inv_appv_id_tersaring();
+	var terpilihTersaring = tersaring.filter(function (id) { return INV_APPV_PILIH[id]; }).length;
+	var tersembunyi = jml - terpilihTersaring;
+	if (tersembunyi > 0) {
+		teks += ' &middot; <span class="dn-appv-samar"><i class="fas fa-eye-slash"></i> '
+			+ tersembunyi + ' hidden by search, still included</span>';
+	}
+	$('#inv-appv-jumlah').html(teks);
+
+	// Centang di kepala kolom mengikuti baris yang lolos Search saja.
+	var kepala = $('#cek_inv_approve');
+	kepala.prop('checked', tersaring.length > 0 && terpilihTersaring === tersaring.length);
+	kepala.prop('indeterminate', terpilihTersaring > 0 && terpilihTersaring < tersaring.length);
 }
 
 function cari_proforma_invoice_second_approv(){
@@ -4688,6 +5868,16 @@ function cek_tgl_sj($tgl){
   }
 }
 
+// Cetakan invoice desain baru (gaya Debit Note) - arnag/report_invoice_v2.
+// Cetakan lamanya tetap ada di print_invoice() di bawah, jadi invoice yang
+// sudah terlanjur dikirim ke customer bisa dicetak ulang persis seperti
+// tampilan waktu dikirim.
+function print_invoice_v2(id) {
+
+	window.open(".../../report_invoice_v2/" + id + "/" );
+
+}
+
 function print_invoice(id) {
 
 	//var id_bank = $('#bank').val(); 	
@@ -4698,8 +5888,14 @@ function print_invoice(id) {
 
 }
 
-function export_to_excel_invoice($id) { 			
-	window.open(".../../export_excel_invoice/" + $id + "/");  
+function export_to_excel_invoice($id) {
+	window.open(".../../export_excel_invoice/" + $id + "/");
+}
+
+// Excel bentuk baru - susunannya mengikuti cetakan PDF desain baru. Untuk
+// knitting ada berkas kedua (jenis = 'knitting'), sama seperti cetakannya.
+function export_excel_invoice_v2(id, jenis) {
+	window.open('export_excel_invoice_v2/' + id + '/' + (jenis ? jenis + '/' : ''));
 }
 
 function export_list_invoice() {
@@ -11649,6 +12845,378 @@ function simpandn_h() {
 // dikumpulkan disini lalu dikirim BARENG header oleh simpandn_h(), supaya
 // header+detail masuk dalam 1 transaksi di server). Tidak perlu isi no_dn per
 // baris, server yang nyetel no_dn final ke semua baris.
+/* ===================== Debit Note dari Invoice Export EXIM =================
+ * Sumber baris Debit Note yang keempat, di samping Add Row (manual),
+ * Add Memo, dan No Request. Beberapa Invoice Export EXIM dicentang sekaligus;
+ * tiap invoice jadi SATU baris detail:
+ *
+ *   Header 1  Invoice Number      Header 4  Qty Inv
+ *   Header 2  REFF                Header 5  Price
+ *   Header 3  PO                  Value     Qty Inv x Price
+ *
+ * Nama kolom Header-nya ikut diisikan kalau masih kosong, jadi judul di
+ * cetakan langsung benar tanpa diketik ulang.
+ * ========================================================================= */
+
+var DN_INV_EXIM = [];          // hasil pencarian terakhir
+var DN_INV_EXIM_DIPAKAI = {};  // id invoice yang barisnya sudah ada di tabel detail
+var DN_INV_EXIM_DESK_AUTO = ''; // deskripsi otomatis terakhir - dipakai untuk
+                                // tahu apakah kotaknya masih otomatis atau
+                                // sudah diketik sendiri oleh user
+
+/** Angka untuk ditampilkan - ribuan dipisah, 2 desimal. */
+function dn_inv_exim_angka(v, desimal) {
+	var n = parseFloat(v);
+	if (isNaN(n)) { n = 0; }
+	return n.toLocaleString('en-US', {
+		minimumFractionDigits: desimal === undefined ? 2 : desimal,
+		maximumFractionDigits: desimal === undefined ? 2 : desimal
+	});
+}
+
+function dn_inv_exim_teks(v) {
+	var t = $.trim(String(v === null || v === undefined ? '' : v));
+	return t === '' ? '-' : t;
+}
+
+/** Rate yang dipakai baris baru - sama dengan bawaan baris template. */
+function dn_inv_exim_rate() {
+	var el = document.querySelector('#table-dn [name="amt_rate"]');
+	var r = el ? parseFloat(String(el.value).replace(/,/g, '')) : 1;
+	return (!r || isNaN(r)) ? 1 : r;
+}
+
+function dn_inv_exim_buka() {
+	// Satu Debit Note ditujukan ke satu consignee, jadi yang boleh ditarik
+	// cuma invoice milik consignee itu - filternya ikut, tidak bisa diganti.
+	var cust = $.trim($('#customer').val() || '');
+	if (!cust) {
+		Swal.fire({
+			icon: 'warning',
+			title: 'Pick a consignee first',
+			text: 'The invoice export list is filtered by the consignee of this debit note.'
+		});
+		return;
+	}
+	$('#dn_inv_cust').val(cust);
+	$('#dn_inv_cust_nama').val($.trim($('#customer option:selected').text() || $('#nama_supp').val() || ''));
+
+	var pc = $.trim($('#profit_center_dn').val() || '');
+	$('#dn_inv_pc').val(pc);
+	$('#dn_inv_pc_nama').val(pc || '-');
+
+	// Daftar lama tidak ditinggal: consignee-nya bisa saja sudah berganti
+	// sejak modal ini terakhir dibuka.
+	DN_INV_EXIM = [];
+	dn_inv_exim_gambar();
+
+	// Baris yang sudah terlanjur ditambahkan tidak ditawarkan dua kali.
+	DN_INV_EXIM_DIPAKAI = {};
+	$('#table-dn [name="dn_inv_exim_id"]').each(function () {
+		var v = $.trim(this.value);
+		if (v) { DN_INV_EXIM_DIPAKAI[v] = true; }
+	});
+
+	// Deskripsinya disusun ulang dari centang yang baru - sisa dari pemakaian
+	// sebelumnya tidak dibawa-bawa.
+	DN_INV_EXIM_DESK_AUTO = '';
+	$('#dn_inv_desk').val('');
+
+	$('#modal-add-inv-exim').modal('show');
+}
+
+function dn_inv_exim_cari() {
+	var dari = $('#dn_inv_from').val();
+	var sampai = $('#dn_inv_to').val();
+	var cust = $.trim($('#dn_inv_cust').val() || '');
+	if (!cust) {
+		Swal.fire({
+			icon: 'warning',
+			title: 'Pick a consignee first',
+			text: 'The invoice export list is filtered by the consignee of this debit note.'
+		});
+		return;
+	}
+
+	$('#dn-inv-loader').addClass('show');
+	$('#dn_inv_cari').prop('disabled', true);
+
+	var pc = $.trim($('#dn_inv_pc').val() || '');
+
+	$.ajax({
+		url: 'cari_inv_exim_export_dn/' + encodeURIComponent(dari) + '/'
+			+ encodeURIComponent(sampai) + '/' + encodeURIComponent(cust) + '/'
+			+ encodeURIComponent(pc || '-') + '/',
+		type: 'GET',
+		dataType: 'JSON',
+		complete: function () {
+			$('#dn-inv-loader').removeClass('show');
+			$('#dn_inv_cari').prop('disabled', false);
+		}
+	}).done(function (res) {
+		DN_INV_EXIM = (res && res.baris) || [];
+		dn_inv_exim_gambar();
+		// Kolom kaitannya belum ada di database: invoice tetap boleh dilihat,
+		// tapi jangan sampai user menambah baris yang sumbernya tidak tersimpan.
+		if (res && res.siap === false) {
+			$('#dn_inv_tambah').prop('disabled', true);
+			Swal.fire({
+				icon: 'warning',
+				title: 'Migration not run yet',
+				text: res.pesan || 'Run migrations/20260925_debitnote_invoice_exim.sql first.'
+			});
+		} else {
+			$('#dn_inv_tambah').prop('disabled', false);
+		}
+	}).fail(function () {
+		DN_INV_EXIM = [];
+		dn_inv_exim_gambar();
+		Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load the invoice export list.' });
+	});
+}
+
+function dn_inv_exim_gambar() {
+	var $b = $('#table-inv-exim tbody');
+	$b.empty();
+	$('#dn_inv_cek_semua').prop('checked', false);
+
+	if (!DN_INV_EXIM.length) {
+		$('#dn-inv-kosong').show().html('<i class="fas fa-inbox"></i> No invoice export found for this filter.');
+		dn_inv_exim_ringkas();
+		return;
+	}
+	$('#dn-inv-kosong').hide();
+
+	$b.html(DN_INV_EXIM.map(function (r, i) {
+		var sudah = parseFloat(r.dipakai_dn) > 0;
+		var ada = !!DN_INV_EXIM_DIPAKAI[String(r.id)];
+		return '<tr data-i="' + i + '"' + (ada ? ' class="dn-inv-sudah"' : '') + '>'
+			+ '<td class="dn-tengah">'
+			+ (ada
+				? '<i class="fas fa-check dn-inv-ikon" title="Already added to this debit note"></i>'
+				: '<input type="checkbox" class="dn-inv-cek" data-i="' + i + '" onclick="dn_inv_exim_ringkas()">')
+			+ '</td>'
+			+ '<td><b>' + dn_inv_exim_teks(r.no_invoice) + '</b>'
+			+ (sudah ? '<small class="dn-inv-catatan"><i class="fas fa-info-circle"></i> already billed on another DN</small>' : '')
+			+ '</td>'
+			+ '<td>' + dn_inv_exim_teks(r.tgl_inv) + '</td>'
+			+ '<td>' + dn_inv_exim_teks(r.customer) + '</td>'
+			+ '<td>' + dn_inv_exim_teks(r.reff) + '</td>'
+			+ '<td>' + dn_inv_exim_teks(r.po) + '</td>'
+			+ '<td class="dn-angka">' + dn_inv_exim_angka(r.qty) + '</td>'
+			+ '<td class="dn-angka">' + dn_inv_exim_angka(r.price, 4) + '</td>'
+			+ '<td class="dn-angka">' + dn_inv_exim_angka(r.amount) + '</td>'
+			+ '<td>' + dn_inv_exim_teks(r.curr) + '</td>'
+			+ '<td>' + dn_inv_exim_teks(r.status) + '</td>'
+			+ '</tr>';
+	}).join(''));
+
+	dn_inv_exim_ringkas();
+}
+
+/** Saring daftar yang sudah tampil - nomor invoice, REFF, atau PO. */
+function dn_inv_exim_saring() {
+	var kata = String($('#dn_inv_saring').val() || '').toUpperCase();
+	$('#table-inv-exim tbody tr').each(function () {
+		var td = $(this).find('td');
+		var isi = (td.eq(1).text() + ' ' + td.eq(4).text() + ' ' + td.eq(5).text()).toUpperCase();
+		$(this).toggle(isi.indexOf(kata) > -1);
+	});
+}
+
+function dn_inv_exim_cek_semua(el) {
+	// Cuma baris yang sedang tampil (ikut hasil saringan) yang ikut dicentang.
+	$('#table-inv-exim tbody tr:visible').find('.dn-inv-cek').prop('checked', !!el.checked);
+	dn_inv_exim_ringkas();
+}
+
+function dn_inv_exim_ringkas() {
+	var jml = 0, qty = 0, amount = 0;
+	var dipilih = [];
+	$('#table-inv-exim .dn-inv-cek:checked').each(function () {
+		var r = DN_INV_EXIM[parseInt($(this).data('i'), 10)];
+		if (!r) { return; }
+		jml++;
+		qty += parseFloat(r.qty) || 0;
+		amount += parseFloat(r.amount) || 0;
+		dipilih.push(r);
+	});
+
+	dn_inv_exim_desk_perbarui(dipilih);
+
+	$('#dn-inv-ringkas').html(jml
+		? '<b>' + jml + '</b> invoice ticked &middot; Qty <b>' + dn_inv_exim_angka(qty)
+			+ '</b> &middot; Amount <b>' + dn_inv_exim_angka(amount) + '</b>'
+		: 'No invoice ticked yet');
+}
+
+/* Nama bulan lengkap - dipakai deskripsi otomatis, bukan tanggal biasa. */
+var DN_INV_EXIM_BULAN = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+	'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+
+/** "2026-08-31" -> "31 AUGUST" (atau "31 AUGUST 2026" kalau tahunnya ikut). */
+function dn_inv_exim_tanggal_teks(iso, pakai_tahun) {
+	var p = String(iso === null || iso === undefined ? '' : iso).slice(0, 10).split('-');
+	if (p.length !== 3) { return ''; }
+	var bulan = DN_INV_EXIM_BULAN[parseInt(p[1], 10) - 1];
+	if (!bulan) { return ''; }
+	return p[2] + ' ' + bulan + (pakai_tahun ? ' ' + p[0] : '');
+}
+
+/**
+ * Deskripsi otomatis dari tanggal invoice yang dicentang:
+ *
+ *   satu tanggal   WASHING CHARGES (SHIPMENT 31 AUGUST 2026)
+ *   dua tanggal    WASHING CHARGES (SHIPMENT 31 AUGUST & 03 SEPTEMBER 2026)
+ *   lebih dari dua WASHING CHARGES (SHIPMENT 31 AUGUST, 03 SEPTEMBER, 10 SEPTEMBER 2026)
+ *
+ * Tanggal yang sama tidak diulang, urutannya dari yang paling awal, dan
+ * tahunnya ditulis sekali di ujung - kecuali tanggalnya melintasi tahun,
+ * disitu tiap tanggal membawa tahunnya sendiri supaya tidak rancu.
+ */
+function dn_inv_exim_deskripsi(dipilih) {
+	var tgl = [];
+	(dipilih || []).forEach(function (r) {
+		var t = String((r && r.tgl_inv) || '').slice(0, 10);
+		if (/^\d{4}-\d{2}-\d{2}$/.test(t) && tgl.indexOf(t) === -1) { tgl.push(t); }
+	});
+	if (!tgl.length) { return ''; }
+	tgl.sort();
+
+	var tahun = {};
+	tgl.forEach(function (t) { tahun[t.slice(0, 4)] = true; });
+	var satu_tahun = Object.keys(tahun).length === 1;
+
+	var teks = tgl.map(function (t) { return dn_inv_exim_tanggal_teks(t, !satu_tahun); });
+	var gabung = teks.length === 2 ? teks.join(' & ') : teks.join(', ');
+	if (satu_tahun) { gabung += ' ' + tgl[0].slice(0, 4); }
+
+	return 'WASHING CHARGES (SHIPMENT ' + gabung + ')';
+}
+
+/**
+ * Kotak Description ikut berubah tiap centangnya berubah - selama isinya
+ * masih hasil susunan otomatis. Begitu user mengetik sendiri, ketikannya
+ * tidak ditimpa lagi.
+ */
+function dn_inv_exim_desk_perbarui(dipilih) {
+	var $isi = $('#dn_inv_desk');
+	if (!$isi.length) { return; }
+
+	var sekarang = $.trim($isi.val() || '');
+	if (sekarang !== '' && sekarang !== DN_INV_EXIM_DESK_AUTO) { return; }
+
+	DN_INV_EXIM_DESK_AUTO = dn_inv_exim_deskripsi(dipilih);
+	$isi.val(DN_INV_EXIM_DESK_AUTO);
+}
+
+/** Nama kolom Header diisikan kalau masih kosong - judul cetakan ikut benar. */
+function dn_inv_exim_nama_header() {
+	var nama = ['Invoice Number', 'REFF', 'PO', 'Qty Inv', 'Price'];
+	for (var i = 1; i <= 5; i++) {
+		var $isi = $('#txt_header' + i);
+		if (!$isi.length) { continue; }
+		if ($.trim($isi.val() || '') !== '') { continue; }
+
+		// Header 4 & 5 punya saklar on/off - dinyalakan dulu, kalau tidak
+		// kotaknya tetap readonly dan namanya tidak ikut tersimpan.
+		var $saklar = $('#cek_header' + i);
+		if ($saklar.length && !$saklar.prop('checked')) {
+			$saklar.prop('checked', true).trigger('change');
+		}
+		$isi.val(nama[i - 1]).trigger('input');
+	}
+}
+
+/**
+ * Baris detail untuk satu invoice. Susunan selnya SAMA PERSIS dengan baris
+ * template di create_debitnote.php - addRow() & collectDnDetailRows() membaca
+ * posisi sel, jadi urutannya tidak boleh berbeda.
+ */
+function dn_inv_exim_baris(r, deskripsi, rate) {
+	var coa = document.querySelector('#table-dn [name="nm_coa"]');
+	var isi_coa = coa ? coa.value : '1.34.04';
+	var value = parseFloat(r.amount) || 0;
+	var amount = value * rate;
+	var teks = function (v) { return $('<div>').text(v === null || v === undefined ? '' : v).html(); };
+
+	return '<tr data-dn-inv="' + teks(r.id) + '">'
+		+ '<td><input style="width: 300px;word-wrap: break-word;" type="text" class="form-control" name="inputan0" value="' + teks(deskripsi) + '" autocomplete="off"></td>'
+		+ '<td><input style="width: 200px" type="text" class="form-control" name="inputan3" value="' + teks(r.no_invoice) + '" autocomplete="off"></td>'
+		+ '<td><input style="width: 200px" type="text" class="form-control" name="inputan4" value="' + teks(r.reff) + '" autocomplete="off"></td>'
+		+ '<td><input style="width: 200px" type="text" class="form-control" name="inputan5" value="' + teks(r.po) + '" autocomplete="off"></td>'
+		+ '<td><input style="width: 200px" type="text" class="form-control" name="inputan6" value="' + dn_inv_exim_angka(r.qty) + '" autocomplete="off"></td>'
+		+ '<td><input style="width: 200px" type="text" class="form-control" name="inputan7" value="' + dn_inv_exim_angka(r.price, 4) + '" autocomplete="off"></td>'
+		+ '<td><input type="text" class="form-control" name="amt" value="' + value.toFixed(2) + '" style="text-align:right; width: 150px;" oninput="modal_input_amt_dn(value)" autocomplete="off"></td>'
+		+ '<td><input type="text" class="form-control" name="amt_rate" value="' + rate + '" style="text-align:right; width: 150px;" onkeypress="javascript:return isNumber(event)" oninput="modal_input_rate_dn(value)" autocomplete="off"></td>'
+		+ '<td><input style="width: 150px;text-align: right;" type="text" class="form-control" name="inputan8" value="' + amount.toFixed(2) + '" autocomplete="off" readonly></td>'
+		+ '<td><input style="width: 250px;" class="form-control" value="' + teks(isi_coa) + '" list="nm_coa" name="nm_coa" oninput="dn_coa_perbarui_nama(this)"> <small class="dn-coa-nama"></small></td>'
+		+ '<td><input name="chk_a[]" type="checkbox" class="checkall_a" value=""/></td>'
+		+ '<td hidden><input type="hidden" value=""></td>'
+		+ '<td hidden><input type="hidden" name="dn_inv_exim_id" value="' + teks(r.id) + '"></td>'
+		+ '<td hidden><input type="hidden" name="dn_inv_exim_no" value="' + teks(r.no_invoice) + '"></td>'
+		+ '<td hidden><input type="hidden" value=""></td>'
+		+ '<td hidden><input type="hidden" value=""></td>'
+		+ '<td hidden><input type="hidden" value="' + teks(r.customer) + '"></td>'
+		+ '</tr>';
+}
+
+function dn_inv_exim_tambah() {
+	var dipilih = [];
+	$('#table-inv-exim .dn-inv-cek:checked').each(function () {
+		var r = DN_INV_EXIM[parseInt($(this).data('i'), 10)];
+		if (r && !DN_INV_EXIM_DIPAKAI[String(r.id)]) { dipilih.push(r); }
+	});
+
+	if (!dipilih.length) {
+		Swal.fire({
+			icon: 'warning',
+			title: 'Nothing ticked',
+			text: 'Tick at least one invoice export first.'
+		});
+		return;
+	}
+
+	var deskripsi = $.trim($('#dn_inv_desk').val() || '');
+	var rate = dn_inv_exim_rate();
+
+	dn_inv_exim_nama_header();
+
+	// Description cuma ditulis di baris paling atas - di cetakan selnya
+	// digabung ke bawah, jadi mengulanginya tiap baris malah jadi dobel.
+	// Kalau teks yang sama sudah ada di tabel (mis. dari Add Data sebelumnya),
+	// baris baru ini ikut kelompok itu dan dibiarkan kosong.
+	var sudah_ada = false;
+	if (deskripsi !== '') {
+		$('#table-dn tbody tr').each(function () {
+			if (this.style.display === 'none') { return; }
+			var el = dn_row_input(this, 'inputan0');
+			if (el && $.trim(el.value) === deskripsi) { sudah_ada = true; }
+		});
+	}
+
+	var html = dipilih.map(function (r, i) {
+		DN_INV_EXIM_DIPAKAI[String(r.id)] = true;
+		return dn_inv_exim_baris(r, (i === 0 && !sudah_ada) ? deskripsi : '', rate);
+	}).join('');
+	$('#table-dn tbody').append(html);
+
+	// Kotak "No Invoice Export" di form diisi nomor-nomornya, supaya sumber DN
+	// ini kelihatan tanpa harus menelusuri tabel detail.
+	var nomor = [];
+	$('#table-dn [name="dn_inv_exim_no"]').each(function () {
+		var v = $.trim(this.value);
+		if (v && nomor.indexOf(v) === -1) { nomor.push(v); }
+	});
+	$('#no_inv_exim').val(nomor.join(', '));
+
+	// Total header dihitung ulang dengan fungsi yang sama seperti waktu Value
+	// atau Rate diketik manual, jadi kurs & mata uangnya ikut aturan yang ada.
+	if (typeof hitungRow === 'function') { hitungRow(); }
+
+	$('#modal-add-inv-exim').modal('hide');
+}
+
 function collectDnDetailRows()
 {
 	var data = [];
@@ -11690,6 +13258,12 @@ function collectDnDetailRows()
 		var nm_memo = row.cells[n - 3].children[0].value || '';
 		var id_memo_det = row.cells[n - 2].children[0].value || '';
 		var customer = row.cells[n - 1].children[0].value || '';
+		// Baris dari Add Invoice Export. Dicari lewat name, bukan posisi sel:
+		// baris dari sumber lain memang tidak punya sel ini.
+		var el_inv = dn_row_input(row, 'dn_inv_exim_id');
+		var el_inv_no = dn_row_input(row, 'dn_inv_exim_no');
+		var id_invoice_exim = el_inv ? (el_inv.value || '') : '';
+		var no_invoice_exim = el_inv_no ? (el_inv_no.value || '') : '';
 
 		// Jaga-jaga tambahan - baris yang beneran kosong semua (tidak ada
 		// deskripsi/supplier/amount) dilewati juga, jangan ikut ke-insert.
@@ -11711,6 +13285,8 @@ function collectDnDetailRows()
 			"nm_memo": nm_memo,
 			"no_coa": no_coa,
 			"id_memo_det": id_memo_det,
+			"id_invoice_exim": id_invoice_exim,
+			"no_invoice_exim": no_invoice_exim,
 		})
 	}
 
@@ -16454,7 +18030,11 @@ async function simpandn_det_edit() {
 			"amount": row[8].children[0].value,
 			"no_coa": row[9].children[0].value,
 			"nm_memo": row[12].children[0].value || '',
-			"id_memo_det": row[13].children[0].value || ''
+			"id_memo_det": row[13].children[0].value || '',
+			// Kaitan ke Invoice Export EXIM - dicari lewat name supaya tidak
+			// bergantung pada nomor sel.
+			"id_invoice_exim": (table.rows[i].querySelector('[name="dn_inv_exim_id"]') || {}).value || '',
+			"no_invoice_exim": (table.rows[i].querySelector('[name="dn_inv_exim_no"]') || {}).value || ''
 		});
 	}
 
@@ -17573,6 +19153,13 @@ function simpan_other_charge_invoice()
 	});  
 }
 
+
+// Cetakan knitting desain baru (gaya Debit Note) - arnag/report_invoice_knitting_v2.
+function print_invoice_knitting_v2(id) {
+
+	window.open(".../../print_invoice_knitting_v2/" + id + "/" );
+
+}
 
 function print_invoice_knitting(id) {
 
