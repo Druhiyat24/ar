@@ -440,6 +440,54 @@ PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
 -- Baris lama diisi dari id_bppb - dulu keduanya memang sama.
 UPDATE tbl_book_invoice_exim_det SET id_baris = id_bppb WHERE id_baris = 0;
 
+-- Nomor baris Invoice Summary milik tiap baris SJ (dari 20260917).
+SET @s := IF((SELECT COUNT(*) FROM information_schema.TABLES
+               WHERE TABLE_SCHEMA = DATABASE()
+                 AND TABLE_NAME   = 'tbl_book_invoice_exim_det') = 1
+          AND (SELECT COUNT(*) FROM information_schema.COLUMNS
+               WHERE TABLE_SCHEMA = DATABASE()
+                 AND TABLE_NAME   = 'tbl_book_invoice_exim_det'
+                 AND COLUMN_NAME  = 'urutan_summary') = 0,
+             'ALTER TABLE `tbl_book_invoice_exim_det` ADD COLUMN urutan_summary INT NULL DEFAULT NULL COMMENT ''baris Invoice Summary tempat qty baris ini dijumlahkan - NULL untuk invoice Local'' AFTER id_baris',
+             'DO 0');
+PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
+
+-- Index pasangannya (dari 20260917).
+SET @s := IF((SELECT COUNT(*) FROM information_schema.TABLES
+               WHERE TABLE_SCHEMA = DATABASE()
+                 AND TABLE_NAME   = 'tbl_book_invoice_exim_det') = 1
+          AND (SELECT COUNT(*) FROM information_schema.STATISTICS
+               WHERE TABLE_SCHEMA = DATABASE()
+                 AND TABLE_NAME   = 'tbl_book_invoice_exim_det'
+                 AND INDEX_NAME   = 'idx_bie_det_summary') = 0,
+             'ALTER TABLE `tbl_book_invoice_exim_det` ADD KEY idx_bie_det_summary (id_book_invoice, urutan_summary)',
+             'DO 0');
+PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
+
+-- Total FOB Invoice Export (dari 20260917).
+SET @s := IF((SELECT COUNT(*) FROM information_schema.TABLES
+               WHERE TABLE_SCHEMA = DATABASE()
+                 AND TABLE_NAME   = 'tbl_book_invoice_exim_pot') = 1
+          AND (SELECT COUNT(*) FROM information_schema.COLUMNS
+               WHERE TABLE_SCHEMA = DATABASE()
+                 AND TABLE_NAME   = 'tbl_book_invoice_exim_pot'
+                 AND COLUMN_NAME  = 'total_fob') = 0,
+             'ALTER TABLE `tbl_book_invoice_exim_pot` ADD COLUMN total_fob DOUBLE(16,4) NULL DEFAULT NULL COMMENT ''jumlah total_fob semua baris summary - NULL untuk invoice Local'' AFTER grand_total',
+             'DO 0');
+PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
+
+-- Grand Total FOB Invoice Export (dari 20260917).
+SET @s := IF((SELECT COUNT(*) FROM information_schema.TABLES
+               WHERE TABLE_SCHEMA = DATABASE()
+                 AND TABLE_NAME   = 'tbl_book_invoice_exim_pot') = 1
+          AND (SELECT COUNT(*) FROM information_schema.COLUMNS
+               WHERE TABLE_SCHEMA = DATABASE()
+                 AND TABLE_NAME   = 'tbl_book_invoice_exim_pot'
+                 AND COLUMN_NAME  = 'grand_total_fob') = 0,
+             'ALTER TABLE `tbl_book_invoice_exim_pot` ADD COLUMN grand_total_fob DOUBLE(16,4) NULL DEFAULT NULL COMMENT ''total_fob setelah potongan - NULL untuk invoice Local'' AFTER total_fob',
+             'DO 0');
+PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
+
 -- PO konsumen knitting (dari 20260920).
 SET @s := IF((SELECT COUNT(*) FROM information_schema.TABLES
                WHERE TABLE_SCHEMA = DATABASE()
@@ -661,9 +709,12 @@ SELECT 'kolom', CONCAT(tabel, '.', kolom),
           'OK', 'BELUM')
   FROM (
     SELECT 'tbl_book_invoice_exim_det'        AS tabel, 'id_baris'          AS kolom UNION ALL
+    SELECT 'tbl_book_invoice_exim_det',              'urutan_summary'             UNION ALL
     SELECT 'tbl_book_invoice_exim_det',              'po_konsumen'                UNION ALL
     SELECT 'tbl_book_invoice_exim_det',              'service_charge'             UNION ALL
     SELECT 'tbl_book_invoice_exim_pot',              'tgl_invoice'                UNION ALL
+    SELECT 'tbl_book_invoice_exim_pot',              'total_fob'                  UNION ALL
+    SELECT 'tbl_book_invoice_exim_pot',              'grand_total_fob'            UNION ALL
     SELECT 'tbl_book_invoice_exim_export_h',         'tgl_invoice'                UNION ALL
     SELECT 'tbl_book_invoice_exim_export_det',       'total_pieces_unit'          UNION ALL
     SELECT 'tbl_debitnote_det',                      'id_invoice_exim'            UNION ALL
@@ -674,10 +725,14 @@ SELECT 'kolom', CONCAT(tabel, '.', kolom),
 
 UNION ALL
 
-SELECT 'index', 'tbl_debitnote_det.idx_dn_det_inv_exim',
+SELECT 'index', CONCAT(tabel, '.', idx),
        IF((SELECT COUNT(*) FROM information_schema.STATISTICS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tbl_debitnote_det'
-              AND INDEX_NAME = 'idx_dn_det_inv_exim') > 0, 'OK', 'BELUM')
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = tabel AND INDEX_NAME = idx) > 0,
+          'OK', 'BELUM')
+  FROM (
+    SELECT 'tbl_debitnote_det'         AS tabel, 'idx_dn_det_inv_exim' AS idx UNION ALL
+    SELECT 'tbl_book_invoice_exim_det',          'idx_bie_det_summary'
+  ) i
 
 UNION ALL
 
