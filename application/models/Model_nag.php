@@ -8683,6 +8683,11 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         /* 1. Baris SJ-nya ditulis ke Invoice EXIM - di sana memang belum ada. */
         $this->tulis_det_exim($id, $h, $baris, $user, $now);
 
+        // Nomor invoice EXIM-nya ikut ditandai di SJ-nya, sama seperti waktu
+        // invoicenya dibuat di menu Invoice EXIM - SJ-nya baru dilengkapi di
+        // sini, jadi tandanya memang baru bisa dipasang sekarang.
+        $this->tandai_invno_bppb($baris, $h['no_invoice']);
+
         /* 2. Baris SO: qty ikut SJ, warna baru ditambah, yang tanpa SJ dibuang. */
         foreach ($rencana['ubah'] as $u) {
             $kunci = $this->kunci_ws_warna($u['baris']);
@@ -8721,6 +8726,42 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         );
     }
 
+    /**
+     * Tandai SJ garment dengan nomor invoice EXIM-nya (bppb.invno).
+     *
+     * bppb ada di koneksi db_nag, bukan database AR - jadi ini di luar transaksi
+     * AR-nya. Gagal menandai tidak boleh menggagalkan invoicenya: tandanya cuma
+     * memudahkan membaca, bukan bagian dari dokumennya. Kolom invno juga belum
+     * tentu ada di tiap lingkungan, jadi diperiksa dulu.
+     *
+     * Hanya baris NAG: baris knitting datang dari official_out_h (db_pgsql).
+     */
+    private function tandai_invno_bppb($baris, $no_invoice)
+    {
+        $id = array();
+        foreach ((array) $baris as $r) {
+            if (!is_array($r)) { continue; }
+            $b = trim((string) (isset($r['id_bppb']) ? $r['id_bppb'] : ''));
+            if ($b !== '' && ctype_digit($b)) { $id[$b] = TRUE; }
+        }
+        if (!$id) {
+            return 0;
+        }
+
+        try {
+            $db_nag = $this->load->database('db_nag', TRUE);
+            if (!in_array('invno', $db_nag->list_fields('bppb'), TRUE)) {
+                return 0;
+            }
+            $in = implode(',', array_map('intval', array_keys($id)));
+            $db_nag->query("UPDATE bppb SET invno = ? WHERE id IN ($in)",
+                array((string) $no_invoice));
+            return count($id);
+        } catch (Exception $e) {
+            log_message('error', 'Tanda invno di bppb gagal untuk ' . $no_invoice . ' - ' . $e->getMessage());
+            return 0;
+        }
+    }
     /** Baris SJ ke tbl_book_invoice_exim_det - yang lama dibuang lebih dulu. */
     private function tulis_det_exim($id, $h, $baris, $user, $now)
     {
