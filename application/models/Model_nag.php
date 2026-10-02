@@ -1768,7 +1768,7 @@ function cari_inv_pot($id)
 
 function report_invoice($id)
 {
-    $hasil = $this->db->query("SELECT distinct a.no_invoice, LEFT(b.Supplier, 30) AS customer,
+    $hasil = $this->db->query("SELECT distinct a.no_invoice, b.Supplier AS customer,
       IFNULL(b.alamat, '-') alamat, IFNULL(b.Phone, '-') AS phone, IFNULL(b.Email, '-') AS email,
       DATE_FORMAT(f.sj_date,'%d-%m-%Y') AS tgl_inv, f.sj_date AS sj_date, a.profit_center, UPPER(c.type) AS type, a.shipp, d.type AS type_top, d.top,
       e.no_rek, e.nama_bank, e.v_bankaddress, e.curr, v_swiftcode
@@ -3957,7 +3957,7 @@ function simpan_invoice_nb_detail($data, $created_by = null)
 
 function report_invoice_nb($id)
 {
-    $hasil = $this->db->query("SELECT distinct a.no_inv as no_invoice, LEFT(b.Supplier, 30) AS customer,
+    $hasil = $this->db->query("SELECT distinct a.no_inv as no_invoice, b.Supplier AS customer,
       IFNULL(b.alamat, '-') AS alamat, IFNULL(b.Phone, '-') AS phone, IFNULL(b.Email, '-') AS email,
       DATE_FORMAT(f.sj_date,'%d-%m-%Y') AS tgl_inv, UPPER(a.type) AS type, a.shipp, a.top_type AS type_top, a.top,
       e.no_rek, e.nama_bank,e.v_company, e.v_bankaddress, e.curr
@@ -7143,7 +7143,7 @@ function cari_invoice_exim_export_dn($dt_dari, $dt_sampai, $id_customer = '', $p
     return $this->db->query("
         SELECT a.id, a.no_invoice, DATE(a.tgl_inv) AS tgl_inv, a.status, a.curr,
                a.profit_center,
-               a.id_customer, LEFT(ms.Supplier, 60) AS customer,
+               a.id_customer, ms.Supplier AS customer,
                IFNULL(h.reference, '') AS reff,
                IFNULL((SELECT GROUP_CONCAT(DISTINCT NULLIF(TRIM(s.dest_purchase), '')
                                            ORDER BY s.urutan SEPARATOR ', ')
@@ -8371,7 +8371,7 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
     function preview_header_invoice($id_inv, $id_top, $id_bank)
     {
         $hasil = $this->db->query(
-            "SELECT a.no_invoice, LEFT(b.Supplier, 30) AS customer,
+            "SELECT a.no_invoice, b.Supplier AS customer,
                     IFNULL(b.alamat, '-') alamat, IFNULL(b.Phone, '-') AS phone,
                     a.profit_center, UPPER(c.type) AS type, a.shipp,
                     d.type AS type_top, d.top,
