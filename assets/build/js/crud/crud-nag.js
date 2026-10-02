@@ -7015,14 +7015,28 @@ function simpan_proforma_invoice_header() {
 						msg = 'Error Input Detail'
 					}		
 					
-					//Simpan Proforma Invoice Detail
-					simpan_proforma_invoice_detail()
-					update_proforma_invoice_sodet()
-					simpan_proforma_invoice_detail_so()	
-				    //Hide Modal
-				    $('#modal-simpan-proforma-invoice').modal('hide'); 
-					//Reload Page
-					window.location.reload();
+					//Simpan Proforma Invoice Detail - halamannya baru boleh
+					//dimuat ulang SESUDAH ketiganya benar-benar tersimpan.
+					//Dulu ketiganya cuma dipanggil lalu langsung reload, jadi
+					//permintaan yang masih mengantre ikut dibatalkan browser -
+					//akibatnya detail SO-nya tidak tersimpan dan proformanya
+					//tidak pernah muncul di List Proforma Invoice.
+					$.when(
+						simpan_proforma_invoice_detail(),
+						update_proforma_invoice_sodet(),
+						simpan_proforma_invoice_detail_so()
+					).done(function () {
+					    //Hide Modal
+					    $('#modal-simpan-proforma-invoice').modal('hide'); 
+						//Reload Page
+						window.location.reload();
+					}).fail(function () {
+						//Jangan dimuat ulang kalau ada yang gagal - isian di layar
+						//masih utuh, jadi user bisa langsung mencoba menyimpan lagi.
+						Swal.fire('Save failed',
+							'The proforma invoice detail could not be saved. Please try again.',
+							'error');
+					});
 
 				},
 				error: function (jqXHR, textStatus, errorThrown) {
@@ -7247,14 +7261,28 @@ function simpan_proforma_invoice_header_cbd() {
 						msg = 'Error Input Detail'
 					}		
 					
-					//Simpan Proforma Invoice Detail
-					simpan_proforma_invoice_detail_cbd()
-					update_proforma_invoice_sodet_cbd()
-					simpan_proforma_invoice_detail_so_cbd()	
-				    //Hide Modal
-				    $('#modal-simpan-proforma-invoice').modal('hide'); 
-					//Reload Page
-					window.location.reload();
+					//Simpan Proforma Invoice Detail - halamannya baru boleh
+					//dimuat ulang SESUDAH ketiganya benar-benar tersimpan.
+					//Dulu ketiganya cuma dipanggil lalu langsung reload, jadi
+					//permintaan yang masih mengantre ikut dibatalkan browser -
+					//akibatnya detail SO-nya tidak tersimpan dan proformanya
+					//tidak pernah muncul di List Proforma Invoice.
+					$.when(
+						simpan_proforma_invoice_detail_cbd(),
+						update_proforma_invoice_sodet_cbd(),
+						simpan_proforma_invoice_detail_so_cbd()
+					).done(function () {
+					    //Hide Modal
+					    $('#modal-simpan-proforma-invoice').modal('hide'); 
+						//Reload Page
+						window.location.reload();
+					}).fail(function () {
+						//Jangan dimuat ulang kalau ada yang gagal - isian di layar
+						//masih utuh, jadi user bisa langsung mencoba menyimpan lagi.
+						Swal.fire('Save failed',
+							'The proforma invoice detail could not be saved. Please try again.',
+							'error');
+					});
 
 				},
 				error: function (jqXHR, textStatus, errorThrown) {
@@ -7302,7 +7330,7 @@ function simpan_proforma_invoice_detail(){
 			var fdata = {
 				'data_table': data
 			}
-			$.ajax({				
+			return $.ajax({				
 				url: "simpan_proforma_invoice_detail/",
 				type: "POST",
 				data: fdata,
@@ -7357,7 +7385,7 @@ function simpan_proforma_invoice_detail_so(){
 			var fdata = {
 				'data_table': data
 			}
-			$.ajax({				
+			return $.ajax({				
 				url: "simpan_proforma_invoice_detail_so/",
 				type: "POST",
 				data: fdata,
@@ -7382,6 +7410,9 @@ function simpan_proforma_invoice_detail_so(){
 function update_proforma_invoice_sodet() { 
 
 	var table = document.getElementById("table-proforma-sodet");
+	// Satu permintaan per baris - dikumpulkan dulu, supaya pemanggilnya
+	// bisa menunggu semuanya selesai sebelum halaman dimuat ulang.
+	var antrean = [];
 	for (var i = 1; i < (table.rows.length); i++) {
 				//   
 				var id_sodet = table.rows[i].cells[0].innerHTML
@@ -7393,7 +7424,7 @@ function update_proforma_invoice_sodet() {
 
                 };
 				//
-				$.ajax({						
+				antrean.push($.ajax({						
 					url: "update_pi_sodet/",		
 					type: "POST",	
 					data: formData,			
@@ -7410,15 +7441,20 @@ function update_proforma_invoice_sodet() {
 					error: function (jqXHR, textStatus, errorThrown) {
 						msg = 'Error Update Bppb' + jqXHR.text
 					}
-				});   	
+				}));   	
 				//					
 			}				
+
+		return $.when.apply($, antrean);
 		}
 
 //ubah september
 function update_proforma_invoice_sodet_cbd() { 
 
 	var table = document.getElementById("table-proforma-sodet");
+	// Satu permintaan per baris - dikumpulkan dulu, supaya pemanggilnya
+	// bisa menunggu semuanya selesai sebelum halaman dimuat ulang.
+	var antrean = [];
 	for (var i = 1; i < (table.rows.length); i++) {
 				//   
 				var id_sodet = table.rows[i].cells[0].innerHTML
@@ -7430,7 +7466,7 @@ function update_proforma_invoice_sodet_cbd() {
 
                 };
 				//
-				$.ajax({						
+				antrean.push($.ajax({						
 					url: "update_pi_sodet_cbd/",		
 					type: "POST",	
 					data: formData,			
@@ -7447,9 +7483,11 @@ function update_proforma_invoice_sodet_cbd() {
 					error: function (jqXHR, textStatus, errorThrown) {
 						msg = 'Error Update Bppb' + jqXHR.text
 					}
-				});   	
+				}));   	
 				//					
 			}				
+
+		return $.when.apply($, antrean);
 		}
 
 //ubah september
@@ -7485,7 +7523,7 @@ function simpan_proforma_invoice_detail_cbd(){
 			var fdata = {
 				'data_table': data
 			}
-			$.ajax({				
+			return $.ajax({				
 				url: "simpan_proforma_invoice_detail_cbd/",
 				type: "POST",
 				data: fdata,
@@ -7573,7 +7611,7 @@ function simpan_proforma_invoice_detail_so_cbd(){
 			var fdata = {
 				'data_table': data
 			}
-			$.ajax({				
+			return $.ajax({				
 				url: "simpan_proforma_invoice_detail_so_cbd/",
 				type: "POST",
 				data: fdata,
