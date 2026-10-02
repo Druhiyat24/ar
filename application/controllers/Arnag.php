@@ -1950,6 +1950,10 @@ function update_pi_sodet()
     $id_sodet = $this->input->post('id_sodet');
     $no_pi = $this->input->post('prof_inv_number');
     $this->Model_nag->update_pi_sodet($id_sodet, $no_pi);
+    // Layarnya memanggil ini dengan dataType "JSON". Tanpa balasan, jQuery
+    // menganggapnya gagal (parsererror) - dan penyimpanan proformanya ikut
+    // dianggap gagal walaupun datanya sudah masuk.
+    echo json_encode(array("status" => TRUE));
 }
     //ubah september
 function update_pi_sodet_cbd()
@@ -1957,6 +1961,8 @@ function update_pi_sodet_cbd()
     $id_sodet = $this->input->post('id_sodet');
     $no_pi = $this->input->post('prof_inv_number');
     $this->Model_nag->update_pi_sodet_cbd($id_sodet, $no_pi);
+    // Sama seperti update_pi_sodet() - balasannya wajib ada.
+    echo json_encode(array("status" => TRUE));
 }
 
 /**

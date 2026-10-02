@@ -132,3 +132,21 @@ SELECT COUNT(*) AS yatim
  WHERE UPPER(IFNULL(a.status, '')) <> 'CANCEL'
    AND NOT EXISTS (SELECT 1 FROM tbl_invoice_proforma_detail_so d
                     WHERE d.no_invoice_proforma = a.no_proforma_invoice);
+
+
+-- ===========================================================================
+--  BAGIAN 6 - NOMOR PROFORMA YANG DOBEL (cuma SELECT)
+--
+--  Kalau penyimpanan sempat dilaporkan gagal padahal datanya sudah masuk, lalu
+--  tombol Save ditekan lagi di halaman yang sama, nomornya belum berganti -
+--  jadi bisa tersimpan dua kali dengan nomor yang sama.
+--
+--  Hasilnya harus kosong. Kalau ada, buang yang id-nya lebih besar (yang
+--  belakangan) beserta detailnya - periksa dulu isinya sebelum dibuang.
+-- ===========================================================================
+SELECT a.no_proforma_invoice, COUNT(*) AS jumlah,
+       GROUP_CONCAT(a.id ORDER BY a.id) AS id_nya
+  FROM tbl_invoice_proforma a
+ WHERE UPPER(IFNULL(a.status, '')) <> 'CANCEL'
+ GROUP BY a.no_proforma_invoice
+HAVING COUNT(*) > 1;
