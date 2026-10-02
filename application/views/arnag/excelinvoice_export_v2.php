@@ -5,7 +5,7 @@
    Export versi CM di menu Invoice EXIM.
 
    Susunannya sama persis dengan PDF: kop, judul + nomor & tanggal,
-   pihak-pihak (SHIP FROM / SELLER / PURCHASER / SHIP TO), Shipment Details,
+   pihak-pihak (SHIP FROM / PURCHASER-INVOICE TO / ULTIMATE CONSIGNEE / SHIP TO), Shipment Details,
    Invoice Summary per warna, rekap sampai Net Invoice Total, lalu Invoice
    Notes + Manufacturer Information + REFF di kiri dan pernyataan + keterangan
    APPROVED di kanan.
@@ -121,9 +121,11 @@ $baris_alamat = function ($nama, $alamat) {
 $pihak = array(
     array('SHIP FROM', $baris_alamat($ambil($inv, 'shipper_nama'), $ambil($inv, 'shipper_alamat')),
         trim((string) $ambil($inv, 'shipper_nama')) !== ''),
-    array('SELLER', $baris_alamat($ambil($inv, 'seller_nama'), $ambil($inv, 'seller_alamat')),
+    // Labelnya saja yang berbeda; isinya tetap dari kolom yang sama -
+    // disamakan dengan cetakan di menu Invoice EXIM.
+    array('PURCHASER / INVOICE TO', $baris_alamat($ambil($inv, 'seller_nama'), $ambil($inv, 'seller_alamat')),
         trim((string) $ambil($inv, 'seller_nama')) !== ''),
-    array('PURCHASER', $baris_alamat($ambil($inv, 'purchaser_nama'), $ambil($inv, 'purchaser_alamat')),
+    array('ULTIMATE CONSIGNEE', $baris_alamat($ambil($inv, 'purchaser_nama'), $ambil($inv, 'purchaser_alamat')),
         trim((string) $ambil($inv, 'purchaser_nama')) !== ''),
     array('SHIP TO', $baris_alamat($ambil($inv, 'receiver_nama'), $ambil($inv, 'receiver_alamat')),
         trim((string) $ambil($inv, 'receiver_nama')) !== ''),
@@ -198,7 +200,7 @@ header('Cache-Control: max-age=0');
     <tr><td colspan="<?= $kolom; ?>" class="nomor">INVOICE NO : <?= $esc($no_cetak); ?>&nbsp;&nbsp;|&nbsp;&nbsp;DATE : <?= $esc($tgl_cetak); ?></td></tr>
     <tr><td colspan="<?= $kolom; ?>">&nbsp;</td></tr>
 
-    <!-- ===== Pihak-pihak: SHIP FROM | SELLER, lalu PURCHASER | SHIP TO ===== -->
+    <!-- ===== Pihak-pihak: SHIP FROM | PURCHASER / INVOICE TO, lalu ULTIMATE CONSIGNEE | SHIP TO ===== -->
     <?php foreach (array(array($pihak[0], $pihak[1]), array($pihak[2], $pihak[3])) as $pasang) : ?>
         <tr>
             <td colspan="4" class="judul-blok"><?= $esc($pasang[0][0]); ?></td>
