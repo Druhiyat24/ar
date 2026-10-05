@@ -49,6 +49,11 @@
         // berupa SO/WS, jadi SJ-nya dipilih manual di sini - terbatas pada SO
         // yang dipesan booking itu.
         sjBelum: false,
+        // Shipment Details - cuma dipakai invoice Export. Isinya milik
+        // Invoice EXIM Export; di sini boleh dilengkapi tim AR.
+        kirim: [],
+        kirimMerek: [],
+        kirimExport: false,
         // Langkah simpan berikutnya yang harus dijalankan. Selain 0 berarti
         // Save sebelumnya berhenti di tengah - Save berikutnya menyambung dari
         // langkah itu, tidak mengulang yang sudah tersimpan.
@@ -253,6 +258,8 @@
             : 'SJ is taken from garment (BPPB).');
 
         gambarBaris();
+        // Shipment Details ikut booking-nya - cuma terisi kalau Export.
+        muatShipment();
     }
 
     /* ================== 1c. Mode edit: muat invoice-nya =================
@@ -1353,6 +1360,16 @@
             pot: payloadPot(false),
             jenis: jenis || ''
         };
+        // Shipment Details ikut dikirim supaya pratinjaunya memperlihatkan yang
+        // baru diketik - bagian itu boleh diubah di sini dan belum tentu sudah
+        // tersimpan waktu Preview ditekan.
+        // kirim_ada dikirim terpisah: $.param membuang array kosong, jadi tanpa
+        // penanda ini "semua barisnya dibuang" tidak bisa dibedakan dari "layar
+        // memang tidak mengirim apa-apa".
+        if (inv.kirimExport) {
+            isi.kirim_ada = '1';
+            isi.kirim = payloadKirim();
+        }
         // Array & object dikirim sebagai data_table[0][qty] dst, sama seperti
         // yang dilakukan jQuery waktu mengirim lewat $.ajax.
         $f.append($.param(isi).split('&').map(function (pasangan) {
@@ -1573,6 +1590,196 @@
         if (el) { el.textContent = 'Step ' + nomor + ' of ' + total + ' \u00b7 ' + teksnya; }
     }
 
+    /* ============== 5b. Shipment Details (khusus Invoice Export) ==========
+     * Isinya milik Invoice EXIM Export - tabel yang dibaca & ditulis sama
+     * persis (tbl_book_invoice_exim_export_ship). Tim AR boleh melengkapinya
+     * dari sini supaya tidak perlu bolak-balik ke menu EXIM, dan apa pun yang
+     * diubah di sini langsung terbaca di sana (termasuk cetakannya).
+     *
+     * Bagiannya disembunyikan kalau invoicenya bukan Export.
+     * ===================================================================== */
+
+    // Kotak isian di modal <-> kunci datanya. Satu daftar saja, dipakai dua
+    // arah, jadi tidak mungkin ada kolom yang terisi waktu dibuka tapi hilang
+    // waktu disimpan. Urutannya sama dengan menu Invoice EXIM.
+    var PETA_KIRIM = {
+        '#ci-k-dest': 'dest_purchase', '#ci-k-style': 'style_no', '#ci-k-brand': 'brand',
+        '#ci-k-chanel': 'chanel_description', '#ci-k-curr': 'currency',
+        '#ci-k-payterm': 'payment_term', '#ci-k-findest': 'final_destination',
+        '#ci-k-origin': 'country_origin', '#ci-k-mode': 'ship_mode',
+        '#ci-k-sale': 'term_of_sale', '#ci-k-transfer': 'transfer_point',
+        '#ci-k-port': 'port_of_loading', '#ci-k-gross': 'total_gross_weight',
+        '#ci-k-net': 'total_net_weight', '#ci-k-netnet': 'total_net_net_weight',
+        '#ci-k-carton': 'total_carton', '#ci-k-desc': 'product_description'
+    };
+
+    var kirimSedang = -1;   // baris yang sedang dibuka di modal, -1 = baris baru
+
+    /** Isian bawaan baris baru - sama dengan yang dipakai menu Invoice EXIM. */
+    function kirimKosong() {
+        return {
+            dest_purchase: '', style_no: '', brand: '', chanel_description: '',
+            currency: 'USD', payment_term: '',
+            final_destination: '', country_origin: 'ID', ship_mode: 'OCEAN',
+            term_of_sale: '', transfer_point: 'JAKARTA,ID', port_of_loading: 'JAKARTA,ID',
+            total_gross_weight: '', total_net_weight: '', total_net_net_weight: '',
+            total_carton: '', product_description: ''
+        };
+    }
+
+    /** Susun ulang pilihan Brand, nilainya dipertahankan. */
+    function isiPilihanMerek(nilai) {
+        var $s = $('#ci-k-brand');
+        var isi = $.trim(String(nilai === null || nilai === undefined ? '' : nilai));
+        var daftar = (inv.kirimMerek || []).slice();
+        // Brand tersimpan yang tidak ada di daftar tetap dipakai, supaya
+        // membuka invoice lama tidak diam-diam mengosongkannya.
+        if (isi !== '' && daftar.indexOf(isi) < 0) { daftar.unshift(isi); }
+        $s.empty().append($('<option>').val('').text(''));
+        daftar.forEach(function (m) { $s.append($('<option>').val(m).text(m)); });
+        $s.val(isi).trigger('change.select2');
+    }
+
+    /** Ambil Shipment Details booking ini. Dipanggil tiap booking berganti. */
+    function muatShipment() {
+        var id = parseInt($('#ci-id-inv').val(), 10) || 0;
+        inv.kirim = [];
+        inv.kirimMerek = [];
+        inv.kirimExport = false;
+        if (!id) { gambarKirim(); return; }
+
+        ambilJson('shipment_export_json/' + ruasUrl(id) + '/?id_customer='
+                  + ruasUrl($('#ci-id-cust').val()))
+            .done(function (d) {
+                if (!d || !d.status || !d.export) { gambarKirim(); return; }
+                inv.kirimExport = true;
+                inv.kirimMerek = d.brand || [];
+                inv.kirim = (d.baris || []).map(function (r) {
+                    return $.extend(kirimKosong(), r);
+                });
+                gambarKirim();
+            })
+            .fail(function () {
+                // Gagal memuat tidak boleh mengunci layar - invoice AR-nya
+                // tetap bisa disimpan, Shipment Details-nya saja yang absen.
+                gambarKirim();
+            });
+    }
+
+    function gambarKirim() {
+        $('#ci-kirim-card').prop('hidden', !inv.kirimExport);
+        if (!inv.kirimExport) { return; }
+
+        var $b = $('#ci-kirim-tbody').empty();
+        $('#ci-kirim-kosongkan').prop('disabled', DOK_SAJA || !inv.kirim.length);
+        $('#ci-kirim-tambah').prop('disabled', DOK_SAJA);
+
+        if (!inv.kirim.length) {
+            kosongkanTabel($b, 13, 'fa-ship',
+                'No shipment row yet. Use “Add Data” to add one.');
+            return;
+        }
+
+        $b.html(inv.kirim.map(function (r, i) {
+            return '<tr>'
+                + '<td class="dn-tengah"><b>' + (i + 1) + '</b></td>'
+                + '<td>' + teks(r.dest_purchase) + '</td>'
+                + '<td>' + teks(r.style_no) + '</td>'
+                + '<td>' + teks(r.brand) + '</td>'
+                + '<td>' + teks(r.currency) + '</td>'
+                + '<td>' + teks(r.final_destination) + '</td>'
+                + '<td>' + teks(r.ship_mode) + '</td>'
+                + '<td class="ci-angka">' + angka(r.total_gross_weight) + '</td>'
+                + '<td class="ci-angka">' + angka(r.total_net_weight) + '</td>'
+                + '<td class="ci-angka">' + angka(r.total_net_net_weight) + '</td>'
+                + '<td class="ci-angka">' + angka(r.total_carton) + '</td>'
+                + '<td class="ci-kirim-desc">' + teks(r.product_description) + '</td>'
+                + '<td class="dn-tengah">'
+                + '  <button type="button" class="btn btn-primary btn-sm ci-kirim-ubah"'
+                + '          data-i="' + i + '"' + (DOK_SAJA ? ' disabled' : '')
+                + '          title="Edit"><i class="fas fa-pen"></i></button>'
+                + '  <button type="button" class="btn btn-danger btn-sm ci-kirim-buang"'
+                + '          data-i="' + i + '"' + (DOK_SAJA ? ' disabled' : '')
+                + '          title="Remove"><i class="fas fa-times"></i></button>'
+                + '</td></tr>';
+        }).join(''));
+    }
+
+    function bukaKirim(i) {
+        kirimSedang = i;
+        var r = (i >= 0 && inv.kirim[i]) ? inv.kirim[i] : kirimKosong();
+        // Pilihan brandnya disusun lebih dulu - kalau optionnya belum ada,
+        // .val() di bawah ini tidak akan kena.
+        isiPilihanMerek(r.brand);
+        Object.keys(PETA_KIRIM).forEach(function (sel) {
+            $(sel).val(r[PETA_KIRIM[sel]]);
+        });
+        $('#ci-k-brand').trigger('change.select2');
+        $('#ci-kirim-judul').text(i >= 0 ? 'Edit Shipment ' + (i + 1) : 'Add Shipment');
+        $('#ci-modal-kirim').modal('show');
+    }
+
+    $(function () {
+        // Brand: pilihan dari act_costing milik customer booking ini, tapi
+        // masih boleh diketik sendiri kalau brandnya belum terdaftar -
+        // invoice tidak boleh tertahan cuma karena master datanya kurang.
+        $('#ci-k-brand').select2({
+            theme: 'bootstrap4', width: '100%', tags: true,
+            placeholder: 'Select or type a brand',
+            dropdownParent: $('#ci-modal-kirim')
+        });
+
+        $('#ci-kirim-tambah').on('click', function () { bukaKirim(-1); });
+        $('#ci-kirim-tbody').on('click', '.ci-kirim-ubah', function () {
+            bukaKirim(parseInt($(this).data('i'), 10));
+        });
+        $('#ci-kirim-tbody').on('click', '.ci-kirim-buang', function () {
+            inv.kirim.splice(parseInt($(this).data('i'), 10), 1);
+            gambarKirim();
+        });
+
+        $('#ci-kirim-kosongkan').on('click', function () {
+            if (!inv.kirim.length) { return; }
+            Swal.fire({
+                icon: 'warning',
+                title: 'Clear all shipment rows?',
+                html: 'All <b>' + inv.kirim.length + '</b> shipment row'
+                    + (inv.kirim.length > 1 ? 's' : '') + ' will be removed. '
+                    + 'Nothing is saved until you press Save.',
+                showCancelButton: true,
+                confirmButtonText: 'Clear All',
+                cancelButtonText: 'Cancel',
+                customClass: { popup: 'ci-swal' }
+            }).then(function (h) {
+                if (!h.isConfirmed) { return; }
+                inv.kirim = [];
+                gambarKirim();
+            });
+        });
+
+        $('#ci-k-simpan').on('click', function () {
+            var r = (kirimSedang >= 0 && inv.kirim[kirimSedang]) ? inv.kirim[kirimSedang] : kirimKosong();
+            Object.keys(PETA_KIRIM).forEach(function (sel) {
+                r[PETA_KIRIM[sel]] = $(sel).val();
+            });
+            if (kirimSedang < 0) { inv.kirim.push(r); }
+            gambarKirim();
+            $('#ci-modal-kirim').modal('hide');
+        });
+    });
+
+    /** Baris yang dikirim ke server - kuncinya sama dengan kolom tabelnya. */
+    function payloadKirim() {
+        return inv.kirim.map(function (r) {
+            var out = {};
+            Object.keys(PETA_KIRIM).forEach(function (sel) {
+                out[PETA_KIRIM[sel]] = r[PETA_KIRIM[sel]] === undefined
+                    ? '' : r[PETA_KIRIM[sel]];
+            });
+            return out;
+        });
+    }
+
     /**
      * Rantai simpan dipecah jadi langkah bernama. Namanya ikut tampil di
      * dialog - waktu berjalan ("Step 3 of 5") maupun waktu gagal, jadi jelas
@@ -1656,6 +1863,18 @@
                     id_book_invoice: idInv,
                     data_table: payloadExim(),
                     pot: payloadPot(false)
+                });
+            } });
+        }
+
+        // Shipment Details ikut tersimpan - tabelnya milik Invoice EXIM
+        // Export, jadi perubahan dari sini langsung terbaca di menu EXIM
+        // maupun cetakannya. Dilewati kalau invoicenya bukan Export.
+        if (inv.kirimExport) {
+            L.push({ nama: 'Saving shipment details', jalan: function () {
+                return kirim('simpan_shipment_export_json/', {
+                    id_book_invoice: idInv,
+                    data_table: payloadKirim()
                 });
             } });
         }
@@ -2427,6 +2646,8 @@
         $('#ci-bank, #ci-type-so, #ci-pph').prop('disabled', true).trigger('change.select2');
         $('#ci-dp, #ci-dpcbd, #ci-retur').prop('readonly', true).removeClass('ci-bisa-isi');
         $('#ci-tbody .ci-buang').prop('disabled', true).attr('title', 'The invoice is already first approved');
+        $('#ci-kirim-tambah, #ci-kirim-kosongkan').prop('disabled', true);
+        $('#ci-kirim-tbody .ci-kirim-ubah, #ci-kirim-tbody .ci-kirim-buang').prop('disabled', true);
 
         $('#ci-btn-simpan').html('<i class="fa fa-paperclip"></i> Save Documents');
 

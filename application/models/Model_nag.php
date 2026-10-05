@@ -9005,4 +9005,191 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         unset($r);
         return $baris;
     }
+
+    // ======================================================================
+    //  Shipment Details Invoice Export - dibaca & diubah dari layar AR
+    //
+    //  Isinya milik Invoice EXIM Export (tbl_book_invoice_exim_export_ship).
+    //  Tim AR boleh melengkapinya dari sini supaya tidak perlu bolak-balik ke
+    //  menu EXIM - yang dibaca & ditulis tetap tabel yang sama, jadi kedua
+    //  aplikasi selalu melihat angka yang sama.
+    // ======================================================================
+
+    /** Kolom isian Shipment Details - satu daftar, dipakai baca & tulis. */
+    private $_kolom_shipment = array(
+        'dest_purchase', 'style_no', 'brand', 'chanel_description', 'currency',
+        'payment_term', 'final_destination', 'country_origin', 'ship_mode',
+        'term_of_sale', 'transfer_point', 'port_of_loading',
+        'total_gross_weight', 'total_net_weight', 'total_net_net_weight',
+        'total_carton', 'product_description',
+    );
+
+    /** Kolom angka - dibersihkan supaya isian kosong tidak jadi NULL. */
+    private $_angka_shipment = array(
+        'total_gross_weight', 'total_net_weight', 'total_net_net_weight', 'total_carton',
+    );
+
+    /**
+     * Baris Shipment Details satu invoice Export.
+     *
+     * @return array|null null = bukan Export / tabelnya belum ada / bukan
+     *                    invoice yang punya header export
+     */
+    function shipment_export($id_inv)
+    {
+        $id = (int) $id_inv;
+        if ($id < 1 || !$this->db->table_exists('tbl_book_invoice_exim_export_ship')) {
+            return null;
+        }
+
+        $h = $this->db->query(
+            "SELECT id, no_invoice, shipp FROM tbl_book_invoice WHERE id = ? LIMIT 1",
+            array($id)
+        )->row_array();
+        if (!$h || strtoupper(trim((string) $h['shipp'])) !== 'EXPORT') {
+            return null;
+        }
+
+        $kolom = implode(', ', $this->_kolom_shipment);
+        return array(
+            'no_invoice' => (string) $h['no_invoice'],
+            'baris' => $this->db->query("
+                SELECT id, urutan, $kolom
+                  FROM tbl_book_invoice_exim_export_ship
+                 WHERE id_book_invoice = ? ORDER BY urutan, id
+            ", array($id))->result_array(),
+        );
+    }
+
+    /**
+     * Tulis ulang Shipment Details satu invoice Export.
+     *
+     * Barisnya dibuang lalu ditulis ulang - sama seperti yang dilakukan menu
+     * Invoice EXIM waktu invoicenya disimpan, jadi tidak ada baris sisa dan
+     * urutannya selalu rapat. Dijalankan dalam satu transaksi.
+     *
+     * @return array jumlah baris tertulis, atau 'gagal'
+     */
+    function simpan_shipment_export($id_inv, $baris, $user, $now)
+    {
+        $id = (int) $id_inv;
+        if ($id < 1 || !$this->db->table_exists('tbl_book_invoice_exim_export_ship')) {
+            return array('gagal' => 'Shipment Details table is not ready yet.');
+        }
+
+        $h = $this->db->query(
+            "SELECT no_invoice, shipp, status FROM tbl_book_invoice WHERE id = ? LIMIT 1",
+            array($id)
+        )->row_array();
+        if (!$h) {
+            return array('gagal' => 'Invoice not found.');
+        }
+        if (strtoupper(trim((string) $h['shipp'])) !== 'EXPORT') {
+            return array('gagal' => 'Shipment Details only apply to Export invoices.');
+        }
+
+        $this->db->trans_start();
+        $this->db->query(
+            "DELETE FROM tbl_book_invoice_exim_export_ship WHERE id_book_invoice = ?",
+            array($id)
+        );
+
+        $urut = 0;
+        foreach ((array) $baris as $r) {
+            if (!is_array($r)) { continue; }
+            $urut++;
+            $this->db->insert('tbl_book_invoice_exim_export_ship',
+                array(
+                    'id_book_invoice' => $id,
+                    'no_invoice'      => (string) $h['no_invoice'],
+                    'urutan'          => $urut,
+                    'created_by'      => $user,
+                    'created_at'      => $now,
+                ) + $this->_rapikan_shipment($r));
+        }
+
+        $this->db->trans_complete();
+        if (!$this->db->trans_status()) {
+            return array('gagal' => 'Shipment Details could not be saved.');
+        }
+        return array('baris' => $urut);
+    }
+
+    /**
+     * Satu baris Shipment Details dari layar, dirapikan.
+     *
+     * Dipakai dua-duanya - waktu disimpan DAN waktu dibuat pratinjau - supaya
+     * yang terlihat di PDF persis sama dengan yang nanti tersimpan.
+     */
+    private function _rapikan_shipment($r)
+    {
+        $isi = array();
+        foreach ($this->_kolom_shipment as $k) {
+            $v = isset($r[$k]) ? $r[$k] : null;
+            if (in_array($k, $this->_angka_shipment, TRUE)) {
+                // Kolomnya NOT NULL DEFAULT 0 - isian kosong jadi 0, bukan NULL.
+                $isi[$k] = (float) str_replace(',', '', (string) $v);
+            } else {
+                $isi[$k] = $v === null ? null : trim((string) $v);
+            }
+        }
+        // country_origin, transfer_point & port_of_loading NOT NULL - kalau
+        // dikosongkan di layar, isian bawaannya yang dipakai.
+        foreach (array('country_origin' => 'ID', 'transfer_point' => 'JAKARTA,ID',
+                       'port_of_loading' => 'JAKARTA,ID') as $k => $bawaan) {
+            if (trim((string) $isi[$k]) === '') { $isi[$k] = $bawaan; }
+        }
+        return $isi;
+    }
+
+    /**
+     * Baris Shipment Details yang sedang ada di layar, siap dicetak.
+     *
+     * Pratinjau dibuat dari isi layar - termasuk yang BELUM disimpan - jadi
+     * yang terlihat memang yang baru saja diketik, bukan isi database.
+     */
+    function shipment_dari_layar($baris)
+    {
+        $out = array();
+        foreach ((array) $baris as $r) {
+            if (is_array($r)) { $out[] = $this->_rapikan_shipment($r); }
+        }
+        return $out;
+    }
+
+    /**
+     * Daftar brand milik satu customer - isian pilihan Brand.
+     *
+     * Sama dengan yang dipakai menu Invoice EXIM: brand tersimpan per kontrak
+     * di act_costing, dan yang ditawarkan hanya milik customer booking ini
+     * supaya brand customer lain tidak mungkin terpilih.
+     */
+    function brand_customer($id_customer)
+    {
+        $id = trim((string) $id_customer);
+        if ($id === '') {
+            return array();
+        }
+
+        try {
+            $db_nag = $this->load->database('db_nag', TRUE);
+            if (!in_array('brand', $db_nag->list_fields('act_costing'), TRUE)) {
+                return array();
+            }
+            $out = array();
+            foreach ($db_nag->query("
+                SELECT DISTINCT TRIM(brand) AS brand
+                  FROM act_costing
+                 WHERE id_buyer = ? AND TRIM(IFNULL(brand, '')) <> ''
+                 ORDER BY brand
+            ", array($id))->result_array() as $r) {
+                $out[] = (string) $r['brand'];
+            }
+            return $out;
+        } catch (Exception $e) {
+            log_message('error', 'Daftar brand gagal untuk ' . $id . ' - ' . $e->getMessage());
+            return array();
+        }
+    }
+
 }

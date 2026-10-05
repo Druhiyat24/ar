@@ -819,6 +819,8 @@
   line-height: 1.5;
   color: #64748b;
 }
+.ci-kirim-desc { min-width: 320px; white-space: normal; }
+#ci-kirim-tbody td.ci-kirim-desc { white-space: normal; }
 .ci-swal .ci-titik { color: #cbd5e1; }
 .ci-swal .ci-swal-kurang {
   text-align: left;
@@ -1133,6 +1135,44 @@
         </div>
       </div>
 
+      <!-- ===== Shipment Details (khusus Invoice Export) =====
+           Isinya milik Invoice EXIM Export - tabel yang sama persis dengan
+           yang dibaca menu EXIM. Tim AR boleh melengkapinya dari sini supaya
+           tidak perlu bolak-balik. Disembunyikan kalau invoicenya bukan
+           Export. -->
+      <div class="card ci-kirim-card" id="ci-kirim-card" hidden>
+        <div class="card-body">
+          <div class="table-header">
+            <span class="table-title"><i class="fas fa-ship"></i>Shipment Details</span>
+            <div class="dn-filter-aksi">
+              <button type="button" class="btn btn-dn-hapus-baris" id="ci-kirim-kosongkan"><i class="fas fa-eraser"></i> Clear All</button>
+              <button type="button" class="btn btn-primary" id="ci-kirim-tambah"><i class="fas fa-plus"></i> Add Data</button>
+            </div>
+          </div>
+          <div class="ci-table-wrap">
+            <table class="dn-table text-nowrap" style="width:100%">
+              <thead>
+                <tr>
+                  <th style="width:40px" class="dn-tengah">#</th>
+                  <th>Dest Purchase</th>
+                  <th>Style NO</th>
+                  <th>Brand</th>
+                  <th>Currency</th>
+                  <th>Final Destination</th>
+                  <th>Ship Mode</th>
+                  <th class="text-right">Gross Weight</th>
+                  <th class="text-right">Net Weight</th>
+                  <th class="text-right">Net Net Weight</th>
+                  <th class="text-right">Carton</th>
+                  <th class="ci-kirim-desc">Product Description</th>
+                  <th style="width:84px" class="dn-tengah">Action</th>
+                </tr>
+              </thead>
+              <tbody id="ci-kirim-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
       <!-- ===== Ringkasan uang + tombol simpan ===== -->
       <div class="row justify-content-end">
         <div class="col-xl-4 col-lg-5 col-md-7">
@@ -1460,6 +1500,100 @@
   </div>
 </div>
 
+<!-- ==================== Modal: Shipment Details ==========================
+     Kolomnya sama persis dengan modal di menu Invoice EXIM Export - yang
+     ditulis memang tabel yang sama (tbl_book_invoice_exim_export_ship). -->
+<div class="modal fade dn-modal nag-skin ci-sm" id="ci-modal-kirim" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-ship"></i> <span id="ci-kirim-judul">Add Shipment</span></h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="form-group col-md-6">
+            <label for="ci-k-dest">Dest Purchase</label>
+            <input type="text" class="form-control" id="ci-k-dest" maxlength="255" autocomplete="off">
+          </div>
+          <div class="form-group col-md-6">
+            <label for="ci-k-style">Style NO</label>
+            <input type="text" class="form-control" id="ci-k-style" maxlength="255" autocomplete="off">
+          </div>
+          <div class="form-group col-md-6">
+            <label for="ci-k-brand">Brand</label>
+            <!-- Pilihannya brand milik customer booking ini (act_costing),
+                 diisi lewat JS. Boleh diketik sendiri kalau belum terdaftar. -->
+            <select class="form-control" id="ci-k-brand"><option value=""></option></select>
+          </div>
+          <div class="form-group col-md-6">
+            <label for="ci-k-chanel">Chanel Description</label>
+            <input type="text" class="form-control" id="ci-k-chanel" maxlength="255" autocomplete="off">
+          </div>
+          <div class="form-group col-md-3">
+            <label for="ci-k-curr">Currency</label>
+            <input type="text" class="form-control" id="ci-k-curr" maxlength="25" autocomplete="off">
+          </div>
+          <div class="form-group col-md-9">
+            <label for="ci-k-payterm">Payment Term</label>
+            <input type="text" class="form-control" id="ci-k-payterm" maxlength="255" autocomplete="off">
+          </div>
+          <div class="form-group col-md-3">
+            <label for="ci-k-findest">Final Destination</label>
+            <input type="text" class="form-control" id="ci-k-findest" maxlength="10" autocomplete="off">
+          </div>
+          <div class="form-group col-md-3">
+            <label for="ci-k-origin">Country of Origin</label>
+            <input type="text" class="form-control" id="ci-k-origin" maxlength="10" autocomplete="off">
+          </div>
+          <div class="form-group col-md-3">
+            <label for="ci-k-mode">Ship Mode</label>
+            <select class="form-control" id="ci-k-mode">
+              <option value="OCEAN">OCEAN</option>
+              <option value="AIR">AIR</option>
+            </select>
+          </div>
+          <div class="form-group col-md-3">
+            <label for="ci-k-sale">Term of Sale</label>
+            <input type="text" class="form-control" id="ci-k-sale" maxlength="255" autocomplete="off">
+          </div>
+          <div class="form-group col-md-6">
+            <label for="ci-k-transfer">Transfer Point</label>
+            <input type="text" class="form-control" id="ci-k-transfer" maxlength="100" autocomplete="off">
+          </div>
+          <div class="form-group col-md-6">
+            <label for="ci-k-port">Port of Loading</label>
+            <input type="text" class="form-control" id="ci-k-port" maxlength="100" autocomplete="off">
+          </div>
+          <div class="form-group col-md-3">
+            <label for="ci-k-gross">Gross Weight</label>
+            <input type="number" step="0.001" class="form-control ci-angka-input" id="ci-k-gross">
+          </div>
+          <div class="form-group col-md-3">
+            <label for="ci-k-net">Net Weight</label>
+            <input type="number" step="0.001" class="form-control ci-angka-input" id="ci-k-net">
+          </div>
+          <div class="form-group col-md-3">
+            <label for="ci-k-netnet">Net Net Weight</label>
+            <input type="number" step="0.001" class="form-control ci-angka-input" id="ci-k-netnet">
+          </div>
+          <div class="form-group col-md-3">
+            <label for="ci-k-carton">Carton</label>
+            <input type="number" step="1" class="form-control ci-angka-input" id="ci-k-carton">
+          </div>
+          <div class="form-group col-12">
+            <label for="ci-k-desc">Product Description</label>
+            <textarea class="form-control" id="ci-k-desc" rows="3"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal"><i class="fas fa-times"></i> Cancel</button>
+        <button type="button" class="btn btn-primary" id="ci-k-simpan"><i class="fas fa-check"></i> Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- ===================== Modal: Pratinjau PDF Invoice =====================
      Cetakan yang AKAN terbentuk - dibuat dari isi layar, belum ada yang
      tersimpan. PDF-nya datang dari POST ke arnag/preview_invoice_v2 yang

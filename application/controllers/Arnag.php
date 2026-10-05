@@ -2089,6 +2089,61 @@ public function rencana_exim_dari_sj()
     echo json_encode($r);
 }
 
+/**
+ * Shipment Details Invoice Export - dibaca layar Create/Edit Invoice.
+ *
+ * Isinya milik Invoice EXIM Export, tapi tim AR boleh melengkapinya dari sini
+ * supaya tidak perlu bolak-balik ke menu EXIM. Balasannya kosong (bukan gagal)
+ * kalau invoicenya bukan Export - layar tinggal menyembunyikan bagiannya.
+ */
+public function shipment_export_json($id_inv = null)
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    $isi = $this->Model_nag->shipment_export($id_inv);
+    if (!$isi) {
+        echo json_encode(array('status' => TRUE, 'export' => FALSE, 'baris' => array()));
+        return;
+    }
+
+    echo json_encode(array(
+        'status'     => TRUE,
+        'export'     => TRUE,
+        'no_invoice' => $isi['no_invoice'],
+        'baris'      => $isi['baris'],
+        // Pilihan Brand-nya ikut dikirim sekalian - sumbernya sama dengan yang
+        // dipakai menu Invoice EXIM (act_costing milik customer booking ini).
+        'brand'      => $this->Model_nag->brand_customer($this->input->get('id_customer')),
+    ));
+}
+
+/** Simpan Shipment Details yang diubah tim AR. */
+public function simpan_shipment_export_json()
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    $hasil = $this->Model_nag->simpan_shipment_export(
+        (int) $this->input->post('id_book_invoice'),
+        (array) $this->input->post('data_table'),
+        (string) $this->session->userdata('username'),
+        date('Y-m-d H:i:s')
+    );
+
+    if (isset($hasil['gagal'])) {
+        $this->output->set_status_header(422);
+        echo json_encode(array('status' => FALSE, 'message' => $hasil['gagal']));
+        return;
+    }
+
+    echo json_encode(array('status' => TRUE, 'baris' => $hasil['baris']));
+}
+
 public function simpan_invoice_pot()
 {
     $data = $this->input->post('data_table');
@@ -2473,6 +2528,16 @@ public function preview_invoice_v2()
     // angka rekapnya, karena DP / DP CBD / Return & VAT memang masih bisa
     // diubah sebelum disimpan.
     $cetak_export = $this->Model_nag->data_cetak_export($id_inv);
+
+    // Shipment Details-nya diambil dari LAYAR, bukan database: bagian itu boleh
+    // dilengkapi tim AR dan pratinjau harus memperlihatkan yang baru diketik -
+    // termasuk sebelum Save ditekan. Kalau layar tidak mengirim apa-apa
+    // (mis. cetak dari menu lain), yang tersimpan tetap dipakai.
+    if ($cetak_export && $this->input->post('kirim_ada')) {
+        $cetak_export['kirim'] = $this->Model_nag->shipment_dari_layar(
+            (array) $this->input->post('kirim')
+        );
+    }
 
     $mpdf = $this->_dn_mpdf_baru();
     $mpdf->SetWatermarkText('PREVIEW');
