@@ -416,6 +416,35 @@ INSERT IGNORE INTO master_negara_kode (nama_negara, kode) VALUES
   ('BANDUNG', 'ID');
 
 
+-- ------------------------------------------------------------------
+-- Ringkasan nilai TAGIH - khusus invoice knitting, yang memang punya dua
+-- angka (tagih & kirim). Bentuknya sama persis dengan
+-- tbl_book_invoice_exim_pot; yang membedakan cuma angkanya.
+-- (dari 20261008_knitting_dua_nilai.sql)
+-- ------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tbl_book_invoice_exim_pot_tagih (
+  id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  id_book_invoice INT             NOT NULL              COMMENT 'tbl_book_invoice.id',
+  no_invoice      VARCHAR(255)    NOT NULL,
+
+  total           DOUBLE(16,4)    NOT NULL DEFAULT 0    COMMENT 'jumlah Total Price Tagih baris terpilih',
+  discount        DOUBLE(16,4)    NOT NULL DEFAULT 0,
+  dp              DOUBLE(16,4)    NOT NULL DEFAULT 0,
+  dp_cbd          DOUBLE(16,4)    NOT NULL DEFAULT 0    COMMENT 'DP/CBD from Invoice',
+  retur           DOUBLE(16,4)    NOT NULL DEFAULT 0,
+  twot            DOUBLE(16,4)    NOT NULL DEFAULT 0    COMMENT 'total - discount - dp - dp_cbd - retur',
+  vat_persen      DECIMAL(5,2)    NOT NULL DEFAULT 0    COMMENT '0, 11, atau 12',
+  vat             DOUBLE(16,4)    NOT NULL DEFAULT 0    COMMENT 'twot x vat_persen',
+  grand_total     DOUBLE(16,4)    NOT NULL DEFAULT 0    COMMENT 'twot + vat',
+
+  created_by      VARCHAR(100)    NULL     DEFAULT NULL,
+  created_at      DATETIME        NOT NULL,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_bie_pot_tagih_book (id_book_invoice)
+) ENGINE=InnoDB;
+
+
 -- ===========================================================================
 --  BAGIAN 2 - KOLOM & INDEX TAMBAHAN
 --
@@ -662,6 +691,25 @@ SET @s := IF((SELECT COUNT(*) FROM information_schema.TABLES
 PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
 
 
+-- Nilai TAGIH baris SJ knitting. Kolom lamanya (uom/qty/unit_price/
+-- total_price) berisi nilai KIRIM dan sengaja tidak disentuh.
+-- (dari 20261008_knitting_dua_nilai.sql)
+SET @s := IF((SELECT COUNT(*) FROM information_schema.TABLES
+               WHERE TABLE_SCHEMA = DATABASE()
+                 AND TABLE_NAME   = 'tbl_book_invoice_exim_det') = 1
+          AND (SELECT COUNT(*) FROM information_schema.COLUMNS
+               WHERE TABLE_SCHEMA = DATABASE()
+                 AND TABLE_NAME   = 'tbl_book_invoice_exim_det'
+                 AND COLUMN_NAME  = 'uom_tagih') = 0,
+             'ALTER TABLE `tbl_book_invoice_exim_det`
+                ADD COLUMN uom_tagih         VARCHAR(25)  NULL DEFAULT NULL,
+                ADD COLUMN qty_tagih         DOUBLE       NOT NULL DEFAULT 0,
+                ADD COLUMN unit_price_tagih  DOUBLE(16,4) NOT NULL DEFAULT 0,
+                ADD COLUMN total_price_tagih DOUBLE(16,4) NOT NULL DEFAULT 0',
+             'DO 0');
+PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
+
+
 -- ===========================================================================
 --  BAGIAN 3 - PERBAIKAN DATA INVOICE LAMA (OPSIONAL)
 --
@@ -691,6 +739,7 @@ SELECT 'tabel' AS jenis, nama AS objek,
   FROM (
     SELECT 'tbl_book_invoice_exim_det'        AS nama UNION ALL
     SELECT 'tbl_book_invoice_exim_pot'                UNION ALL
+    SELECT 'tbl_book_invoice_exim_pot_tagih'          UNION ALL
     SELECT 'tbl_book_invoice_exim_so'                 UNION ALL
     SELECT 'tbl_book_invoice_exim_log'                UNION ALL
     SELECT 'tbl_book_invoice_exim_export_h'           UNION ALL
@@ -712,6 +761,10 @@ SELECT 'kolom', CONCAT(tabel, '.', kolom),
     SELECT 'tbl_book_invoice_exim_det',              'urutan_summary'             UNION ALL
     SELECT 'tbl_book_invoice_exim_det',              'po_konsumen'                UNION ALL
     SELECT 'tbl_book_invoice_exim_det',              'service_charge'             UNION ALL
+    SELECT 'tbl_book_invoice_exim_det',              'uom_tagih'                  UNION ALL
+    SELECT 'tbl_book_invoice_exim_det',              'qty_tagih'                  UNION ALL
+    SELECT 'tbl_book_invoice_exim_det',              'unit_price_tagih'           UNION ALL
+    SELECT 'tbl_book_invoice_exim_det',              'total_price_tagih'          UNION ALL
     SELECT 'tbl_book_invoice_exim_pot',              'tgl_invoice'                UNION ALL
     SELECT 'tbl_book_invoice_exim_pot',              'total_fob'                  UNION ALL
     SELECT 'tbl_book_invoice_exim_pot',              'grand_total_fob'            UNION ALL
