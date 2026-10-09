@@ -12912,6 +12912,31 @@ function dn_inv_exim_angka(v, desimal) {
 	});
 }
 
+/**
+ * Angka untuk DISIMPAN - tanpa pemisah ribuan.
+ *
+ * Isi kolom Header di tbl_debitnote_det dibaca sebagai daftar yang dipisah
+ * KOMA: report_debit_note_det() memecahnya dengan SPLIT_STRING, lalu cetakan
+ * menumpuk tiap pecahannya ke bawah. Qty "4,656" karena itu terbaca dua nilai
+ * - "4" dan "656" - dan di PDF jadi dua baris. Yang masuk tidak boleh
+ * berpemisah ribuan; yang dipisah ribuan hanya tampilan di modal.
+ */
+function dn_inv_exim_angka_simpan(v, desimal) {
+	var n = parseFloat(v);
+	if (isNaN(n)) { n = 0; }
+	return n.toFixed(desimal === undefined ? 2 : desimal);
+}
+
+/**
+ * Koma ribuan pada SATU angka dibuang - sebab yang sama seperti di atas.
+ * Hanya angka berpemisah ribuan yang benar yang diubah: teks seperti
+ * "SHIPMENT 01, 02" dan daftar bernilai banyak dibiarkan apa adanya.
+ */
+function dn_tanpa_koma_ribuan(nilai) {
+	var t = String(nilai === null || nilai === undefined ? '' : nilai);
+	return /^\s*-?\d{1,3}(,\d{3})+(\.\d+)?\s*$/.test(t) ? t.replace(/,/g, '') : t;
+}
+
 function dn_inv_exim_teks(v) {
 	var t = $.trim(String(v === null || v === undefined ? '' : v));
 	return t === '' ? '-' : t;
@@ -13183,8 +13208,8 @@ function dn_inv_exim_baris(r, deskripsi, rate) {
 		+ '<td><input style="width: 200px" type="text" class="form-control" name="inputan3" value="' + teks(r.no_invoice) + '" autocomplete="off"></td>'
 		+ '<td><input style="width: 200px" type="text" class="form-control" name="inputan4" value="' + teks(r.reff) + '" autocomplete="off"></td>'
 		+ '<td><input style="width: 200px" type="text" class="form-control" name="inputan5" value="' + teks(r.po) + '" autocomplete="off"></td>'
-		+ '<td><input style="width: 200px" type="text" class="form-control" name="inputan6" value="' + dn_inv_exim_angka(r.qty) + '" autocomplete="off"></td>'
-		+ '<td><input style="width: 200px" type="text" class="form-control" name="inputan7" value="' + dn_inv_exim_angka(r.price, 4) + '" autocomplete="off"></td>'
+		+ '<td><input style="width: 200px" type="text" class="form-control" name="inputan6" value="' + dn_inv_exim_angka_simpan(r.qty) + '" autocomplete="off"></td>'
+		+ '<td><input style="width: 200px" type="text" class="form-control" name="inputan7" value="' + dn_inv_exim_angka_simpan(r.price, 4) + '" autocomplete="off"></td>'
 		+ '<td><input type="text" class="form-control" name="amt" value="' + value.toFixed(2) + '" style="text-align:right; width: 150px;" oninput="modal_input_amt_dn(value)" autocomplete="off"></td>'
 		+ '<td><input type="text" class="form-control" name="amt_rate" value="' + rate + '" style="text-align:right; width: 150px;" onkeypress="javascript:return isNumber(event)" oninput="modal_input_rate_dn(value)" autocomplete="off"></td>'
 		+ '<td><input style="width: 150px;text-align: right;" type="text" class="form-control" name="inputan8" value="' + amount.toFixed(2) + '" autocomplete="off" readonly></td>'
@@ -13274,16 +13299,23 @@ function collectDnDetailRows()
 		// dipakai PDF & laporan) - selain itu field lamanya kosong.
 		var supplier = dn_nilai_header_jika(row, 1, 'supplier');
 		var supplier_invoice = dn_nilai_header_jika(row, 2, 'supplier invoice');
-		var header1 = dn_row_input(row, 'inputan3').value;
-		var header2 = dn_row_input(row, 'inputan4').value;
-		var header3 = dn_row_input(row, 'inputan5').value;
+		// Baris dari Add Invoice Export selalu satu nilai per kolom Header,
+		// jadi koma ribuan yang sempat terketik di situ dibuang. Baris dari
+		// sumber lain tidak disentuh - di situ koma memang pemisah daftar.
+		var dari_inv_exim = !!dn_row_input(row, 'dn_inv_exim_id');
 		// Header 4-5 baru benar-benar tersimpan setelah kolomnya ditambah lewat
 		// migrations/20260911_debitnote_header4_header5.sql - sebelum itu
-		// dibuang di Model_nag::simpandn_h().
-		var el_h4 = dn_row_input(row, 'inputan6');
-		var el_h5 = dn_row_input(row, 'inputan7');
-		var header4 = el_h4 ? el_h4.value : '';
-		var header5 = el_h5 ? el_h5.value : '';
+		// dibuang di Model_nag::simpandn_h(), jadi kotaknya boleh tidak ada.
+		var isi_header = function (nama) {
+			var el = dn_row_input(row, nama);
+			if (!el) { return ''; }
+			return dari_inv_exim ? dn_tanpa_koma_ribuan(el.value) : el.value;
+		};
+		var header1 = isi_header('inputan3');
+		var header2 = isi_header('inputan4');
+		var header3 = isi_header('inputan5');
+		var header4 = isi_header('inputan6');
+		var header5 = isi_header('inputan7');
 		var value = dn_row_input(row, 'amt').value;
 		var rate = dn_row_input(row, 'amt_rate').value;
 		var amount = dn_row_input(row, 'inputan8').value;
