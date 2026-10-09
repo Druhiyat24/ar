@@ -295,6 +295,17 @@ CSS HEADER
             <td colspan="5">Grand Total</td>
             <td align='right'><?= number_format($data_proforma_invoice_grandtotal['total'], 2); ?></td>
         </tr>
+        <?php
+        // Down Payment hanya dicetak kalau memang ada isinya - proforma tanpa DP
+        // tidak perlu baris bernilai nol yang bikin orang bertanya.
+        $dp_pi = isset($data_proforma_invoice_grandtotal['dp'])
+            ? (float) $data_proforma_invoice_grandtotal['dp'] : 0;
+        if ($dp_pi > 0) : ?>
+            <tr>
+                <td colspan="5">Down Payment</td>
+                <td align='right'><?= number_format($dp_pi, 2); ?></td>
+            </tr>
+        <?php endif; ?>
 
     </table>
 

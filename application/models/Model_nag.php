@@ -3243,7 +3243,8 @@ function report_proforma_invoice_total_cbd($id)
     //ubah september
 function report_proforma_invoice_grandtotal($id)
 {
-    $hasil = $this->db->query("SELECT type_diskon,diskon,twot,ppn,total from tbl_invoice_proforma where id = '$id'");
+    // dp ikut dibaca - nilainya dicetak di PDF, di bawah Grand Total.
+    $hasil = $this->db->query("SELECT type_diskon,diskon,twot,ppn,total,dp from tbl_invoice_proforma where id = '$id'");
     return $hasil->row_array();
 }
 
