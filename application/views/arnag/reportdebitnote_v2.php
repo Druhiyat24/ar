@@ -55,12 +55,61 @@ $jml_kolom = 4 + count($kolom_header);
 // tengah kata.
 // Kolom Description dipersempit kalau kolom tambahannya banyak, supaya yang
 // tambahan tidak jadi terlalu sempit dan isinya patah di tengah kata.
-$lebar_deskripsi = count($kolom_header) >= 4 ? 17 : 22;
-$lebar_nilai = 12;
-$lebar_rate = 9;
-$lebar_header_kolom = count($kolom_header)
-    ? round((100 - $lebar_deskripsi - (2 * $lebar_nilai) - $lebar_rate) / count($kolom_header), 2)
-    : 0;
+// Kolom tetap dirapatkan kalau kolom tambahannya banyak. Value & Rate isinya
+// angka pendek ("1,248.50", "1.00"), jadi ruang lebihnya lebih berguna di
+// kolom tambahan - di situlah isinya patah kalau kesempitan. Description boleh
+// turun baris: kalimat memang wajar dibaca beberapa baris, nomor tidak.
+if (count($kolom_header) >= 5) {
+    $lebar_deskripsi = 15;
+    $lebar_nilai = 11;
+    $lebar_rate = 7;
+} elseif (count($kolom_header) >= 4) {
+    $lebar_deskripsi = 17;
+    $lebar_nilai = 12;
+    $lebar_rate = 8;
+} else {
+    $lebar_deskripsi = 22;
+    $lebar_nilai = 12;
+    $lebar_rate = 9;
+}
+
+// Lebar kolom tambahan dibagi menurut PANJANG ISINYA, bukan rata.
+//
+// Dibagi rata, kolom berisi pendek (Price "0.05") kebagian ruang sama dengan
+// yang panjang (Invoice Number "0001ENAG1026") - yang panjang lalu patah di
+// tengah angka, dan nomor invoice yang terbaca jadi dua baris.
+//
+// Yang dihitung baris terpanjangnya, bukan seluruh isi sel: satu sel bisa
+// memuat beberapa nilai yang memang sengaja ditumpuk ke bawah dengan <br>.
+$panjang_kolom = array();
+foreach ($kolom_header as $h => $nama_kolom) {
+    $panjang_kolom[$h] = strlen($nama_kolom);
+}
+foreach ($isi_header as $per_baris) {
+    foreach ($per_baris as $h => $nilai) {
+        foreach ($nilai as $satu) {
+            // $satu sudah di-escape; &amp; dll jangan ikut terhitung panjang.
+            $n = strlen(html_entity_decode($satu, ENT_QUOTES, 'UTF-8'));
+            if ($n > $panjang_kolom[$h]) {
+                $panjang_kolom[$h] = $n;
+            }
+        }
+    }
+}
+
+$sisa_lebar = 100 - $lebar_deskripsi - (2 * $lebar_nilai) - $lebar_rate;
+$lebar_kolom = array();
+$jumlah_panjang = array_sum($panjang_kolom);
+if ($jumlah_panjang > 0) {
+    // Batas bawah supaya kolom berisi pendek tetap terbaca judulnya. Dibuat
+    // kecil: batas yang terlalu besar memakan jatah kolom panjang, dan justru
+    // kolom panjang itulah yang isinya patah.
+    $minimum = min(5, $sisa_lebar / max(count($panjang_kolom), 1));
+    $sisa_bagi = $sisa_lebar - ($minimum * count($panjang_kolom));
+    foreach ($panjang_kolom as $h => $n) {
+        $lebar_kolom[$h] = round($minimum + ($sisa_bagi * ($n / $jumlah_panjang)), 2);
+    }
+}
 
 // Keterangan cukup diisi di baris pertama satu kelompok: baris di bawahnya yang
 // keterangannya dikosongkan ikut keterangan di atasnya. Selnya disambung dengan
@@ -118,6 +167,10 @@ foreach ($baris_rincian as $i => $baris) {
         .rincian th { background: #f5f6f7; border: 1px solid #dcdcdc; padding: 7px 6px; font-weight: bold; text-align: center; }
         .rincian td { border: 1px solid #dcdcdc; padding: 7px 6px; vertical-align: top; }
         .rincian .angka { text-align: right; }
+        /* Kolom tambahan (nomor invoice, reff, PO, qty) isinya satu kesatuan -
+           nomor yang patah di tengah tidak bisa dibaca lagi. Lebarnya sudah
+           dibagi menurut panjang isinya, jadi tidak akan meluber. */
+        .rincian .kolom-header { white-space: nowrap; }
         /* Sel Description yang disambung dengan baris di atas/bawahnya. */
         .rincian td.sambung-atas { border-top: none; }
         .rincian td.sambung-bawah { border-bottom: none; }
@@ -210,8 +263,8 @@ foreach ($baris_rincian as $i => $baris) {
         <thead>
             <tr>
                 <th width="<?= $lebar_deskripsi; ?>%">Description</th>
-                <?php foreach ($kolom_header as $nama_kolom) : ?>
-                    <th width="<?= $lebar_header_kolom; ?>%"><?= $esc($nama_kolom); ?></th>
+                <?php foreach ($kolom_header as $h => $nama_kolom) : ?>
+                    <th class="kolom-header" width="<?= $lebar_kolom[$h]; ?>%"><?= $esc($nama_kolom); ?></th>
                 <?php endforeach; ?>
                 <th width="<?= $lebar_nilai; ?>%">Value <?= $esc($dn['from_curr']); ?></th>
                 <th width="<?= $lebar_rate; ?>%">Rate</th>
@@ -225,7 +278,7 @@ foreach ($baris_rincian as $i => $baris) {
                 <tr>
                     <td<?= $kelas_ket !== '' ? ' class="' . $kelas_ket . '"' : ''; ?>><?= $lanjutan[$i] ? '' : $esc($baris['deskripsi']); ?></td>
                     <?php foreach ($kolom_header as $h => $nama_kolom) : ?>
-                        <td><?= isset($isi_header[$baris['id_det']][$h]) ? implode('<br>', $isi_header[$baris['id_det']][$h]) : ''; ?></td>
+                        <td class="kolom-header"><?= isset($isi_header[$baris['id_det']][$h]) ? implode('<br>', $isi_header[$baris['id_det']][$h]) : ''; ?></td>
                     <?php endforeach; ?>
                     <td class="angka"><?= $esc($baris['amount']); ?></td>
                     <td class="angka"><?= $esc($baris['rate']); ?></td>
