@@ -32,6 +32,21 @@ for ($h = 1; $h <= 5; $h++) {
 
 // Satu baris detail bisa punya beberapa nilai per kolom tambahan, jadi
 // nilainya dikumpulkan dulu supaya di tabel tinggal ditumpuk ke bawah.
+// Angka yang pemisah ribuannya SPASI ("4 656") dipatahkan mPDF di spasi itu,
+// dan "4" di satu baris lalu "656" di baris berikutnya terbaca sebagai dua
+// angka. white-space: nowrap tidak menolong - mPDF tidak mematuhinya di sel
+// tabel. Yang menolong: spasinya diganti spasi-tanpa-putus, jadi memang tidak
+// ada tempat untuk patah.
+//
+// Hanya nilai yang berupa angka: kalimat di kolom tambahan tetap boleh turun
+// baris, kalau tidak isinya malah meluber keluar kolom.
+$tanpa_putus = function ($nilai) {
+    if (!preg_match('/^[0-9.,\s]+$/', $nilai)) {
+        return $nilai;
+    }
+    return preg_replace('/\s+/', '&nbsp;', $nilai);
+};
+
 $isi_header = array();
 foreach ($data_debit_note_det as $baris_det) {
     foreach ($kolom_header as $h => $nama_kolom) {
@@ -39,7 +54,9 @@ foreach ($data_debit_note_det as $baris_det) {
         if ($nilai === '') {
             continue;
         }
-        $isi_header[$baris_det['id_det']][$h][] = $esc($nilai);
+        // Di-escape dulu, baru spasinya diganti - supaya &nbsp; tidak ikut
+        // ter-escape jadi tulisan "&amp;nbsp;".
+        $isi_header[$baris_det['id_det']][$h][] = $tanpa_putus($esc($nilai));
     }
 }
 
@@ -83,13 +100,15 @@ if (count($kolom_header) >= 5) {
 // memuat beberapa nilai yang memang sengaja ditumpuk ke bawah dengan <br>.
 $panjang_kolom = array();
 foreach ($kolom_header as $h => $nama_kolom) {
-    $panjang_kolom[$h] = strlen($nama_kolom);
+    $panjang_kolom[$h] = mb_strlen($nama_kolom, 'UTF-8');
 }
 foreach ($isi_header as $per_baris) {
     foreach ($per_baris as $h => $nilai) {
         foreach ($nilai as $satu) {
-            // $satu sudah di-escape; &amp; dll jangan ikut terhitung panjang.
-            $n = strlen(html_entity_decode($satu, ENT_QUOTES, 'UTF-8'));
+            // $satu sudah di-escape; &amp; & &nbsp; jangan ikut terhitung
+            // panjang. mb_strlen supaya spasi-tanpa-putus (2 byte) tetap
+            // dihitung satu huruf.
+            $n = mb_strlen(html_entity_decode($satu, ENT_QUOTES, 'UTF-8'), 'UTF-8');
             if ($n > $panjang_kolom[$h]) {
                 $panjang_kolom[$h] = $n;
             }
