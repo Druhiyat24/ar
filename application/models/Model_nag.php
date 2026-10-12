@@ -5998,44 +5998,63 @@ function cari_pred_week4()
 /**
  * Baris SJ GG/OUT (greige) yang belum di-invoice, untuk laporan "SJ not yet
  * invoice". Kolomnya dibuat sama persis dengan baris OFC/OUT di
- * cari_sj_noncom() - satu baris per barcode, belum diringkas - supaya
- * perhitungan kurs dan tampilannya seragam.
+ * cari_sj_noncom(), supaya perhitungan kurs dan tampilannya seragam.
+ *
+ * Diringkas per SJ + ITEM + harga, bukan per barcode: satu pengiriman greige
+ * isinya puluhan ROLL dan tiap roll satu barcode, jadi kalau dibiarkan per
+ * barcode satu SJ saja memenuhi berlembar-lembar laporan padahal itu-itu juga
+ * (lihat GG/OUT/1026/00017). Qty rollnya dijumlahkan; kain yang berbeda tetap
+ * jadi baris sendiri.
  */
 private function sj_noncom_greige($dt_dari_sj, $dt_sampai_sj)
 {
     $db_pgsql = $this->load->database('db_pgsql', TRUE);
 
-    $nilai = "ROUND(b.qty * ROUND(COALESCE(e.harga,0),4), 4)";
+    $qty   = 'SUM(x.qty)';
+    $harga = 'ROUND(MAX(x.harga), 4)';
+    $nilai = "ROUND(SUM(x.qty) * ROUND(MAX(x.harga), 4), 4)";
 
-    return $db_pgsql->query("SELECT i.so_date, a.id, i.jenis_order AS jns_so,
-               i.tipe_order_import_export AS area,
-               mk.nama_konsumen AS supplier, mk.kode_konsumen AS id_supplier,
-               i.kode_so AS no_so, a.no_bppb AS sj, a.tgl_bppb AS bppbdate,
-               a.no_bppb AS shipping_number,
+    return $db_pgsql->query("SELECT MAX(x.so_date) AS so_date, MAX(x.id) AS id,
+               MAX(x.jns_so) AS jns_so, MAX(x.area) AS area,
+               MAX(x.supplier) AS supplier, MAX(x.id_supplier) AS id_supplier,
+               MAX(x.no_so) AS no_so, x.sj, MAX(x.bppbdate) AS bppbdate,
+               MAX(x.shipping_number) AS shipping_number,
                '-' AS ws, '-' AS styleno, '-' AS product_group,
-               c.nama_kain AS product_item, '-' AS color, '-' AS size,
-               i.currency AS curr,
-               b.unit AS uom, b.qty AS qty,
-               ROUND(COALESCE(e.harga,0),4) AS unit_price,
+               MAX(x.product_item) AS product_item, '-' AS color, '-' AS size,
+               MAX(x.curr) AS curr,
+               MAX(x.uom) AS uom, $qty AS qty,
+               $harga AS unit_price,
                $nilai AS total_price,
-               i.id AS id_so, a.id AS id_bppb, 'A' AS grade, '' AS not_sales,
-               CONCAT(ROUND(b.qty,2),' ',b.unit) AS qty_pcs,
+               MAX(x.id_so) AS id_so, MAX(x.id_bppb) AS id_bppb,
+               'A' AS grade, '' AS not_sales,
+               CONCAT(ROUND($qty, 2), ' ', MAX(x.uom)) AS qty_pcs,
                TO_CHAR(ROUND($nilai, 2), 'FM999,999,999,990.00') AS total,
                '-' AS invno,
                -- Greige harganya cuma satu, jadi nilai kirim = nilai tagih.
-               b.unit AS uom_ship, b.qty AS qty_ship,
-               ROUND(COALESCE(e.harga,0),4) AS unit_price_ship,
+               MAX(x.uom) AS uom_ship, $qty AS qty_ship,
+               $harga AS unit_price_ship,
                $nilai AS total_price_ship,
                TO_CHAR(ROUND($nilai, 2), 'FM999,999,999,990.00') AS total_ship
-          FROM gp_out_greige_h a
-    INNER JOIN gp_out_greige_barcode b ON b.out_greige_id = a.id
-    INNER JOIN master_kain c ON c.id = b.id_item
-    INNER JOIN sales_orders i ON i.kode_so = a.no_so
-    " . $this->sambung_greige() . "
-         WHERE a.status_inv IS NULL
-           AND a.tipe_pengeluaran = 'Penjualan'
-           AND a.tgl_bppb BETWEEN '$dt_dari_sj' AND '$dt_sampai_sj'
-      ORDER BY a.no_bppb ASC")->result_array();
+          FROM (
+            SELECT i.so_date, a.id, i.jenis_order AS jns_so,
+                   i.tipe_order_import_export AS area,
+                   mk.nama_konsumen AS supplier, mk.kode_konsumen AS id_supplier,
+                   i.kode_so AS no_so, a.no_bppb AS sj, a.tgl_bppb AS bppbdate,
+                   a.no_bppb AS shipping_number,
+                   c.nama_kain AS product_item, i.currency AS curr,
+                   b.unit AS uom, b.qty AS qty, COALESCE(e.harga, 0) AS harga,
+                   i.id AS id_so, a.id AS id_bppb, b.id_item AS kain_id
+              FROM gp_out_greige_h a
+        INNER JOIN gp_out_greige_barcode b ON b.out_greige_id = a.id
+        INNER JOIN master_kain c ON c.id = b.id_item
+        INNER JOIN sales_orders i ON i.kode_so = a.no_so
+        " . $this->sambung_greige() . "
+             WHERE a.status_inv IS NULL
+               AND a.tipe_pengeluaran = 'Penjualan'
+               AND a.tgl_bppb BETWEEN '$dt_dari_sj' AND '$dt_sampai_sj'
+          ) x
+      GROUP BY x.sj, x.kain_id, x.harga
+      ORDER BY MIN(x.sj) ASC")->result_array();
 }
 
 function cari_sj_noncom($dt_dari_sj, $dt_sampai_sj)
