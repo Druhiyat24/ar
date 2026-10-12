@@ -6031,10 +6031,7 @@ private function sj_noncom_greige($dt_dari_sj, $dt_sampai_sj)
     INNER JOIN gp_out_greige_barcode b ON b.out_greige_id = a.id
     INNER JOIN master_kain c ON c.id = b.id_item
     INNER JOIN sales_orders i ON i.kode_so = a.no_so
-    INNER JOIN detail_so e ON e.sales_order_id = i.id
-                          AND e.master_kain_id = b.id_item
-    INNER JOIN master_tujuan_pengiriman mtp ON mtp.tujuan_pengiriman = a.tujuan
-    INNER JOIN master_konsumen mk ON mk.id = mtp.id_konsumen
+    " . $this->sambung_greige() . "
          WHERE a.status_inv IS NULL
            AND a.tipe_pengeluaran = 'Penjualan'
            AND a.tgl_bppb BETWEEN '$dt_dari_sj' AND '$dt_sampai_sj'
@@ -7628,6 +7625,43 @@ private function tabel_sj_knitting($no_sj)
 }
 
 /**
+ * Sambungan harga & konsumen untuk baris greige - dipakai bareng oleh daftar
+ * SJ dan laporan "SJ not yet invoice" supaya aturannya cuma ditulis sekali.
+ *
+ * Kenapa LATERAL ... LIMIT 1, bukan JOIN biasa: barcode greige TIDAK menyimpan
+ * id detail SO (barcode OFC menyimpannya), jadi harganya harus dicari lewat
+ * SO + kain. Satu kain bisa punya beberapa baris detail SO - warna berbeda,
+ * harga berbeda - dan nama tujuan pengiriman pun bisa terdaftar lebih dari
+ * sekali. Dengan JOIN biasa satu barcode jadi berlipat sebanyak pasangan yang
+ * ketemu: barisnya beranak di laporan, dan qty-nya ikut membengkak di Create
+ * Invoice karena dijumlahkan berkali-kali. Diambil satu saja, yang harganya
+ * tertinggi - sama dengan yang dulu dipilih MAX().
+ *
+ * Tetap INNER: barcode yang kainnya tidak ada di detail SO memang tidak
+ * ditawarkan, sama seperti sebelumnya.
+ */
+private function sambung_greige()
+{
+    return "
+    INNER JOIN LATERAL (
+        SELECT ds.harga
+          FROM detail_so ds
+         WHERE ds.sales_order_id = i.id
+           AND ds.master_kain_id = b.id_item
+      ORDER BY ds.harga DESC NULLS LAST, ds.id
+         LIMIT 1
+    ) e ON TRUE
+    INNER JOIN LATERAL (
+        SELECT k.kode_konsumen, k.nama_konsumen
+          FROM master_tujuan_pengiriman mtp
+    INNER JOIN master_konsumen k ON k.id = mtp.id_konsumen
+         WHERE mtp.tujuan_pengiriman = a.tujuan
+      ORDER BY mtp.id
+         LIMIT 1
+    ) mk ON TRUE";
+}
+
+/**
  * Baris SJ GG/OUT (greige) untuk satu SO - bentuk kolomnya SAMA PERSIS dengan
  * baris OFC/OUT di cari_sj_knitting(), supaya layar & penyimpanannya tidak
  * perlu tahu barisnya datang dari tabel yang mana.
@@ -7682,9 +7716,9 @@ FROM (
         a.no_bppb AS shipping_number,
         c.nama_kain AS product_item,
         i.currency AS curr,
-        MAX(b.unit) AS uom,
-        SUM(b.qty) AS qty,
-        MAX(COALESCE(e.harga,0)) AS harga,
+        b.unit AS uom,
+        b.qty AS qty,
+        COALESCE(e.harga,0) AS harga,
         i.id AS id_so,
         a.id AS id_bppb,
         b.id_item AS kain_id,
@@ -7704,22 +7738,12 @@ FROM (
         ON c.id = b.id_item
     INNER JOIN sales_orders i
         ON i.kode_so = a.no_so
-    INNER JOIN detail_so e
-        ON e.sales_order_id = i.id
-       AND e.master_kain_id = b.id_item
-    INNER JOIN master_tujuan_pengiriman mtp
-        ON mtp.tujuan_pengiriman = a.tujuan
-    INNER JOIN master_konsumen mk
-        ON mk.id = mtp.id_konsumen
+    " . $this->sambung_greige() . "
 
     WHERE
         (a.status_inv IS NULL $ikut_knit)
         AND a.tipe_pengeluaran = 'Penjualan'
         AND i.id = $id_sj
-
-    GROUP BY
-        b.id, i.kode_so, a.no_bppb, a.tgl_bppb, c.nama_kain, i.currency,
-        i.id, a.id, b.id_item, i.po_konsumen, i.po_buyer, mk.kode_konsumen
 ) barcode_item
 
 GROUP BY
