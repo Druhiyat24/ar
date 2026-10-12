@@ -5296,10 +5296,17 @@ function edit_memo_h($dn_number, $nm_memo)
 }
 
 
+/**
+ * Daftar biaya memo untuk modal Add Memo di Create Debit Note.
+ *
+ * Yang muncul cuma memo yang ditandai DITAGIHKAN di menu Memo EXIM
+ * (memo_h.ditagihkan = 'Y'). Memo yang tidak ditagihkan adalah biaya yang
+ * ditanggung sendiri - tidak boleh ikut tertagih ke customer lewat DN.
+ */
 function cari_invoice_memo($dt_dari_memo, $dt_sampai_memo, $id_customer = '')
 {
     $filter_customer = ($id_customer !== '' && $id_customer !== '0') ? "and a.id_buyer = '$id_customer'" : "";
-    $hasil = $this->db->query("SELECT b.id,a.id_supplier,d.supplier,e.supplier customer,a.nm_memo, a.tgl_memo,IF(b.inv_vendor is null,'-',b.inv_vendor) no_invoice,a.curr,sum(b.biaya) grand_total,'' id_book from memo_h a inner join mastersupplier d on d.id_supplier =a.id_supplier left join mastersupplier e on e.id_supplier = a.id_buyer inner join memo_det b on b.id_h = a.id_h where a.tgl_memo BETWEEN '$dt_dari_memo' and '$dt_sampai_memo' $filter_customer and a.status NOT IN ('DRAFT','CANCEL') and b.cancel = 'N' and b.no_dn is null GROUP BY b.id order by a.nm_memo asc");
+    $hasil = $this->db->query("SELECT b.id,a.id_supplier,d.supplier,e.supplier customer,a.nm_memo, a.tgl_memo,IF(b.inv_vendor is null,'-',b.inv_vendor) no_invoice,a.curr,sum(b.biaya) grand_total,'' id_book from memo_h a inner join mastersupplier d on d.id_supplier =a.id_supplier left join mastersupplier e on e.id_supplier = a.id_buyer inner join memo_det b on b.id_h = a.id_h where a.tgl_memo BETWEEN '$dt_dari_memo' and '$dt_sampai_memo' $filter_customer and a.status NOT IN ('DRAFT','CANCEL') and a.ditagihkan = 'Y' and b.cancel = 'N' and b.no_dn is null GROUP BY b.id order by a.nm_memo asc");
     return $hasil->result_array();
 }
 
