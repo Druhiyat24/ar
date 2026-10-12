@@ -1939,7 +1939,11 @@ function update_status_bppb()
     $id = $this->input->post('id_bppb');
     $curr = $this->input->post('curr');
     $shipp = $this->input->post('no_invoice');
-    $this->Model_nag->update_status_bppb($id, $shipp);
+    // Nomor SJ-nya menentukan tabel knitting mana yang ditandai - OFC/OUT di
+    // official_out_h, GG/OUT di gp_out_greige_h. Layar lama yang belum
+    // mengirimnya tetap jalan (lihat Model_nag::update_status_bppb).
+    $no_sj = (string) $this->input->post('bppb_number');
+    $this->Model_nag->update_status_bppb($id, $shipp, $no_sj);
     $this->Model_nag->update_currency($curr, $shipp);
 }
 
@@ -2339,7 +2343,11 @@ public function cari_so_ar($dt_dari_so, $dt_sampai_so, $id_customer, $buyer, $pr
     $terpakai = $this->Model_nag->sj_terpakai_exim($id_inv);
     $punya = array();
     foreach ($this->Model_nag->sj_tersedia_per_so($id_so, $profit_center) as $baris) {
-        $kunci = strtoupper((string) $profit_center) . '|' . (string) $baris['id_bppb'];
+        // Nomor SJ-nya ikut jadi kunci - lihat Model_nag::kunci_sj_terpakai.
+        $kunci = $this->Model_nag->kunci_sj_terpakai(
+            $profit_center, $baris['id_bppb'],
+            isset($baris['no_sj']) ? $baris['no_sj'] : ''
+        );
         if (isset($terpakai[$kunci])) {
             continue;
         }
@@ -2407,7 +2415,11 @@ public function cari_sj_ar($id_so, $profit_center, $id_inv = 0)
     $sisa = array();
     $disaring = 0;
     foreach ((array) $baris as $r) {
-        $kunci = strtoupper((string) $profit_center) . '|' . (string) (isset($r['id_bppb']) ? $r['id_bppb'] : '');
+        $kunci = $this->Model_nag->kunci_sj_terpakai(
+            $profit_center,
+            isset($r['id_bppb']) ? $r['id_bppb'] : '',
+            isset($r['sj']) ? $r['sj'] : (isset($r['shipping_number']) ? $r['shipping_number'] : '')
+        );
         if (isset($terpakai[$kunci])) {
             $disaring++;
             continue;

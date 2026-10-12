@@ -1846,6 +1846,11 @@
                 return function () {
                     return kirim('update_status_bppb/', {
                         id_bppb: r.id_bppb,
+                        // Nomor SJ-nya ikut: sumber SJ knitting ada dua tabel
+                        // (OFC/OUT & GG/OUT) yang urutan id-nya jalan
+                        // sendiri-sendiri, jadi nomornya yang menentukan
+                        // penanda ini mendarat di tabel mana.
+                        bppb_number: r.sj,
                         curr: r.curr,
                         no_invoice: idInv
                     }, 'text');
