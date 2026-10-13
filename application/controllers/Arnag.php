@@ -2148,6 +2148,52 @@ public function simpan_shipment_export_json()
     echo json_encode(array('status' => TRUE, 'baris' => $hasil['baris']));
 }
 
+/** Baris Invoice Summary satu booking Export, untuk layar AR. */
+public function summary_export_json($id_inv = null)
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    $isi = $this->Model_nag->summary_export($id_inv);
+    if (!$isi) {
+        echo json_encode(array('status' => TRUE, 'export' => FALSE, 'baris' => array()));
+        return;
+    }
+
+    echo json_encode(array(
+        'status'     => TRUE,
+        'export'     => TRUE,
+        'no_invoice' => $isi['no_invoice'],
+        'baris'      => $isi['baris'],
+    ));
+}
+
+/** Simpan Invoice Summary yang dirapikan tim AR. */
+public function simpan_summary_export_json()
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    $hasil = $this->Model_nag->simpan_summary_export(
+        (int) $this->input->post('id_book_invoice'),
+        (array) $this->input->post('data_table'),
+        (string) $this->session->userdata('username'),
+        date('Y-m-d H:i:s')
+    );
+
+    if (isset($hasil['gagal'])) {
+        $this->output->set_status_header(422);
+        echo json_encode(array('status' => FALSE, 'message' => $hasil['gagal']));
+        return;
+    }
+
+    echo json_encode(array('status' => TRUE, 'baris' => $hasil['baris']));
+}
+
 public function simpan_invoice_pot()
 {
     $data = $this->input->post('data_table');
@@ -2549,6 +2595,19 @@ public function preview_invoice_v2()
         $cetak_export['kirim'] = $this->Model_nag->shipment_dari_layar(
             (array) $this->input->post('kirim')
         );
+    }
+
+    // Invoice Summary-nya juga - alasannya sama. Subtotal & kolom Total Pieces
+    // ikut dihitung ulang dari baris yang sedang di layar, kalau tidak
+    // angkanya tidak cocok dengan barisnya sendiri.
+    if ($cetak_export && $this->input->post('summary_ada')) {
+        $dari_layar = $this->Model_nag->summary_dari_layar(
+            (array) $this->input->post('summary')
+        );
+        $cetak_export['summary']   = $dari_layar['summary'];
+        $cetak_export['ada_set']   = $dari_layar['ada_set'];
+        $cetak_export['sub_qty']   = $dari_layar['sub_qty'];
+        $cetak_export['sub_total'] = $dari_layar['sub_total'];
     }
 
     $mpdf = $this->_dn_mpdf_baru();

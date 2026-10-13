@@ -861,9 +861,15 @@ class Model_nag extends CI_Model
             }
         }
 
+        // Penanda "Invoice Summary sudah dirapikan dari AR" baru ada setelah
+        // migrations/20261013 - selama belum dijalankan dianggap 0.
+        $kol_summary_ar = $this->kolom_ada('tbl_book_invoice_exim_export_h', 'summary_ar')
+            ? 'h.summary_ar' : '0 AS summary_ar';
+
         $header = $this->db->query("
             SELECT b.id, b.no_invoice, b.status, b.doc_type, b.doc_number, b.profit_center,
                    b.curr, b.shipp, DATE_FORMAT(b.tgl_inv, '%Y-%m-%d') AS tgl_inv, t.type,
+                   $kol_summary_ar,
                    h.no_invoice_2, DATE_FORMAT(h.tgl_invoice, '%Y-%m-%d') AS tgl_invoice,
                    h.shipper_nama, h.shipper_alamat, h.seller_nama, h.seller_alamat,
                    h.purchaser_nama, h.purchaser_alamat, h.receiver_nama, h.receiver_alamat,
@@ -889,8 +895,17 @@ class Model_nag extends CI_Model
         // Nilai kotor CM per baris summary diambil dari baris SJ-nya - sama
         // dengan cara menu EXIM mencetaknya, jadi tidak ada selisih pembulatan
         // dari unit cost rata-rata.
+        //
+        // KECUALI kalau baris summary-nya sudah dirapikan dari AR. Kaitannya ke
+        // baris SJ memakai NOMOR URUT baris summary, dan begitu AR menggabung
+        // atau memecah baris, nomor urutnya tidak lagi menunjuk warna yang
+        // sama - nilainya jadi tertukar antar baris. Sesudah dirapikan, nilai
+        // tiap baris dihitung dari qty x unit cost baris itu sendiri.
+        $summary_ar = $this->kolom_ada('tbl_book_invoice_exim_export_h', 'summary_ar')
+            && (int) (string) $header['summary_ar'] === 1;
+
         $kotor = array();
-        if ($this->db->table_exists('tbl_book_invoice_exim_det')) {
+        if (!$summary_ar && $this->db->table_exists('tbl_book_invoice_exim_det')) {
             foreach ($this->db->query("
                 SELECT urutan_summary, SUM(total_price) AS kotor
                   FROM tbl_book_invoice_exim_det
@@ -9517,6 +9532,243 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
             if (is_array($r)) { $out[] = $this->_rapikan_shipment($r); }
         }
         return $out;
+    }
+
+    // ======================================================================
+    //  Invoice Summary Invoice Export - dibaca & diubah dari layar AR
+    //
+    //  Isinya milik Invoice EXIM Export (tbl_book_invoice_exim_export_det).
+    //  Baris summary disusun otomatis per warna oleh menu EXIM, tapi untuk
+    //  sebagian PO/style satu warna terpecah jadi beberapa baris - tim AR yang
+    //  merapikannya dari sini. Yang dibaca & ditulis tetap tabel yang sama,
+    //  jadi kedua aplikasi selalu melihat angka yang sama.
+    // ======================================================================
+
+    /** Kolom isian Invoice Summary - satu daftar, dipakai baca & tulis. */
+    private $_kolom_summary = array(
+        'color_code', 'color_name', 'total_pieces', 'total_pieces_unit',
+        'qty_invoiced', 'unit_cost_cm', 'unit_cost_fob', 'disc',
+    );
+
+    /** Kolom angka - isian kosong jadi 0, bukan NULL (kolomnya NOT NULL). */
+    private $_angka_summary = array(
+        'total_pieces', 'qty_invoiced', 'unit_cost_cm', 'unit_cost_fob', 'disc',
+    );
+
+    /** Kolom summary yang memang ada di database ini (total_pieces_unit baru
+     *  ada setelah migrations/20260921). */
+    private function _kolom_summary_ada()
+    {
+        $punya = $this->db->list_fields('tbl_book_invoice_exim_export_det');
+        $out = array();
+        foreach ($this->_kolom_summary as $k) {
+            if (in_array($k, $punya, TRUE)) { $out[] = $k; }
+        }
+        return $out;
+    }
+
+    /**
+     * Baris Invoice Summary satu invoice Export.
+     *
+     * @return array|null null = bukan Export / tabelnya belum ada
+     */
+    function summary_export($id_inv)
+    {
+        $id = (int) $id_inv;
+        if ($id < 1 || !$this->db->table_exists('tbl_book_invoice_exim_export_det')) {
+            return null;
+        }
+
+        $h = $this->db->query(
+            "SELECT id, no_invoice, shipp FROM tbl_book_invoice WHERE id = ? LIMIT 1",
+            array($id)
+        )->row_array();
+        if (!$h || strtoupper(trim((string) $h['shipp'])) !== 'EXPORT') {
+            return null;
+        }
+
+        // total_cm & total_fob ikut dibaca walau BUKAN isian: dua-duanya hasil
+        // hitungan, tapi layar memakainya untuk memperlihatkan nilai yang
+        // benar-benar tersimpan.
+        $kolom = implode(', ', $this->_kolom_summary_ada()) . ', total_cm, total_fob';
+        return array(
+            'no_invoice' => (string) $h['no_invoice'],
+            'baris' => $this->db->query("
+                SELECT id, urutan, $kolom
+                  FROM tbl_book_invoice_exim_export_det
+                 WHERE id_book_invoice = ? ORDER BY urutan, id
+            ", array($id))->result_array(),
+        );
+    }
+
+    /**
+     * Tulis ulang Invoice Summary satu invoice Export.
+     *
+     * Barisnya dibuang lalu ditulis ulang - sama seperti yang dilakukan menu
+     * Invoice EXIM waktu invoicenya disimpan, jadi tidak ada baris sisa dan
+     * urutannya selalu rapat.
+     *
+     * Invoicenya sekaligus ditandai "summary dirapikan dari AR". Penandanya
+     * perlu karena cetakan biasanya mengambil Extended Line Total dari jumlah
+     * nilai baris SJ-nya, yang dikaitkan lewat nomor urut baris summary. Begitu
+     * AR menggabung atau memecah baris, kaitan itu tidak cocok lagi - jadi
+     * sesudah dirapikan dari sini nilainya dihitung dari qty x unit cost baris
+     * itu sendiri. Lihat Model_nag::invoice_export_cetak().
+     *
+     * @return array jumlah baris tertulis, atau 'gagal'
+     */
+    function simpan_summary_export($id_inv, $baris, $user, $now)
+    {
+        $id = (int) $id_inv;
+        if ($id < 1 || !$this->db->table_exists('tbl_book_invoice_exim_export_det')) {
+            return array('gagal' => 'Invoice Summary table is not ready yet.');
+        }
+
+        $h = $this->db->query(
+            "SELECT no_invoice, shipp FROM tbl_book_invoice WHERE id = ? LIMIT 1",
+            array($id)
+        )->row_array();
+        if (!$h) {
+            return array('gagal' => 'Invoice not found.');
+        }
+        if (strtoupper(trim((string) $h['shipp'])) !== 'EXPORT') {
+            return array('gagal' => 'Invoice Summary only applies to Export invoices.');
+        }
+
+        $kolom = $this->_kolom_summary_ada();
+
+        $this->db->trans_start();
+        $this->db->query(
+            "DELETE FROM tbl_book_invoice_exim_export_det WHERE id_book_invoice = ?",
+            array($id)
+        );
+
+        $urut = 0;
+        foreach ((array) $baris as $r) {
+            if (!is_array($r)) { continue; }
+            $urut++;
+            $isi = $this->_rapikan_summary($r, $kolom);
+            $this->db->insert('tbl_book_invoice_exim_export_det',
+                array(
+                    'id_book_invoice' => $id,
+                    'no_invoice'      => (string) $h['no_invoice'],
+                    'urutan'          => $urut,
+                    'created_by'      => $user,
+                    'created_at'      => $now,
+                ) + $isi);
+        }
+
+        // Penandanya baru ada setelah migrations/20261013 - selama belum
+        // dijalankan, penyimpanannya tetap jalan.
+        if ($this->kolom_ada('tbl_book_invoice_exim_export_h', 'summary_ar')) {
+            $this->db->query(
+                "UPDATE tbl_book_invoice_exim_export_h SET summary_ar = 1 WHERE id_book_invoice = ?",
+                array($id)
+            );
+        }
+
+        $this->db->trans_complete();
+        if (!$this->db->trans_status()) {
+            return array('gagal' => 'Invoice Summary could not be saved.');
+        }
+        return array('baris' => $urut);
+    }
+
+    /** Ada tidaknya satu kolom - dipakai kolom yang baru ada setelah migrasi. */
+    private function kolom_ada($tabel, $kolom)
+    {
+        return $this->db->table_exists($tabel)
+            && in_array($kolom, $this->db->list_fields($tabel), TRUE);
+    }
+
+    /**
+     * Satu baris Invoice Summary dari layar, dirapikan + hitungannya.
+     *
+     * Dipakai dua-duanya - waktu disimpan DAN waktu dibuat pratinjau - supaya
+     * yang terlihat di PDF persis sama dengan yang nanti tersimpan.
+     *
+     * total_cm & total_fob ikut ditulis dengan rumus yang sama persis dengan
+     * menu Invoice EXIM: CM dari Qty Invoiced, FOB dari Total Pieces, keduanya
+     * sesudah diskon.
+     */
+    private function _rapikan_summary($r, $kolom = null)
+    {
+        $kolom = $kolom === null ? $this->_kolom_summary : $kolom;
+
+        $isi = array();
+        foreach ($kolom as $k) {
+            $v = isset($r[$k]) ? $r[$k] : null;
+            if (in_array($k, $this->_angka_summary, TRUE)) {
+                $isi[$k] = (float) str_replace(',', '', (string) $v);
+            } else {
+                $isi[$k] = $v === null ? null : trim((string) $v);
+            }
+        }
+
+        $qty    = isset($isi['qty_invoiced']) ? (float) $isi['qty_invoiced'] : 0;
+        $pieces = isset($isi['total_pieces']) ? (float) $isi['total_pieces'] : 0;
+        $cm     = isset($isi['unit_cost_cm']) ? (float) $isi['unit_cost_cm'] : 0;
+        $fob    = isset($isi['unit_cost_fob']) ? (float) $isi['unit_cost_fob'] : 0;
+        $sisa   = 1 - (isset($isi['disc']) ? (float) $isi['disc'] : 0) / 100;
+
+        $isi['total_cm']  = round($qty * $cm * $sisa, 4);
+        $isi['total_fob'] = round($pieces * $fob * $sisa, 4);
+        return $isi;
+    }
+
+    /**
+     * Baris Invoice Summary yang sedang ada di layar, siap dicetak.
+     *
+     * Pratinjau dibuat dari isi layar - termasuk yang BELUM disimpan - jadi
+     * yang terlihat memang yang baru saja diketik, bukan isi database.
+     * Bentuk barisnya disamakan dengan yang disusun data_cetak_export(), dan
+     * Extended Line Total-nya qty x unit cost baris itu sendiri: baris yang
+     * baru diketik belum punya kaitan ke baris SJ mana pun.
+     *
+     * @return array summary + ada_set + subtotalnya
+     */
+    function summary_dari_layar($baris)
+    {
+        $out = array();
+        $sub_qty = 0;
+        $sub_total = 0;
+        $ada_set = FALSE;
+
+        foreach ((array) $baris as $r) {
+            if (!is_array($r)) { continue; }
+            $isi = $this->_rapikan_summary($r);
+            $qty = (float) $isi['qty_invoiced'];
+            $ext = $qty * (float) $isi['unit_cost_cm'];
+
+            // Aturan satuannya sama persis dengan data_cetak_export(): Total
+            // Pieces cuma dicetak untuk baris SET.
+            $satuan = isset($isi['total_pieces_unit'])
+                ? strtoupper(trim((string) $isi['total_pieces_unit'])) : '';
+            if ($satuan === '') {
+                $satuan = ((float) $isi['total_pieces'] > 0
+                    && abs((float) $isi['total_pieces'] - $qty) > 0.0001) ? 'SET' : 'PCS';
+            }
+            if ($satuan === 'SET') { $ada_set = TRUE; }
+
+            $sub_qty += $qty;
+            $sub_total += $ext;
+            $out[] = array(
+                'color_code'   => (string) $isi['color_code'],
+                'color_name'   => (string) $isi['color_name'],
+                'satuan'       => $satuan,
+                'total_pieces' => $satuan === 'SET' ? (float) $isi['total_pieces'] : null,
+                'qty'          => $qty,
+                'unit_cost'    => (float) $isi['unit_cost_cm'],
+                'extended'     => $ext,
+            );
+        }
+
+        return array(
+            'summary'   => $out,
+            'ada_set'   => $ada_set,
+            'sub_qty'   => $sub_qty,
+            'sub_total' => $sub_total,
+        );
     }
 
     /**
