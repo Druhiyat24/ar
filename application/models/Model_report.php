@@ -107,18 +107,27 @@ class Model_report extends CI_Model
 
 
         $hasil = $this->db->query("SELECT a.*, IFNULL(rate,1) rate, (total_bill * IFNULL(rate,1)) total_bill_idr, (other_bill * IFNULL(rate,1)) other_bill_idr, (diskon_bill * IFNULL(rate,1)) diskon_bill_idr, (dp_bill * IFNULL(rate,1)) dp_bill_idr, (twot_bill * IFNULL(rate,1)) twot_bill_idr, (vat_bill * IFNULL(rate,1)) vat_bill_idr, (grand_total_bill * IFNULL(rate,1)) grand_total_bill_idr, (total_ship * IFNULL(rate,1)) total_ship_idr, (other_ship * IFNULL(rate,1)) other_ship_idr, (diskon_ship * IFNULL(rate,1)) diskon_ship_idr, (dp_ship * IFNULL(rate,1)) dp_ship_idr, (twot_ship * IFNULL(rate,1)) twot_ship_idr, (vat_ship * IFNULL(rate,1)) vat_ship_idr, (grand_total_ship * IFNULL(rate,1)) grand_total_ship_idr, (twot_bill * IFNULL(rate,1)) net_sales, ((twot_bill * persen_vat/100) * IFNULL(rate,1)) vat_sales, ((twot_bill + (twot_bill * persen_vat/100)) * IFNULL(rate,1)) grand_total_sales
-         from ((SELECT c.Supplier AS customer, a.no_invoice, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, UPPER(coa.relasi) relasi, UPPER(coa.cus_ctg) cus_ctg, pc.nama_pc, f.top, a.type_so, a.shipp, d.type, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, SUM(b.qty) qty_bill, e.total total_bill, 0 other_bill, e.discount diskon_bill, e.dp dp_bill, (e.total - e.discount) twot_bill, e.vat vat_bill, e.grand_total grand_total_bill, SUM(b.qty) qty_ship, e.total total_ship, 0 other_ship, e.discount diskon_ship, e.dp dp_ship, (e.total - e.discount) twot_ship, e.vat vat_ship, e.grand_total grand_total_ship, ROUND((e.vat/e.twot) * 100,0) persen_vat
+         from ((SELECT c.Supplier AS customer, a.no_invoice, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, UPPER(COALESCE(NULLIF(TRIM(coa.relasi), ''), rel.relasi)) relasi, UPPER(COALESCE(NULLIF(TRIM(coa.cus_ctg), ''), rel.cus_ctg)) cus_ctg, pc.nama_pc, f.top, a.type_so, a.shipp, d.type, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, SUM(b.qty) qty_bill, e.total total_bill, 0 other_bill, e.discount diskon_bill, e.dp dp_bill, (e.total - e.discount) twot_bill, e.vat vat_bill, e.grand_total grand_total_bill, SUM(b.qty) qty_ship, e.total total_ship, 0 other_ship, e.discount diskon_ship, e.dp dp_ship, (e.total - e.discount) twot_ship, e.vat vat_ship, e.grand_total grand_total_ship, ROUND((e.vat/e.twot) * 100,0) persen_vat
              FROM tbl_book_invoice AS a INNER JOIN 
              tbl_invoice_detail AS b ON a.id = b.id_book_invoice INNER JOIN      
              mastersupplier AS c ON a.id_customer = c.Id_Supplier INNER JOIN 
              tbl_type AS d ON a.id_type = d.id_type INNER JOIN 
              tbl_invoice_pot AS e ON a.id = e.id_book_invoice INNER JOIN 
              tbl_master_top AS f ON a.id_top = f.id LEFT JOIN
-             mastercoa_v2 coa on coa.no_coa = a.no_coa LEFT JOIN
+             mastercoa_v2 coa on coa.no_coa = a.no_coa
+             -- Group & Relationship sebenarnya milik CUSTOMER, bukan invoice.
+             -- Kalau no_coa invoicenya belum terisi - banyak yang begitu -
+             -- kategorinya diambil dari tbl_ctg_supplier, persis aturan yang
+             -- dipakai jurnal invoice: yang tidak terdaftar dianggap 'Third'.
+             -- Istilahnya tetap dibaca dari mastercoa_v2 supaya tulisannya
+             -- sama dengan baris yang COA-nya memang terisi.
+             LEFT JOIN
+             (SELECT id_supplier, supplier_ctg FROM tbl_ctg_supplier WHERE status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer LEFT JOIN
+             (SELECT cus_ctg, relasi FROM mastercoa_v2 WHERE inv_type LIKE '%INV_debit%' AND IFNULL(relasi,'') <> '' GROUP BY cus_ctg, relasi) rel on rel.cus_ctg LIKE CONCAT('%', IFNULL(sc.supplier_ctg, 'Third'), '%') LEFT JOIN
              master_pc pc on pc.kode_pc = a.profit_center
              WHERE a.profit_center = 'NAG' $str)       
          UNION
-         (SELECT c.Supplier AS customer, a.no_invoice, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, UPPER(coa.relasi) relasi, UPPER(coa.cus_ctg) cus_ctg, pc.nama_pc, f.top, a.type_so, a.shipp, d.type, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, SUM(b.qty) qty_bill, g.total total_bill, g.total_other other_bill, g.discount diskon_bill, g.dp dp_bill, (g.total + g.total_other - g.discount) twot_bill, g.vat vat_bill, g.grand_total grand_total_bill, SUM(b.qty_ship) qty_ship, e.total total_ship, 0 other_ship, e.discount diskon_ship, e.dp dp_ship, (e.total - e.discount) twot_ship, e.vat vat_ship, e.grand_total grand_total_ship, ROUND((e.vat/e.twot) * 100,0) persen_vat
+         (SELECT c.Supplier AS customer, a.no_invoice, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, UPPER(COALESCE(NULLIF(TRIM(coa.relasi), ''), rel.relasi)) relasi, UPPER(COALESCE(NULLIF(TRIM(coa.cus_ctg), ''), rel.cus_ctg)) cus_ctg, pc.nama_pc, f.top, a.type_so, a.shipp, d.type, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, SUM(b.qty) qty_bill, g.total total_bill, g.total_other other_bill, g.discount diskon_bill, g.dp dp_bill, (g.total + g.total_other - g.discount) twot_bill, g.vat vat_bill, g.grand_total grand_total_bill, SUM(b.qty_ship) qty_ship, e.total total_ship, 0 other_ship, e.discount diskon_ship, e.dp dp_ship, (e.total - e.discount) twot_ship, e.vat vat_ship, e.grand_total grand_total_ship, ROUND((e.vat/e.twot) * 100,0) persen_vat
              FROM tbl_book_invoice AS a INNER JOIN 
              tbl_invoice_detail_knitting AS b ON a.id = b.id_book_invoice INNER JOIN      
              mastersupplier AS c ON a.id_customer = c.Id_Supplier INNER JOIN 
@@ -126,17 +135,35 @@ class Model_report extends CI_Model
              tbl_invoice_pot AS e ON a.id = e.id_book_invoice INNER JOIN 
              tbl_master_top AS f ON a.id_top = f.id INNER JOIN
              tbl_invoice_pot_knitting AS g ON a.id = g.id_book_invoice LEFT JOIN
-             mastercoa_v2 coa on coa.no_coa = a.no_coa LEFT JOIN
+             mastercoa_v2 coa on coa.no_coa = a.no_coa
+             -- Group & Relationship sebenarnya milik CUSTOMER, bukan invoice.
+             -- Kalau no_coa invoicenya belum terisi - banyak yang begitu -
+             -- kategorinya diambil dari tbl_ctg_supplier, persis aturan yang
+             -- dipakai jurnal invoice: yang tidak terdaftar dianggap 'Third'.
+             -- Istilahnya tetap dibaca dari mastercoa_v2 supaya tulisannya
+             -- sama dengan baris yang COA-nya memang terisi.
+             LEFT JOIN
+             (SELECT id_supplier, supplier_ctg FROM tbl_ctg_supplier WHERE status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer LEFT JOIN
+             (SELECT cus_ctg, relasi FROM mastercoa_v2 WHERE inv_type LIKE '%INV_debit%' AND IFNULL(relasi,'') <> '' GROUP BY cus_ctg, relasi) rel on rel.cus_ctg LIKE CONCAT('%', IFNULL(sc.supplier_ctg, 'Third'), '%') LEFT JOIN
              master_pc pc on pc.kode_pc = a.profit_center
              WHERE a.profit_center = 'NAK' $str)
          UNION
-         (SELECT c.Supplier AS customer, a.no_inv, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, UPPER(coa.relasi) relasi, UPPER(coa.cus_ctg) cus_ctg, 'NIRWANA ALABARE GARMENT' nama_pc, a.top, a.type_so, a.shipp, a.type, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, SUM(b.qty) qty_bill, e.total total_bill, 0 other_bill, e.diskon diskon_bill, e.dp dp_bill, (e.total - e.diskon) twot_bill, e.vat vat_bill, e.grand_total grand_total_bill, SUM(b.qty) qty_ship, e.total total_ship, 0 other_ship, e.diskon diskon_ship, e.dp dp_ship, (e.total - e.diskon) twot_ship, e.vat vat_ship, e.grand_total grand_total_ship, ROUND((e.vat/e.twot) * 100,0) persen_vat
+         (SELECT c.Supplier AS customer, a.no_inv, DATE_FORMAT(b.sj_date, '%Y-%m-%d') AS tgl_inv, UPPER(COALESCE(NULLIF(TRIM(coa.relasi), ''), rel.relasi)) relasi, UPPER(COALESCE(NULLIF(TRIM(coa.cus_ctg), ''), rel.cus_ctg)) cus_ctg, 'NIRWANA ALABARE GARMENT' nama_pc, a.top, a.type_so, a.shipp, a.type, if(a.no_faktur is null,'-',CONCAT(MID(a.no_faktur,1,3),'.',MID(a.no_faktur,4,3),'-',MID(a.no_faktur,7,2),'.',MID(a.no_faktur,9))) no_faktur,if(a.tgl_faktur is null, '-',a.tgl_faktur) tgl_faktur, b.curr, SUM(b.qty) qty_bill, e.total total_bill, 0 other_bill, e.diskon diskon_bill, e.dp dp_bill, (e.total - e.diskon) twot_bill, e.vat vat_bill, e.grand_total grand_total_bill, SUM(b.qty) qty_ship, e.total total_ship, 0 other_ship, e.diskon diskon_ship, e.dp dp_ship, (e.total - e.diskon) twot_ship, e.vat vat_ship, e.grand_total grand_total_ship, ROUND((e.vat/e.twot) * 100,0) persen_vat
              FROM tbl_invoice_nb AS a INNER JOIN 
              tbl_invoice_nb_detail AS b ON a.no_inv = b.no_inv INNER JOIN      
              mastersupplier AS c ON a.customer = c.Id_Supplier INNER JOIN 
              tbl_invoice_nb_pot AS e ON a.no_inv = e.no_inv INNER JOIN
              tbl_type as d on d.type = a.type LEFT JOIN
-             mastercoa_v2 coa on coa.no_coa = a.no_coa $str2)) a left join (select tanggal, curr, rate FROM masterrate where v_codecurr = 'Pajak' GROUP BY tanggal, curr) b on b.curr= a.curr AND b.tanggal = a.tgl_inv");
+             mastercoa_v2 coa on coa.no_coa = a.no_coa
+             -- Group & Relationship sebenarnya milik CUSTOMER, bukan invoice.
+             -- Kalau no_coa invoicenya belum terisi - banyak yang begitu -
+             -- kategorinya diambil dari tbl_ctg_supplier, persis aturan yang
+             -- dipakai jurnal invoice: yang tidak terdaftar dianggap 'Third'.
+             -- Istilahnya tetap dibaca dari mastercoa_v2 supaya tulisannya
+             -- sama dengan baris yang COA-nya memang terisi.
+             LEFT JOIN
+             (SELECT id_supplier, supplier_ctg FROM tbl_ctg_supplier WHERE status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.customer LEFT JOIN
+             (SELECT cus_ctg, relasi FROM mastercoa_v2 WHERE inv_type LIKE '%INV_debit%' AND IFNULL(relasi,'') <> '' GROUP BY cus_ctg, relasi) rel on rel.cus_ctg LIKE CONCAT('%', IFNULL(sc.supplier_ctg, 'Third'), '%') $str2)) a left join (select tanggal, curr, rate FROM masterrate where v_codecurr = 'Pajak' GROUP BY tanggal, curr) b on b.curr= a.curr AND b.tanggal = a.tgl_inv");
 return $hasil->result_array();
 }
 

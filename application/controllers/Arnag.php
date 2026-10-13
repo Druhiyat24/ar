@@ -2148,6 +2148,33 @@ public function simpan_shipment_export_json()
     echo json_encode(array('status' => TRUE, 'baris' => $hasil['baris']));
 }
 
+/**
+ * Batalkan Proforma Invoice dari layar List.
+ *
+ * $cbd = '1' untuk Proforma DP/CBD. Baris SO-nya ikut dibebaskan - lihat
+ * Model_nag::batal_proforma_invoice().
+ */
+public function batal_proforma_invoice_json()
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    $hasil = $this->Model_nag->batal_proforma_invoice(
+        (int) $this->input->post('id'),
+        (string) $this->input->post('cbd') === '1'
+    );
+
+    if (isset($hasil['gagal'])) {
+        $this->output->set_status_header(422);
+        echo json_encode(array('status' => FALSE, 'message' => $hasil['gagal']));
+        return;
+    }
+
+    echo json_encode(array('status' => TRUE, 'no_pi' => $hasil['no_pi'], 'so' => $hasil['so']));
+}
+
 /** Baris Invoice Summary satu booking Export, untuk layar AR. */
 public function summary_export_json($id_inv = null)
 {
