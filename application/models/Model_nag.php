@@ -349,6 +349,80 @@ class Model_nag extends CI_Model
         $hasil = $this->db->query("UPDATE tbl_book_invoice SET status = 'CANCEL' WHERE id = '$id' ");
         return $hasil;
     }
+
+    /**
+     * Batalkan Proforma Invoice (biasa maupun DP/CBD).
+     *
+     * Yang dibatalkan hanya yang masih POST - itu juga satu-satunya status yang
+     * muncul di layar List Proforma Invoice. Sesudah first approval, PI-nya
+     * sudah pindah ke layar approval dan angkanya sudah dipakai, jadi tidak
+     * dibatalkan dari sini.
+     *
+     * Baris SO-nya DIBEBASKAN: waktu PI dibuat, so_det.no_pi (DP/CBD:
+     * no_pi_cbd) diisi nomor PI-nya - lihat update_pi_sodet(). Tanpa dilepas,
+     * baris SO itu ikut terkunci selamanya walau PI-nya sudah batal, dan tidak
+     * akan pernah muncul lagi waktu membuat PI berikutnya.
+     *
+     * Barisnya sendiri TIDAK dihapus - riwayatnya tetap terbaca, sama seperti
+     * cancel di Debit Note.
+     *
+     * @param  bool $cbd TRUE untuk Proforma DP/CBD
+     * @return array no_pi + jumlah baris SO yang dilepas, atau 'gagal'
+     */
+    function batal_proforma_invoice($id, $cbd = FALSE)
+    {
+        $id = (int) $id;
+        $tabel = $cbd ? 'tbl_invoice_proforma_dp_cbd' : 'tbl_invoice_proforma';
+        $t_so  = $cbd ? 'tbl_invoice_proforma_detail_so_dp_cbd' : 'tbl_invoice_proforma_detail_so';
+        $kolom = $cbd ? 'no_pi_cbd' : 'no_pi';
+
+        $h = $this->db->query(
+            "SELECT id, no_proforma_invoice, status FROM $tabel WHERE id = ? LIMIT 1",
+            array($id)
+        )->row_array();
+        if (!$h) {
+            return array('gagal' => 'Proforma invoice not found.');
+        }
+
+        $status = strtoupper(trim((string) $h['status']));
+        if (strpos($status, 'CANCEL') === 0) {
+            return array('gagal' => 'This proforma invoice has already been cancelled.');
+        }
+        if ($status !== 'POST') {
+            return array('gagal' => 'Only a proforma invoice that is still POST can be cancelled.');
+        }
+
+        $no_pi = (string) $h['no_proforma_invoice'];
+
+        // Baris SO-nya dilepas lebih dulu. Kalau langkah ini gagal, PI-nya
+        // belum berubah status - lebih baik batalnya diulang daripada ada baris
+        // SO yang terkunci tanpa PI yang memegangnya.
+        $id_sodet = array();
+        foreach ($this->db->query(
+            "SELECT id_so_det FROM $t_so WHERE no_invoice_proforma = ?",
+            array($no_pi)
+        )->result_array() as $r) {
+            $v = (int) $r['id_so_det'];
+            if ($v > 0) { $id_sodet[$v] = $v; }
+        }
+
+        $lepas = 0;
+        if ($id_sodet) {
+            $db_nag = $this->load->database('db_nag', TRUE);
+            // Nomor PI-nya ikut jadi syarat: kalau baris SO itu sementara ini
+            // sudah dipegang PI LAIN, jangan ikut dilepas.
+            $db_nag->query(
+                "UPDATE so_det SET $kolom = NULL
+                  WHERE id IN (" . implode(',', $id_sodet) . ") AND $kolom = ?",
+                array($no_pi)
+            );
+            $lepas = $db_nag->affected_rows();
+        }
+
+        $this->db->query("UPDATE $tabel SET status = 'CANCEL' WHERE id = ?", array($id));
+
+        return array('no_pi' => $no_pi, 'so' => $lepas);
+    }
     
 
     function copy_invoice($id)
