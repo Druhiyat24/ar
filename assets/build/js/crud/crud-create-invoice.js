@@ -54,6 +54,11 @@
         kirim: [],
         kirimMerek: [],
         kirimExport: false,
+        // Invoice Summary - juga cuma dipakai invoice Export. Baris per
+        // warnanya disusun menu EXIM; di sini tim AR merapikan warna yang
+        // terpecah jadi beberapa baris.
+        sum: [],
+        sumExport: false,
         // Langkah simpan berikutnya yang harus dijalankan. Selain 0 berarti
         // Save sebelumnya berhenti di tengah - Save berikutnya menyambung dari
         // langkah itu, tidak mengulang yang sudah tersimpan.
@@ -69,13 +74,15 @@
         if (v === null || v === undefined || v === '') { return '-'; }
         return $('<div>').text(v).html();
     }
-    function angka(v) {
+    /** @param {number} [desimal] bawaannya 2 - unit cost dipakai 4. */
+    function angka(v, desimal) {
         // Koma ribuan dibuang dulu: beberapa endpoint lama (mis. cari_book_inv
         // yang memakai FORMAT(value, 2)) mengirim angka yang SUDAH diformat -
         // parseFloat("33,948,900.00") berhenti di koma pertama dan jadi 33.
+        var d = desimal === undefined ? 2 : desimal;
         var n = parseFloat(String(v === undefined || v === null ? '' : v).replace(/,/g, ''));
-        if (isNaN(n)) { return '0.00'; }
-        return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (isNaN(n)) { n = 0; }
+        return n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
     }
     function nilai(v) {
         var n = parseFloat(String(v === undefined || v === null ? '' : v).replace(/,/g, ''));
@@ -258,8 +265,10 @@
             : 'SJ is taken from garment (BPPB).');
 
         gambarBaris();
-        // Shipment Details ikut booking-nya - cuma terisi kalau Export.
+        // Shipment Details & Invoice Summary ikut booking-nya - cuma terisi
+        // kalau Export.
         muatShipment();
+        muatSummary();
     }
 
     /* ================== 1c. Mode edit: muat invoice-nya =================
@@ -1370,6 +1379,11 @@
             isi.kirim_ada = '1';
             isi.kirim = payloadKirim();
         }
+        // Invoice Summary-nya juga - alasannya sama.
+        if (inv.sumExport) {
+            isi.summary_ada = '1';
+            isi.summary = payloadSum();
+        }
         // Array & object dikirim sebagai data_table[0][qty] dst, sama seperti
         // yang dilakukan jQuery waktu mengirim lewat $.ajax.
         $f.append($.param(isi).split('&').map(function (pasangan) {
@@ -1768,6 +1782,180 @@
         });
     });
 
+    /* =====================================================================
+     * Invoice Summary (khusus Export)
+     *
+     * Barisnya milik Invoice EXIM Export (tbl_book_invoice_exim_export_det),
+     * disusun otomatis per warna oleh menu EXIM. Untuk sebagian PO/style satu
+     * warna terpecah jadi beberapa baris - tim AR yang merapikannya dari sini.
+     * Yang ditulis tabel yang sama, jadi perubahan dari sini langsung terbaca
+     * di menu EXIM maupun cetakannya.
+     * ===================================================================== */
+
+    var PETA_SUM = {
+        '#ci-s-code': 'color_code', '#ci-s-name': 'color_name',
+        '#ci-s-pieces': 'total_pieces', '#ci-s-unit': 'total_pieces_unit',
+        '#ci-s-qty': 'qty_invoiced', '#ci-s-cost': 'unit_cost_cm',
+        '#ci-s-fob': 'unit_cost_fob', '#ci-s-disc': 'disc'
+    };
+
+    var sumSedang = -1;   // baris yang sedang dibuka di modal, -1 = baris baru
+
+    function sumKosong() {
+        return {
+            color_code: '', color_name: '', total_pieces: '',
+            total_pieces_unit: 'PCS', qty_invoiced: '', unit_cost_cm: '',
+            unit_cost_fob: '', disc: ''
+        };
+    }
+
+    /** Extended Line Total satu baris - rumusnya sama dengan cetakannya. */
+    function sumExt(r) {
+        var q = parseFloat(String(r.qty_invoiced).replace(/,/g, '')) || 0;
+        var c = parseFloat(String(r.unit_cost_cm).replace(/,/g, '')) || 0;
+        return q * c;
+    }
+
+    /** Ambil Invoice Summary booking ini. Dipanggil tiap booking berganti. */
+    function muatSummary() {
+        var id = parseInt($('#ci-id-inv').val(), 10) || 0;
+        inv.sum = [];
+        inv.sumExport = false;
+        if (!id) { gambarSum(); return; }
+
+        ambilJson('summary_export_json/' + ruasUrl(id) + '/')
+            .done(function (d) {
+                if (!d || !d.status || !d.export) { gambarSum(); return; }
+                inv.sumExport = true;
+                inv.sum = (d.baris || []).map(function (r) {
+                    return $.extend(sumKosong(), r);
+                });
+                gambarSum();
+            })
+            .fail(function () {
+                // Gagal memuat tidak boleh mengunci layar - invoice AR-nya
+                // tetap bisa disimpan, Invoice Summary-nya saja yang absen.
+                gambarSum();
+            });
+    }
+
+    function gambarSum() {
+        $('#ci-sum-card').prop('hidden', !inv.sumExport);
+        if (!inv.sumExport) { return; }
+
+        var $b = $('#ci-sum-tbody').empty();
+        $('#ci-sum-kosongkan').prop('disabled', DOK_SAJA || !inv.sum.length);
+        $('#ci-sum-tambah').prop('disabled', DOK_SAJA);
+        $('#ci-sum-kaki').prop('hidden', !inv.sum.length);
+
+        if (!inv.sum.length) {
+            kosongkanTabel($b, 10, 'fa-list-ol',
+                'No summary row yet. Use “Add Data” to add one.');
+            return;
+        }
+
+        var jmlQty = 0;
+        var jmlExt = 0;
+        $b.html(inv.sum.map(function (r, i) {
+            var ext = sumExt(r);
+            jmlQty += parseFloat(String(r.qty_invoiced).replace(/,/g, '')) || 0;
+            jmlExt += ext;
+            return '<tr>'
+                + '<td class="dn-tengah"><b>' + (i + 1) + '</b></td>'
+                + '<td>' + teks(r.color_code) + '</td>'
+                + '<td>' + teks(r.color_name) + '</td>'
+                + '<td class="ci-angka">' + angka(r.total_pieces) + '</td>'
+                + '<td>' + teks(r.total_pieces_unit) + '</td>'
+                + '<td class="ci-angka">' + angka(r.qty_invoiced) + '</td>'
+                + '<td class="ci-angka">' + angka(r.unit_cost_cm, 4) + '</td>'
+                + '<td class="ci-angka">' + angka(r.disc) + '</td>'
+                + '<td class="ci-angka">' + angka(ext) + '</td>'
+                + '<td class="dn-tengah">'
+                + '  <button type="button" class="btn btn-primary btn-sm ci-sum-ubah"'
+                + '          data-i="' + i + '"' + (DOK_SAJA ? ' disabled' : '')
+                + '          title="Edit"><i class="fas fa-pen"></i></button>'
+                + '  <button type="button" class="btn btn-danger btn-sm ci-sum-buang"'
+                + '          data-i="' + i + '"' + (DOK_SAJA ? ' disabled' : '')
+                + '          title="Remove"><i class="fas fa-times"></i></button>'
+                + '</td></tr>';
+        }).join(''));
+
+        $('#ci-sum-qty').text(angka(jmlQty));
+        $('#ci-sum-total').text(angka(jmlExt));
+    }
+
+    function bukaSum(i) {
+        sumSedang = i;
+        var r = (i >= 0 && inv.sum[i]) ? inv.sum[i] : sumKosong();
+        Object.keys(PETA_SUM).forEach(function (sel) {
+            $(sel).val(r[PETA_SUM[sel]]);
+        });
+        if (!$.trim(String($('#ci-s-unit').val() || ''))) { $('#ci-s-unit').val('PCS'); }
+        hitungSumExt();
+        $('#ci-sum-judul').text(i >= 0 ? 'Edit Summary Row ' + (i + 1) : 'Add Summary Row');
+        $('#ci-modal-sum').modal('show');
+    }
+
+    function hitungSumExt() {
+        $('#ci-s-ext').val(angka(sumExt({
+            qty_invoiced: $('#ci-s-qty').val(),
+            unit_cost_cm: $('#ci-s-cost').val()
+        })));
+    }
+
+    $(function () {
+        $('#ci-sum-tambah').on('click', function () { bukaSum(-1); });
+        $('#ci-sum-tbody').on('click', '.ci-sum-ubah', function () {
+            bukaSum(parseInt($(this).data('i'), 10));
+        });
+        $('#ci-sum-tbody').on('click', '.ci-sum-buang', function () {
+            inv.sum.splice(parseInt($(this).data('i'), 10), 1);
+            gambarSum();
+        });
+        $('#ci-s-qty, #ci-s-cost').on('input', hitungSumExt);
+
+        $('#ci-sum-kosongkan').on('click', function () {
+            if (!inv.sum.length) { return; }
+            Swal.fire({
+                icon: 'warning',
+                title: 'Clear all summary rows?',
+                html: 'All <b>' + inv.sum.length + '</b> summary row'
+                    + (inv.sum.length > 1 ? 's' : '') + ' will be removed. '
+                    + 'Nothing is saved until you press Save.',
+                showCancelButton: true,
+                confirmButtonText: 'Clear All',
+                cancelButtonText: 'Cancel',
+                customClass: { popup: 'ci-swal' }
+            }).then(function (h) {
+                if (!h.isConfirmed) { return; }
+                inv.sum = [];
+                gambarSum();
+            });
+        });
+
+        $('#ci-s-simpan').on('click', function () {
+            var r = (sumSedang >= 0 && inv.sum[sumSedang]) ? inv.sum[sumSedang] : sumKosong();
+            Object.keys(PETA_SUM).forEach(function (sel) {
+                r[PETA_SUM[sel]] = $(sel).val();
+            });
+            if (sumSedang < 0) { inv.sum.push(r); }
+            gambarSum();
+            $('#ci-modal-sum').modal('hide');
+        });
+    });
+
+    /** Baris Invoice Summary yang dikirim ke server. */
+    function payloadSum() {
+        return inv.sum.map(function (r) {
+            var out = {};
+            Object.keys(PETA_SUM).forEach(function (sel) {
+                out[PETA_SUM[sel]] = r[PETA_SUM[sel]] === undefined
+                    ? '' : r[PETA_SUM[sel]];
+            });
+            return out;
+        });
+    }
+
     /** Baris yang dikirim ke server - kuncinya sama dengan kolom tabelnya. */
     function payloadKirim() {
         return inv.kirim.map(function (r) {
@@ -1880,6 +2068,18 @@
                 return kirim('simpan_shipment_export_json/', {
                     id_book_invoice: idInv,
                     data_table: payloadKirim()
+                });
+            } });
+        }
+
+        // Invoice Summary-nya juga - tabelnya milik Invoice EXIM Export,
+        // jadi yang dirapikan di sini langsung terbaca di menu EXIM maupun
+        // cetakannya. Dilewati kalau invoicenya bukan Export.
+        if (inv.sumExport) {
+            L.push({ nama: 'Saving invoice summary', jalan: function () {
+                return kirim('simpan_summary_export_json/', {
+                    id_book_invoice: idInv,
+                    data_table: payloadSum()
                 });
             } });
         }
