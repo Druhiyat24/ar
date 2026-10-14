@@ -7661,7 +7661,7 @@ function simpan_proforma_invoice_detail_so_cbd(){
 					trHTML += '<td>' + item.status + "</td>";	
 					trHTML += '<td>' + item.no_faktur_pajak + "</td>";	
 					trHTML += '<td align="right">' + item.amount + "</td>";	
-					trHTML += '<td><button id="faktur_pjk" name="faktur_pjk" type="button" class="btn btn-info btn-sm" onclick="update_faktur_pjk(' + item.id + ')" >Update</button> ' + '' + ' <button id="print_inv_pi" name="print_inv_pi" type="button" class="btn btn-primary btn-sm" onclick="print_proforma_invoice(' + item.id + ')"><i class="fa fa-print"></i> Print</button></td>';					
+					trHTML += '<td><button id="faktur_pjk" name="faktur_pjk" type="button" class="btn btn-info btn-sm" onclick="update_faktur_pjk(' + item.id + ')" >Update</button> ' + '' + ' <button id="print_inv_pi" name="print_inv_pi" type="button" class="btn btn-primary btn-sm" onclick="print_proforma_invoice(' + item.id + ')"><i class="fa fa-print"></i> Print</button> <button type="button" class="btn btn-danger btn-sm" onclick="batal_proforma_invoice(' + item.id + ', 0)"><i class="fa fa-times"></i> Cancel</button></td>';					
 				// trHTML += '<td><button id="export_to_excel" name="export_to_excel" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_pi(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button></td>';					
 
 				trHTML += '</tr>';
@@ -7705,7 +7705,7 @@ function cari_proforma_invoice_cbd(){
 					trHTML += '<td>' + item.status + "</td>";	
 					trHTML += '<td>' + item.no_faktur_pajak + "</td>";	
 					trHTML += '<td align="right">' + item.amount + "</td>";	
-					trHTML += '<td><button id="faktur_pjk" name="faktur_pjk" type="button" class="btn btn-info btn-sm" onclick="update_faktur_pjk_cbd(' + item.id + ')" >Update</button> ' + '' + ' <button id="print_inv_pi" name="print_inv_pi" type="button" class="btn btn-primary btn-sm" onclick="print_proforma_invoice_cbd(' + item.id + ')"><i class="fa fa-print"></i> Print</button></td>';					
+					trHTML += '<td><button id="faktur_pjk" name="faktur_pjk" type="button" class="btn btn-info btn-sm" onclick="update_faktur_pjk_cbd(' + item.id + ')" >Update</button> ' + '' + ' <button id="print_inv_pi" name="print_inv_pi" type="button" class="btn btn-primary btn-sm" onclick="print_proforma_invoice_cbd(' + item.id + ')"><i class="fa fa-print"></i> Print</button> <button type="button" class="btn btn-danger btn-sm" onclick="batal_proforma_invoice(' + item.id + ', 1)"><i class="fa fa-times"></i> Cancel</button></td>';					
 				// trHTML += '<td><button id="export_to_excel" name="export_to_excel" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_pi(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button></td>';					
 
 				trHTML += '</tr>';
@@ -7721,6 +7721,52 @@ function cari_proforma_invoice_cbd(){
 
 	}
 
+/**
+ * Batalkan satu Proforma Invoice dari layar List.
+ *
+ * Yang bisa dibatalkan hanya yang masih POST - itu juga satu-satunya status
+ * yang muncul di layar ini. Baris SO-nya ikut dibebaskan di server, kalau
+ * tidak baris itu terkunci selamanya walau PI-nya sudah batal.
+ *
+ * @param {number} id
+ * @param {number} cbd 1 untuk Proforma DP/CBD
+ */
+function batal_proforma_invoice(id, cbd) {
+	Swal.fire({
+		icon: 'warning',
+		title: 'Cancel this proforma invoice?',
+		html: 'Its SO rows will be released and can be used again.<br>'
+			+ 'This cannot be undone.',
+		showCancelButton: true,
+		confirmButtonText: 'Yes, cancel it',
+		cancelButtonText: 'Back',
+		confirmButtonColor: '#d33',
+		showLoaderOnConfirm: true,
+		allowOutsideClick: function () { return !Swal.isLoading(); },
+		preConfirm: function () {
+			return $.ajax({
+				url: 'batal_proforma_invoice_json/',
+				type: 'POST',
+				dataType: 'JSON',
+				data: { id: id, cbd: cbd ? '1' : '0' }
+			}).fail(function (x) {
+				var p = x.responseJSON && x.responseJSON.message
+					? x.responseJSON.message : 'Could not cancel the proforma invoice.';
+				Swal.showValidationMessage(p);
+			});
+		}
+	}).then(function (h) {
+		if (!h.isConfirmed || !h.value || !h.value.status) { return; }
+		Swal.fire({
+			icon: 'success',
+			title: 'Proforma invoice cancelled',
+			html: '<b>' + h.value.no_pi + '</b> has been cancelled.<br>'
+				+ h.value.so + ' SO row' + (h.value.so === 1 ? '' : 's') + ' released.'
+		}).then(function () {
+			if (cbd) { cari_proforma_invoice_cbd(); } else { cari_proforma_invoice(); }
+		});
+	});
+}
 // ===== List Debit Note =====
 // Tabelnya DataTables: pencarian, urutan, dan halaman ditangani DataTables.
 // Data diisi lewat API-nya (clear + rows.add), BUKAN menyisipkan <tr> langsung -

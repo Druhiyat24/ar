@@ -1173,6 +1173,52 @@
           </div>
         </div>
       </div>
+
+      <!-- ===== Invoice Summary (khusus Export) =====
+           Barisnya disusun otomatis per warna oleh menu Invoice EXIM, tapi
+           untuk sebagian PO/style satu warna terpecah jadi beberapa baris -
+           tim AR yang merapikannya di sini. Tabelnya sama dengan yang dipakai
+           menu EXIM, jadi perubahan dari sini langsung terbaca di sana. -->
+      <div class="card ci-kirim-card" id="ci-sum-card" hidden>
+        <div class="card-body">
+          <div class="table-header">
+            <span class="table-title"><i class="fas fa-list-ol"></i>Invoice Summary</span>
+            <div class="dn-filter-aksi">
+              <button type="button" class="btn btn-dn-hapus-baris" id="ci-sum-kosongkan"><i class="fas fa-eraser"></i> Clear All</button>
+              <button type="button" class="btn btn-primary" id="ci-sum-tambah"><i class="fas fa-plus"></i> Add Data</button>
+            </div>
+          </div>
+          <div class="ci-table-wrap">
+            <table class="dn-table text-nowrap" style="width:100%">
+              <thead>
+                <tr>
+                  <th style="width:40px" class="dn-tengah">#</th>
+                  <th>Color Code</th>
+                  <th>Color Name</th>
+                  <th class="text-right">Total Pieces</th>
+                  <th>Unit</th>
+                  <th class="text-right">Quantity Invoiced</th>
+                  <th class="text-right">Unit Cost</th>
+                  <th class="text-right">Disc (%)</th>
+                  <th class="text-right">Extended Line Total</th>
+                  <th style="width:84px" class="dn-tengah">Action</th>
+                </tr>
+              </thead>
+              <tbody id="ci-sum-tbody"></tbody>
+              <tfoot>
+                <tr id="ci-sum-kaki" hidden>
+                  <th colspan="5" class="text-right">Sub Total</th>
+                  <th class="text-right" id="ci-sum-qty">0</th>
+                  <th></th>
+                  <th></th>
+                  <th class="text-right" id="ci-sum-total">0.00</th>
+                  <th></th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
       <!-- ===== Ringkasan uang + tombol simpan ===== -->
       <div class="row justify-content-end">
         <div class="col-xl-4 col-lg-5 col-md-7">
@@ -1590,6 +1636,69 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-danger" data-dismiss="modal"><i class="fas fa-times"></i> Cancel</button>
         <button type="button" class="btn btn-primary" id="ci-k-simpan"><i class="fas fa-check"></i> Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== Modal: baris Invoice Summary ===================== -->
+<div class="modal fade dn-modal nag-skin ci-sm" id="ci-modal-sum" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-list-ol"></i> <span id="ci-sum-judul">Add Summary Row</span></h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="form-group col-md-4">
+            <label for="ci-s-code">Color Code</label>
+            <input type="text" class="form-control" id="ci-s-code" maxlength="255" autocomplete="off">
+          </div>
+          <div class="form-group col-md-8">
+            <label for="ci-s-name">Color Name</label>
+            <input type="text" class="form-control" id="ci-s-name" maxlength="500" autocomplete="off">
+          </div>
+          <div class="form-group col-md-6">
+            <label for="ci-s-pieces">Total Pieces</label>
+            <input type="number" step="0.01" class="form-control ci-angka-input" id="ci-s-pieces">
+          </div>
+          <div class="form-group col-md-6">
+            <label for="ci-s-unit">Unit</label>
+            <!-- Kolom Total Pieces di cetakan hanya muncul untuk baris SET;
+                 untuk PCS angkanya sama persis dengan Quantity Invoiced. -->
+            <select class="form-control" id="ci-s-unit">
+              <option value="PCS">PCS</option>
+              <option value="SET">SET</option>
+            </select>
+          </div>
+          <div class="form-group col-md-6">
+            <label for="ci-s-qty">Quantity Invoiced</label>
+            <input type="number" step="0.01" class="form-control ci-angka-input" id="ci-s-qty">
+          </div>
+          <div class="form-group col-md-6">
+            <label for="ci-s-cost">Unit Cost</label>
+            <input type="number" step="0.0001" class="form-control ci-angka-input" id="ci-s-cost">
+          </div>
+          <div class="form-group col-md-6">
+            <label for="ci-s-fob">Unit Cost FOB</label>
+            <input type="number" step="0.0001" class="form-control ci-angka-input" id="ci-s-fob">
+          </div>
+          <div class="form-group col-md-6">
+            <label for="ci-s-disc">Disc (%)</label>
+            <input type="number" step="0.01" class="form-control ci-angka-input" id="ci-s-disc">
+          </div>
+          <div class="form-group col-md-12">
+            <label>Extended Line Total</label>
+            <!-- Bukan ketikan: Quantity Invoiced x Unit Cost, sama dengan yang
+                 nanti tercetak. Ditampilkan supaya kelihatan sebelum Apply. -->
+            <input type="text" class="form-control" id="ci-s-ext" readonly>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal"><i class="fas fa-times"></i> Cancel</button>
+        <button type="button" class="btn btn-primary" id="ci-s-simpan"><i class="fas fa-check"></i> Apply</button>
       </div>
     </div>
   </div>
