@@ -2633,8 +2633,14 @@ public function preview_invoice_v2()
         );
         $cetak_export['summary']   = $dari_layar['summary'];
         $cetak_export['ada_set']   = $dari_layar['ada_set'];
-        $cetak_export['sub_qty']   = $dari_layar['sub_qty'];
         $cetak_export['sub_total'] = $dari_layar['sub_total'];
+        // Sub Total QTY tetap ikut baris SJ - baris summary boleh memuat baris
+        // yang tidak menambah jumlah kiriman (mis. EMB), jadi kalau dijumlah
+        // dari layar angkanya dobel. Lihat Model_nag::data_cetak_export().
+        // Baru diambil dari layar kalau invoicenya memang belum punya baris SJ.
+        if (empty($cetak_export['sub_qty_dari_sj'])) {
+            $cetak_export['sub_qty'] = $dari_layar['sub_qty'];
+        }
     }
 
     $mpdf = $this->_dn_mpdf_baru();

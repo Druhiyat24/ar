@@ -994,6 +994,30 @@ class Model_nag extends CI_Model
         $kol_satuan = in_array('total_pieces_unit', $kolom) ? 'total_pieces_unit' : "'' AS total_pieces_unit";
 
         $summary = array();
+        // Sub Total QTY diambil dari baris SJ-nya, BUKAN dari jumlah baris
+        // Invoice Summary.
+        //
+        // Sejak baris summary boleh dirapikan tim AR, isinya bisa memuat baris
+        // yang memang TIDAK ikut menambah jumlah kiriman - misalnya baris EMB,
+        // yang qty-nya mengikuti baris warna di atasnya. Kalau semua baris
+        // dijumlah, Sub Total-nya jadi dobel (3.200 padahal yang dikirim 1.600).
+        // Yang dikirim tetap sebanyak yang tercatat di SJ.
+        //
+        // NILAINYA tidak ikut: Extended Line Total & Sub Total uang tetap
+        // dijumlah dari baris summary, karena baris EMB memang menambah nilai.
+        $qty_sj = NULL;
+        if ($this->db->table_exists('tbl_book_invoice_exim_det')) {
+            $r = $this->db->query("
+                SELECT COUNT(*) AS jml, SUM(qty) AS qty
+                  FROM tbl_book_invoice_exim_det WHERE id_book_invoice = ?
+            ", array($id_inv))->row_array();
+            // Invoice yang dibuat dari WS saja belum punya baris SJ - untuk itu
+            // jumlah baris summary-nya yang dipakai, seperti sebelumnya.
+            if ($r && (int) $r['jml'] > 0) {
+                $qty_sj = (float) $r['qty'];
+            }
+        }
+
         $sub_qty = 0;
         $sub_total = 0;
         $ada_set = FALSE;
@@ -1048,7 +1072,10 @@ class Model_nag extends CI_Model
             'kirim'       => $kirim,
             'summary'     => $summary,
             'ada_set'     => $ada_set,
-            'sub_qty'     => $sub_qty,
+            'sub_qty'     => $qty_sj === NULL ? $sub_qty : $qty_sj,
+            // Penanda untuk pratinjau: kalau qty-nya memang dari SJ, baris yang
+            // sedang diketik di layar tidak boleh menimpanya.
+            'sub_qty_dari_sj' => $qty_sj !== NULL,
             'sub_total'   => $sub_total,
             'vat_persen'  => isset($pot_booking['vat_persen']) ? (float) $pot_booking['vat_persen'] : 0,
             'pot_booking' => $pot_booking,
