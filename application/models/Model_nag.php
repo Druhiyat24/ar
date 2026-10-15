@@ -2849,6 +2849,98 @@ function get_kode_cbd($kode)
 
 
     //ubah september
+/**
+ * Baris SO untuk layar Proforma Invoice, DIRINGKAS per SO + produk + harga.
+ *
+ * Layar lamanya dua tabel: pilih SO dulu, lalu centang satu per satu baris
+ * rincinya - satu SO bisa puluhan baris karena dipecah per warna DAN per size
+ * (SO/0926/01370: 3 warna x 9 size = 27 centangan untuk satu produk).
+ *
+ * Di sini barisnya digabung jadi satu per SO + produk + HARGA. Harga ikut jadi
+ * kunci karena satu produk bisa berbeda harga antar warna - yang begitu tidak
+ * boleh disatukan, kolom Unit Price-nya jadi tidak mewakili apa-apa.
+ *
+ * Rincian per so_det tetap DIBAWA UTUH di dalam tiap grup ('baris'), dua
+ * alasannya:
+ *   1. layar bisa membuka grupnya kalau ada warna/size yang perlu dilepas;
+ *   2. yang DISIMPAN tetap per so_det - cetakan PDF-nya per warna & size,
+ *      jadi bentuk tersimpannya tidak boleh berubah sama sekali.
+ *
+ * produk_detail dirangkai persis seperti layar lama supaya tulisan di PDF
+ * tidak bergeser sehuruf pun.
+ *
+ * @param string $tipe 'CBD' memakai penanda no_pi_cbd, selain itu no_pi
+ */
+function so_proforma_grup($dt_dari, $dt_sampai, $id_customer, $tipe = '')
+{
+    $db_nag = $this->load->database('db_nag', TRUE);
+    $kolom_pi = strtoupper(trim((string) $tipe)) === 'CBD' ? 'no_pi_cbd' : 'no_pi';
+
+    $baris = $db_nag->query("
+        SELECT a.id AS id_so, a.so_no, DATE_FORMAT(a.so_date, '%Y-%m-%d') AS so_date,
+               c.Supplier AS customer,
+               IFNULL(NULLIF(TRIM(a.buyerno), ''), '-') AS buyerno,
+               a.curr, mp.product_item, d.styleno,
+               b.id AS id_sodet, b.color, b.size, b.unit AS uom,
+               b.qty, ROUND(b.price, 2) AS price,
+               ROUND(b.qty * b.price, 2) AS total_price
+          FROM so_det AS b
+    INNER JOIN so AS a ON b.id_so = a.id
+    INNER JOIN act_costing AS d ON a.id_cost = d.id
+    INNER JOIN masterproduct AS mp ON d.id_product = mp.id
+    INNER JOIN mastersupplier AS c ON c.Id_Supplier = d.id_buyer
+         WHERE b.cancel = 'N'
+           AND b.$kolom_pi IS NULL
+           AND c.tipe_sup = 'C'
+           AND c.Id_Supplier = ?
+           AND a.so_date BETWEEN ? AND ?
+      ORDER BY a.so_no, mp.product_item, d.styleno, b.price, b.color, b.size, b.id
+    ", array($id_customer, $dt_dari, $dt_sampai))->result_array();
+
+    $grup = array();
+    foreach ($baris as $r) {
+        $kunci = $r['id_so'] . '|' . $r['product_item'] . '|' . $r['styleno'] . '|' . $r['price'];
+
+        if (!isset($grup[$kunci])) {
+            $grup[$kunci] = array(
+                'kunci'        => $kunci,
+                'id_so'        => $r['id_so'],
+                'so_no'        => $r['so_no'],
+                'so_date'      => $r['so_date'],
+                'customer'     => $r['customer'],
+                'buyerno'      => $r['buyerno'],
+                'curr'         => $r['curr'],
+                'product_item' => $r['product_item'],
+                'styleno'      => $r['styleno'],
+                'uom'          => $r['uom'],
+                'price'        => (float) $r['price'],
+                'qty'          => 0,
+                'total_price'  => 0,
+                'baris'        => array(),
+            );
+        }
+
+        $grup[$kunci]['qty'] += (float) $r['qty'];
+        $grup[$kunci]['total_price'] += (float) $r['total_price'];
+        $grup[$kunci]['baris'][] = array(
+            'id_sodet'      => $r['id_sodet'],
+            'no_so'         => $r['so_no'],
+            'color'         => $r['color'],
+            'size'          => $r['size'],
+            'uom'           => $r['uom'],
+            'curr'          => $r['curr'],
+            'qty'           => (float) $r['qty'],
+            'price'         => (float) $r['price'],
+            'total_price'   => (float) $r['total_price'],
+            // Dirangkai sama persis dengan layar lama - ini yang tercetak.
+            'produk_detail' => $r['product_item'] . ' ' . $r['styleno']
+                             . ' (' . $r['color'] . ',' . $r['size'] . ')',
+        );
+    }
+
+    return array_values($grup);
+}
+
 function cari_so_proforma($dt_dari_so_prof, $dt_sampai_so_prof, $id_customer)
 {
         //Database Localhost / SB2  

@@ -6087,7 +6087,7 @@ function get_kode_proforma_invoice(kode)
 
 		},
 		error: function (jqXHR, textStatus, errorThrown) {
-			alert('Error get data from ajax');
+			Swal.fire('Could not get the proforma number', 'Please try again.', 'error');
 		}
 	});
 }
@@ -6186,7 +6186,7 @@ function cari_prof_top() {
 
     	},
     	error: function (jqXHR, textStatus, errorThrown) {
-    		alert('Error get data from ajax');
+    		Swal.fire('Could not load the term of payment', 'Please try again.', 'error');
     	}
     });	
 }
@@ -6520,7 +6520,7 @@ function load_invoice_detail_proforma_temporary(){
 
                     },
                     error: function (jqXHR, textStatus, errorThrown) {
-                    	alert('Error get data from ajax');
+                    	Swal.fire('Could not load the SO list', 'Please try again.', 'error');
                     }
                 });  	  	
 
@@ -6556,7 +6556,7 @@ function load_so_detail_proforma_temporary(){
 
                     },
                     error: function (jqXHR, textStatus, errorThrown) {
-                    	alert('Error get data from ajax');
+                    	Swal.fire('Could not load the SO detail', 'Please try again.', 'error');
                     }
                 });  	  	
 
@@ -6620,44 +6620,59 @@ function sum_grandtotal_proforma(){
     			$('[name="prof_grandtotal_h"]').val(formatMoney(item.grand_total));
     			$('[name="prof_twot"]').val(item.grand_total);
     			$('[name="prof_twot2"]').val(item.grand_total);
+    			// Nilai SO sebelum diskon - dipakai layar Proforma Invoice
+    			// sebagai pegangan, karena Total Without Tax ikut turun
+    			// begitu Discount diisi. Layar lain tidak punya kotak ini,
+    			// jadi barisnya cuma lewat tanpa efek.
+    			$('[name="prof_total_so_h"]').val(formatMoney(item.grand_total));
     			$('[name="prof_twot_h"]').val(formatMoney(item.grand_total));
 
     		});	
 					//							
 				},
 				error: function (jqXHR, textStatus, errorThrown) {
-					alert('Error get data from ajax');
+					Swal.fire('Could not load the summary', 'Please try again.', 'error');
 				}
 			});  	  
 }
 
 //ubah september
-function add_data_proforma_invoice(){ 
-	let x   = $('[name="prof_shipp"]').val();
-	let peb = $('[name="prof_peb"]').val();
-	let total = $('[name="prof_grandtotal"]').val();
+// Validasi & konfirmasi simpan Proforma Invoice. Dulu pakai alert() lalu
+// membuka modal konfirmasi; sekarang Swal - seragam dengan layar lain, dan
+// nomor PI-nya ikut ditunjukkan sebelum user menekan Save.
+function add_data_proforma_invoice(){
+	var x     = $('[name="prof_shipp"]').val();
+	var peb   = $('[name="prof_peb"]').val();
+	var total = $('[name="prof_grandtotal"]').val();
+	var no_pi = $('[name="prof_inv_number"]').val();
+
 	if (x == "") {
-		alert("Shipp is required");
+		Swal.fire('Shipp is required', 'Pick Local or Export first.', 'warning');
 		return false;
 	}
-
-	if (x == "Export" && peb == "" ){
-		alert("PEB Export is required");
+	if (x == "Export" && peb == "") {
+		Swal.fire('PEB is required', 'An export proforma invoice needs a PEB number.', 'warning');
+		$('[name="prof_peb"]').focus();
 		return false;
 	}
-
 	if (total == "" || total == "0") {
-		alert("Grand Total Can't be Zero, Please Add Data SO");
+		Swal.fire('No SO selected', 'Grand total is still zero. Please add the SO first.', 'warning');
 		$('[name="prof_so_number2"]').focus();
 		return false;
 	}
 
-	var no_proforma_invoice = $('[name="prof_inv_number"]').val()	
-		 // alert(no_proforma_invoice);
-		 //
-		 $('[name="prof_no_inv_mdl"]').val(no_proforma_invoice);
-		 $('#modal-simpan-proforma-invoice').modal('show');  		
-		}
+	$('[name="prof_no_inv_mdl"]').val(no_pi);
+	Swal.fire({
+		icon: 'question',
+		title: 'Save this proforma invoice?',
+		html: 'Number <b>' + no_pi + '</b> will be saved.',
+		showCancelButton: true,
+		confirmButtonText: 'Yes, save it',
+		cancelButtonText: 'Back'
+	}).then(function (h) {
+		if (h.isConfirmed) { save_proforma_invoice(); }
+	});
+}
 
 //ubah desember
 function add_data_proforma_invoice_cbd(){ 
@@ -6764,7 +6779,7 @@ function input_dp_proforma_invoice() {
 	var hasil_persen = grandtotal * persen;
 	//
 	if (nilai_input_dp > hasil_persen){ 
-		alert("Sory total DP lebih besar dari 75% (" + hasil_persen + ") Grand Total SO");
+		Swal.fire('DP is too high', 'The down payment cannot be more than 75% of the SO grand total (' + formatMoney(hasil_persen) + ').', 'warning');
 		$('[name="prof_dp"]').val(hasil_persen);
 		$('[name="prof_dp_h"]').val(formatMoney(hasil_persen));
 	} else{	
@@ -6786,7 +6801,7 @@ function input_dp_proforma_invoice2() {
 	//
 	if (patokan == '%') {
 		if (nilai_input_dp > persen_h){ 
-			alert("Sorry total DP tidak bisa lebih dari 75% Grand Total SO");
+			Swal.fire('DP is too high', 'The down payment cannot be more than 75% of the SO grand total.', 'warning');
 			$('[name="prof_dp"]').val(persen_h);
 			$('[name="prof_dp_h"]').val(formatMoney(hasil_persen));
 			$('[name="prof_dp_h2"]').val(hasil_persen.toFixed(2));
@@ -6796,7 +6811,7 @@ function input_dp_proforma_invoice2() {
 		}
 	}else{
 		if (nilai_input_dp > hasil_persen){ 
-			alert("Sorry total DP lebih besar dari 75% (" + hasil_persen + ") Grand Total SO");
+			Swal.fire('DP is too high', 'The down payment cannot be more than 75% of the SO grand total (' + formatMoney(hasil_persen) + ').', 'warning');
 			$('[name="prof_dp"]').val(hasil_persen.toFixed(2));
 			$('[name="prof_dp_h"]').val(formatMoney(hasil_persen));
 			$('[name="prof_dp_h2"]').val(hasil_persen.toFixed(2));
@@ -7028,6 +7043,14 @@ function simpan_proforma_invoice_header() {
 					).done(function () {
 					    //Hide Modal
 					    $('#modal-simpan-proforma-invoice').modal('hide'); 
+						// Layar Proforma Invoice menampilkan pesan tersimpan beserta
+						// nomor PI-nya sendiri, lalu yang memutuskan pindah halaman.
+						// Layar lain yang tidak punya kaitan ini tetap muat ulang
+						// seperti sebelumnya.
+						if (typeof pi_setelah_simpan === 'function') {
+							pi_setelah_simpan(no_proforma_inv);
+							return;
+						}
 						//Reload Page
 						window.location.reload();
 					}).fail(function () {

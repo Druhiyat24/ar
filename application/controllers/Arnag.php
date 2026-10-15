@@ -2175,6 +2175,33 @@ public function batal_proforma_invoice_json()
     echo json_encode(array('status' => TRUE, 'no_pi' => $hasil['no_pi'], 'so' => $hasil['so']));
 }
 
+/**
+ * Baris SO untuk layar Proforma Invoice, sudah diringkas per SO + produk +
+ * harga. Rincian per so_det ikut dibawa di dalam tiap grup - lihat
+ * Model_nag::so_proforma_grup().
+ */
+public function so_proforma_grup_json($dt_dari = '', $dt_sampai = '', $id_customer = '', $tipe = '')
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    $grup = $this->Model_nag->so_proforma_grup($dt_dari, $dt_sampai, $id_customer, $tipe);
+
+    $baris = 0;
+    foreach ($grup as $g) { $baris += count($g['baris']); }
+
+    echo json_encode(array(
+        'status'    => TRUE,
+        'grup'      => $grup,
+        // Dipakai layar untuk memberi tahu berapa banyak centangan yang
+        // dihemat dibanding layar lama.
+        'jml_grup'  => count($grup),
+        'jml_baris' => $baris,
+    ));
+}
+
 /** Baris Invoice Summary satu booking Export, untuk layar AR. */
 public function summary_export_json($id_inv = null)
 {
