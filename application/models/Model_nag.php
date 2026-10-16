@@ -1029,7 +1029,28 @@ class Model_nag extends CI_Model
         ", array($id_inv))->result_array() as $r) {
             $urutan = (string) (int) $r['urutan'];
             $qty = (float) $r['qty_invoiced'];
-            $ext = isset($kotor[$urutan]) ? $kotor[$urutan] : $qty * (float) $r['unit_cost_cm'];
+            // Nilai baris: jumlah baris SJ-nya kalau kaitannya ketemu.
+            //
+            // Kalau tidak - invoice lama yang baris SJ-nya belum membawa
+            // nomor urut summary, atau baris yang dirapikan tangan -
+            // dipakai total_cm yang TERSIMPAN, bukan dihitung ulang dari
+            // qty x unit cost. Unit cost yang tersimpan sudah dibulatkan 4
+            // angka, jadi menghitung ulang meleset: 4.562 x 1,7201 =
+            // 7.847,0962 padahal nilainya 7.847,165. Selisih itu yang bikin
+            // Sub Total tidak sama dengan Net Invoice Total.
+            //
+            // total_cm tersimpan SESUDAH diskon, sedangkan Extended Line
+            // Total dicetak sebelum diskon (diskonnya baris rekap sendiri),
+            // jadi diskonnya dikembalikan dulu.
+            $sisa = 1 - ((float) $r['disc'] / 100);
+            $tersimpan = (float) $r['total_cm'];
+            if (isset($kotor[$urutan])) {
+                $ext = $kotor[$urutan];
+            } elseif ($tersimpan != 0 && $sisa > 0) {
+                $ext = $tersimpan / $sisa;
+            } else {
+                $ext = $qty * (float) $r['unit_cost_cm'];
+            }
 
             // Total Pieces cuma dicetak untuk baris SET - untuk satuan asli
             // angkanya sama persis dengan Quantity Invoiced. Baris lama yang
@@ -9860,11 +9881,100 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
             );
         }
 
+        // Rekap uangnya ikut dihitung ulang. Tanpa ini Sub Total di cetakan
+        // (dijumlah dari baris summary) dan Net Invoice Total (dari rekap)
+        // bicara soal isi yang berbeda - persis yang terjadi di
+        // 0230/E/NAG/1026: barisnya bertambah satu, Net-nya masih yang lama.
+        $this->_rekap_ulang_export($id);
+
         $this->db->trans_complete();
         if (!$this->db->trans_status()) {
             return array('gagal' => 'Invoice Summary could not be saved.');
         }
         return array('baris' => $urut);
+    }
+
+    /**
+     * Hitung ulang rekap uang Invoice Export dari baris summary-nya.
+     *
+     * Dipanggil sesudah baris Invoice Summary ditulis ulang dari AR. Rumusnya
+     * sama persis dengan menu Invoice EXIM waktu invoicenya disimpan, jadi
+     * angkanya tidak mungkin berbeda cara hitung:
+     *
+     *   total    = jumlah nilai KOTOR tiap baris (sebelum diskon)
+     *   discount = kotor - bersih
+     *   twot     = total - discount - DP - DP/CBD - retur
+     *   vat      = twot x tarif
+     *   grand    = twot + vat
+     *
+     * Nilai bersih tiap baris diambil dari total_cm yang TERSIMPAN - bukan
+     * dihitung ulang dari unit cost yang sudah dibulatkan 4 angka.
+     *
+     * DP, DP/CBD, retur & tarif VAT tidak disentuh: itu isian orang, bukan
+     * hasil hitungan baris.
+     */
+    private function _rekap_ulang_export($id_inv)
+    {
+        $id = (int) $id_inv;
+        if ($id < 1 || !$this->db->table_exists('tbl_book_invoice_exim_pot')) {
+            return;
+        }
+        $lama = $this->db->query(
+            "SELECT dp, dp_cbd, retur, vat_persen FROM tbl_book_invoice_exim_pot
+              WHERE id_book_invoice = ? LIMIT 1", array($id))->row_array();
+        if (!$lama) {
+            return;   // invoice ini memang belum punya baris rekap
+        }
+
+        $kolom = $this->db->list_fields('tbl_book_invoice_exim_export_det');
+        $ada_fob = in_array('total_fob', $kolom, TRUE);
+        $baris = $this->db->query("
+            SELECT qty_invoiced, total_pieces, unit_cost_cm, unit_cost_fob, disc, total_cm
+                   " . ($ada_fob ? ', total_fob' : ', 0 AS total_fob') . "
+              FROM tbl_book_invoice_exim_export_det WHERE id_book_invoice = ?
+        ", array($id))->result_array();
+
+        $total = 0; $bersih = 0; $total_fob = 0; $bersih_fob = 0;
+        foreach ($baris as $r) {
+            $sisa = 1 - ((float) $r['disc'] / 100);
+            $cm_bersih = (float) $r['total_cm'];
+            $cm_kotor = $sisa > 0 ? $cm_bersih / $sisa : (float) $r['qty_invoiced'] * (float) $r['unit_cost_cm'];
+            $total  += $cm_kotor;
+            $bersih += $cm_bersih;
+
+            $fob_bersih = (float) $r['total_fob'];
+            $fob_kotor = $sisa > 0 ? $fob_bersih / $sisa : (float) $r['total_pieces'] * (float) $r['unit_cost_fob'];
+            $total_fob  += $fob_kotor;
+            $bersih_fob += $fob_bersih;
+        }
+
+        $dp     = (float) $lama['dp'];
+        $dp_cbd = (float) $lama['dp_cbd'];
+        $retur  = (float) $lama['retur'];
+        $tarif  = (float) $lama['vat_persen'];
+
+        $discount = $total - $bersih;
+        $twot = $bersih - $dp - $dp_cbd - $retur;
+        $vat  = $twot * $tarif / 100;
+
+        $isi = array(
+            'total'       => round($total, 4),
+            'discount'    => round($discount, 4),
+            'twot'        => round($twot, 4),
+            'vat'         => round($vat, 4),
+            'grand_total' => round($twot + $vat, 4),
+        );
+        // Versi FOB-nya ikut kalau kolomnya memang ada.
+        $kol_pot = $this->db->list_fields('tbl_book_invoice_exim_pot');
+        if (in_array('total_fob', $kol_pot, TRUE)) {
+            $isi['total_fob'] = round($total_fob, 4);
+        }
+        if (in_array('grand_total_fob', $kol_pot, TRUE)) {
+            $twot_fob = $bersih_fob - $dp - $dp_cbd - $retur;
+            $isi['grand_total_fob'] = round($twot_fob + $twot_fob * $tarif / 100, 4);
+        }
+
+        $this->db->where('id_book_invoice', $id)->update('tbl_book_invoice_exim_pot', $isi);
     }
 
     /** Ada tidaknya satu kolom - dipakai kolom yang baru ada setelah migrasi. */
