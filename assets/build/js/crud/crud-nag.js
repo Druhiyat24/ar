@@ -4386,6 +4386,8 @@ function cari_proforma_invoice_post(){
 				$.each(response, function (i, item) { 					
 					trHTML += '<tr>';					
 					trHTML += '<td>' + item.no_pi + "</td>";					
+					// Jenis proformanya - PI, PI NON SO, DP atau CBD.
+					trHTML += '<td>' + (item.type_pi || '') + "</td>";
 					trHTML += '<td>' + item.date_pi + "</td>";	
 					trHTML += '<td>' + item.customer + "</td>";
 					trHTML += '<td>' + item.shipp + "</td>";
@@ -4395,7 +4397,7 @@ function cari_proforma_invoice_post(){
 					trHTML += '<td>' + item.status + "</td>";
 					trHTML += '<td>' + item.amount + "</td>";	
 					trHTML += '<td>' + item.id + "</td>";					
-					trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_profinv_approv" id="pilih_profinv_approv" class="flat" value = ' + item.id + '></td>';										
+					trHTML += '<td class="dn-cek"><input type="checkbox" name="pilih_profinv_approv" id="pilih_profinv_approv" class="flat" value = ' + item.id + '></td>';										
 				//trHTML += '<td><button id="approv_inv" name="approv_inv" type="button" class="btn btn-warning btn-sm" onclick="approve_invoice(\'' + item.no_invoice + '\' , \'' + item.id + '\')"><i class="fa fa-stamp"></i> Approved</td>';
 				trHTML += '</tr>';
 
@@ -4477,21 +4479,9 @@ function approve_invoice_second(){
 	return Promise.all(promises);
 }
 
+/** Kirim Second Approve untuk tiap baris yang dicentang - lihat approve_profinvoice(). */
 function approve_profinvoice_second(){
-	var cek_inv = document.getElementsByName("pilih_profinv_approv");
-	for (var i = 0; i < cek_inv.length; i++) {
-		if (cek_inv[i].checked) {
-			var formData = { "id_inv": cek_inv[i].value };
-			$.ajax({
-				url: "approve_profinvoice_second/",
-				type: "POST",
-				data: formData,
-				dataType: "JSON",
-				error: function (jqXHR) { msg = 'Error Update ' + jqXHR.text; }
-			});
-			$('#modal-approve-profinvoice').modal('hide');
-		}
-	}
+	return pi_kirim_approve('approve_profinvoice_second/');
 }
 
 // ── Second Approval Debit Note ──────────────────────────────────────────────
@@ -4986,10 +4976,10 @@ async function retry_approve_invoice_second(){
 	}
 }
 
+/** Tombol Approved di dialog Second Approval - lihat refresh_pi(). */
 async function refresh_pi_second(){
-	await approve_profinvoice_second();
-	alert("Proforma Invoice Secondary Approved successfully");
-	cari_proforma_invoice_second_approv();
+	await pi_selesaikan_approve(approve_profinvoice_second, cari_proforma_invoice_second_approv,
+		'Proforma invoice secondary approved.');
 }
 
 async function refresh_dn_second(){
@@ -5325,6 +5315,8 @@ function cari_proforma_invoice_second_approv(){
 			$.each(response, function (i, item) {
 				trHTML += '<tr>';
 				trHTML += '<td>' + item.no_pi + "</td>";
+				// Jenis proformanya - PI, PI NON SO, DP atau CBD.
+				trHTML += '<td>' + (item.type_pi || '') + "</td>";
 				trHTML += '<td>' + item.date_pi + "</td>";
 				trHTML += '<td>' + item.customer + "</td>";
 				trHTML += '<td>' + item.shipp + "</td>";
@@ -5334,7 +5326,7 @@ function cari_proforma_invoice_second_approv(){
 				trHTML += '<td>' + item.status + "</td>";
 				trHTML += '<td>' + item.amount + "</td>";
 				trHTML += '<td>' + item.id + "</td>";
-				trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_profinv_approv" id="pilih_profinv_approv" class="flat" value="' + item.id + '"></td>';
+				trHTML += '<td class="dn-cek"><input type="checkbox" name="pilih_profinv_approv" id="pilih_profinv_approv" class="flat" value="' + item.id + '"></td>';
 				trHTML += '</tr>';
 			});
 			$('#table-approval-profinvoice').append(trHTML);
@@ -5363,21 +5355,16 @@ function cari_proforma_invoice_second_approv(){
 	}
 
 //ubah september
-function check_approv_profinvoice(ele) { 
-
-	var checkboxes = document.getElementsByTagName('input');
-	if (ele.checked) {
-		for (var i = 0; i < checkboxes.length; i++) {
-			if (checkboxes[i].type == 'checkbox'  && !(checkboxes[i].disabled) ) {
-				checkboxes[i].checked = true;
-			}
-		}
-	} else {
-		for (var i = 0; i < checkboxes.length; i++) {
-			if (checkboxes[i].type == 'checkbox') {
-				checkboxes[i].checked = false;
-			}
-		}
+/**
+ * Centang-semua di kepala tabel.
+ *
+ * Yang disentuh cuma centang baris daftarnya. Dulu semua <input> di halaman
+ * ikut tercentang - termasuk centang di luar tabel.
+ */
+function check_approv_profinvoice(ele) {
+	var baris = document.getElementsByName('pilih_profinv_approv');
+	for (var i = 0; i < baris.length; i++) {
+		if (!baris[i].disabled) { baris[i].checked = ele.checked; }
 	}
 }
 
@@ -5414,16 +5401,20 @@ function pilihsemua(){
 }
 
 //ubah september
-function modal_show_approve_profinvoice() { 
-
-	var cek_inv = document.getElementsByName("pilih_profinv_approv");	
-	for (var i = 0; i < cek_inv.length; i++) {
-		    //Ceklist Invoice		
-		    if (cek_inv[i].checked) {				   
-		    	$('#modal-approve-profinvoice').modal('show');  
-		    } 
-		}	
+/** Dialog konfirmasi Approve - cuma dibuka kalau ada yang dicentang. */
+function modal_show_approve_profinvoice() {
+	var dipilih = document.querySelectorAll('input[name="pilih_profinv_approv"]:checked');
+	if (dipilih.length === 0) {
+		Swal.fire({
+			icon: 'info',
+			title: 'Nothing Selected',
+			text: 'Please select at least one proforma invoice first.',
+			confirmButtonText: 'OK'
+		});
+		return;
 	}
+	$('#modal-approve-profinvoice').modal('show');
+}
 
 //ubah september
 function modal_show_approve_debitnote() {
@@ -5501,49 +5492,52 @@ function modal_show_approve_debitnote() {
 	}
 
 //ubah september
+/**
+ * Kirim First Approve untuk tiap baris yang dicentang.
+ *
+ * Mengembalikan janji yang baru selesai kalau SEMUA permintaannya sudah
+ * dijawab server - tanpa ini daftarnya digambar ulang duluan dan baris yang
+ * baru di-approve masih kelihatan, seolah-olah gagal.
+ *
+ * Hasilnya: { berhasil: <jumlah>, gagal: [<nomor proforma>, ...] }
+ */
 function approve_profinvoice(){
-	//
-	var cek_inv = document.getElementsByName("pilih_profinv_approv");	
+	return pi_kirim_approve('approve_profinvoice/');
+}
+
+/**
+ * Isi bersama approve First & Second - yang beda cuma alamatnya.
+ */
+function pi_kirim_approve(alamat){
+	var cek_inv = document.getElementsByName("pilih_profinv_approv");
+	var janji = [];
+	var hasil = { berhasil: 0, gagal: [] };
+
 	for (var i = 0; i < cek_inv.length; i++) {
+		if (!cek_inv[i].checked) { continue; }
+		var id_inv = cek_inv[i].value;
+		// Nomor proformanya dibaca dari barisnya - dipakai kalau gagal, supaya
+		// user tahu yang mana.
+		var baris = cek_inv[i].closest ? cek_inv[i].closest('tr') : null;
+		var no_pi = baris && baris.cells.length ? baris.cells[0].textContent : id_inv;
 
-		    //Ceklist Invoice		
-		    if (cek_inv[i].checked) {	
-				//   
-				var id_inv = cek_inv[i].value
-                //
-                var formData = {
-                	"id_inv": id_inv,			
-                };
-				//
-				$.ajax({						
-					url: "approve_profinvoice/",		
-					type: "POST",	
-					data: formData,			
-					dataType: "JSON",
-					success: function (data) {		
-
-						if (data.status) //if success close modal and reload ajax table
-						{
-							msg = 'Success Update Invoice Approve'
-						} else {
-							msg = 'Error Update Invoice Approve'
-						}
-					},
-					error: function (jqXHR, textStatus, errorThrown) {
-						msg = 'Error Update Invoice Header' + jqXHR.text
-					}
-				});   	
-				//
-				$('#modal-approve-profinvoice').modal('hide');
-				console.log(id_inv);  
-				// window.location.reload();
-				// cari_invoice_post();
-
-				//
-			} 
-		}
-
+		janji.push(new Promise(function (selesai) {
+			$.ajax({
+				url: alamat,
+				type: "POST",
+				data: { "id_inv": id_inv },
+				dataType: "JSON",
+				success: function (d) {
+					if (d && d.status) { hasil.berhasil++; }
+					else { hasil.gagal.push(no_pi); }
+					selesai();
+				},
+				error: function () { hasil.gagal.push(no_pi); selesai(); }
+			});
+		}));
 	}
+	return Promise.all(janji).then(function () { return hasil; });
+}
 
 //ubah september
 function approve_debitnote(){
@@ -5669,21 +5663,63 @@ async function retry_approve_invoice(){
 }
 
 //ubah september
+/**
+ * Tombol Approved di dialog First Approval.
+ *
+ * Dialognya ditahan selama permintaannya jalan, jadi user tidak bisa menekan
+ * dua kali, dan daftarnya baru digambar ulang sesudah semuanya dijawab.
+ */
 async function refresh_pi(){
-	var result = await approve_profinvoice()
-	console.log(result);
-	var cek_inv = document.getElementsByName("pilih_profinv_approv");	
-	for (var i = 0; i < cek_inv.length; i++) {
+	await pi_selesaikan_approve(approve_profinvoice, cari_proforma_invoice_post,
+		'Proforma invoice approved.');
+}
 
-		    //Ceklist Invoice		
-		    if (cek_inv[i].checked) {	
-		    	var coba = parseInt(i + 1);		
-		    }
-		}
-		alert(" Proforma Invoice Successfully Approved");
-		cari_proforma_invoice_post();
+/**
+ * Isi bersama tombol Approved First & Second.
+ *
+ * kirim   - fungsi yang mengirim approve-nya, mengembalikan janji berisi hasil
+ * gambar  - penggambar daftarnya, dipanggil sesudah semuanya selesai
+ * kabar   - kalimat yang dipajang kalau semuanya berhasil
+ */
+async function pi_selesaikan_approve(kirim, gambar, kabar){
+	$('#modal-approve-profinvoice').modal('hide');
+	Swal.fire({
+		title: 'Approving...',
+		html: 'Please wait, approving the proforma invoice.',
+		allowOutsideClick: false,
+		allowEscapeKey: false,
+		didOpen: function () { Swal.showLoading(); }
+	});
+
+	var hasil = await kirim();
+	gambar();
+
+	if (!hasil || (hasil.berhasil === 0 && hasil.gagal.length === 0)) {
+		Swal.fire({
+			icon: 'info',
+			title: 'Nothing Selected',
+			text: 'Please select at least one proforma invoice first.',
+			confirmButtonText: 'OK'
+		});
+		return;
 	}
-
+	if (hasil.gagal.length) {
+		Swal.fire({
+			icon: hasil.berhasil ? 'warning' : 'error',
+			title: hasil.berhasil ? 'Partly Approved' : 'Approval Failed',
+			html: (hasil.berhasil ? hasil.berhasil + ' approved. ' : '')
+				+ 'Failed: <b>' + hasil.gagal.join(', ') + '</b>.',
+			confirmButtonText: 'OK'
+		});
+		return;
+	}
+	Swal.fire({
+		icon: 'success',
+		title: 'Approved',
+		html: kabar + ' (' + hasil.berhasil + ')',
+		confirmButtonText: 'OK'
+	});
+}
 
 //ubah september
 async function refresh_dn(){
@@ -6242,6 +6278,11 @@ function add_id_for_proforma_inv(){
     $('[name="prof_dp_h"]').val("");
     $('[name="prof_dp"]').prop('readonly', true);
     $('[name="prof_check_dp"]').prop('checked', false);
+    // Layar Proforma Invoice punya aturan DP per tipe: tipe DP centangnya
+    // dipasang & dikunci, CBD justru dilepas & dikunci. Pengosongan di atas
+    // menghapusnya, jadi aturannya dipasang lagi - tanpa ini centang DP yang
+    // terkunci tidak bisa dipasang lagi oleh user.
+    if (typeof pi_atur_tipe === 'function') { pi_atur_tipe(); }
 	//
 	$cust_prof = $("#prof_customer :selected").text(); 	
 	$idcust_prof = $('[name="prof_customer"]').val()	
@@ -6509,8 +6550,10 @@ function load_invoice_detail_proforma_temporary(){
 				trHTML += '<td>' + item.buyerno + "</td>";		
 				trHTML += '<td align="center">' + item.curr + "</td>";	
 				trHTML += '<td align="right">' + item.qty + "</td>";	
-				trHTML += '<td align="right">' + item.unit_price + "</td>";	
-				trHTML += '<td align="right">' + item.total_price + "</td>";											
+				// Sama seperti tabel so_det: yang dipajang 2 desimal, yang
+				// disimpan nilai apa adanya dari data-price / data-total.
+				trHTML += '<td align="right" data-price="' + pi_data_nilai(item.unit_price_raw) + '">' + item.unit_price + "</td>";
+				trHTML += '<td align="right" data-total="' + pi_data_nilai(item.total_raw) + '">' + item.total_price + "</td>";											
 				trHTML += '</tr>';
 
 			});
@@ -6538,15 +6581,24 @@ function load_so_detail_proforma_temporary(){
 		success: function (response) {
 			var trHTML = '';
 			$.each(response, function (i, item) {
-				trHTML += '<tr>';		
+				// Satu baris bisa mewakili banyak so_det - lihat pilihan Group By di
+				// modal Add SO. Daftar id-nya dibawa di data-ids: itu yang ditandai
+				// terpakai waktu simpan, bukan cuma id yang tampil di kolom pertama.
+				var ids = item.id_so_det_list ? item.id_so_det_list : item.id_so_det;
+				trHTML += '<tr data-ids="' + pi_data_nilai(ids) + '">';		
 				trHTML += '<td>' + item.id_so_det + "</td>";		
 				trHTML += '<td>' + item.no_so + "</td>";
 				trHTML += '<td>' + item.produk_det + "</td>";										    					
 				trHTML += '<td>' + item.curr + "</td>";	
-				trHTML += '<td align="right">' + item.qty + "</td>";		
+				// Qty boleh diketik ulang di sini juga - yang ditagih tidak selalu
+				// sama dengan qty SO-nya.
+				trHTML += '<td align="right"><input type="text" class="form-control form-control-sm text-right pi-qty-sodet"'
+					+ ' value="' + item.qty + '" autocomplete="off" inputmode="decimal"></td>';		
 				trHTML += '<td align="center">' + item.uom + "</td>";	
 				trHTML += '<td align="right">' + item.unit_price + "</td>";	
-				trHTML += '<td align="right">' + item.total_price + "</td>";											
+				// Yang dipajang total yang sudah dibulatkan 2 angka; nilai apa
+				// adanya dititipkan di data-total - itu yang ikut tersimpan.
+				trHTML += '<td align="right" data-total="' + pi_data_nilai(item.total_raw) + '">' + item.total_price + "</td>";											
 				trHTML += '</tr>';
 
 			});
@@ -6645,6 +6697,11 @@ function add_data_proforma_invoice(){
 	var peb   = $('[name="prof_peb"]').val();
 	var total = $('[name="prof_grandtotal"]').val();
 	var no_pi = $('[name="prof_inv_number"]').val();
+	// Satu layar untuk PI, PI NON SO, DP & CBD. DP & CBD punya tabel,
+	// penanda SO, dan jurnalnya sendiri - lihat pi_tipe_cbd() di
+	// crud-proforma-invoice.js.
+	var tipe  = (typeof pi_tipe === 'function') ? pi_tipe() : 'PI';
+	var cbd   = (typeof pi_tipe_cbd === 'function') ? pi_tipe_cbd() : false;
 
 	if (x == "") {
 		Swal.fire('Shipp is required', 'Pick Local or Export first.', 'warning');
@@ -6656,8 +6713,20 @@ function add_data_proforma_invoice(){
 		return false;
 	}
 	if (total == "" || total == "0") {
-		Swal.fire('No SO selected', 'Grand total is still zero. Please add the SO first.', 'warning');
-		$('[name="prof_so_number2"]').focus();
+		// PI NON SO barisnya diketik sendiri - tidak ada SO yang bisa ditambah.
+		if (tipe == 'PI NON SO') {
+			Swal.fire('No row yet', 'Grand total is still zero. Please add a row first.', 'warning');
+			$('#pi-baris-tambah').focus();
+		} else {
+			Swal.fire('No SO selected', 'Grand total is still zero. Please add the SO first.', 'warning');
+			$('[name="prof_so_number2"]').focus();
+		}
+		return false;
+	}
+	// DP tanpa nilai DP tidak ada artinya - itu yang ditagih.
+	if (tipe == 'DP' && !(parseFloat($('[name="prof_dp"]').val()) > 0)) {
+		Swal.fire('DP is required', 'Tick DP Max 75% and fill the down payment first.', 'warning');
+		$('[name="prof_dp"]').focus();
 		return false;
 	}
 
@@ -6665,12 +6734,20 @@ function add_data_proforma_invoice(){
 	Swal.fire({
 		icon: 'question',
 		title: 'Save this proforma invoice?',
-		html: 'Number <b>' + no_pi + '</b> will be saved.',
+		html: 'Number <b>' + no_pi + '</b> (' + tipe + ') will be saved.',
 		showCancelButton: true,
 		confirmButtonText: 'Yes, save it',
 		cancelButtonText: 'Back'
 	}).then(function (h) {
-		if (h.isConfirmed) { save_proforma_invoice(); }
+		if (!h.isConfirmed) { return; }
+		if (!cbd) { save_proforma_invoice(); return; }
+		// DP & CBD menulis jurnal juga, dan jurnalnya membaca COA yang
+		// diambil dari server - jadi ditunggu dulu sampai dapat.
+		if (typeof pi_ambil_coa === 'function') {
+			pi_ambil_coa().always(function () { save_proforma_invoice_cbd(); });
+		} else {
+			save_proforma_invoice_cbd();
+		}
 	});
 }
 
@@ -6984,6 +7061,11 @@ function simpan_proforma_invoice_header() {
             var diskon             = $('#prof_diskon').val();
             var type_diskon        = $('#pilih_diskn_prof').val();
             var percentage_ppn     = $('#id_ppn_prof').val();
+            // Jenis proformanya (PI, PI NON SO, DP, CBD) ikut tersimpan -
+            // menu Create Invoice yang akan membacanya nanti.
+            var type_pi            = $('#prof_type_pi').val() || 'PI';
+            // Bentuk baris SO-nya juga: cetakan & layar Edit memakainya.
+            var grouping           = $('#pi-grouping').val() || 'PRODUCT_COLOR_SIZE';
 			//					
 			//Set Now Date Proforma Invoice
 			var tgl_proforma_inv   = new Date();		
@@ -6993,6 +7075,8 @@ function simpan_proforma_invoice_header() {
 			tgl_proforma_inv = yyyy+'-'+mm+'-'+dd;
 			//			
 			data.push({		
+				"type_pi": type_pi,
+				"grouping": grouping,
 				"no_proforma_invoice": no_proforma_inv,
 				"id_customer": id_customer,
 				"shipp": shipp,	
@@ -7236,6 +7320,10 @@ function simpan_proforma_invoice_header_cbd() {
             var percentage_ppn     = $('#id_ppn_prof').val();
             var tipe_dp     	   = $('#pilih_dp_prof').val();
             var value_dp     	   = $('#prof_dp_h2').val();
+            // Jenis proformanya (DP / CBD) ikut tersimpan - dibaca menu
+            // Create Invoice nanti. Bentuk baris SO-nya juga.
+            var type_pi            = $('#prof_type_pi').val() || 'CBD';
+            var grouping           = $('#pi-grouping').val() || 'PRODUCT_COLOR_SIZE';
 			//					
 			//Set Now Date Proforma Invoice
 			var tgl_proforma_inv   = new Date();		
@@ -7264,7 +7352,9 @@ function simpan_proforma_invoice_header_cbd() {
 				"type_diskon": type_diskon,		
 				"percentage_ppn": percentage_ppn,
 				"tipe_dp": tipe_dp,		
-				"value_dp": value_dp,												
+				"value_dp": value_dp,
+				"type_pi": type_pi,
+				"grouping": grouping,												
 			})	
 			
 			var fdata = {
@@ -7297,6 +7387,13 @@ function simpan_proforma_invoice_header_cbd() {
 					).done(function () {
 					    //Hide Modal
 					    $('#modal-simpan-proforma-invoice').modal('hide'); 
+						// Layar Proforma Invoice yang baru menampilkan pesan
+						// tersimpan beserta nomornya sendiri - sama seperti
+						// alur PI biasa. Layar lama tetap muat ulang.
+						if (typeof pi_setelah_simpan === 'function') {
+							pi_setelah_simpan(no_proforma_inv);
+							return;
+						}
 						//Reload Page
 						window.location.reload();
 					}).fail(function () {
@@ -7321,6 +7418,45 @@ function simpan_proforma_invoice_header_cbd() {
 
 }
 
+// Qty satu baris Data SO: diambil dari kotak isiannya kalau memang bisa
+// diketik, kalau tidak dari isi selnya (layar lama).
+// Isi satu sel: nilai kotak isiannya kalau memang bisa diketik (baris PI NON
+// SO diketik seluruhnya), kalau tidak isi selnya.
+function pi_sel_teks(sel) {
+	if (!sel) { return ''; }
+	var kotak = sel.getElementsByTagName ? sel.getElementsByTagName('input') : [];
+	return String(kotak.length ? kotak[0].value : sel.innerHTML);
+}
+
+function pi_qty_baris(baris) {
+	return pi_sel_teks(baris.cells[4]).replace(/,/g, '');
+}
+
+// Daftar id so_det yang diwakili satu baris - satu baris bisa mewakili
+// banyak so_det sesuai pilihan Group By.
+function pi_ids_baris(baris) {
+	var ids = baris.getAttribute ? baris.getAttribute('data-ids') : null;
+	if (ids === null || ids === '') { ids = baris.cells[0].innerHTML; }
+	return String(ids).replace(/\s/g, '');
+}
+
+// Isi atribut data-price / data-total pada sel tabel Proforma Invoice.
+// Angka ini yang ikut tersimpan ke database, jadi ditulis apa adanya -
+// tanpa pemisah ribuan dan tanpa dibulatkan.
+function pi_data_nilai(v) {
+	if (v === null || v === undefined || v === '') { return ''; }
+	return String(v).replace(/,/g, '');
+}
+
+// Nilai apa adanya dari sebuah sel: data-*-nya kalau ada, kalau tidak isi
+// selnya. Dipakai keempat fungsi simpan di bawah supaya yang masuk ke
+// database bukan angka yang sudah dibulatkan untuk dipajang.
+function pi_nilai_utuh(sel, nama) {
+	var utuh = sel && sel.getAttribute ? sel.getAttribute(nama) : null;
+	var nilai = (utuh === null || utuh === '') ? pi_sel_teks(sel) : utuh;
+	return String(nilai).replace(/,/g, '');
+}
+
 function simpan_proforma_invoice_detail(){ 
 
 	var msg
@@ -7329,12 +7465,12 @@ function simpan_proforma_invoice_detail(){
 	for (var i = 1; i < (table.rows.length); i++) {
 				//
 				var qty_det = table.rows[i].cells[5].innerHTML; 
-				var unit_price_det = table.rows[i].cells[6].innerHTML;
-				var total_price_det = table.rows[i].cells[7].innerHTML;
+				// Harga & total yang DISIMPAN diambil apa adanya dari data-*,
+				// bukan dari angka 2 desimal yang dipajang di selnya.
+				var unit_price_det = pi_nilai_utuh(table.rows[i].cells[6], 'data-price');
+				var total_price_det = pi_nilai_utuh(table.rows[i].cells[7], 'data-total');
 				//				
 				qty_det = qty_det.replace(/,/g, '');
-				unit_price_det = unit_price_det.replace(/,/g, '');
-				total_price_det = total_price_det.replace(/,/g, '');
 				//				
 				data.push({		
 					"no_invoice_proforma": $('#prof_inv_number').val(),
@@ -7383,24 +7519,29 @@ function simpan_proforma_invoice_detail_so(){
 	var table = document.getElementById("table-proforma-sodet");
 	for (var i = 1; i < (table.rows.length); i++) {
 				//
-				var qty_det = table.rows[i].cells[4].innerHTML; 
-				var unit_price_det = table.rows[i].cells[6].innerHTML;
-				var total_price_det = table.rows[i].cells[7].innerHTML;
+				var qty_det = pi_qty_baris(table.rows[i]); 
+				// Harga & total yang DISIMPAN diambil apa adanya dari data-*,
+				// bukan dari angka 2 desimal yang dipajang di selnya.
+				var unit_price_det = pi_nilai_utuh(table.rows[i].cells[6], 'data-price');
+				var total_price_det = pi_nilai_utuh(table.rows[i].cells[7], 'data-total');
 				//				
 				qty_det = qty_det.replace(/,/g, '');
-				unit_price_det = unit_price_det.replace(/,/g, '');
-				total_price_det = total_price_det.replace(/,/g, '');
 				//				
 				data.push({		
 					"no_invoice_proforma": $('#prof_inv_number').val(),
-					"id_so_det": table.rows[i].cells[0].innerHTML,
-					"no_so": table.rows[i].cells[1].innerHTML,
-					"produk_detail": table.rows[i].cells[2].innerHTML,					
-					"curr":table.rows[i].cells[3].innerHTML,
+					// Baris PI NON SO diketik seluruhnya, jadi selnya dibaca lewat
+					// pi_sel_teks() - bukan langsung innerHTML.
+					"id_so_det": pi_sel_teks(table.rows[i].cells[0]),
+					"no_so": pi_sel_teks(table.rows[i].cells[1]),
+					"produk_detail": pi_sel_teks(table.rows[i].cells[2]),					
+					"curr": pi_sel_teks(table.rows[i].cells[3]),
 					"qty": qty_det,
-					"uom": table.rows[i].cells[5].innerHTML,		
+					"uom": pi_sel_teks(table.rows[i].cells[5]),		
 					"unit_price": unit_price_det,
-					"total_price": total_price_det,			
+					"total_price": total_price_det,
+					// Daftar so_det yang diwakili baris ini - ikut tersimpan supaya
+					// ketahuan baris ini mewakili SO yang mana saja.
+					"id_so_det_list": pi_ids_baris(table.rows[i]),			
 
 				})		
 			}
@@ -7438,7 +7579,12 @@ function update_proforma_invoice_sodet() {
 	var antrean = [];
 	for (var i = 1; i < (table.rows.length); i++) {
 				//   
-				var id_sodet = table.rows[i].cells[0].innerHTML
+				// Semua so_det yang diwakili baris ini ikut ditandai - kalau cuma
+				// id pertamanya, sisanya tetap bisa ditarik proforma lain.
+				var id_sodet = pi_ids_baris(table.rows[i])
+				// Baris PI NON SO diketik sendiri - tidak ada so_det yang perlu
+				// ditandai, jadi barisnya dilewati.
+				if (!/[0-9]/.test(id_sodet)) { continue; }
 				var prof_inv_number =  $('#prof_inv_number').val()
                 //
                 var formData = {
@@ -7480,7 +7626,12 @@ function update_proforma_invoice_sodet_cbd() {
 	var antrean = [];
 	for (var i = 1; i < (table.rows.length); i++) {
 				//   
-				var id_sodet = table.rows[i].cells[0].innerHTML
+				// Semua so_det yang diwakili baris ini ikut ditandai - kalau cuma
+				// id pertamanya, sisanya tetap bisa ditarik proforma lain.
+				var id_sodet = pi_ids_baris(table.rows[i])
+				// Baris PI NON SO diketik sendiri - tidak ada so_det yang perlu
+				// ditandai, jadi barisnya dilewati.
+				if (!/[0-9]/.test(id_sodet)) { continue; }
 				var prof_inv_number =  $('#prof_inv_number').val()
                 //
                 var formData = {
@@ -7522,12 +7673,12 @@ function simpan_proforma_invoice_detail_cbd(){
 	for (var i = 1; i < (table.rows.length); i++) {
 				//
 				var qty_det = table.rows[i].cells[5].innerHTML; 
-				var unit_price_det = table.rows[i].cells[6].innerHTML;
-				var total_price_det = table.rows[i].cells[7].innerHTML;
+				// Harga & total yang DISIMPAN diambil apa adanya dari data-*,
+				// bukan dari angka 2 desimal yang dipajang di selnya.
+				var unit_price_det = pi_nilai_utuh(table.rows[i].cells[6], 'data-price');
+				var total_price_det = pi_nilai_utuh(table.rows[i].cells[7], 'data-total');
 				//				
 				qty_det = qty_det.replace(/,/g, '');
-				unit_price_det = unit_price_det.replace(/,/g, '');
-				total_price_det = total_price_det.replace(/,/g, '');
 				//				
 				data.push({		
 					"no_invoice_proforma": $('#prof_inv_number').val(),
@@ -7609,24 +7760,29 @@ function simpan_proforma_invoice_detail_so_cbd(){
 	var table = document.getElementById("table-proforma-sodet");
 	for (var i = 1; i < (table.rows.length); i++) {
 				//
-				var qty_det = table.rows[i].cells[4].innerHTML; 
-				var unit_price_det = table.rows[i].cells[6].innerHTML;
-				var total_price_det = table.rows[i].cells[7].innerHTML;
+				var qty_det = pi_qty_baris(table.rows[i]); 
+				// Harga & total yang DISIMPAN diambil apa adanya dari data-*,
+				// bukan dari angka 2 desimal yang dipajang di selnya.
+				var unit_price_det = pi_nilai_utuh(table.rows[i].cells[6], 'data-price');
+				var total_price_det = pi_nilai_utuh(table.rows[i].cells[7], 'data-total');
 				//				
 				qty_det = qty_det.replace(/,/g, '');
-				unit_price_det = unit_price_det.replace(/,/g, '');
-				total_price_det = total_price_det.replace(/,/g, '');
 				//				
 				data.push({		
 					"no_invoice_proforma": $('#prof_inv_number').val(),
-					"id_so_det": table.rows[i].cells[0].innerHTML,
-					"no_so": table.rows[i].cells[1].innerHTML,
-					"produk_detail": table.rows[i].cells[2].innerHTML,					
-					"curr":table.rows[i].cells[3].innerHTML,
+					// Baris PI NON SO diketik seluruhnya, jadi selnya dibaca lewat
+					// pi_sel_teks() - bukan langsung innerHTML.
+					"id_so_det": pi_sel_teks(table.rows[i].cells[0]),
+					"no_so": pi_sel_teks(table.rows[i].cells[1]),
+					"produk_detail": pi_sel_teks(table.rows[i].cells[2]),					
+					"curr": pi_sel_teks(table.rows[i].cells[3]),
 					"qty": qty_det,
-					"uom": table.rows[i].cells[5].innerHTML,		
+					"uom": pi_sel_teks(table.rows[i].cells[5]),		
 					"unit_price": unit_price_det,
-					"total_price": total_price_det,			
+					"total_price": total_price_det,
+					// Daftar so_det yang diwakili baris ini - ikut tersimpan supaya
+					// ketahuan baris ini mewakili SO yang mana saja.
+					"id_so_det_list": pi_ids_baris(table.rows[i]),			
 
 				})		
 			}
@@ -7673,9 +7829,21 @@ function simpan_proforma_invoice_detail_so_cbd(){
 
 				var trHTML = '';
 				$.each(response, function (i, item) { 					
-					trHTML += '<tr>';					
+					// Satu daftar, dua sumber: PI & PI NON SO dari tbl_invoice_proforma,
+					// DP & CBD dari tbl_invoice_proforma_dp_cbd. Tombol di tiap baris
+					// ikut sumbernya - endpoint cetak, cancel & faktur pajaknya beda.
+					var cbd = String(item.sumber || '') === 'CBD';
+					var tipePi = String(item.type_pi || 'PI');
+					// Tombolnya ikut status: yang sudah CANCEL cuma riwayat, dan
+					// Cancel hanya untuk yang masih POST - batal_proforma_invoice()
+					// di server memang menolak status lain.
+					var status = String(item.status || '').toUpperCase();
+					var batal = status.indexOf('CANCEL') === 0;
+					var post = status === 'POST';
+					trHTML += '<tr data-tipe="' + tipePi + '">';					
 					trHTML += '<td>' + item.id + "</td>";
 					trHTML += '<td>' + item.no_pi + "</td>";	
+					trHTML += '<td>' + tipePi + "</td>";	
 					trHTML += '<td>' + item.date_pi + "</td>";
 					trHTML += '<td>' + item.customer + "</td>";
 					trHTML += '<td>' + item.shipp + "</td>";	
@@ -7684,13 +7852,24 @@ function simpan_proforma_invoice_detail_so_cbd(){
 					trHTML += '<td>' + item.status + "</td>";	
 					trHTML += '<td>' + item.no_faktur_pajak + "</td>";	
 					trHTML += '<td align="right">' + item.amount + "</td>";	
-					trHTML += '<td><button id="faktur_pjk" name="faktur_pjk" type="button" class="btn btn-info btn-sm" onclick="update_faktur_pjk(' + item.id + ')" >Update</button> ' + '' + ' <button id="print_inv_pi" name="print_inv_pi" type="button" class="btn btn-primary btn-sm" onclick="print_proforma_invoice(' + item.id + ')"><i class="fa fa-print"></i> Print</button> <button type="button" class="btn btn-danger btn-sm" onclick="batal_proforma_invoice(' + item.id + ', 0)"><i class="fa fa-times"></i> Cancel</button></td>';					
+					var aksi = '';
+					if (!batal) {
+						aksi += '<button id="faktur_pjk" name="faktur_pjk" type="button" class="btn btn-info btn-sm" onclick="' + (cbd ? 'update_faktur_pjk_cbd' : 'update_faktur_pjk') + '(' + item.id + ')" >Update</button> ';
+						aksi += '<button id="print_inv_pi" name="print_inv_pi" type="button" class="btn btn-primary btn-sm" onclick="' + (cbd ? 'print_proforma_invoice_cbd' : 'print_proforma_invoice') + '(' + item.id + ')"><i class="fa fa-print"></i> Print</button>';
+						if (post) {
+							aksi += ' <button type="button" class="btn btn-danger btn-sm" onclick="batal_proforma_invoice(' + item.id + ', ' + (cbd ? 1 : 0) + ')"><i class="fa fa-times"></i> Cancel</button>';
+						}
+					}
+					trHTML += '<td>' + aksi + '</td>';					
 				// trHTML += '<td><button id="export_to_excel" name="export_to_excel" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_pi(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button></td>';					
 
 				trHTML += '</tr>';
 			});
 
 				$('#table-list-proforma-invoice').append(trHTML);				
+				// Saringan jenisnya dipasang lagi - baris yang baru digambar harus
+				// ikut pilihan yang sedang aktif.
+				saring_tipe_proforma();
 
 			},
 			error: function (jqXHR, textStatus, errorThrown) {
@@ -7699,6 +7878,27 @@ function simpan_proforma_invoice_detail_so_cbd(){
 		});	
 
 	}
+
+/**
+ * Saring daftar Proforma Invoice menurut jenisnya (PI, PI NON SO, DP, CBD).
+ *
+ * Disaring DI LAYAR: daftarnya memang sudah diambil utuh, jadi mengganti
+ * pilihan tidak perlu menunggu server. Jenis tiap baris dibawa di data-tipe.
+ */
+function saring_tipe_proforma() {
+	var $pilih = $('#list_prof_tipe');
+	if (!$pilih.length) { return; }
+	var pilih = String($pilih.val() || '');
+	var tampil = 0;
+	$('#table-list-proforma-invoice tbody tr').each(function () {
+		var ikut = pilih === '' || String($(this).attr('data-tipe') || '') === pilih;
+		$(this).toggle(ikut);
+		if (ikut) { tampil++; }
+	});
+	return tampil;
+}
+
+$(function () { $('#list_prof_tipe').on('change', saring_tipe_proforma); });
 
 //ubah september
 function cari_proforma_invoice_cbd(){
@@ -8848,6 +9048,13 @@ function update_faktur_pjk_cbd(id) {
 
 }
 
+/**
+ * Cetak Proforma Invoice - satu cetakan saja.
+ *
+ * Bentuk barisnya sudah ditentukan user waktu memilih SO (Group By), dan
+ * baris yang tersimpan memang sudah berbentuk itu - jadi cetakannya tinggal
+ * mencetak apa adanya.
+ */
 function print_proforma_invoice($id) {
 
 	window.open(".../../report_proforma_invoice/" + $id + "/");  	

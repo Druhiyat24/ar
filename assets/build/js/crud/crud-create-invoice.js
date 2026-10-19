@@ -45,6 +45,13 @@
         dp: 0,
         dpcbd: 0,
         retur: 0,
+        // Down Payment & Advance datang dari Proforma Invoice yang dipanggil
+        // di kartu sendiri. Nilai dari Invoice EXIM disimpan terpisah: selama
+        // belum ada PI yang dipilih, angka dari sana yang dipakai.
+        dpAsal: 0,
+        dpcbdAsal: 0,
+        pi: [],            // PI yang bisa dipakai invoice ini
+        piPakai: {},       // no PI -> berapa yang dipakai
         // Booking dari Invoice EXIM yang SJ-nya belum terbit: barisnya masih
         // berupa SO/WS, jadi SJ-nya dipilih manual di sini - terbatas pada SO
         // yang dipesan booking itu.
@@ -442,6 +449,12 @@
         if (!p) { return; }
         inv.dp    = nilai(p.dp);
         inv.dpcbd = nilai(p.dp_cbd);
+        // Dipakai lagi kalau PI yang dipilih dikosongkan - supaya angka dari
+        // Invoice EXIM tidak hilang cuma karena tidak ada PI yang dipanggil.
+        inv.dpAsal    = inv.dp;
+        inv.dpcbdAsal = inv.dpcbd;
+        inv.piPakai = {};
+        inv.piDipulihkan = false;
         inv.retur = nilai(p.retur);
         inv.vat   = nilai(p.vat_persen) / 100;
     }
@@ -465,12 +478,17 @@
             ? 'Pick the SJ from the SO booked in Invoice EXIM'
             : exim ? 'SJ rows come from Invoice EXIM' : 'Pick the SJ rows to invoice');
 
-        // Booking AR mengisi DP / DP-CBD / Return di modal Add SO. Booking dari
-        // EXIM tidak lewat modal itu, jadi ketiganya diketik langsung disini.
-        $('#ci-dp, #ci-dpcbd, #ci-retur')
+        // Return masih diketik sendiri untuk booking EXIM. Down Payment &
+        // Advance TIDAK: angkanya datang dari Proforma Invoice yang dipanggil
+        // di kartu Proforma Invoice, jadi dua kotak itu cuma memajang.
+        $('#ci-retur')
             .prop('readonly', !exim)
             .toggleClass('ci-bisa-isi', exim)
             .attr('title', exim ? '' : 'Filled in the Add SO window');
+        $('#ci-dp, #ci-dpcbd')
+            .prop('readonly', true)
+            .removeClass('ci-bisa-isi')
+            .attr('title', 'Comes from the proforma invoices picked above');
     }
 
     /* ========================= 2. Term of payment ======================= */
@@ -1099,6 +1117,7 @@
         } else {
             $('#ci-grade').val(''); $('#ci-inv-date').val(''); $('#ci-inv-curr').val('');
         }
+        muatPi();
         hitungRingkasan();
     }
 
@@ -1125,6 +1144,186 @@
         $('#ci-vat-label').text(inv.vat ? '(' + Math.round(inv.vat * 100) + '%)' : '');
     }
 
+    /* ======== 4b. Proforma Invoice yang memotong tagihan ================
+     * DP, CBD & PI NON SO milik customer ini dipanggil di sini untuk
+     * memotong tagihan. Yang menentukan nilainya server:
+     *
+     *   - PI ber-DP  -> yang dipakai nilai DP-nya, masuk Down Payment
+     *   - tanpa DP   -> yang dipakai total penuhnya, masuk Advance
+     *
+     * Satu nomor PI boleh dipakai berulang, jadi yang diisi BERAPA yang
+     * dipakai - dibatasi sisanya. DP & CBD cuma boleh dipakai kalau SO-nya
+     * ditagih invoice ini; PI NON SO bebas, asal mata uangnya sama.
+     */
+
+    /** Berapa baris PI yang ditampilkan sebelum kartunya digulung. */
+    var PI_BARIS_TAMPIL = 10;
+
+    /** Nomor SO yang ditagih invoice ini - dipakai menyaring DP & CBD. */
+    function piSoInvoice() {
+        var so = [];
+        inv.baris.forEach(function (r) {
+            var v = String(r.no_so || '').trim();
+            if (v && v !== '-' && so.indexOf(v) === -1) { so.push(v); }
+        });
+        return so;
+    }
+
+    /** Mata uang invoicenya - diambil dari baris SJ-nya. */
+    function piCurr() {
+        return String((inv.baris[0] || {}).curr || $('#ci-inv-curr').val() || '').toUpperCase();
+    }
+
+    function muatPi() {
+        var idCust = $('#ci-id-cust').val();
+        if (!idCust) {
+            inv.pi = [];
+            gambarPi();
+            return;
+        }
+        kirim('pi_untuk_invoice_json/', {
+            id_customer: idCust,
+            curr: piCurr(),
+            'no_so[]': piSoInvoice(),
+            id_book_invoice: $('#ci-id-inv').val() || 0
+        }).done(function (d) {
+            inv.pi = (d && d.data) ? d.data : [];
+            // Yang sudah tercatat di invoice ini dipulihkan - supaya waktu
+            // invoicenya dibuka lagi pilihannya masih ada.
+            var dpPi = 0, advPi = 0;
+            inv.pi.forEach(function (r) {
+                var dipakai = nilai(r.dipakai);
+                if (dipakai <= 0) { return; }
+                if (inv.piPakai[r.no_pi] === undefined) {
+                    inv.piPakai[r.no_pi] = dipakai;
+                }
+                if (r.bagian === 'DP') { dpPi += dipakai; } else { advPi += dipakai; }
+            });
+            // Nilai yang tersimpan SUDAH memuat potongan PI-nya. Porsi itu
+            // dikeluarkan sekali supaya tidak dihitung dua kali waktu
+            // invoicenya dibuka lagi.
+            if (!inv.piDipulihkan) {
+                inv.piDipulihkan = true;
+                inv.dpAsal    = Math.max(0, nilai(inv.dp) - dpPi);
+                inv.dpcbdAsal = Math.max(0, nilai(inv.dpcbd) - advPi);
+            }
+            gambarPi();
+        }).fail(function () {
+            inv.pi = [];
+            gambarPi();
+        });
+    }
+
+    function gambarPi() {
+        var $b = $('#ci-pi-tbody');
+        var ada = inv.pi.length > 0;
+        $('#ci-pi-card').prop('hidden', !ada);
+        if (!ada) {
+            $b.empty();
+            $('#ci-pi-kaki').prop('hidden', true);
+            hitungPi();
+            return;
+        }
+
+        $b.html(inv.pi.map(function (r) {
+            var bisa = String(r.boleh) === '1';
+            var pakai = inv.piPakai[r.no_pi];
+            var dipilih = bisa && pakai !== undefined && nilai(pakai) > 0;
+            var sisa = nilai(r.sisa) + (dipilih ? 0 : 0);
+            return '<tr class="' + (bisa ? '' : 'ci-pi-mati') + '" data-no="'
+                + $('<div>').text(r.no_pi).html() + '">'
+                + '<td class="dn-tengah"><input type="checkbox" class="ci-pi-cek"'
+                + (dipilih ? ' checked' : '') + (bisa ? '' : ' disabled') + '></td>'
+                + '<td>' + teks(r.no_pi) + '</td>'
+                + '<td>' + teks(r.type_pi) + '</td>'
+                + '<td>' + teks(r.date_pi) + '</td>'
+                + '<td>' + teks(r.curr) + '</td>'
+                + '<td' + (bisa ? '' : ' class="ci-pi-alasan"') + '>'
+                + (bisa ? teks(r.so_list) : teks(r.alasan || r.so_list)) + '</td>'
+                + '<td>' + (r.bagian === 'DP' ? 'Down Payment' : 'Advance') + '</td>'
+                + '<td class="text-right">' + angka(r.nilai) + '</td>'
+                + '<td class="text-right">' + angka(r.terpakai) + '</td>'
+                + '<td class="text-right">' + angka(sisa) + '</td>'
+                + '<td class="text-right"><input type="text" class="ci-pi-pakai"'
+                + ' value="' + (dipilih ? angka(pakai) : '') + '"'
+                + (dipilih ? '' : ' disabled') + '></td>'
+                + '</tr>';
+        }).join(''));
+        $('#ci-pi-kaki').prop('hidden', false);
+        piBatasiTinggi();
+        hitungPi();
+    }
+
+    /**
+     * Tinggi kartu PI dipatok sepuluh baris.
+     *
+     * Diukur dari baris yang benar-benar tergambar, bukan ditebak px-nya,
+     * jadi tetap pas kalau ukuran hurufnya berubah. Kurang dari sepuluh
+     * baris: dibiarkan setinggi isinya.
+     */
+    function piBatasiTinggi() {
+        var $bungkus = $('#ci-pi-gulung');
+        var $baris = $('#ci-pi-tbody tr');
+        if ($baris.length <= PI_BARIS_TAMPIL) {
+            $bungkus.css('max-height', '');
+            return;
+        }
+        var tinggiBaris = $baris.eq(0).outerHeight() || 0;
+        var tinggiKepala = $bungkus.find('thead').outerHeight() || 0;
+        if (!tinggiBaris) { return; }
+        $bungkus.css('max-height', (tinggiKepala + tinggiBaris * PI_BARIS_TAMPIL) + 'px');
+    }
+
+    /** Baris PI menurut nomornya. */
+    function piBaris(no) {
+        var cari = null;
+        inv.pi.forEach(function (r) { if (r.no_pi === no) { cari = r; } });
+        return cari;
+    }
+
+    /**
+     * Jumlahkan pemakaian PI lalu tuangkan ke Down Payment & Advance.
+     *
+     * Selama belum ada PI yang dipakai, angka dari Invoice EXIM dibiarkan -
+     * invoice booking EXIM memang sudah membawa DP sendiri dari sana.
+     */
+    function hitungPi() {
+        var dp = 0, adv = 0, dipilih = 0;
+        inv.pi.forEach(function (r) {
+            var pakai = nilai(inv.piPakai[r.no_pi]);
+            if (String(r.boleh) !== '1' || pakai <= 0) { return; }
+            dipilih++;
+            if (r.bagian === 'DP') { dp += pakai; } else { adv += pakai; }
+        });
+
+        $('#ci-pi-dp').text(angka(dp));
+        $('#ci-pi-adv').text(angka(adv));
+        $('#ci-pi-info').text(dipilih
+            ? dipilih + ' proforma invoice' + (dipilih > 1 ? 's' : '') + ' used'
+            : '');
+
+        // Dijumlahkan, bukan ditimpa: invoice booking EXIM bisa saja sudah
+        // membawa DP sendiri dari sana, dan itu tidak boleh hilang cuma
+        // karena ada PI yang dipanggil di sini.
+        inv.dp = inv.dpAsal + dp;
+        inv.dpcbd = inv.dpcbdAsal + adv;
+        hitungRingkasan();
+    }
+
+    /** Baris PI yang dipakai - dikirim waktu Save. */
+    function payloadPi() {
+        var d = [];
+        inv.pi.forEach(function (r) {
+            var pakai = nilai(inv.piPakai[r.no_pi]);
+            if (String(r.boleh) !== '1' || pakai <= 0) { return; }
+            d.push({
+                id_proforma: r.id,
+                no_proforma_invoice: r.no_pi,
+                amount: pakai.toFixed(2)
+            });
+        });
+        return d;
+    }
     /* ============================ 5. Simpan ============================= */
     function kategoriCustomer() {
         var id = String($('#ci-id-cust').val());
@@ -1554,6 +1753,10 @@
             total: polos('#ci-total'),
             discount: polos('#ci-discount'),
             dp: polos('#ci-dp'),
+            // Advance (dulu "DP/CBD from Invoice") - kolomnya baru ada
+            // setelah migrations/20261017b; model yang menyaring kalau
+            // migrasinya belum dijalankan.
+            dp_cbd: polos('#ci-dpcbd'),
             retur: polos('#ci-retur'),
             twot: polos('#ci-twot'),
             vat: polos('#ci-vat'),
@@ -2018,6 +2221,19 @@
 
         L.push({ nama: 'Saving invoice summary', jalan: function () {
             return kirim('simpan_invoice_pot/', { data_table: [payloadPot(false)] });
+        } });
+
+        // Proforma Invoice yang dipakai memotong tagihan ikut dicatat -
+        // itu yang nanti jadi laporan alokasi PI, dan yang menentukan sisa
+        // PI-nya untuk invoice berikutnya. Selalu dikirim, termasuk waktu
+        // kosong: invoice yang tadinya memakai PI lalu dilepas harus ikut
+        // melepas catatannya.
+        L.push({ nama: 'Saving proforma invoice allocation', jalan: function () {
+            return kirim('simpan_alokasi_pi_json/', {
+                id_book_invoice: idInv,
+                no_invoice: $('#ci-inv-number').val() || '',
+                data_table: payloadPi()
+            });
         } });
 
         if (knitting) {
@@ -2736,6 +2952,55 @@
         });
         $('#ci-so-apply').on('click', terapkanSo);
 
+        // ---- kartu Proforma Invoice ----
+        // Dicentang = dipakai sebesar sisanya; jumlahnya boleh dikurangi
+        // sendiri, tapi tidak boleh lebih dari sisa PI-nya.
+        $('#ci-pi-tbody').on('change', '.ci-pi-cek', function () {
+            var no = $(this).closest('tr').data('no');
+            var r = piBaris(no);
+            if (!r) { return; }
+            if (this.checked) {
+                var pakai = nilai(inv.piPakai[no]);
+                if (pakai <= 0) { pakai = nilai(r.sisa); }
+                inv.piPakai[no] = pakai;
+            } else {
+                delete inv.piPakai[no];
+            }
+            gambarPi();
+        });
+        $('#ci-pi-tbody').on('input', '.ci-pi-pakai', function () {
+            var no = $(this).closest('tr').data('no');
+            var r = piBaris(no);
+            if (!r) { return; }
+            inv.piPakai[no] = nilai($(this).val());
+            hitungPi();
+        });
+        // Dibulatkan & dibatasi waktu kotaknya ditinggalkan - selama mengetik
+        // angkanya dibiarkan apa adanya supaya tidak melawan jari.
+        $('#ci-pi-tbody').on('blur', '.ci-pi-pakai', function () {
+            var no = $(this).closest('tr').data('no');
+            var r = piBaris(no);
+            if (!r) { return; }
+            var pakai = nilai($(this).val());
+            var sisa = nilai(r.sisa);
+            if (pakai > sisa) { pakai = sisa; }
+            if (pakai <= 0) { delete inv.piPakai[no]; } else { inv.piPakai[no] = pakai; }
+            gambarPi();
+        });
+        $('#ci-pi-semua').on('change', function () {
+            var pasang = this.checked;
+            inv.pi.forEach(function (r) {
+                if (String(r.boleh) !== '1') { return; }
+                if (pasang) { inv.piPakai[r.no_pi] = nilai(r.sisa); }
+                else { delete inv.piPakai[r.no_pi]; }
+            });
+            gambarPi();
+        });
+        $('#ci-pi-kosongkan').on('click', function () {
+            inv.piPakai = {};
+            $('#ci-pi-semua').prop('checked', false);
+            gambarPi();
+        });
         // ---- tabel detail ----
         $('#ci-tbody').on('click', '.ci-buang', function () {
             inv.baris.splice(parseInt($(this).data('i'), 10), 1);

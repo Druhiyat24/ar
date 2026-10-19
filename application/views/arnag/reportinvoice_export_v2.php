@@ -186,7 +186,8 @@ $rekap_baris = array(
 $potongan = array(
     'discount' => 'Discount',
     'dp'       => 'Down Payment',
-    'dp_cbd'   => 'DP/CBD from Invoice',
+    // Namanya disamakan dengan layar Create Invoice.
+    'dp_cbd'   => 'Advance',
     'retur'    => 'Return',
 );
 foreach ($potongan as $k => $label) {

@@ -116,7 +116,19 @@
         </div>
         <div class="card-body">
           <div class="row align-items-end pi-filter">
-            <div class="form-group col-lg-4 col-md-6 pi-f-customer">
+            <div class="form-group col-lg-2 col-md-3 pi-f-tipe">
+              <label for="list_prof_tipe">Proforma Type</label>
+              <!-- Saringan di layar saja - daftarnya tetap diambil utuh,
+                   jadi menggantinya tidak perlu menunggu server. -->
+              <select class="form-control select2bs4" id="list_prof_tipe" name="list_prof_tipe">
+                <option value="">All Type</option>
+                <option value="PI">PI</option>
+                <option value="PI NON SO">PI NON SO</option>
+                <option value="DP">DP</option>
+                <option value="CBD">CBD</option>
+              </select>
+            </div>
+            <div class="form-group col-lg-3 col-md-6 pi-f-customer">
               <label for="list_prof_customer">Customer</label>
               <select class="form-control select2bs4" id="list_prof_customer" name="list_prof_customer">
                 <option value="all_customer">All Customer</option>
@@ -162,6 +174,9 @@
                 <tr>
                   <th>ID</th>
                   <th>No Prof Inv</th>
+                  <!-- Satu daftar untuk empat jenis: PI, PI NON SO, DP, CBD.
+                       Menu DP & CBD yang lama tidak diperlukan lagi. -->
+                  <th>Proforma Type</th>
                   <th>Date</th>
                   <th>Customer</th>
                   <th>Shipp</th>

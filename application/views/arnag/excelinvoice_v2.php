@@ -69,6 +69,8 @@ $rekap = array(
     array('Total', $ambil($pot, 'total', '0.00'), false),
     array('Discount', $ambil($pot, 'discount', '0.00'), false),
     array('Down Payment', $ambil($pot, 'dp', '0.00'), false),
+    // Uang muka dari Proforma Invoice CBD / PI NON SO tanpa DP.
+    array('Advance', $ambil($pot, 'dp_cbd', '0.00'), false),
     array('Return', $ambil($pot, 'retur', '0.00'), false),
     array('Total Before Value Added Tax', $ambil($pot, 'twot', '0.00'), false),
     array('Value Added Tax', $ambil($pot, 'vat', '0.00'), false),

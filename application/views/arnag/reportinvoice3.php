@@ -389,6 +389,15 @@ CSS HEADER
 			<td align='right'><?= $data_invoice_pot['dp']; ?></td>
 		</tr>
 
+		<!-- Uang muka dari Proforma Invoice CBD / PI NON SO tanpa DP.
+		     Invoice lama belum punya kolomnya - dicetak nol, bukan dilewati,
+		     supaya susunan barisnya tidak berubah-ubah. -->
+		<tr>
+			<td colspan='6'>Advance</td>
+			<td align='center'><?= $mata_uang ?></td>
+			<td align='right'><?= (isset($data_invoice_pot['dp_cbd']) ? $data_invoice_pot['dp_cbd'] : '0.00'); ?></td>
+		</tr>
+
 		<tr>
 			<td colspan='6'>Return</td>
 			<td align='center'><?= $mata_uang ?></td>

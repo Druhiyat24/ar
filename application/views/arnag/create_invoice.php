@@ -114,6 +114,43 @@
   background: #1e3a5f;
   box-shadow: none;
 }
+/* Kartu PI digulung sendiri kalau barisnya lebih dari sepuluh; judul kolom &
+   baris totalnya dibuat menempel supaya tetap kelihatan. */
+.nag-skin #ci-pi-gulung { overflow: auto; }
+.nag-skin #ci-pi-gulung thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+.nag-skin #ci-pi-gulung tfoot th {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  background: #eef2f7;
+}
+
+/* ---- Kartu Proforma Invoice (DP / CBD / Advance) ----
+   Barisnya pendek-pendek, jadi yang diatur cuma kotak jumlah pemakaian,
+   baris yang terkunci, dan keterangan di sebelah tombol Clear All. */
+.nag-skin #ci-pi-card .ci-pi-pakai {
+  height: 28px;
+  width: 100%;
+  padding: 0 8px;
+  text-align: right;
+  border: 1px solid #dbe3ee;
+  border-radius: 6px;
+  font-size: 12.5px;
+}
+.nag-skin #ci-pi-card .ci-pi-pakai:focus { border-color: #1e3a5f; outline: 0; }
+.nag-skin #ci-pi-card .ci-pi-pakai:disabled { background: #f1f5f9; color: #94a3b8; }
+.nag-skin #ci-pi-card tr.ci-pi-mati td { color: #94a3b8; }
+.nag-skin #ci-pi-card tr.ci-pi-mati .ci-pi-alasan { font-style: italic; }
+.nag-skin #ci-pi-card input[type="checkbox"] {
+  width: 16px; height: 16px; cursor: pointer; accent-color: #1e3a5f; vertical-align: middle;
+}
+.nag-skin #ci-pi-card input[type="checkbox"]:disabled { cursor: not-allowed; }
+.nag-skin .ci-pi-info { align-self: center; font-size: 12px; color: #64748b; }
+.nag-skin #ci-pi-card tfoot th { background: #f8fafc; }
 /* Tabel yang kolom terakhirnya MEMANG Action (Detail SJ di layar & daftar SJ
    di modal): sel isinya dikunci ke kanan oleh dn_skin, jadi judulnya harus
    ikut dikunci - kalau tidak, judul Action-nya tertinggal waktu tabel digeser
@@ -1135,6 +1172,60 @@
         </div>
       </div>
 
+
+      <!-- ===== Proforma Invoice yang memotong tagihan =====
+           DP, CBD & PI NON SO milik customer ini. Daftarnya disaring: mata
+           uangnya harus sama dengan invoice, dan DP/CBD baru boleh dipakai
+           kalau SO-nya memang ditagih di sini - yang tidak tetap kelihatan
+           tapi centangnya mati, lengkap dengan alasannya.
+
+           Satu nomor PI boleh dipakai berulang: yang diisi bukan "pakai atau
+           tidak" tapi BERAPA yang dipakai, dibatasi sisanya. Yang ber-DP masuk
+           ke Down Payment, sisanya ke Advance - keduanya readonly di Summary
+           karena angkanya datang dari sini. -->
+      <div class="card" id="ci-pi-card" hidden>
+        <div class="card-body">
+          <div class="table-header">
+            <span class="table-title"><i class="fas fa-file-invoice-dollar"></i>Proforma Invoice (DP / CBD / Advance)</span>
+            <div class="dn-filter-aksi">
+              <span class="ci-pi-info" id="ci-pi-info"></span>
+              <button type="button" class="btn btn-dn-hapus-baris" id="ci-pi-kosongkan"><i class="fas fa-eraser"></i> Clear All</button>
+            </div>
+          </div>
+          <!-- Tingginya dibatasi sepuluh baris - lihat piBatasiTinggi()
+               di crud-create-invoice.js. Customer yang PI-nya banyak
+               jangan sampai mendorong Summary jauh ke bawah. -->
+          <div class="ci-table-wrap" id="ci-pi-gulung">
+            <table class="dn-table text-nowrap" style="width:100%">
+              <thead>
+                <tr>
+                  <th style="width:44px" class="dn-tengah">
+                    <input type="checkbox" id="ci-pi-semua" title="Select all">
+                  </th>
+                  <th>No Prof Inv</th>
+                  <th>Proforma Type</th>
+                  <th>Date</th>
+                  <th>Curr</th>
+                  <th>SO Number</th>
+                  <th>Allocated To</th>
+                  <th class="text-right">Value</th>
+                  <th class="text-right">Used Elsewhere</th>
+                  <th class="text-right">Remaining</th>
+                  <th class="text-right" style="width:150px">Amount Used</th>
+                </tr>
+              </thead>
+              <tbody id="ci-pi-tbody"></tbody>
+              <tfoot>
+                <tr id="ci-pi-kaki" hidden>
+                  <th colspan="9" class="text-right">Down Payment / Advance</th>
+                  <th class="text-right" id="ci-pi-dp">0.00</th>
+                  <th class="text-right" id="ci-pi-adv">0.00</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
       <!-- ===== Shipment Details (khusus Invoice Export) =====
            Isinya milik Invoice EXIM Export - tabel yang sama persis dengan
            yang dibaca menu EXIM. Tim AR boleh melengkapinya dari sini supaya
@@ -1235,7 +1326,9 @@
                 <div class="ci-sum-row"><span>Total</span><input type="text" class="form-control" id="ci-total" name="total" value="0.00" readonly></div>
                 <div class="ci-sum-row"><span>Discount</span><input type="text" class="form-control" id="ci-discount" name="discount" value="0.00" readonly></div>
                 <div class="ci-sum-row"><span>Down Payment</span><input type="text" class="form-control" id="ci-dp" name="dp" value="0.00" readonly></div>
-                <div class="ci-sum-row"><span>DP/CBD from Invoice</span><input type="text" class="form-control" id="ci-dpcbd" name="dp_cbd" value="0.00" readonly></div>
+                <!-- Down Payment & Advance datang dari kartu Proforma Invoice di atas -
+                     jadi keduanya tidak diketik di sini. -->
+                <div class="ci-sum-row"><span>Advance</span><input type="text" class="form-control" id="ci-dpcbd" name="dp_cbd" value="0.00" readonly></div>
                 <div class="ci-sum-row"><span>Return</span><input type="text" class="form-control" id="ci-retur" name="return" value="0.00" readonly></div>
                 <div class="ci-sum-row"><span>Total Without Tax</span><input type="text" class="form-control" id="ci-twot" name="twot" value="0.00" readonly></div>
                 <div class="ci-sum-row"><span>VAT <small class="text-muted" id="ci-vat-label"></small></span><input type="text" class="form-control" id="ci-vat" name="vat" value="0.00" readonly></div>

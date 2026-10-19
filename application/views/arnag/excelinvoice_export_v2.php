@@ -139,7 +139,7 @@ if (count($alamat_pabrik) > 2) {
 
 $rekap_baris = array(array('Sub Total', $sub_qty, $sub_total, true));
 foreach (array('discount' => 'Discount', 'dp' => 'Down Payment',
-    'dp_cbd' => 'DP/CBD from Invoice', 'retur' => 'Return') as $k => $label) {
+    'dp_cbd' => 'Advance', 'retur' => 'Return') as $k => $label) {
     if ($ada_nilai($angka_rekap($k))) {
         $rekap_baris[] = array($label, null, -$angka_rekap($k), false);
     }

@@ -2225,6 +2225,53 @@ public function summary_export_json($id_inv = null)
 }
 
 /** Simpan Invoice Summary yang dirapikan tim AR. */
+/**
+ * Daftar Proforma Invoice (DP / CBD / PI NON SO) yang bisa dipakai memotong
+ * sebuah invoice - dipakai layar Create Invoice.
+ *
+ * SO-nya dikirim sebagai daftar karena DP & CBD cuma boleh dipakai kalau
+ * SO-nya memang ditagih invoice itu.
+ */
+public function pi_untuk_invoice_json()
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+    $so = $this->input->post('no_so');
+    if (!is_array($so)) {
+        $so = $so === null || $so === '' ? array() : explode(',', (string) $so);
+    }
+    $data = $this->Model_nag->pi_untuk_invoice(
+        (string) $this->input->post('id_customer'),
+        (string) $this->input->post('curr'),
+        $so,
+        (int) $this->input->post('id_book_invoice')
+    );
+    echo json_encode(array('status' => TRUE, 'data' => $data));
+}
+
+/** Catat Proforma Invoice yang dipakai sebuah invoice. */
+public function simpan_alokasi_pi_json()
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+    $hasil = $this->Model_nag->simpan_alokasi_pi(
+        (int) $this->input->post('id_book_invoice'),
+        (array) $this->input->post('data_table'),
+        (string) $this->session->userdata('username'),
+        date('Y-m-d H:i:s'),
+        (string) $this->input->post('no_invoice')
+    );
+    if (isset($hasil['gagal'])) {
+        $this->output->set_status_header(422);
+        echo json_encode(array('status' => FALSE, 'message' => $hasil['gagal']));
+        return;
+    }
+    echo json_encode(array('status' => TRUE, 'baris' => $hasil['baris']));
+}
 public function simpan_summary_export_json()
 {
     if (!$this->session->userdata('username')) {
@@ -3158,7 +3205,10 @@ public function approve_invoice()
 public function approve_profinvoice()
 {
     $id = $this->input->post('id_inv');
-    $this->Model_nag->approve_profinvoice($id);
+    $berhasil = $this->Model_nag->approve_profinvoice($id);
+    $q = $this->db->query("SELECT no_proforma_invoice FROM tbl_invoice_proforma WHERE id = ?", array($id));
+    $no_doc = ($q->row() && $q->row()->no_proforma_invoice) ? $q->row()->no_proforma_invoice : null;
+    echo json_encode(array('status' => (bool) $berhasil, 'no_doc' => $no_doc));
 }
 
     //ubah september
@@ -3196,7 +3246,10 @@ public function approve_invoice_second()
 public function approve_profinvoice_second()
 {
     $id = $this->input->post('id_inv');
-    $this->Model_nag->approve_profinvoice_second($id);
+    $berhasil = $this->Model_nag->approve_profinvoice_second($id);
+    $q = $this->db->query("SELECT no_proforma_invoice FROM tbl_invoice_proforma WHERE id = ?", array($id));
+    $no_doc = ($q->row() && $q->row()->no_proforma_invoice) ? $q->row()->no_proforma_invoice : null;
+    echo json_encode(array('status' => (bool) $berhasil, 'no_doc' => $no_doc));
 }
 
 public function approve_debitnote_second()
@@ -3271,7 +3324,14 @@ function cancel_duedate()
     //Proforma Invoice 
     // ubah september
 
-function proformainvoice()
+/**
+ * Layar input Proforma Invoice - satu layar untuk empat jenis.
+ *
+ * $tipe cuma menentukan pilihan awal dropdown Proforma Type: pi, pi-non-so,
+ * dp, cbd. Menu DP & CBD yang lama bisa diarahkan ke sini dengan /dp atau
+ * /cbd, jadi user langsung dapat tipe yang benar.
+ */
+function proformainvoice($tipe = '')
 {
     if (!$this->session->userdata('username')) {
         redirect('auth');
@@ -3279,6 +3339,11 @@ function proformainvoice()
         //
     $kode_inv = "";
     $data['kode_proforma_invoice'] = $this->Model_nag->get_kode_proforma_invoice($kode_inv);
+
+    $peta = array('pi' => 'PI', 'pi-non-so' => 'PI NON SO', 'pinonso' => 'PI NON SO',
+                  'dp' => 'DP', 'cbd' => 'CBD');
+    $kunci = strtolower(trim((string) $tipe));
+    $data['tipe_awal'] = isset($peta[$kunci]) ? $peta[$kunci] : 'PI';
 
     $data['title'] = 'Proforma Invoice';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
@@ -3608,10 +3673,19 @@ public function update_faktur_pajak_cbd()
     $id          = $this->input->post('id_inv_prof');
     $faktur_pjk  = $this->input->post('no_paktur_pjk');
     $this->Model_nag->update_faktur_pajak_cbd($id, $faktur_pjk);
-    redirect('arnag/listproformainvoice_dp_cbd');
+    // Barisnya diisi dari daftar Proforma Invoice yang sudah digabung -
+    // balikkan ke sana, bukan ke menu DP & CBD yang lama.
+    redirect('arnag/listproformainvoice');
 }
 
-public function report_proforma_invoice($id)
+/**
+ * Cetak Proforma Invoice - satu cetakan saja.
+ *
+ * Bentuk barisnya ditentukan user waktu memilih SO (Group By) dan sudah
+ * tersimpan apa adanya, jadi di sini tidak ada lagi pilihan ringkas/detail.
+ * Ruas kedua dibiarkan ada supaya tautan lama yang membawa mode tidak error.
+ */
+public function report_proforma_invoice($id, $mode = '')
 {
     if (!$this->session->userdata('username')) {
         redirect('auth');
