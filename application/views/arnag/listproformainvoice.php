@@ -183,7 +183,7 @@
                   <th>Peb</th>
                   <th>Type</th>
                   <th>Status</th>
-                  <th>Faktur Pajak</th>
+                  <th>Tax Invoice No</th>
                   <th class="text-right">Amount</th>
                   <th>Action</th>
                 </tr>
@@ -195,7 +195,11 @@
       </div>
 
     </div>
-  </section>
+  
+<!-- Nomor proforma bisa diklik - detailnya muncul di modal ini. -->
+<?php $this->load->view('arnag/pi_detail_modal'); ?>
+
+</section>
 </div>
 
 <!-- Modal Update Faktur Pajak -->

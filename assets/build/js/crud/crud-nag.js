@@ -91,17 +91,26 @@ $(document).ready(function () {
 	// });
 	//
 	// TOP Create Invoice
-	document.querySelector("#find_top").addEventListener("click", function(){		
-		cari_top()
-	})	
+	// Layar yang tidak punya tombolnya - mis. Proforma Invoice - memang
+	// tidak perlu listenernya. Tanpa pemeriksaan ini querySelector()
+	// mengembalikan null, .addEventListener melempar, dan seluruh
+	// handler $(ready) sesudahnya ikut mati.
+	var tombolTop = document.querySelector("#find_top");
+	if (tombolTop) {
+		tombolTop.addEventListener("click", function () { cari_top(); });
+	}
 });
 
 //Cari Proforma TOP
 $(document).ready(function () {		
 	// TOP Proforma Invoice
-	document.querySelector("#prof_find_top").addEventListener("click", function(){		
-		cari_prof_top()
-	})
+	// Tombol ini sudah tidak ada sejak TOP dihilangkan dari layar
+	// Proforma Invoice; dibiarkan supaya layar lain yang masih
+	// memakainya tetap jalan.
+	var tombolTopPi = document.querySelector("#prof_find_top");
+	if (tombolTopPi) {
+		tombolTopPi.addEventListener("click", function () { cari_prof_top(); });
+	}
 });
 
 //Alert
@@ -4385,10 +4394,10 @@ function cari_proforma_invoice_post(){
 				var trHTML = '';
 				$.each(response, function (i, item) { 					
 					trHTML += '<tr>';					
-					trHTML += '<td>' + item.no_pi + "</td>";					
+					trHTML += '<td>' + pi_detail_tautan(item.id, item.no_pi, 'PI') + "</td>";					
 					// Jenis proformanya - PI, PI NON SO, DP atau CBD.
 					trHTML += '<td>' + (item.type_pi || '') + "</td>";
-					trHTML += '<td>' + item.date_pi + "</td>";	
+					trHTML += '<td>' + nag_tgl_inggris(item.date_pi) + "</td>";	
 					trHTML += '<td>' + item.customer + "</td>";
 					trHTML += '<td>' + item.shipp + "</td>";
 					trHTML += '<td>' + item.peb + "</td>";
@@ -5314,10 +5323,10 @@ function cari_proforma_invoice_second_approv(){
 			var trHTML = '';
 			$.each(response, function (i, item) {
 				trHTML += '<tr>';
-				trHTML += '<td>' + item.no_pi + "</td>";
+				trHTML += '<td>' + pi_detail_tautan(item.id, item.no_pi, 'PI') + "</td>";
 				// Jenis proformanya - PI, PI NON SO, DP atau CBD.
 				trHTML += '<td>' + (item.type_pi || '') + "</td>";
-				trHTML += '<td>' + item.date_pi + "</td>";
+				trHTML += '<td>' + nag_tgl_inggris(item.date_pi) + "</td>";
 				trHTML += '<td>' + item.customer + "</td>";
 				trHTML += '<td>' + item.shipp + "</td>";
 				trHTML += '<td>' + item.peb + "</td>";
@@ -7051,7 +7060,10 @@ function simpan_proforma_invoice_header() {
             var id_type            = $('#prof_type').val();
             var status             = "POST";                        
             var type_barang        = $('#prof_material_type').val();
-            var id_top             = $('#prof_id_top').val();
+            // TOP tidak dipakai di proforma lagi. Yang ditagih & nomor faktur
+            // pajaknya diisi langsung di layar ini.
+            var billed_to          = $('#prof_billed_to').val() || '';
+            var no_faktur_pajak    = $('#prof_faktur_pajak').val() || '';
             var id_bank            = $('#id_bank_prof').val();
             var type_so            = $('#type_so_prof').val();
             var twot               = $('#prof_twot').val();
@@ -7064,6 +7076,20 @@ function simpan_proforma_invoice_header() {
             // Jenis proformanya (PI, PI NON SO, DP, CBD) ikut tersimpan -
             // menu Create Invoice yang akan membacanya nanti.
             var type_pi            = $('#prof_type_pi').val() || 'PI';
+            // Mode edit: proforma lamanya dilepas dulu - baris SO-nya
+            // dibebaskan dan barisnya dihapus - lalu isi layar ditulis
+            // ulang dengan NOMOR YANG SAMA. Dikerjakan serentak supaya
+            // urutannya pasti: lepas dulu, baru simpan.
+            var id_edit = $.trim(String($('#prof_id_edit').val() || ''));
+            if (id_edit !== '') {
+                $.ajax({
+                    url: 'pi_hapus_untuk_edit_json/',
+                    type: 'POST',
+                    data: { id: id_edit },
+                    dataType: 'JSON',
+                    async: false
+                });
+            }
             // Bentuk baris SO-nya juga: cetakan & layar Edit memakainya.
             var grouping           = $('#pi-grouping').val() || 'PRODUCT_COLOR_SIZE';
 			//					
@@ -7085,7 +7111,8 @@ function simpan_proforma_invoice_header() {
 				"status": status,
 				"tgl_proforma_inv": tgl_proforma_inv,	
 				"type_barang": type_barang,		
-				"id_top": id_top,	
+				"billed_to": billed_to,
+				"no_faktur_pajak": no_faktur_pajak,	
 				"id_bank": id_bank,		
 				"type_so": type_so,
 				"twot": twot,	
@@ -7308,7 +7335,10 @@ function simpan_proforma_invoice_header_cbd() {
             var id_type            = $('#prof_type').val();
             var status             = "POST";                        
             var type_barang        = $('#prof_material_type').val();
-            var id_top             = $('#prof_id_top').val();
+            // TOP tidak dipakai di proforma lagi. Yang ditagih & nomor faktur
+            // pajaknya diisi langsung di layar ini.
+            var billed_to          = $('#prof_billed_to').val() || '';
+            var no_faktur_pajak    = $('#prof_faktur_pajak').val() || '';
             var id_bank            = $('#id_bank_prof').val();
             var type_so            = $('#type_so_prof').val();
             var twot               = $('#prof_twot').val();
@@ -7341,7 +7371,8 @@ function simpan_proforma_invoice_header_cbd() {
 				"status": status,
 				"tgl_proforma_inv": tgl_proforma_inv,	
 				"type_barang": type_barang,		
-				"id_top": id_top,	
+				"billed_to": billed_to,
+				"no_faktur_pajak": no_faktur_pajak,	
 				"id_bank": id_bank,		
 				"type_so": type_so,
 				"twot": twot,	
@@ -7813,6 +7844,218 @@ function simpan_proforma_invoice_detail_so_cbd(){
 		}
 
 
+/**
+ * Tanggal gaya Inggris untuk layar - "15 Oct 2026".
+ *
+ * Sama dengan cetakannya, supaya yang dilihat di layar dan yang tercetak
+ * tidak berbeda bentuk. Sumbernya Y-m-d atau d-m-Y; yang bukan tanggal
+ * dibiarkan apa adanya.
+ */
+/**
+ * Nomor proforma sebagai tautan yang membuka modal detailnya.
+ *
+ * Dipakai tiga layar: daftar Proforma Invoice, First & Second Approval.
+ * Gayanya sama dengan nomor invoice di List Invoice.
+ */
+function pi_detail_tautan(id, nomor, sumber) {
+	var teks = $('<div>').text(nomor === undefined || nomor === null ? '' : nomor).html();
+	var asal = String(sumber || 'PI') === 'CBD' ? 'CBD' : 'PI';
+	return '<a href="javascript:void(0)" class="dn-no-link" title="View proforma invoice"'
+		+ ' onclick="pi_detail_buka(' + id + ', \'' + asal + '\')">' + teks + '</a>';
+}
+
+/**
+ * Buka modal detail proforma invoice.
+ *
+ * Isinya diambil dari server - layar daftar cuma punya ringkasannya, sedangkan
+ * yang ingin dilihat orang biasanya barisnya. Tanpa dokumen & jurnal:
+ * proforma belum punya lampiran dan belum menjurnal apa pun.
+ */
+function pi_detail_buka(id, sumber) {
+	var asal = String(sumber || 'PI') === 'CBD' ? 'CBD' : 'PI';
+	var $modal = $('#modal-pi-detail');
+	if (!$modal.length) { return; }
+
+	$('#pi-detail-judul').text('Proforma Invoice');
+	$('#pi-detail-status').html('');
+	$('#pi-detail-isi').prop('hidden', true);
+	$('#pi-detail-loader').prop('hidden', false);
+	$('#pi-detail-cetak').off('click').on('click', function () {
+		// Alamatnya relatif - sama dengan pemanggilan lain di berkas ini.
+		window.open((asal === 'CBD' ? 'report_proforma_invoice_cbd/' : 'report_proforma_invoice/')
+			+ id + '/', '_blank');
+	});
+	$modal.modal('show');
+
+	$.getJSON('proforma_detail_json/' + id + '/' + asal + '/')
+		.done(function (d) { pi_detail_isi(d); })
+		.fail(function () {
+			$('#pi-detail-loader').prop('hidden', true);
+			$('#pi-detail-isi').prop('hidden', false);
+			$('#pi-detail-tabel tbody').html('');
+			$('#pi-detail-kosong').prop('hidden', false)
+				.text('The proforma invoice could not be loaded.');
+		});
+}
+
+/** Tuangkan isi modal detail proforma. */
+function pi_detail_isi(d) {
+	var h = (d && d.header) ? d.header : {};
+	var baris = (d && d.baris) ? d.baris : [];
+	var esc = function (v) { return $('<div>').text(v === undefined || v === null ? '' : v).html(); };
+	var isi = function (v, bawaan) {
+		var s = String(v === undefined || v === null ? '' : v).trim();
+		return s === '' ? (bawaan || '-') : s;
+	};
+
+	$('#pi-detail-judul').text(isi(h.no_pi, 'Proforma Invoice'));
+	$('#pi-detail-status').html(h.status
+		? '<span class="dn-badge">' + esc(h.status) + '</span>' : '');
+
+	// Di atas customer pemilik SO-nya; siapa yang ditagih ada di
+	// keterangan di bawahnya. Keduanya bisa berbeda, dan dua-duanya perlu
+	// kelihatan tanpa harus membuka cetakannya.
+	$('#pi-detail-label-nama').text('Customer');
+	$('#pi-detail-nama').text(isi(h.customer));
+	$('#pi-detail-alamat').text(isi(h.alamat));
+	$('#pi-detail-grand').text(isi(h.curr, '') + ' ' + isi(h.grand_total, '0.00'));
+	$('#pi-detail-tanggal').text(nag_tgl_inggris(h.date_pi));
+
+	var info = [
+		['Proforma Type', isi(h.type_pi, 'PI')],
+		// Kosong berarti ditagih ke customernya sendiri - ditulis apa
+		// adanya, bukan dibiarkan jadi strip yang bikin bertanya-tanya.
+		['Billed To', String(h.billed_to_nama || '').trim() !== ''
+			? h.billed_to_nama : 'Same as customer'],
+		['Invoice Type', isi(h.type)],
+		['Shipment', isi(h.shipp)],
+		['PEB', isi(h.peb)],
+		['Tax Invoice No', isi(h.no_faktur_pajak)],
+		['Down Payment', isi(h.curr, '') + ' ' + isi(h.dp, '0.00')]
+	];
+	$('#pi-detail-info').html(info.map(function (x) {
+		return '<div><dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd></div>';
+	}).join(''));
+
+	$('#pi-detail-jml-baris').text(baris.length + (baris.length === 1 ? ' row' : ' rows'));
+	$('#pi-detail-tabel tbody').html(baris.map(function (r) {
+		return '<tr>'
+			+ '<td>' + esc(isi(r.no_so)) + '</td>'
+			+ '<td>' + esc(isi(r.produk_detail)) + '</td>'
+			+ '<td class="text-right">' + esc(isi(r.qty, '0')) + '</td>'
+			+ '<td>' + esc(isi(r.uom)) + '</td>'
+			+ '<td class="text-right">' + esc(isi(r.unit_price, '0')) + '</td>'
+			+ '<td class="text-right">' + esc(isi(r.total_price, '0.00')) + '</td>'
+			+ '</tr>';
+	}).join(''));
+	$('#pi-detail-kosong').prop('hidden', baris.length > 0)
+		.text('No rows on this proforma invoice.');
+
+	$('#pi-detail-loader').prop('hidden', true);
+	$('#pi-detail-isi').prop('hidden', false);
+}
+/**
+ * Isi layar Proforma Invoice dari proforma yang sedang diubah.
+ *
+ * Baris SO-nya tidak diurus di sini: waktu layar edit dibuka, barisnya sudah
+ * disalin ke tabel sementara yang memang dibaca layar ini, jadi tabelnya
+ * terisi sendiri seperti biasa.
+ */
+function pi_isi_edit(d) {
+	if (!d) { return; }
+	var isi = function (sel, nilai) {
+		if (nilai === undefined || nilai === null) { return; }
+		$(sel).val(nilai);
+	};
+
+	$('#prof_id_edit').val(d.id);
+	isi('#prof_type_pi', d.type_pi || 'PI');
+	isi('#prof_inv_number', d.no_proforma_invoice);
+	isi('#prof_customer', d.id_customer);
+	isi('#prof_billed_to', d.billed_to || '');
+	isi('#prof_faktur_pajak', d.no_faktur_pajak || '');
+	isi('#prof_shipp', d.shipp);
+	isi('#prof_shipp_cbd', d.shipp);
+	isi('#prof_peb', d.peb || '');
+	isi('#prof_type', d.id_type);
+	isi('#prof_material_type', d.type_barang);
+	isi('#id_bank_prof', d.id_bank);
+	isi('#type_so_prof', d.type_so);
+	isi('#pi-grouping', d.grouping || 'PRODUCT_COLOR_SIZE');
+	isi('#pilih_diskn_prof', d.type_diskon);
+	isi('#prof_diskon', d.diskon);
+	isi('#id_ppn_prof', d.percentage_ppn);
+	isi('#prof_dp', d.dp);
+	isi('#pi-dp-patokan', d.tipe_dp);
+
+	// Pilihan select2 & tombol Local/Export baru kelihatan sesudah diberi tahu.
+	if (typeof $.fn !== 'undefined' && $.fn.select2) {
+		$('#prof_customer, #prof_billed_to, #prof_type, #prof_material_type,'
+			+ ' #id_bank_prof, #type_so_prof, #id_ppn_prof, #pi-grouping').trigger('change');
+	}
+	if (typeof window.pi_atur_tipe === 'function') { window.pi_atur_tipe(); }
+	if (typeof hitung_total_proforma === 'function') { hitung_total_proforma(); }
+}
+
+// Layar PI dibuka untuk MENGUBAH proforma yang sudah ada: isiannya diisi dari
+// data yang dititipkan view, lalu baris SO-nya dimuat dari tabel sementara -
+// isinya sudah disalin ke sana waktu layar edit dibuka.
+$(function () {
+	if (typeof window.PI_EDIT === 'undefined' || !window.PI_EDIT) { return; }
+	// Kegagalan di sini TIDAK boleh menjalar: handler $(ready) dijalankan
+	// berurutan, dan begitu satu melempar, sisanya tidak pernah jalan -
+	// termasuk pemasang datepicker & select2 di footer. Gejalanya halus:
+	// layarnya kelihatan normal, tapi kalender di modal Add SO tidak muncul.
+	try {
+		pi_isi_edit(window.PI_EDIT);
+	} catch (e) {
+		if (window.console && window.console.error) {
+			window.console.error('Edit PI: isian gagal diisi', e);
+		}
+	}
+	try {
+		if (typeof load_so_detail_proforma_temporary === 'function') {
+			load_so_detail_proforma_temporary();
+		}
+		if (typeof load_invoice_detail_proforma_temporary === 'function') {
+			load_invoice_detail_proforma_temporary();
+		}
+	} catch (e2) {
+		if (window.console && window.console.error) {
+			window.console.error('Edit PI: baris SO gagal dimuat', e2);
+		}
+	}
+});
+// ---- Alamat AJAX diseragamkan ----
+// Pemanggilan di berkas ini ditulis relatif ("cari_proforma_invoice/" dsb.),
+// dan itu benar selama halamannya persis satu ruas di bawah /arnag/. Layar
+// yang alamatnya lebih dalam - mis. edit_proforma_invoice/39 - bikin
+// permintaannya nyasar ke ruas yang salah. CI_URL disediakan tiap layar,
+// jadi dipakai sebagai awalan. Yang sudah lengkap atau menuju ke luar
+// dibiarkan.
+$.ajaxPrefilter(function (opt) {
+	if (typeof CI_URL === 'undefined' || !CI_URL) { return; }
+	var u = String(opt.url || '');
+	if (u === '') { return; }
+	if (/^(https?:)?\/\//i.test(u)) { return; }   // ke luar
+	if (u.charAt(0) === '/') { return; }          // sudah dari akar
+	if (u.indexOf(CI_URL) === 0) { return; }      // sudah diberi awalan
+	opt.url = CI_URL + u;
+});
+function nag_tgl_inggris(nilai) {
+	var BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+	             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+	var teks = String(nilai === undefined || nilai === null ? '' : nilai).trim();
+	var pecah = teks.replace(/\//g, '-').split('-');
+	if (pecah.length !== 3) { return teks; }
+	var awalTahun = pecah[0].length === 4;
+	var th = parseInt(awalTahun ? pecah[0] : pecah[2], 10);
+	var bl = parseInt(pecah[1], 10);
+	var hr = parseInt(awalTahun ? pecah[2] : pecah[0], 10);
+	if (!th || !bl || !hr || bl < 1 || bl > 12) { return teks; }
+	return (hr < 10 ? '0' + hr : hr) + ' ' + BULAN[bl - 1] + ' ' + th;
+}
+
 		function cari_proforma_invoice(){
 
 			$('#table-list-proforma-invoice tbody tr').remove();
@@ -7842,19 +8085,27 @@ function simpan_proforma_invoice_detail_so_cbd(){
 					var post = status === 'POST';
 					trHTML += '<tr data-tipe="' + tipePi + '">';					
 					trHTML += '<td>' + item.id + "</td>";
-					trHTML += '<td>' + item.no_pi + "</td>";	
+					trHTML += '<td>' + pi_detail_tautan(item.id, item.no_pi, item.sumber) + "</td>";	
 					trHTML += '<td>' + tipePi + "</td>";	
-					trHTML += '<td>' + item.date_pi + "</td>";
+					// Yang dipajang gaya Inggris; yang dipakai DataTables mengurutkan
+					// tanggal aslinya - "19 Oct 2026" tidak bisa diurutkan apa adanya.
+					trHTML += '<td data-order="' + item.date_pi + '">' + nag_tgl_inggris(item.date_pi) + "</td>";
 					trHTML += '<td>' + item.customer + "</td>";
 					trHTML += '<td>' + item.shipp + "</td>";	
 					trHTML += '<td>' + item.peb + "</td>";	
 					trHTML += '<td>' + item.type + "</td>";	
 					trHTML += '<td>' + item.status + "</td>";	
 					trHTML += '<td>' + item.no_faktur_pajak + "</td>";	
-					trHTML += '<td align="right">' + item.amount + "</td>";	
+					trHTML += '<td align="right" data-order="' + String(item.amount || '0').replace(/,/g, '')
+						+ '">' + item.amount + "</td>";	
 					var aksi = '';
 					if (!batal) {
-						aksi += '<button id="faktur_pjk" name="faktur_pjk" type="button" class="btn btn-info btn-sm" onclick="' + (cbd ? 'update_faktur_pjk_cbd' : 'update_faktur_pjk') + '(' + item.id + ')" >Update</button> ';
+						// Edit cuma untuk yang masih POST: begitu lewat approval,
+						// angkanya sudah disetujui. Nomor faktur pajaknya pun
+						// sekarang diisi di layar PI, bukan lewat tombol sendiri.
+						if (post) {
+							aksi += '<button type="button" class="btn btn-info btn-sm" onclick="location.href=\'edit_proforma_invoice/' + item.id + '/\'"><i class="fas fa-pen"></i> Edit</button> ';
+						}
 						aksi += '<button id="print_inv_pi" name="print_inv_pi" type="button" class="btn btn-primary btn-sm" onclick="' + (cbd ? 'print_proforma_invoice_cbd' : 'print_proforma_invoice') + '(' + item.id + ')"><i class="fa fa-print"></i> Print</button>';
 						if (post) {
 							aksi += ' <button type="button" class="btn btn-danger btn-sm" onclick="batal_proforma_invoice(' + item.id + ', ' + (cbd ? 1 : 0) + ')"><i class="fa fa-times"></i> Cancel</button>';
@@ -7866,7 +8117,10 @@ function simpan_proforma_invoice_detail_so_cbd(){
 				trHTML += '</tr>';
 			});
 
-				$('#table-list-proforma-invoice').append(trHTML);				
+				$('#table-list-proforma-invoice').append(trHTML);
+				// Tabelnya dipasangi DataTables sesudah barisnya lengkap -
+				// 10 baris per halaman, bisa diurutkan & dicari.
+				pi_list_dt_pasang();
 				// Saringan jenisnya dipasang lagi - baris yang baru digambar harus
 				// ikut pilihan yang sedang aktif.
 				saring_tipe_proforma();
@@ -7885,22 +8139,75 @@ function simpan_proforma_invoice_detail_so_cbd(){
  * Disaring DI LAYAR: daftarnya memang sudah diambil utuh, jadi mengganti
  * pilihan tidak perlu menunggu server. Jenis tiap baris dibawa di data-tipe.
  */
+// Tabel daftar Proforma Invoice. Disimpan supaya bisa dilepas lagi sebelum
+// barisnya digambar ulang - DataTables tidak mau dipasang dua kali.
+var PI_LIST_DT = null;
+
+/**
+ * Pasang DataTables pada daftar Proforma Invoice.
+ *
+ * Dipanggil tiap daftarnya selesai digambar. Yang lama dilepas dulu supaya
+ * barisnya tidak ditumpuk.
+ */
+function pi_list_dt_pasang() {
+	var $tabel = $('#table-list-proforma-invoice');
+	if (!$tabel.length || !$.fn || !$.fn.DataTable) { return; }
+	if (PI_LIST_DT) {
+		PI_LIST_DT.destroy();
+		PI_LIST_DT = null;
+	}
+	PI_LIST_DT = $tabel.DataTable({
+		autoWidth: false,
+		pageLength: 10,
+		lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+		// Terbaru dulu - nomornya naik mengikuti waktu dibuat.
+		order: [[0, 'desc']],
+		columnDefs: [
+			// Nomornya berisi tautan ke modal; yang dipakai mengurutkan &
+			// mencari cuma teksnya.
+			{
+				targets: 1,
+				render: function (data, type) {
+					if (type === 'display' || type === 'export') { return data; }
+					return $('<div>').html(data).text() || data;
+				}
+			},
+			{ targets: 10, className: 'dn-angka' },
+			{ targets: 11, orderable: false, searchable: false, className: 'dn-tengah' }
+		],
+		language: {
+			search: '',
+			searchPlaceholder: 'Search in list...',
+			lengthMenu: 'Show _MENU_ rows',
+			info: 'Showing _START_-_END_ of _TOTAL_',
+			infoEmpty: 'No data',
+			infoFiltered: '(filtered from _MAX_)',
+			zeroRecords: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-search"></i></span>'
+				+ '<div class="dn-kosong-judul">No proforma invoice matches the search.</div></div>',
+			emptyTable: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-file-invoice-dollar"></i></span>'
+				+ '<div class="dn-kosong-judul">No data yet - set the filter above, then click Search.</div></div>',
+			paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Prev' }
+		}
+	});
+	// Saringan jenis yang sedang dipilih ikut dipasang lagi.
+	saring_tipe_proforma();
+}
+/**
+ * Saring daftar menurut jenis proformanya (PI, PI NON SO, DP, CBD).
+ *
+ * Lewat DataTables, bukan menyembunyikan <tr>: baris di halaman lain memang
+ * tidak ada di DOM, jadi menyembunyikannya cuma menyaring halaman yang
+ * sedang terbuka.
+ */
 function saring_tipe_proforma() {
 	var $pilih = $('#list_prof_tipe');
-	if (!$pilih.length) { return; }
+	if (!$pilih.length || !PI_LIST_DT) { return 0; }
 	var pilih = String($pilih.val() || '');
-	var tampil = 0;
-	$('#table-list-proforma-invoice tbody tr').each(function () {
-		var ikut = pilih === '' || String($(this).attr('data-tipe') || '') === pilih;
-		$(this).toggle(ikut);
-		if (ikut) { tampil++; }
-	});
-	return tampil;
+	// Dicocokkan persis supaya "PI" tidak ikut menarik "PI NON SO".
+	PI_LIST_DT.column(2).search(pilih === '' ? '' : '^' + pilih + '$', true, false).draw();
+	return PI_LIST_DT.rows({ search: 'applied' }).count();
 }
 
-$(function () { $('#list_prof_tipe').on('change', saring_tipe_proforma); });
-
-//ubah september
 function cari_proforma_invoice_cbd(){
 
 	$('#table-list-proforma-invoice tbody tr').remove();
@@ -8740,7 +9047,7 @@ function dn_detail_render(res) {
 			var digabung = lanjutan[i] || lanjutan[i + 1];
 			var kelasKet = $.trim((lanjutan[i] ? 'sambung-atas' : '') + (lanjutan[i + 1] ? ' sambung-bawah' : '')
 				+ (digabung ? (ganjilInduk[i] ? ' sambung-ganjil' : ' sambung-genap') : ''));
-			return '<tr' + (r.terkunci ? ' class="is-terkunci" title="From Memo / Request"' : '') + '>'
+			return '<tr' + (r.dari_sumber ? ' class="is-dari-sumber" title="From Memo / Request"' : '') + '>'
 				+ '<td' + (kelasKet ? ' class="' + kelasKet + '"' : '') + '>' + (lanjutan[i] ? '' : dn_list_teks(r.deskripsi)) + '</td>'
 				+ kolomHeader.map(function (k) { return '<td>' + dn_list_teks(r[k.key]) + '</td>'; }).join('')
 				+ '<td class="dn-angka">' + dn_list_uang(r.value) + '</td>'

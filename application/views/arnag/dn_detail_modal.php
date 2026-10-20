@@ -71,7 +71,7 @@
   border-top: 2px solid #e2e8f0;
 }
 /* Baris dari Memo / Request ditandai, sama seperti di halaman Edit */
-.nag-skin .dn-detail-tabel tbody tr.is-terkunci td:first-child { box-shadow: inset 3px 0 0 #94a3b8; }
+.nag-skin .dn-detail-tabel tbody tr.is-dari-sumber td:first-child { box-shadow: inset 3px 0 0 #94a3b8; }
 /* Description yang dikosongkan ikut baris di atasnya - sama seperti aturan di
    PDF. Sel .dn-table di sini cuma punya border-bottom (bukan border-top), jadi
    cukup hilangkan itu di baris yang menyambung ke bawah supaya terlihat satu

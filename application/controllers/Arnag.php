@@ -3331,6 +3331,83 @@ function cancel_duedate()
  * dp, cbd. Menu DP & CBD yang lama bisa diarahkan ke sini dengan /dp atau
  * /cbd, jadi user langsung dapat tipe yang benar.
  */
+/**
+ * Buka layar Proforma Invoice untuk MENGUBAH proforma yang sudah ada.
+ *
+ * Layarnya sama dengan waktu membuat baru - barisnya disalin dulu ke tabel
+ * sementara yang memang dibaca layar itu, jadi tidak ada layar kembar yang
+ * harus dirawat dua kali. Yang membedakan cuma $pi_edit: isian header diisi
+ * dari sana, dan nomornya tidak dibuatkan baru.
+ *
+ * Hanya proforma yang masih POST; yang sudah lewat approval dikembalikan ke
+ * daftarnya dengan keterangan.
+ */
+function edit_proforma_invoice($id)
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+    $pi = $this->Model_nag->pi_siapkan_edit($id);
+    if (!$pi) {
+        $this->session->set_flashdata('pesan_pi',
+            'Only a proforma invoice that is still POST can be edited.');
+        redirect('arnag/listproformainvoice');
+        return;
+    }
+
+    $data['pi_edit'] = $pi;
+    $data['tipe_awal'] = isset($pi['type_pi']) && trim((string) $pi['type_pi']) !== ''
+        ? $pi['type_pi'] : 'PI';
+    $data['kode_proforma_invoice'] = $pi['no_proforma_invoice'];
+    $data['title'] = 'Edit Proforma Invoice';
+    $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+    $data['customer'] = $this->Model_nag->cari_customer();
+    $data['type'] = $this->db->get('tbl_type')->result_array();
+    $data['isi_bank'] = $this->Model_nag->load_bank();
+    $data['isi_ppn'] = $this->Model_nag->load_ppn();
+    $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+    $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+    $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+    $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+    $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+    $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+    $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+    $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
+
+    // Periode yang masih terbuka: footer memakainya sebagai batas bawah
+    // kalender. Harus dikirim seperti di layar buat-baru - kalau tidak,
+    // peringatan PHP-nya tercetak di tengah skrip pemasang kalender dan
+    // tidak ada tanggal yang bisa dipilih sama sekali.
+    $query = $this->db->query("SELECT '2022-01-01' tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
+    $this->load->view('templates/header', $data);
+    $this->load->view('templates/sidebar', $data);
+    $this->load->view('arnag/proformainvoice', $data);
+    $this->load->view('templates/footer', $data);
+}
+
+/**
+ * Lepas proforma lama tepat sebelum isi layar ditulis ulang.
+ *
+ * Dipanggil layar PI sebagai langkah pertama waktu Save dalam mode edit.
+ * Nomornya dikembalikan supaya yang baru memakai nomor yang sama.
+ */
+function pi_hapus_untuk_edit_json()
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+    $hasil = $this->Model_nag->pi_hapus_untuk_edit((int) $this->input->post('id'));
+    if (isset($hasil['gagal'])) {
+        $this->output->set_status_header(422);
+        echo json_encode(array('status' => FALSE, 'message' => $hasil['gagal']));
+        return;
+    }
+    echo json_encode(array('status' => TRUE, 'no_pi' => $hasil['no_pi']));
+}
 function proformainvoice($tipe = '')
 {
     if (!$this->session->userdata('username')) {
@@ -3685,6 +3762,43 @@ public function update_faktur_pajak_cbd()
  * tersimpan apa adanya, jadi di sini tidak ada lagi pilihan ringkas/detail.
  * Ruas kedua dibiarkan ada supaya tautan lama yang membawa mode tidak error.
  */
+/**
+ * Isi modal detail Proforma Invoice - header & baris SO-nya.
+ *
+ * Melayani proforma biasa maupun DP/CBD; keduanya bentuk datanya sama, cuma
+ * tabelnya yang berbeda sebelum migrasi penyatuan dijalankan.
+ */
+public function proforma_detail_json($id, $sumber = 'PI')
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+    $cbd = strtoupper(trim((string) $sumber)) === 'CBD';
+    $header = $cbd
+        ? $this->Model_nag->report_proforma_invoice_cbd($id)
+        : $this->Model_nag->report_proforma_invoice($id);
+    if (!$header) {
+        $this->output->set_status_header(404);
+        echo json_encode(array('status' => FALSE, 'message' => 'Proforma invoice not found.'));
+        return;
+    }
+    $baris = $cbd
+        ? $this->Model_nag->report_proforma_invoice_detail_cbd($id)
+        : $this->Model_nag->report_proforma_invoice_detail($id);
+    $jumlah = $cbd
+        ? $this->Model_nag->report_proforma_invoice_grandtotal_cbd($id)
+        : $this->Model_nag->report_proforma_invoice_grandtotal($id);
+
+    // Angka rekapnya digabung ke header supaya layar cukup membaca satu tempat.
+    foreach (array('total', 'twot', 'ppn', 'dp') as $k) {
+        $header[$k] = isset($jumlah[$k]) ? $jumlah[$k] : '0.00';
+    }
+    $header['grand_total'] = number_format(
+        (float) str_replace(',', '', (string) $header['total']), 2, '.', ',');
+
+    echo json_encode(array('status' => TRUE, 'header' => $header, 'baris' => $baris));
+}
 public function report_proforma_invoice($id, $mode = '')
 {
     if (!$this->session->userdata('username')) {
@@ -3708,7 +3822,9 @@ public function report_proforma_invoice($id, $mode = '')
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
-    $html = $this->load->view('arnag/reportproformainvoice', $data, true);
+    // Cetakan desain baru - bentuknya mengikuti Commercial Invoice.
+    // Yang lama disimpan di arnag/reportproformainvoice.php.
+    $html = $this->load->view('arnag/reportproformainvoice_v2', $data, true);
     $mpdf->setFooter('{PAGENO} / {nbpg}');
     $mpdf->WriteHTML($html);
     $mpdf->Output();
@@ -3739,7 +3855,15 @@ public function report_proforma_invoice_cbd($id)
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
-    $html = $this->load->view('arnag/reportproformainvoicedpcbd', $data, true);
+    // Cetakannya sama dengan Proforma Invoice biasa - bentuknya memang
+    // satu keluarga; yang membedakan cuma jenis & nilai yang ditagih di
+    // muka. Namanya dipetakan supaya cetakannya tidak perlu tahu bedanya.
+    $data['data_proforma_invoice'] = $data['data_proforma_invoice_cbd'];
+    $data['data_proforma_invoice_detail'] = $data['data_proforma_invoice_detail_cbd'];
+    $data['data_proforma_invoice_total'] = $data['data_proforma_invoice_total_cbd'];
+    $data['data_proforma_invoice_grandtotal'] = $data['data_proforma_invoice_grandtotal_cbd'];
+    $data['data_proforma_diskon'] = $data['data_proforma_diskon_cbd'];
+    $html = $this->load->view('arnag/reportproformainvoice_v2', $data, true);
     $mpdf->setFooter('{PAGENO} / {nbpg}');
     $mpdf->WriteHTML($html);
     $mpdf->Output();
@@ -6949,7 +7073,7 @@ public function dn_detail_json($id = null)
             'no_coa'    => $r['no_coa'],
             'nama_coa'  => isset($r['nama_coa']) ? $r['nama_coa'] : '',
             // Baris dari Memo / Request ditandai supaya kelihatan asalnya.
-            'terkunci'  => $this->Model_nag->dn_baris_terkunci($r) ? 1 : 0,
+            'dari_sumber' => $this->Model_nag->dn_baris_dari_sumber($r) ? 1 : 0,
         );
     }
 

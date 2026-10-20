@@ -3562,15 +3562,32 @@ function update_faktur_pajak_cbd($id, $faktur_pjk)
     return $hasil;
 }
 
+/**
+ * Kepala cetakan Proforma Invoice.
+ *
+ * Pihak yang DITAGIH ikut terbaca lengkap (nama, alamat & telponnya):
+ * proforma boleh ditagihkan ke pihak lain, dan cetakannya memajang yang
+ * ditagih itu - bukan pemilik SO-nya. Kolom billed_to baru ada setelah
+ * migrations/20261019b, jadi keberadaannya diperiksa dulu.
+ */
 function report_proforma_invoice($id)
 {
+    $ada = $this->kolom_ada('tbl_invoice_proforma', 'billed_to');
+    $billed = $ada ? 'a.billed_to' : "''";
+    $gabung = $ada
+        ? "LEFT JOIN mastersupplier AS e ON e.Id_Supplier = a.billed_to" : '';
+    $nama   = $ada ? "IFNULL(e.supplier, '')" : "''";
+    $alamat = $ada ? "IFNULL(e.alamat, '')" : "''";
+    $telp   = $ada ? "IFNULL(e.Phone, '')" : "''";
     $hasil = $this->db->query("SELECT a.id, a.no_proforma_invoice AS no_pi, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi, b.supplier AS customer, a.shipp, a.peb,
       UPPER(c.type) AS type, a.status, a.no_faktur_pajak, IFNULL(b.alamat, '-') AS alamat,
-      IFNULL(b.Phone, '-') AS phone, d.no_rek, d.nama_bank, d.v_bankaddress, d.curr
+      IFNULL(b.Phone, '-') AS phone, d.no_rek, d.nama_bank, d.v_bankaddress, d.curr,
+      $billed AS billed_to, $nama AS billed_to_nama,
+      $alamat AS billed_to_alamat, $telp AS billed_to_phone
       FROM tbl_invoice_proforma AS a INNER JOIN
       mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN 
       tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
-      masterbank AS d ON a.id_bank = d.id
+      masterbank AS d ON a.id_bank = d.id $gabung
       WHERE a.id = '$id' ");
     return $hasil->row_array();
 }
@@ -7959,9 +7976,9 @@ public function get_debitnoteDet_by_id($id) {
 }
 
 // Baris detail yang berasal dari Memo (id_memo_det terisi) atau No Request
-// (nm_memo terisi nomor BPB request) - di edit tidak boleh diubah / dihapus.
-// Baris manual kedua kolom itu kosong.
-public function dn_baris_terkunci($row)
+// (nm_memo terisi nomor BPB request). Isinya bebas diubah user; ini cuma
+// untuk menandai asal barisnya.
+public function dn_baris_dari_sumber($row)
 {
     return trim((string) $row['id_memo_det']) !== '' || trim((string) $row['nm_memo']) !== '';
 }
@@ -7969,10 +7986,12 @@ public function dn_baris_terkunci($row)
 // Simpan hasil edit Debit Note: header + detail dalam SATU transaksi (dulu
 // detail dihapus dulu lewat request terpisah - kalau simpan barunya gagal,
 // detailnya hilang).
-// - Baris Memo/Request diambil ulang dari database berdasarkan id-nya (client
-//   cuma kirim id), jadi isinya tidak bisa diubah; semua baris itu juga WAJIB
-//   ada di kiriman (tidak boleh dihapus).
-// - Baris manual disimpan dari kiriman client (kolom memo/request dikosongkan).
+// - Baris yang sudah tersimpan dikenali dari id-nya: SELURUH isinya diambil
+//   dari kiriman client (user bebas mengubah kolom mana pun), yang dibawa
+//   dari database cuma kaitan ke sumbernya - nm_memo, id_memo_det, customer
+//   dan Invoice Export - supaya asal barisnya tidak hilang. Baris yang tidak
+//   dikirim lagi berarti dihapus user, apa pun asalnya.
+// - Baris baru disimpan dari kiriman client (kolom memo/request dikosongkan).
 // - Total dihitung ulang dari baris final.
 // - Nomor DN hanya dibuat ulang (dengan kunci, sama seperti create) kalau
 //   profit center diganti; tabel yang menyimpan no_dn ikut diperbarui.
@@ -8004,20 +8023,20 @@ public function update_debitnote($id_dn, $header, $baris)
         if (!empty($b['id_det'])) {
             $id = $b['id_det'];
             // id yang sama dikirim 2x = barisnya jadi dobel.
-            if (!is_scalar($id) || !isset($det_lama[$id]) || isset($dipakai[$id]) || !$this->dn_baris_terkunci($det_lama[$id])) {
+            if (!is_scalar($id) || !isset($det_lama[$id]) || isset($dipakai[$id])) {
                 return array('status' => false, 'message' => 'Invalid detail row, please reload the page.');
             }
             $r = $det_lama[$id];
             unset($r['id']);
-            // Deskripsi dan Value / Rate / Amount boleh dibetulkan lewat Edit
-            // (kurs sering baru ketahuan salah setelah DN dibuat, dan kalimat
-            // deskripsinya kadang perlu dirapikan sebelum dikirim ke customer).
-            // Kolom lain tetap diambil dari database supaya kaitan ke Memo /
-            // Request tidak bisa diutak-atik. Isian kosong diabaikan - yang lama
-            // dipakai lagi, supaya tidak terhapus karena kolomnya tidak terkirim.
-            foreach (array('deskripsi', 'value', 'rate', 'amount') as $kolom_nilai) {
-                if (isset($b[$kolom_nilai]) && is_scalar($b[$kolom_nilai]) && trim((string) $b[$kolom_nilai]) !== '') {
-                    $r[$kolom_nilai] = (string) $b[$kolom_nilai];
+            // Semua kolom isian diambil dari layar - user bebas mengubah kolom
+            // mana pun, termasuk di baris yang datang dari Memo / Request. Yang
+            // tidak ikut ditulis ulang cuma kaitan ke sumbernya (nm_memo,
+            // id_memo_det, customer, Invoice Export): itu tetap dari database,
+            // jadi asal barisnya tidak hilang. Kolom yang tidak terkirim sama
+            // sekali dibiarkan apa adanya.
+            foreach ($kolom_manual as $kolom_isi) {
+                if (isset($b[$kolom_isi]) && is_scalar($b[$kolom_isi])) {
+                    $r[$kolom_isi] = (string) $b[$kolom_isi];
                 }
             }
             $final[] = $r;
@@ -8035,11 +8054,6 @@ public function update_debitnote($id_dn, $header, $baris)
             $r['no_invoice_exim'] = ($id_inv > 0 && isset($b['no_invoice_exim']) && is_scalar($b['no_invoice_exim']))
                 ? (string) $b['no_invoice_exim'] : null;
             $final[] = $r;
-        }
-    }
-    foreach ($det_lama as $id => $r) {
-        if ($this->dn_baris_terkunci($r) && !isset($dipakai[$id])) {
-            return array('status' => false, 'message' => 'Rows from Memo / Request cannot be deleted.');
         }
     }
     if (!$final) {
@@ -10317,6 +10331,139 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         $this->db->where('id_book_invoice', $id)->update('tbl_book_invoice_exim_pot', $isi);
     }
 
+    /**
+     * Proforma Invoice yang boleh diubah.
+     *
+     * Hanya yang masih POST: begitu lewat approval, angkanya sudah disetujui
+     * dan tidak boleh berubah diam-diam. Yang tidak ada atau sudah lewat
+     * approval mengembalikan NULL - pemanggilnya yang memutuskan mau bilang
+     * apa ke user.
+     *
+     * @return array|null baris header apa adanya, siap dituang ke layar
+     */
+    function pi_untuk_edit($id)
+    {
+        $baris = $this->db->query(
+            "SELECT * FROM tbl_invoice_proforma WHERE id = ? LIMIT 1",
+            array((int) $id)
+        )->row_array();
+        if (!$baris) {
+            return NULL;
+        }
+        if (strtoupper(trim((string) $baris['status'])) !== 'POST') {
+            return NULL;
+        }
+        return $baris;
+    }
+
+    /**
+     * Siapkan layar PI untuk mengubah sebuah proforma.
+     *
+     * Barisnya disalin ke tabel sementara yang dibaca layar - pilihan SO yang
+     * mungkin masih tertinggal dari sesi sebelumnya dibuang dulu, supaya yang
+     * tampil benar-benar isi proforma ini saja.
+     *
+     * @return array|null header proformanya, atau NULL kalau tidak boleh diubah
+     */
+    function pi_siapkan_edit($id)
+    {
+        $pi = $this->pi_untuk_edit($id);
+        if (!$pi) {
+            return NULL;
+        }
+        $no = (string) $pi['no_proforma_invoice'];
+
+        $this->db->query("DELETE FROM tbl_so_det_proforma_temp");
+        $this->db->query("DELETE FROM tbl_invoice_proforma_detail_temp");
+
+        // Nama kolomnya berbeda antara tabel tetap & tabel sementara, jadi
+        // dipetakan satu per satu - bukan disalin mentah.
+        $so = $this->db->query("
+            SELECT id_so_det, id_so_det_list, no_so, produk_detail, curr, qty, uom,
+                   unit_price, total_price
+              FROM tbl_invoice_proforma_detail_so
+             WHERE no_invoice_proforma = ? ORDER BY id
+        ", array($no))->result_array();
+        $isi = array();
+        foreach ($so as $r) {
+            $isi[] = array(
+                'id_so_det' => $r['id_so_det'],
+                'id_so_det_list' => isset($r['id_so_det_list']) ? $r['id_so_det_list'] : '',
+                'no_so' => $r['no_so'],
+                'produk_det' => $r['produk_detail'],
+                'curr' => $r['curr'],
+                'qty' => $r['qty'],
+                'uom' => $r['uom'],
+                'price' => $r['unit_price'],
+                'total' => $r['total_price'],
+            );
+        }
+        if ($isi) {
+            $this->db->insert_batch('tbl_so_det_proforma_temp',
+                $this->_saring_kolom('tbl_so_det_proforma_temp', $isi));
+        }
+
+        $det = $this->db->query("
+            SELECT id_so, so_no, qty, unit_price, total_price
+              FROM tbl_invoice_proforma_detail
+             WHERE no_invoice_proforma = ? ORDER BY id
+        ", array($no))->result_array();
+        if ($det) {
+            $this->db->insert_batch('tbl_invoice_proforma_detail_temp',
+                $this->_saring_kolom('tbl_invoice_proforma_detail_temp', $det));
+        }
+
+        return $pi;
+    }
+
+    /**
+     * Lepas proforma lama sebelum ditulis ulang.
+     *
+     * Dipanggil tepat sebelum isi layar disimpan: baris SO-nya dibebaskan
+     * (penanda no_pi di so_det dilepas), lalu header & barisnya dihapus.
+     * Nomornya dikembalikan supaya yang baru memakai nomor yang sama -
+     * proforma yang diedit tidak berganti nomor.
+     *
+     * Hanya yang masih POST. Gagalnya dilaporkan, bukan didiamkan.
+     *
+     * @return array array('no_pi' => ..) atau array('gagal' => ..)
+     */
+    function pi_hapus_untuk_edit($id)
+    {
+        $pi = $this->pi_untuk_edit($id);
+        if (!$pi) {
+            return array('gagal' => 'Only a proforma invoice that is still POST can be edited.');
+        }
+        $no = (string) $pi['no_proforma_invoice'];
+
+        // Penanda di so_det dilepas lebih dulu - kalau langkah ini gagal,
+        // proformanya belum tersentuh dan tinggal diulang.
+        $id_sodet = array();
+        foreach ($this->db->query(
+            "SELECT id_so_det FROM tbl_invoice_proforma_detail_so WHERE no_invoice_proforma = ?",
+            array($no)
+        )->result_array() as $r) {
+            foreach ($this->_daftar_id(isset($r['id_so_det']) ? $r['id_so_det'] : '') as $v) {
+                $id_sodet[$v] = $v;
+            }
+        }
+        if ($id_sodet) {
+            $db_nag = $this->load->database('db_nag', TRUE);
+            $db_nag->query(
+                "UPDATE so_det SET no_pi = NULL
+                  WHERE id IN (" . implode(',', $id_sodet) . ") AND no_pi = ?",
+                array($no)
+            );
+        }
+
+        $this->db->query("DELETE FROM tbl_invoice_proforma_detail_so WHERE no_invoice_proforma = ?",
+            array($no));
+        $this->db->query("DELETE FROM tbl_invoice_proforma_detail WHERE no_invoice_proforma = ?",
+            array($no));
+        $this->db->query("DELETE FROM tbl_invoice_proforma WHERE id = ?", array((int) $id));
+
+        return array('no_pi' => $no);
+    }
     /**
      * Proforma Invoice yang bisa dipakai memotong sebuah invoice.
      *

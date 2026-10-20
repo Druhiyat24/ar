@@ -22,6 +22,8 @@
 --               (20261017_alokasi_proforma_invoice.sql)
 --   BAGIAN E - Invoice: kolom Advance di tabel potongan
 --               (20261017b_invoice_pot_dp_cbd.sql)
+--   BAGIAN F - Proforma Invoice: kolom Billed To
+--               (20261019b_proforma_billed_to.sql)
 --
 -- Berkas aslinya tetap disimpan untuk rujukan - keterangan panjang & cara
 -- memundurkannya ada di sana. Yang DIJALANKAN cukup berkas ini.
@@ -654,6 +656,44 @@ SELECT table_name, COUNT(*) AS kolom_dp_cbd
    AND table_name IN ('tbl_invoice_pot', 'tbl_invoice_pot_knitting')
    AND column_name = 'dp_cbd'
  GROUP BY table_name;
+
+
+-- ================================================================================
+-- BAGIAN F - Proforma Invoice: kolom Billed To
+-- Yang ditagih boleh beda dengan customer pemilik SO-nya.
+-- Asalnya: migrations/20261019b_proforma_billed_to.sql
+-- ================================================================================
+
+-- ================================================================================
+-- Proforma Invoice: kolom Billed To
+-- Dibuat 2026-10-19.
+--
+-- LATARNYA
+-- Yang ditagih tidak selalu sama dengan customer pemilik SO - cetakan invoice
+-- sudah memisahkan "Purchaser / Invoice To" dari "Ship To". Proforma Invoice
+-- ikut membawa keterangan itu supaya cetakannya bisa menyebut siapa yang
+-- ditagih.
+--
+-- Kosong berarti sama dengan customernya.
+--
+-- AMAN DIULANG - kolomnya ditambah kalau belum ada.
+--
+-- CARA MEMUNDURKAN
+--   ALTER TABLE tbl_invoice_proforma DROP COLUMN billed_to;
+-- ================================================================================
+
+
+SET @s := IF(NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'tbl_invoice_proforma' AND column_name = 'billed_to'), 'ALTER TABLE tbl_invoice_proforma ADD COLUMN billed_to VARCHAR(20) NULL DEFAULT NULL COMMENT ''id customer yang ditagih - kosong berarti sama dengan customernya'' AFTER id_customer', 'DO 0'); PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
+
+
+-- --------------------------------------------------------------------------------
+-- Periksa hasilnya - harus 1
+-- --------------------------------------------------------------------------------
+SELECT COUNT(*) AS kolom_billed_to
+  FROM information_schema.columns
+ WHERE table_schema = DATABASE()
+   AND table_name = 'tbl_invoice_proforma'
+   AND column_name = 'billed_to';
 
 
 -- ================================================================================

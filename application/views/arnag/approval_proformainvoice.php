@@ -83,7 +83,7 @@
                     <th>Shipp</th>
                     <th>PEB</th>
                     <th>Type</th>
-                    <th>Faktur Pajak</th>
+                    <th>Tax Invoice No</th>
                     <th>Status</th>
                     <th>Amount</th>
                     <th>ID</th>
@@ -100,6 +100,10 @@
     </div>
   </section>
 </div>
+
+
+<!-- Nomor proforma bisa diklik - detailnya muncul di modal ini. -->
+<?php $this->load->view('arnag/pi_detail_modal'); ?>
 
 <!-- Modal Approved Invoice -->
 <div class="modal fade" id="modal-approve-profinvoice">

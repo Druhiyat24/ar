@@ -1,3 +1,4 @@
+<?php $this->load->view('arnag/_tgl_inggris'); ?>
 <!DOCTYPE html>
 
 <html lang="en">
@@ -126,7 +127,7 @@ CSS HEADER
                 :
             </td>
             <td colspan="3">
-                <?= $data_proforma_invoice['date_pi']; ?>
+                <?= tgl_inggris($data_proforma_invoice['date_pi']); ?>
             </td>
             <td class="position_top" colspan="8">
                 &nbsp;
@@ -201,7 +202,7 @@ CSS HEADER
 
         <tr>
             <td style="width: 100px">
-                No Faktur Pajak
+                Tax Invoice No
             </td>
             <td>
                 :

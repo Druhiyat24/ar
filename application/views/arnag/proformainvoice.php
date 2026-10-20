@@ -241,6 +241,10 @@
                           prof_shipp_cbd. Diisi berbarengan supaya kedua alur
                           melihat angka yang sama. -->
                      <input type="hidden" id="prof_shipp_cbd" name="prof_shipp_cbd">
+                     <!-- Diisi waktu layar ini dipakai MENGUBAH proforma yang
+                          sudah ada (Arnag::edit_proforma_invoice). Kosong
+                          berarti sedang membuat baru. -->
+                     <input type="hidden" id="prof_id_edit" name="prof_id_edit" value="<?= isset($pi_edit) ? (int) $pi_edit['id'] : ''; ?>">
                    </div>
                  </div>
                </div>
@@ -248,6 +252,35 @@
                <!-- Tiga kotak pendek dijadikan satu baris: kartunya jadi
                     sama-sama tiga baris dengan Terms & Account di sebelahnya,
                     tidak ada lagi kotak yang nyangkut sendirian di bawah. -->
+               <div class="row">
+                 <div class="form-group col-sm-6">
+                   <label for="prof_billed_to">Billed To</label>
+                   <select class="form-control select2bs4" id="prof_billed_to" name="prof_billed_to">
+                     <option value="">Same as customer</option>
+                     <?php foreach ($customer as $cs) : ?>
+                       <option value="<?= $cs['Id_Supplier']; ?>"><?= $cs['Supplier']; ?></option>
+                     <?php endforeach; ?>
+                   </select>
+                 </div>
+                 <div class="form-group col-sm-6">
+                   <label for="prof_faktur_pajak">Tax Invoice No</label>
+                   <input type="text" class="form-control" id="prof_faktur_pajak" name="prof_faktur_pajak" autocomplete="off" placeholder="Fill in when the tax invoice is issued">
+                 </div>
+               </div>
+
+             </div>
+           </div>
+         </div>
+
+         <div class="col-lg-6">
+           <div class="card ci-ikut">
+             <div class="card-header">
+               <h3 class="card-title"><i class="fas fa-sliders-h"></i>Billing &amp; Account</h3>
+             </div>
+             <div class="card-body">
+               <!-- Yang ditagih tidak selalu sama dengan pemilik SO-nya -
+                    cetakan memisahkan "Billed To" dari customernya. Dikosongkan
+                    berarti sama dengan customernya. -->
                <div class="row">
                  <div class="form-group col-sm-4 mb-0">
                    <label for="prof_peb">PEB</label>
@@ -267,33 +300,6 @@
                      <option value="Barang Jadi">Barang Jadi</option>
                      <option value="Non Barang Jadi">Non Barang Jadi</option>
                    </select>
-                 </div>
-               </div>
-
-             </div>
-           </div>
-         </div>
-
-         <div class="col-lg-6">
-           <div class="card ci-ikut">
-             <div class="card-header">
-               <h3 class="card-title"><i class="fas fa-sliders-h"></i>Terms &amp; Account</h3>
-             </div>
-             <div class="card-body">
-               <div class="row">
-                 <div class="form-group col-sm-6">
-                   <label for="prof_top">TOP Type</label>
-                   <div class="input-group">
-                     <input type="text" class="form-control" id="prof_top" name="prof_top" placeholder="Pick a term of payment" readonly required>
-                     <div class="input-group-append">
-                       <button type="button" id="prof_find_top" name="prof_find_top" class="btn btn-info" data-toggle="modal" data-target="#modal-add-prof-top" title="Search term of payment"><i class="fas fa-search"></i></button>
-                     </div>
-                   </div>
-                   <input type="hidden" id="prof_id_top" name="prof_id_top">
-                 </div>
-                 <div class="form-group col-sm-6">
-                   <label for="prof_top_time">Time Period</label>
-                   <input type="text" class="form-control" id="prof_top_time" name="prof_top_time" readonly required>
                  </div>
                </div>
 
@@ -678,3 +684,11 @@
 </script>
 
 <script defer src="<?= base_url('assets/build/js/crud/crud-proforma-invoice.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/build/js/crud/crud-proforma-invoice.js'); ?>"></script>
+
+<?php if (isset($pi_edit)) : ?>
+  <!-- Isi proforma yang sedang diubah, dititipkan apa adanya.
+       TIDAK boleh memakai jQuery di sini: halaman memuat view ini DULU,
+       jQuery-nya baru datang di footer. Pengisiannya dilakukan
+       crud-nag.js yang memang jalan sesudah jQuery siap. -->
+  <script>window.PI_EDIT = <?= json_encode($pi_edit); ?>;</script>
+<?php endif; ?>
