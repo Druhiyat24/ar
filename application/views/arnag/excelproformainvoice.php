@@ -1,3 +1,4 @@
+<?php $this->load->view('arnag/_tgl_inggris'); ?>
 <?php
 header("Content-type: application/vnd-ms-excel");
 header("Content-Disposition: attachment; filename=proforma_invoice.xls");
@@ -111,7 +112,7 @@ CSS HEADER
                 :
             </td>
             <td colspan="3">
-                <?= $data_proforma_invoice['date_pi']; ?>
+                <?= tgl_inggris($data_proforma_invoice['date_pi']); ?>
             </td>
             <td class="position_top" colspan="8">
                 &nbsp;

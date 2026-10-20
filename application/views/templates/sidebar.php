@@ -289,7 +289,7 @@
                             'invoice' => 'Invoice',
                             'proforma_invoice' => 'Proforma Invoice',
                             'return_invoice' => 'Return Invoice',
-                            'dp_invoice' => 'DP-CBD Invoice',
+                            // 'dp_invoice' => 'DP-CBD Invoice',
                             'debitnote' => 'Debit Note',
                             'projection' => 'Projection'
                         ];
