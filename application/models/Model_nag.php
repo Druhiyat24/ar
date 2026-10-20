@@ -3570,6 +3570,33 @@ function update_faktur_pajak_cbd($id, $faktur_pjk)
  * ditagih itu - bukan pemilik SO-nya. Kolom billed_to baru ada setelah
  * migrations/20261019b, jadi keberadaannya diperiksa dulu.
  */
+/**
+ * Daftar bank untuk layar Proforma Invoice.
+ *
+ * Diambil dari b_masterbank - tabel bank yang sekarang dipakai. Kolomnya
+ * diberi nama seperti daftar bank yang lama (id / nama_bank / no_rek) supaya
+ * layarnya tidak perlu tahu datanya dari tabel mana.
+ *
+ * Yang ditawarkan cuma bank yang masih aktif, dengan satu pengecualian: bank
+ * yang sedang dipakai PI yang sedang diubah tetap ikut walau sudah
+ * dinonaktifkan - kalau tidak, pilihannya berganti diam-diam begitu PI itu
+ * disimpan lagi.
+ *
+ * @param int $id_terpakai id bank yang sedang dipakai (0 = tidak ada)
+ */
+function load_bank_pi($id_terpakai = 0)
+{
+    $hasil = $this->db->query("
+        SELECT id, bank_name AS nama_bank, bank_account AS no_rek, curr, id_coa,
+               beneficiary_name AS v_company, beneficiary_address AS v_companyaddress,
+               bank_branch AS v_branch, bank_address AS v_bankaddress,
+               swift_code AS v_swiftcode
+          FROM b_masterbank
+         WHERE COALESCE(status, 'Active') = 'Active' OR id = ?
+      ORDER BY bank_name, bank_account
+    ", array((int) $id_terpakai));
+    return $hasil->result_array();
+}
 function report_proforma_invoice($id)
 {
     $ada = $this->kolom_ada('tbl_invoice_proforma', 'billed_to');
@@ -3581,13 +3608,14 @@ function report_proforma_invoice($id)
     $telp   = $ada ? "IFNULL(e.Phone, '')" : "''";
     $hasil = $this->db->query("SELECT a.id, a.no_proforma_invoice AS no_pi, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi, b.supplier AS customer, a.shipp, a.peb,
       UPPER(c.type) AS type, a.status, a.no_faktur_pajak, IFNULL(b.alamat, '-') AS alamat,
-      IFNULL(b.Phone, '-') AS phone, d.no_rek, d.nama_bank, d.v_bankaddress, d.curr,
+      IFNULL(b.Phone, '-') AS phone, d.bank_account AS no_rek, d.bank_name AS nama_bank,
+      d.bank_address AS v_bankaddress, d.curr, d.swift_code AS v_swiftcode,
       $billed AS billed_to, $nama AS billed_to_nama,
       $alamat AS billed_to_alamat, $telp AS billed_to_phone
       FROM tbl_invoice_proforma AS a INNER JOIN
       mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN 
-      tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
-      masterbank AS d ON a.id_bank = d.id $gabung
+      tbl_type AS c ON a.id_type = c.id_type
+      LEFT JOIN b_masterbank AS d ON d.id = a.id_bank $gabung
       WHERE a.id = '$id' ");
     return $hasil->row_array();
 }
@@ -3596,11 +3624,12 @@ function report_proforma_invoice_cbd($id)
 {
     $hasil = $this->db->query("SELECT a.id, a.no_proforma_invoice AS no_pi, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi, b.supplier AS customer, a.shipp, a.peb,
       UPPER(c.type) AS type, a.status, a.no_faktur_pajak, IFNULL(b.alamat, '-') AS alamat,
-      IFNULL(b.Phone, '-') AS phone, d.no_rek, d.nama_bank, d.v_bankaddress, d.curr
+      IFNULL(b.Phone, '-') AS phone, d.bank_account AS no_rek, d.bank_name AS nama_bank,
+      d.bank_address AS v_bankaddress, d.curr, d.swift_code AS v_swiftcode
       FROM tbl_invoice_proforma_dp_cbd AS a INNER JOIN
       mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN 
-      tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
-      masterbank AS d ON a.id_bank = d.id
+      tbl_type AS c ON a.id_type = c.id_type
+      LEFT JOIN b_masterbank AS d ON d.id = a.id_bank
       WHERE a.id = '$id' ");
     return $hasil->row_array();
 }
@@ -7976,21 +8005,31 @@ public function get_debitnoteDet_by_id($id) {
 }
 
 // Baris detail yang berasal dari Memo (id_memo_det terisi) atau No Request
-// (nm_memo terisi nomor BPB request). Isinya bebas diubah user; ini cuma
-// untuk menandai asal barisnya.
+// (nm_memo terisi nomor BPB request) - dua-duanya tidak boleh dihapus waktu
+// diedit. Baris manual kedua kolom itu kosong.
 public function dn_baris_dari_sumber($row)
 {
     return trim((string) $row['id_memo_det']) !== '' || trim((string) $row['nm_memo']) !== '';
 }
 
+// Baris yang isinya tidak boleh diubah: yang datang dari No Request. Cuma
+// Deskripsi, Value & Rate yang boleh dibetulkan - kolom lain diambil ulang
+// dari database. Baris dari Memo TIDAK termasuk: itu bebas diubah.
+public function dn_baris_terkunci($row)
+{
+    return trim((string) $row['id_memo_det']) === ''
+        && trim((string) $row['nm_memo']) !== '';
+}
+
 // Simpan hasil edit Debit Note: header + detail dalam SATU transaksi (dulu
 // detail dihapus dulu lewat request terpisah - kalau simpan barunya gagal,
 // detailnya hilang).
-// - Baris yang sudah tersimpan dikenali dari id-nya: SELURUH isinya diambil
-//   dari kiriman client (user bebas mengubah kolom mana pun), yang dibawa
-//   dari database cuma kaitan ke sumbernya - nm_memo, id_memo_det, customer
-//   dan Invoice Export - supaya asal barisnya tidak hilang. Baris yang tidak
-//   dikirim lagi berarti dihapus user, apa pun asalnya.
+// - Baris yang sudah tersimpan dikenali dari id-nya. Yang dari Request cuma
+//   boleh berubah Deskripsi / Value / Rate / Amount-nya - kolom lain diambil
+//   ulang dari database. Yang dari Memo & baris manual seluruh isinya dari
+//   kiriman client. Kaitan ke sumbernya (nm_memo, id_memo_det, customer,
+//   Invoice Export) selalu dari database, jadi tidak bisa diutak-atik.
+// - Baris dari Memo / Request WAJIB ada di kiriman (tidak boleh dihapus).
 // - Baris baru disimpan dari kiriman client (kolom memo/request dikosongkan).
 // - Total dihitung ulang dari baris final.
 // - Nomor DN hanya dibuat ulang (dengan kunci, sama seperti create) kalau
@@ -8028,13 +8067,16 @@ public function update_debitnote($id_dn, $header, $baris)
             }
             $r = $det_lama[$id];
             unset($r['id']);
-            // Semua kolom isian diambil dari layar - user bebas mengubah kolom
-            // mana pun, termasuk di baris yang datang dari Memo / Request. Yang
-            // tidak ikut ditulis ulang cuma kaitan ke sumbernya (nm_memo,
-            // id_memo_det, customer, Invoice Export): itu tetap dari database,
-            // jadi asal barisnya tidak hilang. Kolom yang tidak terkirim sama
-            // sekali dibiarkan apa adanya.
-            foreach ($kolom_manual as $kolom_isi) {
+            // Baris dari Request: cuma Deskripsi & Value / Rate / Amount yang
+            // boleh dibetulkan (kurs sering baru ketahuan salah setelah DN
+            // dibuat), kolom lain tetap dari database. Baris dari Memo & baris
+            // manual: seluruh kolom isian diambil dari layar. Kaitan ke
+            // sumbernya tidak pernah ikut ditulis ulang, jadi asal barisnya
+            // tidak bisa diutak-atik.
+            $boleh = $this->dn_baris_terkunci($r)
+                ? array('deskripsi', 'value', 'rate', 'amount')
+                : $kolom_manual;
+            foreach ($boleh as $kolom_isi) {
                 if (isset($b[$kolom_isi]) && is_scalar($b[$kolom_isi])) {
                     $r[$kolom_isi] = (string) $b[$kolom_isi];
                 }
@@ -8054,6 +8096,13 @@ public function update_debitnote($id_dn, $header, $baris)
             $r['no_invoice_exim'] = ($id_inv > 0 && isset($b['no_invoice_exim']) && is_scalar($b['no_invoice_exim']))
                 ? (string) $b['no_invoice_exim'] : null;
             $final[] = $r;
+        }
+    }
+    // Baris yang datang dari Memo / Request wajib ikut dikirim - DN-nya harus
+    // tetap mewakili dokumen asalnya.
+    foreach ($det_lama as $id => $r) {
+        if ($this->dn_baris_dari_sumber($r) && !isset($dipakai[$id])) {
+            return array('status' => false, 'message' => 'Rows from Memo / Request cannot be deleted.');
         }
     }
     if (!$final) {

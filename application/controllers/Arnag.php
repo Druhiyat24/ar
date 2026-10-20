@@ -3363,7 +3363,9 @@ function edit_proforma_invoice($id)
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['customer'] = $this->Model_nag->cari_customer();
     $data['type'] = $this->db->get('tbl_type')->result_array();
-    $data['isi_bank'] = $this->Model_nag->load_bank();
+    // Bank dari b_masterbank. Yang sedang dipakai PI ini ikut dikirim supaya
+    // tetap ada di pilihan walau banknya sudah dinonaktifkan.
+    $data['isi_bank'] = $this->Model_nag->load_bank_pi((int) $pi['id_bank']);
     $data['isi_ppn'] = $this->Model_nag->load_ppn();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
     $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
@@ -3426,7 +3428,8 @@ function proformainvoice($tipe = '')
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['customer'] = $this->Model_nag->cari_customer();
     $data['type'] = $this->db->get('tbl_type')->result_array();
-    $data['isi_bank'] = $this->Model_nag->load_bank();
+    // Bank dari b_masterbank - tabel bank yang sekarang dipakai.
+    $data['isi_bank'] = $this->Model_nag->load_bank_pi();
     $data['isi_ppn'] = $this->Model_nag->load_ppn();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
     $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));

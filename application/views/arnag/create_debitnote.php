@@ -2,8 +2,8 @@
 // Form ini dipakai Create DAN Edit Debit Note (edit_debitnote.php meng-include
 // file ini dengan $is_edit = true) supaya tampilan & alurnya selalu sama.
 // Mode edit: isian diambil dari DN yang dibuka, No Memo / No Request diganti
-// info sumber (read-only). Baris detailnya bebas diubah & dihapus, dari
-// mana pun asalnya - asalnya cuma dicatat supaya tidak hilang waktu disimpan.
+// info sumber (read-only). Baris dari Memo bebas diubah seluruh kolomnya,
+// baris dari Request tetap terkunci, dan dua-duanya tidak bisa dihapus.
 $is_edit = !empty($is_edit);
 // DN yang sudah first approve: isinya tidak boleh diubah lagi, tapi lampiran
 // masih boleh sampai sebelum second approve (lihat Arnag::edit_debitnote).
@@ -16,12 +16,23 @@ $dnv     = function ($kolom, $default = '') use ($dn) {
   return (isset($dn[$kolom]) && $dn[$kolom] !== null && $dn[$kolom] !== '') ? $dn[$kolom] : $default;
 };
 // Asal baris: Memo (id_memo_det terisi) atau Request (nm_memo = no BPB
-// request). Cuma untuk keterangan di layar - isinya tetap bebas diubah.
+// request). Baris manual kedua kolom itu kosong.
 $asal_baris = function ($row) {
   if (trim((string) $row['id_memo_det']) !== '') { return 'Memo'; }
   if (trim((string) $row['nm_memo']) !== '') { return 'Request'; }
   return '';
 };
+// Yang masih dikunci cuma baris dari Request - sama seperti dulu: Deskripsi,
+// Value & Rate boleh dibetulkan, kolom lain diambil ulang server dari
+// database. Baris dari Memo sekarang bebas seluruh kolomnya; aturan yang
+// sama ada di Model_nag::dn_baris_terkunci.
+$baris_terkunci = function ($row) use ($asal_baris) {
+  return $asal_baris($row) === 'Request';
+};
+$ada_terkunci = false;
+foreach ($dn_det as $row) {
+  if ($baris_terkunci($row)) { $ada_terkunci = true; break; }
+}
 $nama_header = array();
 for ($i = 1; $i <= 5; $i++) {
   $nama_header[$i] = $is_edit ? (string) $dnv('header' . $i) : '';
@@ -599,7 +610,14 @@ for ($i = 1; $i <= 5; $i++) {
    datalist). Cuma keterangan, bukan bagian dari nilai yang disimpan. */
 .nag-skin .dn-coa-nama { display: block; margin-top: 3px; font-size: 10.5px; color: #64748b; white-space: normal; }
 .nag-skin .dn-coa-nama:empty { display: none; }
+/* Baris dari Request: terkunci, cuma Deskripsi / Value / Rate yang bisa diubah */
+.nag-skin #table-dn tbody tr[data-kunci="1"] td { background: #f1f5f9; }
+.nag-skin #table-dn tbody tr[data-kunci="1"] .form-control[readonly] { background: #e9eef4 !important; color: #475569; cursor: not-allowed; }
+.nag-skin #table-dn tbody tr[data-kunci="1"] .select2-container--disabled .select2-selection { background: #e9eef4 !important; cursor: not-allowed; }
+.nag-skin #table-dn tbody tr[data-kunci="1"] .select2-selection__rendered { color: #475569 !important; }
 .nag-skin .dn-table td .select2-container--disabled .select2-selection__clear { display: none; }
+/* Baris yang datang dari Memo / Request: tidak bisa dihapus */
+.nag-skin .dn-kunci-ikon { color: #94a3b8; font-size: 12px; }
 .nag-skin .dn-hint-tabel { margin: -4px 0 10px; color: #64748b; }
 /* Chip dokumen yang sudah tersimpan (tidak bisa dihapus dari sini) */
 .nag-skin .dn-doc-item.is-lama { background: #f8fafc; border-style: dashed; }
@@ -1017,7 +1035,8 @@ for ($i = 1; $i <= 5; $i++) {
               </div>
 
               <?php if ($is_edit) : ?>
-                <!-- Edit: sumber data DN (read-only). Baris detailnya sendiri bebas diubah. -->
+                <!-- Edit: sumber data DN (read-only). Baris dari Request terkunci; baris dari
+                     Memo bebas diubah tapi tetap tidak bisa dihapus. -->
                 <div class="form-group">
                   <label>Source</label>
                   <input type="text" class="form-control" value="<?= !empty($reff_dn['reff_doc']) ? $esc($reff_dn['text_reff_doc'] . ': ' . $reff_dn['reff_doc']) : 'Manual input'; ?>" readonly>
@@ -1219,27 +1238,35 @@ for ($i = 1; $i <= 5; $i++) {
                               </tr>
                               <?php
                               // Edit: baris detail yang sudah tersimpan - susunan sel sama dengan
-                              // baris template. Semua kolomnya bebas diubah dan barisnya bebas
-                              // dihapus, dari mana pun asalnya; data-sumber cuma keterangan.
+                              // baris template. Baris dari Request dikunci (data-kunci="1"):
+                              // cuma Deskripsi, Value & Rate yang bisa diubah. Baris dari Memo
+                              // bebas seluruh kolomnya. Dua-duanya tidak bisa dihapus - DN-nya
+                              // harus tetap mewakili dokumen asalnya.
                               // data-id dipakai waktu save: server membawa kaitan lama baris itu
                               // (Memo / Request / Invoice Export) walau isinya ditulis ulang.
                               // data-supplier(-invoice) = nilai field lama, dipakai waktu save kalau
                               // Header 1/2 bukan Supplier / Supplier Invoice supaya tidak hilang.
                               foreach ($dn_det as $row) :
                                 $asal = $asal_baris($row);
+                                $kunci = $baris_terkunci($row);
+                                $ro = $kunci ? 'readonly' : '';
                               ?>
-                                <tr data-id="<?= (int) $row['id']; ?>" data-sumber="<?= $esc($asal); ?>" data-supplier="<?= $esc($row['supplier']); ?>" data-supplier-invoice="<?= $esc($row['supplier_invoice']); ?>" <?= $asal !== '' ? 'title="From ' . $esc($asal) . '"' : ''; ?>>
+                                <tr data-id="<?= (int) $row['id']; ?>" data-sumber="<?= $esc($asal); ?>" data-kunci="<?= $kunci ? '1' : '0'; ?>" data-supplier="<?= $esc($row['supplier']); ?>" data-supplier-invoice="<?= $esc($row['supplier_invoice']); ?>" <?= $asal !== '' ? 'title="From ' . $esc($asal) . ' - ' . ($kunci ? 'only Description, Value &amp; Rate can be changed' : 'can be edited') . ', and the row cannot be deleted"' : ''; ?>>
                                   <td><input style="width: 300px;" type="text" class="form-control" name="inputan0" value="<?= $esc($row['deskripsi']); ?>" autocomplete="off"></td>
                                   <?php for ($no_h = 1; $no_h <= 5; $no_h++) : ?>
-                                    <td><input style="width: 200px" type="text" class="form-control" name="inputan<?= $no_h + 2; ?>" value="<?= $esc(isset($row['header' . $no_h]) ? $row['header' . $no_h] : ''); ?>" autocomplete="off"></td>
+                                    <td><input style="width: 200px" type="text" class="form-control" name="inputan<?= $no_h + 2; ?>" value="<?= $esc(isset($row['header' . $no_h]) ? $row['header' . $no_h] : ''); ?>" autocomplete="off" <?= $ro; ?>></td>
                                   <?php endfor; ?>
                                   <td><input type="text" class="form-control" name="amt" value="<?= $esc($row['value']); ?>" style="text-align:right; width: 150px;" oninput="modal_input_amt_dn(value)" autocomplete="off"></td>
                                   <td><input type="text" class="form-control" name="amt_rate" value="<?= $esc($row['rate']); ?>" style="text-align:right; width: 150px;" onkeypress="javascript:return isNumber(event)" oninput="modal_input_rate_dn(value)" autocomplete="off"></td>
                                   <td><input style="width: 150px;text-align: right;" type="text" class="form-control" name="inputan8" value="<?= $esc($row['amount']); ?>" autocomplete="off" readonly></td>
-                                  <td><input style="width: 250px;" class="form-control" value="<?= $esc($row['no_coa']); ?>" list="nm_coa" name="nm_coa" oninput="dn_coa_perbarui_nama(this)">
+                                  <td><input style="width: 250px;" class="form-control" value="<?= $esc($row['no_coa']); ?>" list="nm_coa" name="nm_coa" oninput="dn_coa_perbarui_nama(this)" <?= $ro; ?>>
                                     <small class="dn-coa-nama"></small>
                                   </td>
-                                  <td><input name="chk_a[]" type="checkbox" class="checkall_a" value=""/></td>
+                                  <?php if ($asal !== '') : ?>
+                                    <td><i class="fas fa-lock dn-kunci-ikon"></i></td>
+                                  <?php else : ?>
+                                    <td><input name="chk_a[]" type="checkbox" class="checkall_a" value=""/></td>
+                                  <?php endif; ?>
                                   <td hidden><input type="hidden" value=""></td>
                                   <td hidden><input type="hidden" name="dn_inv_exim_id" value="<?= $esc(isset($row['id_invoice_exim']) ? $row['id_invoice_exim'] : ''); ?>"></td>
                                   <td hidden><input type="hidden" name="dn_inv_exim_no" value="<?= $esc(isset($row['no_invoice_exim']) ? $row['no_invoice_exim'] : ''); ?>"></td>
@@ -1754,14 +1781,6 @@ for ($i = 1; $i <= 5; $i++) {
               </script>
 
               <script type="text/javascript">
-                $(document).ready(function() {
-                  $('.select2memo').select2({
-                    dropdownAutoWidth : true
-                  });
-                });
-              </script>
-
-              <script type="text/javascript">
                 var tampung = [];
 
                 function getdata_reqdn(val){
@@ -2094,7 +2113,8 @@ for ($i = 1; $i <= 5; $i++) {
              var mauSelect = dn_header_supplier(no);
              if (mauSelect !== (el.tagName === 'SELECT')) { el = dn_ganti_field(el, mauSelect); }
              if (mauSelect) { dn_select2_supplier(el); }
-             dn_kunci(el, !dn_header_aktif(no));
+             // Baris dari Request (edit) selalu terkunci.
+             dn_kunci(el, row.getAttribute('data-kunci') === '1' || !dn_header_aktif(no));
              return el;
            }
 
@@ -2127,13 +2147,24 @@ for ($i = 1; $i <= 5; $i++) {
                nama.prop('readonly', false).focus();
                dn_render_header(no);
              } else {
+               // Edit: kolom yang berisi data baris Request tidak boleh dimatikan -
+               // isinya ikut terhapus padahal barisnya tidak boleh diubah.
+               var adaDataTerkunci = dn_baris_tabel().filter('[data-kunci="1"]').toArray().some(function (row) {
+                 var f = row.querySelector('[name="' + DN_HEADER_COL[no] + '"]');
+                 return f && $.trim($(f).val() || '') !== '';
+               });
+               if (adaDataTerkunci) {
+                 el.checked = true;
+                 Swal.fire({ icon: 'warning', title: 'Column Locked', text: 'Header ' + no + ' contains data from a Request and cannot be turned off.' });
+                 return;
+               }
                nama.prop('readonly', true).val('');
                $('#h_header' + no).val('');
                // Nama sudah kosong -> sel balik jadi input biasa & terkunci, lalu
                // isinya dikosongkan.
                dn_baris_tabel().each(function () {
                  var f = dn_siapkan_kolom_header(this, no);
-                 if (f) { f.value = ''; }
+                 if (f && this.getAttribute('data-kunci') !== '1') { f.value = ''; }
                });
              }
            }
