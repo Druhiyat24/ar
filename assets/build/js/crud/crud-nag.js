@@ -9047,7 +9047,7 @@ function dn_detail_render(res) {
 			var digabung = lanjutan[i] || lanjutan[i + 1];
 			var kelasKet = $.trim((lanjutan[i] ? 'sambung-atas' : '') + (lanjutan[i + 1] ? ' sambung-bawah' : '')
 				+ (digabung ? (ganjilInduk[i] ? ' sambung-ganjil' : ' sambung-genap') : ''));
-			return '<tr' + (r.terkunci ? ' class="is-terkunci" title="From Memo / Request"' : '') + '>'
+			return '<tr' + (r.dari_sumber ? ' class="is-dari-sumber" title="From Memo / Request"' : '') + '>'
 				+ '<td' + (kelasKet ? ' class="' + kelasKet + '"' : '') + '>' + (lanjutan[i] ? '' : dn_list_teks(r.deskripsi)) + '</td>'
 				+ kolomHeader.map(function (k) { return '<td>' + dn_list_teks(r[k.key]) + '</td>'; }).join('')
 				+ '<td class="dn-angka">' + dn_list_uang(r.value) + '</td>'

@@ -7073,7 +7073,7 @@ public function dn_detail_json($id = null)
             'no_coa'    => $r['no_coa'],
             'nama_coa'  => isset($r['nama_coa']) ? $r['nama_coa'] : '',
             // Baris dari Memo / Request ditandai supaya kelihatan asalnya.
-            'terkunci'  => $this->Model_nag->dn_baris_terkunci($r) ? 1 : 0,
+            'dari_sumber' => $this->Model_nag->dn_baris_dari_sumber($r) ? 1 : 0,
         );
     }
 
