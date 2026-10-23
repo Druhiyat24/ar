@@ -50,8 +50,13 @@
         // belum ada PI yang dipilih, angka dari sana yang dipakai.
         dpAsal: 0,
         dpcbdAsal: 0,
-        pi: [],            // PI yang bisa dipakai invoice ini
+        pi: [],            // PI yang SO-nya ikut ditagih invoice ini
         piPakai: {},       // no PI -> berapa yang dipakai
+        // Kartu kedua: PI mana pun yang masih outstanding - tidak disaring
+        // SO maupun customer. Dipisah dari yang di atas supaya kelihatan
+        // mana yang dipanggil dari kotak mana, sampai ke catatannya.
+        pi2: [],
+        piPakai2: {},
         // Booking dari Invoice EXIM yang SJ-nya belum terbit: barisnya masih
         // berupa SO/WS, jadi SJ-nya dipilih manual di sini - terbatas pada SO
         // yang dipesan booking itu.
@@ -454,7 +459,10 @@
         inv.dpAsal    = inv.dp;
         inv.dpcbdAsal = inv.dpcbd;
         inv.piPakai = {};
+        inv.piPakai2 = {};
         inv.piDipulihkan = false;
+        // Penanda per kartu - tiap kartu mengeluarkan porsinya sekali.
+        inv.piKartuPulih = {};
         inv.retur = nilai(p.retur);
         inv.vat   = nilai(p.vat_persen) / 100;
     }
@@ -1174,60 +1182,112 @@
         return String((inv.baris[0] || {}).curr || $('#ci-inv-curr').val() || '').toUpperCase();
     }
 
+    /* Dua kartu PI. Isinya sama bentuknya; yang membedakan cuma daftar mana
+       yang dipakai dan penanda sumber yang ikut tersimpan. */
+    var PI_KOTAK = {
+        PI: { id: 'ci-pi', data: 'pi', pakai: 'piPakai' },
+        OTHER: { id: 'ci-pi2', data: 'pi2', pakai: 'piPakai2' }
+    };
+
+    /** Kotak tempat sebuah elemen berada - dibaca dari id tabelnya. */
+    function piKotakDari(el) {
+        return $(el).closest('table').attr('data-kotak') === 'OTHER' ? 'OTHER' : 'PI';
+    }
+
     function muatPi() {
         var idCust = $('#ci-id-cust').val();
         if (!idCust) {
             inv.pi = [];
-            gambarPi();
+            inv.pi2 = [];
+            gambarPi('PI');
+            gambarPi('OTHER');
             return;
         }
+        muatPiKotak('PI');
+        muatPiKotak('OTHER');
+    }
+
+    function muatPiKotak(kotak) {
+        var k = PI_KOTAK[kotak];
         kirim('pi_untuk_invoice_json/', {
-            id_customer: idCust,
+            id_customer: $('#ci-id-cust').val(),
             curr: piCurr(),
             'no_so[]': piSoInvoice(),
-            id_book_invoice: $('#ci-id-inv').val() || 0
+            id_book_invoice: $('#ci-id-inv').val() || 0,
+            sumber: kotak
         }).done(function (d) {
-            inv.pi = (d && d.data) ? d.data : [];
+            inv[k.data] = (d && d.data) ? d.data : [];
             // Yang sudah tercatat di invoice ini dipulihkan - supaya waktu
             // invoicenya dibuka lagi pilihannya masih ada.
             var dpPi = 0, advPi = 0;
-            inv.pi.forEach(function (r) {
+            inv[k.data].forEach(function (r) {
                 var dipakai = nilai(r.dipakai);
                 if (dipakai <= 0) { return; }
-                if (inv.piPakai[r.no_pi] === undefined) {
-                    inv.piPakai[r.no_pi] = dipakai;
+                if (inv[k.pakai][r.no_pi] === undefined) {
+                    inv[k.pakai][r.no_pi] = dipakai;
                 }
                 if (r.bagian === 'DP') { dpPi += dipakai; } else { advPi += dipakai; }
             });
-            // Nilai yang tersimpan SUDAH memuat potongan PI-nya. Porsi itu
-            // dikeluarkan sekali supaya tidak dihitung dua kali waktu
-            // invoicenya dibuka lagi.
+            // Nilai yang tersimpan SUDAH memuat potongan PI-nya, jadi porsi itu
+            // dikeluarkan sekali. Kartu pertama yang sampai di sini memakai
+            // angka yang sedang berlaku - layar Edit mengisi DP lewat jalur yang
+            // tidak menyentuh dpAsal, jadi dari situlah patokannya. Kartu
+            // berikutnya mengeluarkan porsinya dari hasil kartu pertama.
+            inv.piKartuPulih = inv.piKartuPulih || {};
             if (!inv.piDipulihkan) {
                 inv.piDipulihkan = true;
+                inv.piKartuPulih[kotak] = true;
                 inv.dpAsal    = Math.max(0, nilai(inv.dp) - dpPi);
                 inv.dpcbdAsal = Math.max(0, nilai(inv.dpcbd) - advPi);
+            } else if (!inv.piKartuPulih[kotak] && (dpPi > 0 || advPi > 0)) {
+                inv.piKartuPulih[kotak] = true;
+                inv.dpAsal    = Math.max(0, nilai(inv.dpAsal) - dpPi);
+                inv.dpcbdAsal = Math.max(0, nilai(inv.dpcbdAsal) - advPi);
             }
-            gambarPi();
+            gambarPi(kotak);
         }).fail(function () {
-            inv.pi = [];
-            gambarPi();
+            inv[k.data] = [];
+            gambarPi(kotak);
         });
     }
 
-    function gambarPi() {
-        var $b = $('#ci-pi-tbody');
-        var ada = inv.pi.length > 0;
-        $('#ci-pi-card').prop('hidden', !ada);
+    /**
+     * Baris keterangan untuk kartu PI yang kosong.
+     *
+     * Kalimatnya beda per kartu: yang atas memang terikat SO invoice ini,
+     * yang bawah memuat sisanya.
+     */
+    function piBarisKosong(kotak) {
+        var k = PI_KOTAK[kotak] || PI_KOTAK.PI;
+        var kolom = $('#' + k.id + '-gulung thead th').length || 11;
+        var pesan = kotak === 'OTHER'
+            ? 'No other outstanding proforma invoice.'
+            : 'No proforma invoice matches the SO on this invoice.';
+        return '<tr class="ci-pi-kosong"><td colspan="' + kolom + '">'
+            + '<i class="fas fa-inbox"></i> ' + pesan + '</td></tr>';
+    }
+
+    function gambarPi(kotak) {
+        var k = PI_KOTAK[kotak] || PI_KOTAK.PI;
+        var daftar = inv[k.data] || [];
+        var $b = $('#' + k.id + '-tbody');
+        var ada = daftar.length > 0;
+        // Kartunya tetap kelihatan walau kosong - kalau hilang, user tidak tahu
+        // apakah memang tidak ada yang cocok atau daftarnya belum dimuat. Yang
+        // disembunyikan cuma selama customer-nya belum dipilih: sebelum itu
+        // daftarnya memang belum bisa dibaca.
+        var adaCustomer = $.trim(String($('#ci-id-cust').val() || '')) !== '';
+        $('#' + k.id + '-card').prop('hidden', !adaCustomer);
         if (!ada) {
-            $b.empty();
-            $('#ci-pi-kaki').prop('hidden', true);
+            $b.html(piBarisKosong(kotak));
+            $('#' + k.id + '-kaki').prop('hidden', true);
             hitungPi();
             return;
         }
 
-        $b.html(inv.pi.map(function (r) {
+        $b.html(daftar.map(function (r) {
             var bisa = String(r.boleh) === '1';
-            var pakai = inv.piPakai[r.no_pi];
+            var pakai = inv[k.pakai][r.no_pi];
             var dipilih = bisa && pakai !== undefined && nilai(pakai) > 0;
             var sisa = nilai(r.sisa) + (dipilih ? 0 : 0);
             return '<tr class="' + (bisa ? '' : 'ci-pi-mati') + '" data-no="'
@@ -1236,6 +1296,7 @@
                 + (dipilih ? ' checked' : '') + (bisa ? '' : ' disabled') + '></td>'
                 + '<td>' + teks(r.no_pi) + '</td>'
                 + '<td>' + teks(r.type_pi) + '</td>'
+                + (kotak === 'OTHER' ? '<td>' + teks(r.customer) + '</td>' : '')
                 + '<td>' + teks(r.date_pi) + '</td>'
                 + '<td>' + teks(r.curr) + '</td>'
                 + '<td' + (bisa ? '' : ' class="ci-pi-alasan"') + '>'
@@ -1249,8 +1310,8 @@
                 + (dipilih ? '' : ' disabled') + '></td>'
                 + '</tr>';
         }).join(''));
-        $('#ci-pi-kaki').prop('hidden', false);
-        piBatasiTinggi();
+        $('#' + k.id + '-kaki').prop('hidden', false);
+        piBatasiTinggi(kotak);
         hitungPi();
     }
 
@@ -1261,9 +1322,10 @@
      * jadi tetap pas kalau ukuran hurufnya berubah. Kurang dari sepuluh
      * baris: dibiarkan setinggi isinya.
      */
-    function piBatasiTinggi() {
-        var $bungkus = $('#ci-pi-gulung');
-        var $baris = $('#ci-pi-tbody tr');
+    function piBatasiTinggi(kotak) {
+        var k = PI_KOTAK[kotak] || PI_KOTAK.PI;
+        var $bungkus = $('#' + k.id + '-gulung');
+        var $baris = $('#' + k.id + '-tbody tr');
         if ($baris.length <= PI_BARIS_TAMPIL) {
             $bungkus.css('max-height', '');
             return;
@@ -1274,10 +1336,11 @@
         $bungkus.css('max-height', (tinggiKepala + tinggiBaris * PI_BARIS_TAMPIL) + 'px');
     }
 
-    /** Baris PI menurut nomornya. */
-    function piBaris(no) {
+    /** Baris PI menurut nomornya, di kotak yang diminta. */
+    function piBaris(kotak, no) {
+        var k = PI_KOTAK[kotak] || PI_KOTAK.PI;
         var cari = null;
-        inv.pi.forEach(function (r) { if (r.no_pi === no) { cari = r; } });
+        (inv[k.data] || []).forEach(function (r) { if (r.no_pi === no) { cari = r; } });
         return cari;
     }
 
@@ -1288,19 +1351,26 @@
      * invoice booking EXIM memang sudah membawa DP sendiri dari sana.
      */
     function hitungPi() {
-        var dp = 0, adv = 0, dipilih = 0;
-        inv.pi.forEach(function (r) {
-            var pakai = nilai(inv.piPakai[r.no_pi]);
-            if (String(r.boleh) !== '1' || pakai <= 0) { return; }
-            dipilih++;
-            if (r.bagian === 'DP') { dp += pakai; } else { adv += pakai; }
+        var dp = 0, adv = 0;
+        // Kedua kartu dijumlahkan ke angka yang sama - Down Payment &
+        // Advance di Summary tidak peduli PI-nya dipanggil dari kotak mana.
+        Object.keys(PI_KOTAK).forEach(function (kotak) {
+            var k = PI_KOTAK[kotak];
+            var dpK = 0, advK = 0, dipilih = 0;
+            (inv[k.data] || []).forEach(function (r) {
+                var pakai = nilai(inv[k.pakai][r.no_pi]);
+                if (String(r.boleh) !== '1' || pakai <= 0) { return; }
+                dipilih++;
+                if (r.bagian === 'DP') { dpK += pakai; } else { advK += pakai; }
+            });
+            dp += dpK;
+            adv += advK;
+            $('#' + k.id + '-dp').text(angka(dpK));
+            $('#' + k.id + '-adv').text(angka(advK));
+            $('#' + k.id + '-info').text(dipilih
+                ? dipilih + ' proforma invoice' + (dipilih > 1 ? 's' : '') + ' used'
+                : '');
         });
-
-        $('#ci-pi-dp').text(angka(dp));
-        $('#ci-pi-adv').text(angka(adv));
-        $('#ci-pi-info').text(dipilih
-            ? dipilih + ' proforma invoice' + (dipilih > 1 ? 's' : '') + ' used'
-            : '');
 
         // Dijumlahkan, bukan ditimpa: invoice booking EXIM bisa saja sudah
         // membawa DP sendiri dari sana, dan itu tidak boleh hilang cuma
@@ -1313,13 +1383,19 @@
     /** Baris PI yang dipakai - dikirim waktu Save. */
     function payloadPi() {
         var d = [];
-        inv.pi.forEach(function (r) {
-            var pakai = nilai(inv.piPakai[r.no_pi]);
-            if (String(r.boleh) !== '1' || pakai <= 0) { return; }
-            d.push({
-                id_proforma: r.id,
-                no_proforma_invoice: r.no_pi,
-                amount: pakai.toFixed(2)
+        Object.keys(PI_KOTAK).forEach(function (kotak) {
+            var k = PI_KOTAK[kotak];
+            (inv[k.data] || []).forEach(function (r) {
+                var pakai = nilai(inv[k.pakai][r.no_pi]);
+                if (String(r.boleh) !== '1' || pakai <= 0) { return; }
+                d.push({
+                    id_proforma: r.id,
+                    no_proforma_invoice: r.no_pi,
+                    amount: pakai.toFixed(2),
+                    // Kotak asalnya ikut tercatat: yang dari kotak bawah tidak
+                    // terikat SO invoice ini, jadi perlu kelihatan di laporan.
+                    sumber: kotak
+                });
             });
         });
         return d;
@@ -2232,6 +2308,9 @@
             return kirim('simpan_alokasi_pi_json/', {
                 id_book_invoice: idInv,
                 no_invoice: $('#ci-inv-number').val() || '',
+                // Mata uang invoicenya ikut: server menolak PI mata uang lain,
+                // dan baris invoicenya belum tentu sudah tersimpan waktu ini jalan.
+                curr: piCurr(),
                 data_table: payloadPi()
             });
         } });
@@ -2955,51 +3034,67 @@
         // ---- kartu Proforma Invoice ----
         // Dicentang = dipakai sebesar sisanya; jumlahnya boleh dikurangi
         // sendiri, tapi tidak boleh lebih dari sisa PI-nya.
-        $('#ci-pi-tbody').on('change', '.ci-pi-cek', function () {
+        $('#ci-pi-tbody, #ci-pi2-tbody').on('change', '.ci-pi-cek', function () {
+            var kotak = piKotakDari(this);
+            var k = PI_KOTAK[kotak];
             var no = $(this).closest('tr').data('no');
-            var r = piBaris(no);
+            var r = piBaris(kotak, no);
             if (!r) { return; }
             if (this.checked) {
-                var pakai = nilai(inv.piPakai[no]);
+                var pakai = nilai(inv[k.pakai][no]);
                 if (pakai <= 0) { pakai = nilai(r.sisa); }
-                inv.piPakai[no] = pakai;
+                inv[k.pakai][no] = pakai;
             } else {
-                delete inv.piPakai[no];
+                delete inv[k.pakai][no];
             }
-            gambarPi();
+            gambarPi(kotak);
         });
-        $('#ci-pi-tbody').on('input', '.ci-pi-pakai', function () {
+        $('#ci-pi-tbody, #ci-pi2-tbody').on('input', '.ci-pi-pakai', function () {
+            var kotak = piKotakDari(this);
             var no = $(this).closest('tr').data('no');
-            var r = piBaris(no);
-            if (!r) { return; }
-            inv.piPakai[no] = nilai($(this).val());
+            if (!piBaris(kotak, no)) { return; }
+            inv[PI_KOTAK[kotak].pakai][no] = nilai($(this).val());
             hitungPi();
         });
         // Dibulatkan & dibatasi waktu kotaknya ditinggalkan - selama mengetik
         // angkanya dibiarkan apa adanya supaya tidak melawan jari.
-        $('#ci-pi-tbody').on('blur', '.ci-pi-pakai', function () {
+        $('#ci-pi-tbody, #ci-pi2-tbody').on('blur', '.ci-pi-pakai', function () {
+            var kotak = piKotakDari(this);
+            var k = PI_KOTAK[kotak];
             var no = $(this).closest('tr').data('no');
-            var r = piBaris(no);
+            var r = piBaris(kotak, no);
             if (!r) { return; }
             var pakai = nilai($(this).val());
             var sisa = nilai(r.sisa);
             if (pakai > sisa) { pakai = sisa; }
-            if (pakai <= 0) { delete inv.piPakai[no]; } else { inv.piPakai[no] = pakai; }
-            gambarPi();
+            if (pakai <= 0) { delete inv[k.pakai][no]; } else { inv[k.pakai][no] = pakai; }
+            gambarPi(kotak);
         });
-        $('#ci-pi-semua').on('change', function () {
+        $('#ci-pi-semua, #ci-pi2-semua').on('change', function () {
+            var kotak = this.id === 'ci-pi2-semua' ? 'OTHER' : 'PI';
+            var k = PI_KOTAK[kotak];
             var pasang = this.checked;
-            inv.pi.forEach(function (r) {
+            (inv[k.data] || []).forEach(function (r) {
                 if (String(r.boleh) !== '1') { return; }
-                if (pasang) { inv.piPakai[r.no_pi] = nilai(r.sisa); }
-                else { delete inv.piPakai[r.no_pi]; }
+                if (pasang) { inv[k.pakai][r.no_pi] = nilai(r.sisa); }
+                else { delete inv[k.pakai][r.no_pi]; }
             });
-            gambarPi();
+            gambarPi(kotak);
         });
-        $('#ci-pi-kosongkan').on('click', function () {
-            inv.piPakai = {};
-            $('#ci-pi-semua').prop('checked', false);
-            gambarPi();
+        $('#ci-pi-kosongkan, #ci-pi2-kosongkan').on('click', function () {
+            var kotak = this.id === 'ci-pi2-kosongkan' ? 'OTHER' : 'PI';
+            inv[PI_KOTAK[kotak].pakai] = {};
+            $('#' + PI_KOTAK[kotak].id + '-semua').prop('checked', false);
+            gambarPi(kotak);
+        });
+        // Kartu bawah bisa panjang - daftarnya tidak disaring customer -
+        // jadi ada kotak cari yang menyaring baris yang sedang tergambar.
+        $('#ci-pi2-cari').on('input', function () {
+            var cari = $.trim(String($(this).val() || '')).toLowerCase();
+            $('#ci-pi2-tbody tr').each(function () {
+                var cocok = cari === '' || $(this).text().toLowerCase().indexOf(cari) !== -1;
+                $(this).toggle(cocok);
+            });
         });
         // ---- tabel detail ----
         $('#ci-tbody').on('click', '.ci-buang', function () {
