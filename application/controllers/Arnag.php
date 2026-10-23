@@ -2242,11 +2242,13 @@ public function pi_untuk_invoice_json()
     if (!is_array($so)) {
         $so = $so === null || $so === '' ? array() : explode(',', (string) $so);
     }
+    // 'PI' = kotak atas (SO-nya ikut ditagih), 'OTHER' = kotak bawah.
     $data = $this->Model_nag->pi_untuk_invoice(
         (string) $this->input->post('id_customer'),
         (string) $this->input->post('curr'),
         $so,
-        (int) $this->input->post('id_book_invoice')
+        (int) $this->input->post('id_book_invoice'),
+        (string) $this->input->post('sumber')
     );
     echo json_encode(array('status' => TRUE, 'data' => $data));
 }
@@ -2263,7 +2265,10 @@ public function simpan_alokasi_pi_json()
         (array) $this->input->post('data_table'),
         (string) $this->session->userdata('username'),
         date('Y-m-d H:i:s'),
-        (string) $this->input->post('no_invoice')
+        (string) $this->input->post('no_invoice'),
+        // Cadangan kalau baris invoicenya belum tersimpan - PI mata uang lain
+        // tetap harus ditolak.
+        (string) $this->input->post('curr')
     );
     if (isset($hasil['gagal'])) {
         $this->output->set_status_header(422);
@@ -4803,12 +4808,24 @@ public function userrole()
     $this->load->view('templates/footer', $data);
 }
 
-public function report_kwitansi($id)
+public function report_kwitansi($id = null)
 {
     if (!$this->session->userdata('username')) {
         redirect('auth');
     }
-        //   
+    // Yang dikirim bisa id kwitansi (dari daftar) atau NOMORNYA (sesudah
+    // disimpan). Nomor kwitansi mengandung garis miring, jadi di URL
+    // terpecah jadi beberapa ruas - ruas sesudah nama fungsi disambung lagi
+    // supaya nomornya utuh.
+    $ruas = array_slice($this->uri->rsegment_array(), 2);
+    $kunci = $ruas ? implode('/', $ruas) : (string) $id;
+    $kwt = $this->Model_nag->kwitansi_untuk_cetak($kunci);
+    if (!$kwt) {
+        show_404();
+        return;
+    }
+    $id = (int) $kwt['id'];
+
     $mpdf = new \Mpdf\Mpdf();
     $data['data_kwitansi'] = $this->Model_nag->cari_data_kwitansi($id);
     $data['data_kwitansi2'] = $this->Model_nag->cari_data_kwitansi2($id);
@@ -4995,7 +5012,22 @@ function update_status_kwt_inv2()
 {
     $no_invoice = $this->input->post('no_invoice');
     $no_kwt = $this->input->post('no_kwt');
-    $this->Model_nag->update_status_kwt_inv($no_invoice, $no_kwt);
+    // Dulu memanggil update_status_kwt_inv (tbl_book_invoice) - akibatnya
+    // invoice manual tidak pernah ditandai dan bisa ditarik ke kwitansi
+    // berkali-kali.
+    $this->Model_nag->update_status_kwt_inv2($no_invoice, $no_kwt);
+}
+
+/**
+ * Tandai Debit Note sudah masuk kwitansi (tbl_debitnote_h.no_kwt), supaya
+ * tidak bisa ditarik lagi - sepadan dengan update_status_kwt_inv untuk invoice.
+ */
+function update_status_kwt_dn()
+{
+    $no_dn  = $this->input->post('no_dn');
+    $no_kwt = $this->input->post('no_kwt');
+    $this->Model_nag->update_status_kwt_dn($no_dn, $no_kwt);
+    echo json_encode(array('status' => TRUE));
 }
 
 public function simpankwitansi()
@@ -5518,6 +5550,44 @@ public function cari_alokasi($dt_dari_kwt, $dt_sampai_kwt, $customer)
     echo json_encode($data);
 }
 
+// Isi modal detail Alokasi di layar daftar: kepala, baris yang dilunasi,
+// dan jurnalnya - sekali ambil, supaya modalnya tidak menembak tiga kali.
+public function alokasi_detail_json($id = null)
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    $id = (int) $id;
+    $kepala = $id ? $this->Model_nag->alokasi_kepala($id) : NULL;
+    if (!$kepala) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Allocation not found - please refresh the list.'));
+        return;
+    }
+
+    $jurnal = $this->Model_nag->alokasi_jurnal($id);
+    $debit = 0;
+    $kredit = 0;
+    foreach ($jurnal as $j) {
+        $debit  += (float) $j['debit'];
+        $kredit += (float) $j['credit'];
+    }
+
+    echo json_encode(array(
+        'status'  => TRUE,
+        'kepala'  => $kepala,
+        'baris'   => $this->Model_nag->alokasi_baris_detail($id),
+        'jurnal'  => $jurnal,
+        // Dihitung di sini supaya layarnya tinggal memajang - dan supaya
+        // jurnal yang tidak seimbang langsung kelihatan.
+        'jurnal_debit'  => round($debit, 2),
+        'jurnal_kredit' => round($kredit, 2),
+        'jurnal_imbang' => abs($debit - $kredit) < 0.005,
+        'cetak_url'     => base_url('arnag/report_invoice5/' . $id),
+    ));
+}
+
 public function cari_view_alokasi($no_kwt)
 {
     $data =  $this->Model_nag->cari_view_alokasi($no_kwt);
@@ -5676,7 +5746,7 @@ public function frm_report_invoice_dpcbd()
         redirect('auth');
     }
 
-    $data['title'] = 'Report Mutasi Invoice DP & CBD';
+    $data['title'] = 'Report Proforma Invoice';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['customer'] = $this->Model_nag->cari_customer();
     $data['bank'] = $this->Model_nag->load_bank();
@@ -5740,6 +5810,58 @@ public function cari_kartu_ar2($dt_dari_alk, $dt_sampai_alk, $id_cus)
 
 
     //ubah september
+// Isi laporan Report Proforma Invoice. Sumbernya PI yang sekarang
+// (tbl_invoice_proforma) dan potongannya dari alokasi - lihat
+// Model_nag::mutasi_pi_dpcbd(). Hitungannya di SQL, jadi layarnya tinggal
+// memajang: tidak ada lagi saldo awal yang dihitung ulang di browser.
+public function mutasi_pi_json($dt_dari = null, $dt_sampai = null, $id_customer = null)
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    $baris = $this->Model_nag->mutasi_pi_dpcbd($dt_dari, $dt_sampai, $id_customer);
+
+    // Jumlah per mata uang - dipakai sebagai baris total di kaki tabelnya.
+    $total = array();
+    foreach ($baris as $b) {
+        $curr = $b['curr'] === '' ? 'IDR' : $b['curr'];
+        if (!isset($total[$curr])) {
+            $total[$curr] = array('curr' => $curr, 'beginning' => 0, 'addition' => 0,
+                                   'deduction' => 0, 'ending' => 0, 'baris' => 0);
+        }
+        foreach (array('beginning', 'addition', 'deduction', 'ending') as $k) {
+            $total[$curr][$k] += (float) $b[$k];
+        }
+        $total[$curr]['baris']++;
+    }
+    foreach ($total as $curr => $t) {
+        foreach (array('beginning', 'addition', 'deduction', 'ending') as $k) {
+            $total[$curr][$k] = round($t[$k], 2);
+        }
+    }
+
+    echo json_encode(array(
+        'status' => TRUE,
+        'baris'  => $baris,
+        'total'  => array_values($total),
+    ));
+}
+
+// Unduhan laporan yang sama, isinya persis dari sumber yang sama.
+public function export_mutasi_pi($dt_dari = null, $dt_sampai = null, $id_customer = null)
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+
+    $data['baris']          = $this->Model_nag->mutasi_pi_dpcbd($dt_dari, $dt_sampai, $id_customer);
+    $data['periode_dari']   = $dt_dari;
+    $data['periode_sampai'] = $dt_sampai;
+    $this->load->view('arnag/export_mutasi_pi', $data);
+}
+
 public function cari_mutasi_invoice_dp($dt_dari_alk, $dt_sampai_alk, $id_cus)
 {
     $data =  $this->Model_nag->cari_mutasi_invoice_dp($dt_dari_alk, $dt_sampai_alk, $id_cus);

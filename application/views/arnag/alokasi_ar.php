@@ -1,326 +1,202 @@
-<!-- Content Wrapper. Contains page content -->
-<div class="content-wrapper">
-    <!-- Content Header (Page header) -->
-    <section class="content-header">
-        <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1><?= $title; ?></h1>
-                </div>
-            </div>
-        </div><!-- /.container-fluid -->
-    </section>
+<!-- ==========================================================================
+     List Alokasi
+     Tampilannya mengikuti menu List Invoice (skin .nag-skin di dn_skin.php):
+     kartu filter di atas, lalu kartu tabel dengan loader & DataTables.
+     Nomor alokasinya diklik untuk membuka modal detail (alo_detail_modal).
+     Data tabelnya diisi alo_list_cari() di crud-nag.js.
+     ========================================================================== -->
+<?php $this->load->view('arnag/dn_skin'); ?>
+<?php $this->load->view('arnag/_ukuran_sm'); ?>
+<style type="text/css">
+/* Khusus halaman List Alokasi - warna tombol mengikuti List Invoice. */
+.nag-skin .btn-dn-create {
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9) !important;
+  border: none !important;
+  color: #fff !important;
+}
+.nag-skin .btn-dn-excel {
+  background: linear-gradient(135deg, #15803d, #16a34a) !important;
+  border: none !important;
+  color: #fff !important;
+}
 
-    <!-- Main content -->
-    <section class="content">
-        <div class="container-fluid">
-            <div class="row">
-                <!-- left column -->
-                <div class="col-md-12">
-                    <!-- general form elements -->
-                    <div class="card card-info">
-                        <div class="card-header">
-                            <h3 class="card-title">Cek Alokasi</h3>
-                        </div>
-                        <!-- /.card-header -->
-                        <!-- form start -->
-                        <form>
-                            <div class="card-body">
-                                <div class="row align-items-end">
-                                    <div class="form-group col-md-3">
-                                        <label>Customer</label>
-                                        <select class="form-control select2bs4" id="customer" name="customer">
-                                            <option value="all_customer">All Customer</option>
-                                            <?php foreach ($customer as $cs) : ?>
-                                                <option value="<?= $cs['Id_Supplier']; ?>"><?= $cs['Supplier']; ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <div class="form-group mb-0">
-                                            <label>From</label>
-                                            <div class="input-group">
-                                                <input type="text" name="filter_from" id="filter_from" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <div class="form-group mb-0">
-                                            <label>To</label>
-                                            <div class="input-group">
-                                                <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?php echo date("Y-m-d"); ?>" autocomplete='off'>
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <div class="d-flex" style="gap:6px;">
-                                            <button type="button" id="find_invoice" name="find_invoice" class="btn btn-primary" href="javascript:void(0)" onclick="cari_alokasi()"><i class="fa fa-search"></i> Search</button>
-                                            <button type="button" class="btn btn-info" onclick="export_list_alokasi()"><i class="fa fa-download"></i> Export</button>
-                                        </div>
-                                    </div>
+/* Filter + tombol satu baris di layar lebar: Customer tidak ikut melar
+   mengisi sisa ruang, tombolnya menempel di sebelah tanggal To. */
+.nag-skin .alo-aksi { margin-top: 12px; }
+@media (min-width: 1280px) {
+  .nag-skin .alo-filter > .alo-f-customer { flex: 0 1 26%; max-width: 380px; min-width: 220px; }
+  .nag-skin .alo-filter > .alo-f-status { flex: 0 0 14%; max-width: 14%; }
+  .nag-skin .alo-filter > .alo-f-tgl { flex: 0 0 16%; max-width: 16%; }
+  .nag-skin .alo-filter > .alo-f-aksi { flex: 0 0 auto; width: auto; max-width: none; }
+  .nag-skin .alo-filter .alo-aksi { margin-top: 0; flex-wrap: nowrap; }
+}
+.nag-skin .alo-aksi .btn { padding: 0 12px !important; }
+.nag-skin .alo-aksi .btn i { font-size: 11.5px; }
 
-                                </div>
-                            </div>
-                            <!-- /.card-body -->
-                        </form>
-                    </div>
-                </div>
-            </div>
+/* ---- Kolom Alokasi Number ----
+   Nomornya jelas bisa diklik - itu pintu ke modal detailnya. */
+.nag-skin .dn-no-link {
+  color: #1d4ed8;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(29, 78, 216, .45);
+}
+.nag-skin .dn-no-link:hover { color: #1e3a5f; border-bottom-style: solid; }
+.nag-skin .dn-no-link:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(44, 82, 130, .45); border-radius: 6px; }
 
-            <!-- Data Table List Invoice -->
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Data Alokasi</h3>
-                        </div>
-                        <div class="d-flex justify-content-between">
-                           <div class="ml-auto">
-                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                            </div>
-                                <input type="text"  id="cari_nokwt" name="cari_nokwt" required autocomplete="off" placeholder="Search No Alokasi.." onkeyup="cari_kwt()">
-                             </div>
+/* ---- Kolom Created By ----
+   Nama pembuatnya di atas, tanggalnya di bawah dengan warna lebih redup. */
+#alo-list-area .alo-dibuat { display: flex; flex-direction: column; line-height: 1.25; }
+#alo-list-area .alo-dibuat b { font-weight: 600; }
+#alo-list-area .alo-dibuat small { color: #94a3b8; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+#alo-list-area .alo-kosong { color: #cbd5e1; }
 
-                        <!-- /.card-header -->
-                        <div class="card-body table-responsive p-0" style="height: 400px;">
-                            <table id="table-kwitansi" class="table table-head-fixed text-nowrap">
-                                <thead>
-                                    <tr>
-                                        <th style="text-align: center;">Alokasi Number</th>
-                                        <th style="text-align: center;">Alokasi Date</th>
-                                        <th style="text-align: center;">Customer</th>
-                                        <th style="text-align: center;">Doc Number</th>
-                                        <th style="text-align: center;">Bank</th>
-                                        <th style="text-align: center;">Account</th>
-                                        <th style="text-align: center;">Curr</th>
-                                        <th style="text-align: center;">Rate</th>
-                                        <th style="text-align: center;">Amount</th>
-                                        <th style="text-align: center;">Equivalent IDR</th>
-                                        <th style="text-align: center;">Create Date</th>
-                                        <th style="text-align: center;">Create By</th>
-                                        <th style="text-align: center;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+/* DataTables menghitung lebar kolom dari isinya. Kalau hitungannya jatuh
+   waktu kartunya masih sempit (sidebar baru dipasang), tabelnya tetap
+   sempit walau kartunya sudah melebar - sisanya kosong dengan garis
+   menggantung di kanan. Jadi tabelnya dipatok minimal selebar kartunya;
+   kalau isinya lebih lebar, ia tetap melebar dan bisa digeser. */
+#alo-list-area .dataTables_scrollHeadInner,
+#alo-list-area .dataTables_scrollHeadInner > table,
+#alo-list-area .dataTables_scrollBody > table { min-width: 100% !important; }
 
-                                </tbody>
-                            </table>
-                        </div>
-                        <!-- /.card-body -->
-                    </div>
-                    <!-- /.card -->
-                </div>
-            </div>
-        </div><!-- /.container-fluid -->
-    </section>
-</div>
+/* Kolom uang rata kanan & digitnya sejajar. */
+#alo-list-area .dn-table td.dn-angka,
+#alo-list-area .dn-table th.dn-angka { text-align: right; font-variant-numeric: tabular-nums; }
+#alo-list-area .dn-table td.dn-tengah,
+#alo-list-area .dn-table th.dn-tengah { text-align: center; }
+/* Kolom Action berisi tombol - rata kiri supaya tombol yang sama selalu
+   jatuh di tempat yang sama, walau jumlah tombolnya beda per baris. */
+#alo-list-area .dn-table td:last-child { text-align: left; }
+</style>
 
-<div class="modal fade" id="modal-cancel-inv">
-    <form action="<?= base_url('arnag/cancel_alokasi'); ?>" method="POST">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Confirm</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <!--  -->
-                    <div class="form-group row">
-                        <label for="id_inv" class="col-sm-5 col-form-label">Sure Cancel Alokasi :</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control" id="txt_cancel_book" name="txt_cancel_book" style="border:none;" readonly>
-                        </div>
-                    </div>
-                    <!-- Hidden Text -->
-                    <input type="hidden" id="id_book_inv" name="id_book_inv" readonly>
-                    <input type="hidden" id="id_bppb" name="id_bppb" readonly>
-                    <input type="hidden" id="user" name="user" value="<?= $user['username']; ?>" readonly>
-                    <!--  -->
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-danger toastsDefaultDanger">Cancel</button>
-                </div>
-            </div>
+<div class="content-wrapper nag-skin ci-sm">
+  <section class="content">
+    <div class="container-fluid">
+
+      <!-- Filter -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title"><i class="fas fa-hand-holding-usd"></i><?= $title; ?></h3>
         </div>
-    </form>
-</div>
-
-<!-- Modal Update Booking Invoice -->
-<div class="modal fade" id="update-kwt">
-    <form action="<?= base_url('arnag/update_tbl_kwitansi'); ?>" method="POST">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Confirm Update</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <!-- Update Document Number dan type -->
-                    <div class="form-group col-md-12">
-                        <label>Kwitansi Number</label>
-                        <input type="text" class="form-control" id="no_kwt" name="no_kwt" readonly>
-                    </div>
-
-                    <div class="form-group col-md-12">
-                        <label>Amount</label>
-                        <input type="text" class="form-control" id="amount" name="amount" min="0" autocomplete="off" readonly>
-                    </div>
-                    <div class="form-group col-md-12">
-                        <label>Terbilang</label>
-                        <textarea type="text" class="form-control" id="terbilang" name="terbilang"></textarea>
-                        <!-- <input type="text" class="form-control" id="terbilang" name="terbilang"> -->
-                    </div>
-                    <!--  -->
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary toastrDefaultSuccess">Update</button>
-                </div>
+        <div class="card-body">
+          <div class="row align-items-end alo-filter">
+            <div class="form-group col-lg-4 col-md-6 alo-f-customer">
+              <label for="customer">Customer</label>
+              <select class="form-control select2bs4" id="customer" name="customer">
+                <option value="all_customer">All Customer</option>
+                <?php foreach ($customer as $cs) : ?>
+                  <option value="<?= $cs['Id_Supplier']; ?>"><?= $cs['Supplier']; ?></option>
+                <?php endforeach; ?>
+              </select>
             </div>
-        </div>
-    </form>
-</div>
-
-<div class="modal fade" id="modal-cancel-kwt">
-    <form action="<?= base_url('arnag/cancel_kwitansi'); ?>" method="POST">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Confirm</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <!--  -->
-                    <div class="form-group row">
-                        <label for="id_inv" class="col-sm-5 col-form-label">Sure Cancel Kwitansi:</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control" id="txt_cancel_book" name="txt_cancel_book" style="border:none;" readonly>
-                        </div>
-                    </div>
-                    <!-- Hidden Text -->
-                    <input type="hidden" id="id_kwitansi" name="id_kwitansi" readonly>
-                    <input type="hidden" id="id_bppb" name="id_bppb" readonly>
-                    <input type="hidden" id="user" name="user" value="<?= $user['username']; ?>" readonly>
-                    <!--  -->
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <?php $data = $user['username'];
-                    if ($data == 'willy' || $data == 'yulianto' || $data == 'hady' || $data == 'hadi' || $data == 'jefri' || $data == 'ramon' || $data == 'lukman' || $data == 'oktora' || $data == 'oktora malau') 
-                    {
-                        echo '<button type="submit" class="btn btn-primary toastsDefaultDanger">Cancel Kwitansi</button>';
-                     } else {
-                    echo '<button type="button" disabled class="btn btn-primary toastsDefaultDanger">Cancel Kwitansi</button>';
-                }
-                    ?>
-                </div>
+            <div class="form-group col-lg-2 col-md-6 alo-f-status">
+              <label for="status">Status</label>
+              <!-- Statusnya disaring di layar ini saja - datanya sudah ada,
+                   tidak perlu menembak ulang ke server. -->
+              <select class="form-control select2bs4" id="status" name="status">
+                <option value="all_status">ALL</option>
+                <option value="POST">POST</option>
+                <option value="CANCEL">CANCEL</option>
+              </select>
             </div>
-        </div>
-    </form>
-</div>
-
-<div class="modal fade" id="modal-view-kwt">
-    <form >
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title" >Data Kwitansi <input type="text" style="background-color: white; border: none; font-size: 18px;" class="form-control" id="txt_view" name="txt_view" style="border:none;" readonly></h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="card-body table-responsive p-0" style="height: 300px;">
-                            <table id="table-view-kwt" class="table table-head-fixed text-nowrap">
-                                <thead>
-                                    <tr>
-                                        <th>COA</th>
-                                        <th>Cost Center</th>
-                                        <th>Customer</th>
-                                        <th>Ref Number</th>
-                                        <th>Ref Date</th>
-                                        <th>Due Date</th>
-                                        <th>Curr</th>
-                                        <th>Total</th>
-                                        <th>Amount</th>
-                                        <th>Outstanding</th>
-                                        <th>Descriptions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-
-                                </tbody>
-                            </table>
-                        </div>
+            <div class="form-group col-lg-3 col-md-3 col-6 alo-f-tgl">
+              <label for="filter_from">From</label>
+              <div class="input-group dn-date-group">
+                <input type="text" name="filter_from" id="filter_from" class="form-control tanggal" value="<?= date('Y-m-d'); ?>" autocomplete="off">
+                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+              </div>
             </div>
-        </div>
-    </form>
-</div>
-
-<!-- Modal Update Booking Invoice -->
-<div class="modal fade" id="update-inv-style">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Confirm Update</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <!-- Update Document Number dan type -->
-                    <div class="form-group col-md-12">
-                        <!-- <label>Kwitansi Number</label> -->
-                        <input type="hidden" class="form-control" id="id" name="id" readonly>
-                    </div>
-
-                    <div class="form-group col-md-12">
-                        <label>No Invoice</label>
-                        <input type="text" class="form-control" id="no_inv" name="no_inv" min="0" autocomplete="off" readonly>
-                    </div>
-                    <div class="form-group col-md-12">
-                        <label>Style</label>
-                        <textarea type="text" class="form-control" id="style" name="style"></textarea>
-                        <!-- <input type="text" class="form-control" id="terbilang" name="terbilang"> -->
-                    </div>
-                    <!--  -->
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary toastrDefaultSuccess" onclick="update_style2()">Update</button>
-                </div>
+            <div class="form-group col-lg-3 col-md-3 col-6 alo-f-tgl">
+              <label for="filter_to">To</label>
+              <div class="input-group dn-date-group">
+                <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?= date('Y-m-d'); ?>" autocomplete="off">
+                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+              </div>
             </div>
+            <div class="form-group col-12 alo-f-aksi">
+              <div class="dn-filter-aksi alo-aksi">
+                <button type="button" id="find_alokasi" name="find_alokasi" class="btn btn-primary" onclick="alo_list_cari()"><i class="fa fa-search"></i> Search</button>
+                <button type="button" class="btn btn-dn-create" onclick="location.href='<?= base_url('arnag/create_alokasi'); ?>'"><i class="fas fa-plus"></i> Create</button>
+                <button type="button" class="btn btn-dn-excel" onclick="export_list_alokasi()"><i class="fas fa-file-excel"></i> Export</button>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <!-- Daftar Alokasi -->
+      <div class="card">
+        <div class="card-body">
+          <div class="table-header">
+            <span class="table-title"><i class="fas fa-table"></i>Data Alokasi</span>
+          </div>
+          <div class="dn-list-area" id="alo-list-area">
+            <div class="nag-loader-overlay" id="alo-list-loader">
+              <div class="nag-loader-card">
+                <div class="nag-loader-spinner">
+                  <span class="nag-loader-ring nag-loader-ring-outer"></span>
+                  <span class="nag-loader-ring nag-loader-ring-inner"></span>
+                  <span class="nag-loader-brand">NAG</span>
+                </div>
+                <div class="nag-loader-caption">Memuat data...</div>
+              </div>
+            </div>
+            <table id="table-alokasi" class="dn-table text-nowrap" width="100%">
+              <thead>
+                <tr>
+                  <th>Alokasi Number</th>
+                  <th>Alokasi Date</th>
+                  <th>Customer</th>
+                  <th>Doc Number</th>
+                  <th>Bank</th>
+                  <th>Account</th>
+                  <th>Curr</th>
+                  <th>Rate</th>
+                  <th>Amount</th>
+                  <th>Equivalent IDR</th>
+                  <th>Created By</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
 </div>
 
-    <script>
-    function cari_kwt() {
-        // Declare variables
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("cari_nokwt");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("table-kwitansi");
-        tr = table.getElementsByTagName("tr");
+<script>
+  // Alamat layar Create - dipakai tombol Create & tombol Back di layar itu.
+  var ALO_URL_LIST = <?= json_encode(base_url('arnag/alokasi_ar')); ?>;
 
-        // Loop through all table rows, and hide those who don't match the search query
-        for (i = 0; i < tr.length; i++) {
-            td = tr[i].getElementsByTagName("td")[0]; //kolom ke berapa.. ini kolom ke 1,, harusnya kolom ke 0
-            if (td) {
-                txtValue = td.textContent || td.innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    tr[i].style.display = "";
-                } else {
-                    tr[i].style.display = "none";
-                }
-            }
-        }
-    }
+  document.addEventListener('DOMContentLoaded', function () {
+    $(function () {
+      // Tabelnya disiapkan sejak halaman dibuka: kotak Search, pilihan jumlah
+      // baris, dan pesan "belum ada data" sudah ada sebelum Search ditekan.
+      alo_list_dt();
+      alo_list_pulihkan();
+    });
+  });
 </script>
+
+<!-- Cancel Alokasi: konfirmasinya pakai Swal (di crud-nag.js), tapi
+     kirimannya tetap POST biasa lewat form ini - alur di servernya
+     tidak berubah sama sekali. -->
+<form id="alo-form-cancel" action="<?= base_url('arnag/cancel_alokasi'); ?>" method="POST" style="display:none;">
+  <input type="hidden" id="id_book_inv" name="id_book_inv">
+  <input type="hidden" id="txt_cancel_book" name="txt_cancel_book">
+  <input type="hidden" id="id_bppb" name="id_bppb">
+  <input type="hidden" id="user" name="user" value="<?= $user['username']; ?>">
+</form>
+
+<?php
+// Modal detail Alokasi - dibuka dengan mengklik nomor alokasinya.
+$this->load->view('arnag/alo_detail_modal');
+?>
