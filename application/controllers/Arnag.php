@@ -626,6 +626,113 @@ private function _inv_cetak($mpdf, $id_inv, $nama_file, $judul = '')
  * punya kolom di tbl_invoice_pot (sama seperti layar lama), jadi baris itu
  * diambil dari rekap booking-nya di menu Invoice EXIM.
  */
+/**
+ * Invoice knitting ditagihkan ke KONSUMEN-nya, bukan ke customer booking -
+ * berlaku untuk pengiriman mulai 01-08-2026.
+ *
+ * Yang EXPORT dikecualikan: pembelinya memang perusahaan luar negeri yang
+ * tercatat di booking (mis. TEEJAY MAURITIUS), bukan konsumen knitting di
+ * dalam negeri - jadi "To"-nya tetap customer booking-nya.
+ *
+ * Mengembalikan baris invoice yang sudah disesuaikan, bukan mengubah di
+ * tempat, supaya aturannya cuma ditulis sekali dan dipakai semua cetakan.
+ */
+private function _inv_tagih_ke_konsumen($id_inv, $inv)
+{
+    if (!$inv
+        || strtoupper(trim((string) $inv['profit_center'])) !== 'NAK'
+        || (string) $inv['sj_date'] < '2026-08-01'
+        || strtolower(trim((string) (isset($inv['shipp']) ? $inv['shipp'] : ''))) === 'export') {
+        return $inv;
+    }
+
+    $konsumen = $this->Model_nag->get_konsumen_invoice($id_inv);
+    if ($konsumen) {
+        $inv['customer'] = $konsumen['supplier'];
+        $inv['alamat']   = $konsumen['alamat'];
+    }
+    return $inv;
+}
+
+/**
+ * Bentuk dokumen export untuk satu invoice - null kalau tidak dipakai.
+ *
+ * Invoice EXPORT biasanya dicetak sebagai Commercial Invoice, mengikuti
+ * menu Invoice EXIM. KNITTING tidak: di AR, invoice knitting (NAK)
+ * dicetak dengan bentuk yang sama dengan invoice lokalnya - baik yang
+ * lokal maupun yang export - karena isinya memang baris SJ knitting
+ * (style, color, product item, qty) dan bukan booking Invoice EXIM.
+ * Cetakan Commercial Invoice-nya sendiri tetap ada di menu Invoice EXIM.
+ */
+private function _cetak_export($id_inv)
+{
+    $cetak = $this->Model_nag->data_cetak_export($id_inv);
+    if ($cetak && strtoupper(trim((string) $cetak['header']['profit_center'])) === 'NAK') {
+        return null;
+    }
+    return $cetak;
+}
+
+/**
+ * Baris invoice untuk cetakan bentuk lokal.
+ *
+ * Biasanya dari tbl_invoice_detail. Invoice knitting yang dibooking lewat
+ * menu Invoice EXIM tidak punya baris di sana - barisnya ada di Invoice
+ * Summary booking exportnya, jadi diambil dari situ dan dibentuk sama
+ * supaya cetakan bentuk lokalnya tidak keluar dengan tabel kosong.
+ *
+ * Pemetaannya: satu baris summary = satu baris invoice. Nama warna jadi
+ * kolom Color, Product Description dari Shipment Details jadi Product
+ * Item, dan Extended Line Total jadi Total - angka yang sama persis
+ * dengan yang dicetak Commercial Invoice-nya.
+ */
+private function _inv_baris_lokal($id_inv, $baris)
+{
+    if ($baris) {
+        return $baris;
+    }
+
+    $cetak = $this->Model_nag->data_cetak_export($id_inv);
+    if (!$cetak || empty($cetak['summary'])) {
+        return $baris;
+    }
+
+    // Product Description & Style NO ada di Shipment Details - dipakai yang
+    // pertama terisi, karena satu invoice satu produk.
+    $pertama = function ($kunci) use ($cetak) {
+        foreach ((array) $cetak['kirim'] as $k) {
+            $isi = trim((string) (isset($k[$kunci]) ? $k[$kunci] : ''));
+            if ($isi !== '') {
+                return $isi;
+            }
+        }
+        return '';
+    };
+    $produk = $pertama('product_description');
+    $gaya   = $pertama('style_no');
+    $curr   = isset($cetak['header']['curr']) ? (string) $cetak['header']['curr'] : '';
+
+    $hasil = array();
+    foreach ((array) $cetak['summary'] as $r) {
+        $warna = trim((string) $r['color_name']);
+        $hasil[] = array(
+            'styleno'       => $gaya !== '' ? $gaya : '-',
+            'product_group' => '',
+            'product_item'  => $produk !== '' ? $produk : '-',
+            'color'         => $warna !== '' ? $warna : '-',
+            'size'          => '',
+            'qty'           => number_format((float) $r['qty'], 2),
+            'unit_price'    => number_format((float) $r['unit_cost'], 3),
+            'disc'          => 0,
+            'total_price'   => number_format((float) $r['extended'], 2),
+            'uom'           => (string) $r['satuan'],
+            'curr'          => $curr,
+            'id_bppb'       => 0,
+        );
+    }
+    return $hasil;
+}
+
 private function _rekap_export($cetak, $pot)
 {
     $pot = is_array($pot) ? $pot : array();
@@ -2625,13 +2732,17 @@ public function preview_invoice_v2()
     $inv['tgl_inv'] = $tgl_sj !== '' ? date('d-m-Y', strtotime($tgl_sj)) : '';
 
     // Knitting mulai 01-08-2026 ditagih ke konsumennya, bukan ke customer
-    // booking - sama seperti cetakan setelah tersimpan.
+    // booking - sama seperti cetakan setelah tersimpan, termasuk
+    // pengecualian untuk yang export (lihat _inv_tagih_ke_konsumen()).
+    // Konsumennya tetap diambil: cetakan knitting - berkas keduanya - memang
+    // dialamatkan ke konsumen, export maupun lokal.
     $konsumen = null;
     if ($inv['profit_center'] == 'NAK') {
         $konsumen = $this->Model_nag->konsumen_knitting(
             isset($baris[0]['id_konsumen']) ? $baris[0]['id_konsumen'] : '');
     }
-    if ($konsumen && $tgl_sj >= '2026-08-01') {
+    if ($konsumen && $tgl_sj >= '2026-08-01'
+        && strtolower(trim((string) (isset($inv['shipp']) ? $inv['shipp'] : ''))) !== 'export') {
         $inv['customer'] = $konsumen['supplier'];
         $inv['alamat'] = $konsumen['alamat'];
     }
@@ -2690,8 +2801,8 @@ public function preview_invoice_v2()
     // Invoice Export di menu Invoice EXIM, versi CM). Isinya datang dari
     // booking-nya, bukan dari baris SJ di layar - yang dipakai dari layar cuma
     // angka rekapnya, karena DP / DP CBD / Return & VAT memang masih bisa
-    // diubah sebelum disimpan.
-    $cetak_export = $this->Model_nag->data_cetak_export($id_inv);
+    // diubah sebelum disimpan. Knitting dikecualikan - lihat _cetak_export().
+    $cetak_export = $this->_cetak_export($id_inv);
 
     // Shipment Details-nya diambil dari LAYAR, bukan database: bagian itu boleh
     // dilengkapi tim AR dan pratinjau harus memperlihatkan yang baru diketik -
@@ -2872,7 +2983,8 @@ public function report_invoice_v2($id)
 
     // Invoice EXPORT punya bentuk dokumen sendiri (mengikuti cetakan Invoice
     // Export di menu Invoice EXIM, versi CM) - bukan daftar baris SJ.
-    $cetak_export = $this->Model_nag->data_cetak_export($id);
+    // Knitting dikecualikan - lihat _cetak_export().
+    $cetak_export = $this->_cetak_export($id);
     if ($cetak_export) {
         $mpdf = $this->_dn_mpdf_baru();
         $mpdf->WriteHTML($this->load->view('arnag/reportinvoice_export_v2', array(
@@ -2891,15 +3003,11 @@ public function report_invoice_v2($id)
     if (!$data['data_invoice']) {
         show_404();
     }
-    // Knitting mulai 01-08-2026: yang ditagih konsumennya, bukan customer booking.
-    if ($data['data_invoice']['profit_center'] == 'NAK' && $data['data_invoice']['sj_date'] >= '2026-08-01') {
-        $data_konsumen = $this->Model_nag->get_konsumen_invoice($id);
-        if ($data_konsumen) {
-            $data['data_invoice']['customer'] = $data_konsumen['supplier'];
-            $data['data_invoice']['alamat'] = $data_konsumen['alamat'];
-        }
-    }
-    $data['data_invoice_detail'] = $this->Model_nag->report_invoice_detail($id);
+    // Knitting: yang ditagih konsumennya - kecuali export. Lihat
+    // _inv_tagih_ke_konsumen().
+    $data['data_invoice'] = $this->_inv_tagih_ke_konsumen($id, $data['data_invoice']);
+    $data['data_invoice_detail'] = $this->_inv_baris_lokal(
+        $id, $this->Model_nag->report_invoice_detail($id));
     $data['data_invoice_pot'] = $this->Model_nag->report_invoice_pot($id);
     $data['group_bppb_number'] = $this->Model_nag->group_bppb_number($id);
     $data['group_so_number'] = $this->Model_nag->group_so_number($id);
@@ -2925,13 +3033,9 @@ public function report_invoice3($id)
         //   
     $mpdf = new \Mpdf\Mpdf();
     $data['data_invoice'] = $this->Model_nag->report_invoice($id);
-    if ($data['data_invoice'] && $data['data_invoice']['profit_center'] == 'NAK' && $data['data_invoice']['sj_date'] >= '2026-08-01') {
-        $data_konsumen = $this->Model_nag->get_konsumen_invoice($id);
-        if ($data_konsumen) {
-            $data['data_invoice']['customer'] = $data_konsumen['supplier'];
-            $data['data_invoice']['alamat'] = $data_konsumen['alamat'];
-        }
-    }
+    // Knitting: yang ditagih konsumennya - kecuali export. Lihat
+    // _inv_tagih_ke_konsumen().
+    $data['data_invoice'] = $this->_inv_tagih_ke_konsumen($id, $data['data_invoice']);
     $data['data_invoice_detail'] = $this->Model_nag->report_invoice_detail($id);
     $data['data_invoice_pot'] = $this->Model_nag->report_invoice_pot($id);
     $data['group_bppb_number'] = $this->Model_nag->group_bppb_number($id);
@@ -2953,13 +3057,9 @@ public function export_excel_invoice($id)
     }
         //
     $data['data_invoice'] = $this->Model_nag->report_invoice($id);
-    if ($data['data_invoice'] && $data['data_invoice']['profit_center'] == 'NAK' && $data['data_invoice']['sj_date'] >= '2026-08-01') {
-        $data_konsumen = $this->Model_nag->get_konsumen_invoice($id);
-        if ($data_konsumen) {
-            $data['data_invoice']['customer'] = $data_konsumen['supplier'];
-            $data['data_invoice']['alamat'] = $data_konsumen['alamat'];
-        }
-    }
+    // Knitting: yang ditagih konsumennya - kecuali export. Lihat
+    // _inv_tagih_ke_konsumen().
+    $data['data_invoice'] = $this->_inv_tagih_ke_konsumen($id, $data['data_invoice']);
     $data['data_invoice_detail'] = $this->Model_nag->report_invoice_detail($id);
     $data['data_invoice_pot'] = $this->Model_nag->report_invoice_pot($id);
     $data['group_bppb_number'] = $this->Model_nag->group_bppb_number($id);
@@ -2973,7 +3073,8 @@ public function export_excel_invoice($id)
  * Ekspor Excel invoice - bentuknya mengikuti cetakan PDF desain baru.
  *
  * Tiga bentuk, sama seperti PDF-nya:
- *   - invoice export  -> arnag/excelinvoice_export_v2 (format Invoice EXIM CM)
+ *   - invoice export  -> arnag/excelinvoice_export_v2 (format Invoice EXIM CM;
+ *                        knitting tidak ikut - lihat _cetak_export())
  *   - invoice biasa   -> arnag/excelinvoice_v2
  *   - $jenis=knitting -> arnag/excelinvoice_knitting_v2 (berkas kedua khusus NAK)
  *
@@ -2989,7 +3090,7 @@ public function export_excel_invoice_v2($id, $jenis = '')
     $jenis = strtolower(trim((string) $jenis));
 
     // Invoice EXPORT: isinya dari booking Invoice EXIM, bukan baris SJ.
-    $cetak_export = $jenis === 'knitting' ? null : $this->Model_nag->data_cetak_export($id);
+    $cetak_export = $jenis === 'knitting' ? null : $this->_cetak_export($id);
     if ($cetak_export) {
         $this->load->view('arnag/excelinvoice_export_v2', array(
             'data_cetak' => $cetak_export,
@@ -3015,15 +3116,11 @@ public function export_excel_invoice_v2($id, $jenis = '')
         return;
     }
 
-    // Knitting mulai 01-08-2026: yang ditagih konsumennya, bukan customer booking.
-    if ($data['data_invoice']['profit_center'] == 'NAK' && $data['data_invoice']['sj_date'] >= '2026-08-01') {
-        $data_konsumen = $this->Model_nag->get_konsumen_invoice($id);
-        if ($data_konsumen) {
-            $data['data_invoice']['customer'] = $data_konsumen['supplier'];
-            $data['data_invoice']['alamat'] = $data_konsumen['alamat'];
-        }
-    }
-    $data['data_invoice_detail'] = $this->Model_nag->report_invoice_detail($id);
+    // Knitting: yang ditagih konsumennya - kecuali export. Lihat
+    // _inv_tagih_ke_konsumen().
+    $data['data_invoice'] = $this->_inv_tagih_ke_konsumen($id, $data['data_invoice']);
+    $data['data_invoice_detail'] = $this->_inv_baris_lokal(
+        $id, $this->Model_nag->report_invoice_detail($id));
     $data['data_invoice_pot'] = $this->Model_nag->report_invoice_pot($id);
     $data['group_bppb_number'] = $this->Model_nag->group_bppb_number($id);
     $data['group_so_number'] = $this->Model_nag->group_so_number($id);
