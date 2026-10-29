@@ -1511,6 +1511,10 @@ private function _jalankan_cancel_invoice($id)
     $this->Model_nag->cancel_invoice($id);
     $this->Model_nag->delete_pot($id);
     $this->Model_nag->delete_detail($id);
+    // Uang mukanya ikut dilepas. Cancel di sini mengembalikan bookingnya ke
+    // DRAFT dan menghapus seluruh isinya, jadi kalau catatan pemakaian uang
+    // muka ditinggal, uangnya tertahan di invoice yang sudah tidak ada.
+    $this->Model_nag->lepas_alokasi_pi($id);
 
         // Simpan Log Perubahan Data (dashboard) - 1 baris per FG/OUT kalau ada,
         // fallback 1 baris ringkasan invoice kalau tidak ada detail.
@@ -6371,6 +6375,10 @@ public function rvs_invoice()
     $this->Model_nag->cancel_invoice($id);
     $this->Model_nag->delete_pot($id);
     $this->Model_nag->delete_detail($id);
+    // Uang mukanya ikut dilepas. Cancel di sini mengembalikan bookingnya ke
+    // DRAFT dan menghapus seluruh isinya, jadi kalau catatan pemakaian uang
+    // muka ditinggal, uangnya tertahan di invoice yang sudah tidak ada.
+    $this->Model_nag->lepas_alokasi_pi($id);
     $this->Model_nag->update_bppb($id);
 }
 

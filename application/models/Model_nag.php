@@ -1444,6 +1444,30 @@ class Model_nag extends CI_Model
         return $hasil;
     }
 
+    /**
+     * Lepaskan uang muka yang sedang dipegang sebuah invoice.
+     *
+     * Dipanggil waktu invoicenya dibatalkan atau dibalik, bersama delete_pot()
+     * dan delete_detail(): catatan pemakaian uang muka itu bagian dari isi
+     * invoicenya, jadi ikut dihapus waktu isinya dihapus. Tanpa ini uangnya
+     * tertahan selamanya di invoice yang sudah kosong - Create Invoice masih
+     * menghitungnya terpakai, padahal laporan Sub Ledger sudah melepasnya.
+     *
+     * Tidak perlu diarsipkan: riwayat pembatalannya sudah tercatat di tbl_log,
+     * dan baris ini memang ditulis ulang tiap kali invoicenya disimpan.
+     */
+    function lepas_alokasi_pi($id)
+    {
+        if (!$this->db->table_exists('tbl_invoice_proforma_alokasi')) {
+            return 0;
+        }
+        $this->db->query(
+            "DELETE FROM tbl_invoice_proforma_alokasi WHERE id_book_invoice = ?",
+            array((int) $id)
+        );
+        return $this->db->affected_rows();
+    }
+
 
     function update_bppb($id)
     {
