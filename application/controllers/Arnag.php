@@ -5837,6 +5837,159 @@ public function kartu_ar_detail()
 }
 
     //ubah september
+// Sub Ledger - Uang Muka Penjualan. Saldo uang muka per dokumen, beserta
+// mutasinya di periode yang dipilih dan umurnya (aging).
+public function frm_report_uang_muka()
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+
+    $data['title'] = 'Sub Ledger - Uang Muka Penjualan';
+    $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+    $data['customer'] = $this->Model_nag->cari_customer();
+    $data['coa_um']   = $this->Model_nag->coa_uang_muka();
+    for ($i = 1; $i <= 7; $i++) {
+        $m = 'load_user_access_' . $i;
+        $data['user_access_' . $i] = $this->Model_nag->$m($this->session->userdata('username'));
+    }
+    $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
+
+    $this->load->view('templates/header', $data);
+    $this->load->view('templates/sidebar', $data);
+    $this->load->view('arnag/frm_report_uang_muka', $data);
+    $this->load->view('templates/footer', $data);
+}
+
+// Isi laporannya. Tanggalnya boleh kosong - artinya seluruh riwayat.
+public function subledger_uang_muka_json($dt_dari = null, $dt_sampai = null,
+                                         $no_coa = null, $id_customer = null)
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    // 'all' dari layar berarti tanpa saringan.
+    $kosong = function ($v) {
+        $v = trim((string) $v);
+        return ($v === '' || strtolower($v) === 'all' || $v === '-'
+                || strtolower($v) === 'all_customer' || strtolower($v) === 'all_coa') ? '' : $v;
+    };
+
+    $baris = $this->Model_nag->subledger_uang_muka(
+        $kosong($dt_dari), $kosong($dt_sampai), $kosong($no_coa), $kosong($id_customer));
+
+    // Jumlah per mata uang - dipakai baris total di kaki tabelnya.
+    $total = array();
+    // Kelompok aging ikut dijumlah - angkanya Eqv IDR semua, jadi bisa
+    // ditotal walau barisnya beda mata uang.
+    $angka = array('beginning', 'addition', 'deduction_invoice', 'deduction_gm', 'ending',
+                   'beginning_idr', 'addition_idr', 'deduction_invoice_idr',
+                   'deduction_gm_idr', 'ending_idr',
+                   'aging_1_30', 'aging_31_60', 'aging_61_90', 'aging_91_120',
+                   'aging_121_180', 'aging_181_360', 'aging_lebih_360');
+    foreach ($baris as $b) {
+        $curr = $b['curr'] === '' ? 'IDR' : $b['curr'];
+        if (!isset($total[$curr])) {
+            $total[$curr] = array('curr' => $curr);
+            foreach ($angka as $k) { $total[$curr][$k] = 0; }
+        }
+        foreach ($angka as $k) { $total[$curr][$k] += (float) $b[$k]; }
+    }
+    foreach ($total as $curr => $t) {
+        foreach ($angka as $k) { $total[$curr][$k] = round($t[$k], 2); }
+    }
+
+    echo json_encode(array(
+        'status' => TRUE,
+        'baris'  => $baris,
+        'total'  => array_values($total),
+    ));
+}
+
+// Unduhan laporan yang sama, dari sumber yang sama.
+public function export_subledger_uang_muka($dt_dari = null, $dt_sampai = null,
+                                           $no_coa = null, $id_customer = null)
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+
+    $kosong = function ($v) {
+        $v = trim((string) $v);
+        return ($v === '' || strtolower($v) === 'all' || $v === '-'
+                || strtolower($v) === 'all_customer' || strtolower($v) === 'all_coa') ? '' : $v;
+    };
+
+    $coa  = $kosong($no_coa);
+    $cust = $kosong($id_customer);
+
+    $data['baris']          = $this->Model_nag->subledger_uang_muka(
+        $kosong($dt_dari), $kosong($dt_sampai), $coa, $cust);
+    $data['periode_dari']   = $kosong($dt_dari);
+    $data['periode_sampai'] = $kosong($dt_sampai);
+
+    // Saringannya ikut ditulis di kepala berkas. Berkas yang sudah tersimpan
+    // di komputer orang lain tidak bisa lagi ditanya saringannya apa - jadi
+    // keterangannya harus ikut, bukan cuma periodenya.
+    $data['filter_coa'] = array('no_coa' => '', 'nama_coa' => '');
+    if ($coa !== '') {
+        $data['filter_coa']['no_coa'] = $coa;
+        foreach ((array) $this->Model_nag->coa_uang_muka() as $c) {
+            if ((string) $c['no_coa'] === $coa) {
+                $data['filter_coa']['nama_coa'] = $c['nama_coa'];
+                break;
+            }
+        }
+    }
+    $data['filter_customer'] = '';
+    if ($cust !== '') {
+        $buyer = $this->Model_nag->getbuyer($cust);
+        $data['filter_customer'] = $buyer ? (string) $buyer->Supplier : $cust;
+    }
+
+    $this->load->view('arnag/export_subledger_uang_muka', $data);
+}
+
+// Rincian satu dokumen: jurnal, alokasi & pemakaiannya. Dipakai modal di
+// layar Sub Ledger Uang Muka - supaya user tidak perlu membuka menu lain.
+public function dokumen_uang_muka_json($no_dok = null)
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    // Nomornya dikirim lewat POST, BUKAN dititipkan di alamat.
+    //
+    // Nomor dokumen AR memuat garis miring (0003/ALK/NAG/1026). Dijadikan
+    // %2F di path, Apache menolaknya dengan 404 - AllowEncodedSlashes
+    // bawaannya Off - jadi modal rinciannya selalu kosong. Dibiarkan mentah
+    // pun tidak bisa: CodeIgniter memecah alamat pada tiap garis miring, dan
+    // permitted_uri_chars di config memang tidak mengizinkannya.
+    //
+    // Bentuk lama (nomornya di alamat) tetap dilayani supaya tautan yang
+    // terlanjur dipakai di tempat lain tidak mati.
+    $no = (string) $this->input->post('no_dok');
+    if (trim($no) === '') {
+        $ruas = array_slice($this->uri->rsegment_array(), 2);
+        $no = $ruas ? implode('/', $ruas) : (string) $no_dok;
+    }
+    $no = urldecode(trim($no));
+
+    $rinci = $this->Model_nag->dokumen_uang_muka($no);
+
+    echo json_encode(array(
+        'status'    => TRUE,
+        'no_dok'    => $no,
+        'jurnal'    => $rinci['jurnal'],
+        'alokasi'   => $rinci['alokasi'],
+        'pemakaian' => $rinci['pemakaian'],
+    ));
+}
+
 public function frm_report_invoice_dpcbd()
 {
     if (!$this->session->userdata('username')) {

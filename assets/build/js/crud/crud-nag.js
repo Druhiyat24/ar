@@ -21676,3 +21676,404 @@ function mpi_export() {
 	var customer = $('#customer').val();
 	window.open('export_mutasi_pi/' + dari + '/' + sampai + '/' + customer, '_blank');
 }
+
+/* ===================== Sub Ledger - Uang Muka Penjualan =====================
+   Satu baris = satu uang muka (per COA, per dokumen, per customer). Angkanya
+   dibaca dari buku besar lewat arnag/subledger_uang_muka_json, jadi di sini
+   tinggal memajang. */
+
+var UM_DT = null;
+
+function um_teks(v) {
+	return $('<div>').text((v === null || v === undefined) ? '' : v).html();
+}
+
+function um_isi(v) {
+	var s = String(v === null || v === undefined ? '' : v).trim();
+	return s === '' ? '-' : um_teks(s);
+}
+
+function um_angka(v) {
+	var n = parseFloat(String(v === null || v === undefined ? '' : v).replace(/,/g, ''));
+	if (isNaN(n)) { n = 0; }
+	return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function um_loading(tampil) {
+	$('#um-list-area').toggleClass('is-muat-ulang', !!tampil && !!UM_DT && UM_DT.rows().count() > 0);
+	$('#um-list-loader').toggleClass('show', !!tampil);
+}
+
+function um_dt() {
+	if (UM_DT) { return UM_DT; }
+
+	// Peta kolomnya (0-based):
+	//   0 Coa Number  1 Coa Name  2 Profit Center  3 PI No  4 PI Date
+	//   5 BM No  6 BM Date  7 Allocation No  8 Allocation Date
+	//   9 Customer Name  10 Payer  11 Currency
+	//   12-13 Beginning  14-15 Addition
+	//   16-18 Deduction Invoice  19-21 Deduction Memorial
+	//   22-23 Ending  24-30 Aging
+	UM_DT = $('#table-uang-muka').DataTable({
+		scrollX: true,
+		autoWidth: false,
+		stateSave: true,
+		stateDuration: -1,
+		pageLength: 10,
+		lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+		order: [[0, 'asc'], [3, 'asc']],
+		// TIAP KOLOM HANYA DISEBUT SEKALI di sini: columnDefs yang belakangan
+		// MENIMPA className sebelumnya, bukan menambahkannya. Dulu definisi
+		// kolom angka ditaruh terakhir dan menargetkan kolom yang sama dengan
+		// definisi warna - akibatnya warna kelompok hilang di semua kolom
+		// angka. Jadi warna, perataan & format angkanya ditulis sekaligus.
+		//
+		// 'num-fmt' dipakai karena angkanya berpemisah ribuan; tanpa itu
+		// urutannya jadi urut huruf, bukan urut angka.
+		columnDefs: [
+			{ targets: 2, className: 'dn-tengah' },
+			{ targets: 11, className: 'dn-tengah g-beg' },
+			{ targets: [12, 13], className: 'dn-angka g-beg', type: 'num-fmt' },
+			{ targets: [14, 15], className: 'dn-angka g-add', type: 'num-fmt' },
+			{ targets: 16, className: 'g-dedi' },
+			{ targets: [17, 18], className: 'dn-angka g-dedi', type: 'num-fmt' },
+			{ targets: 19, className: 'g-dedm' },
+			{ targets: [20, 21], className: 'dn-angka g-dedm', type: 'num-fmt' },
+			{ targets: [22, 23], className: 'dn-angka g-end', type: 'num-fmt' },
+			{ targets: [24, 25, 26, 27, 28, 29, 30], className: 'dn-angka g-age', type: 'num-fmt' }
+		],
+		language: {
+			search: '',
+			searchPlaceholder: 'Search in list...',
+			lengthMenu: 'Show _MENU_ rows',
+			info: 'Showing _START_-_END_ of _TOTAL_',
+			infoEmpty: 'No data',
+			infoFiltered: '(filtered from _MAX_)',
+			zeroRecords: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-search"></i></span>'
+				+ '<div class="dn-kosong-judul">No advance matches the search.</div></div>',
+			emptyTable: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-wallet"></i></span>'
+				+ '<div class="dn-kosong-judul">No data yet - set the filter above, then click Search.</div></div>',
+			paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Prev' }
+		}
+	});
+
+	$(window).off('resize.um').on('resize.um', function () {
+		if (UM_DT) { UM_DT.columns.adjust(); }
+		um_luruskan_total();
+	});
+	$(window).off('load.um').on('load.um', function () {
+		if (UM_DT) { UM_DT.columns.adjust(); }
+	});
+	setTimeout(function () { if (UM_DT) { UM_DT.columns.adjust(); } }, 300);
+
+	UM_DT.columns.adjust();
+	return UM_DT;
+}
+
+// Lebar sel baris jumlah disalin dari kolom kepalanya - kaki tabelnya tabel
+// tersendiri waktu scrollX menyala, jadi tanpa ini angkanya meleset.
+function um_luruskan_total() {
+	// Sel kepala TIAP KOLOM - bukan baris kepala terakhir. Sepuluh kolom
+	// keterangan di depan memakai rowspan, jadi barisnya tidak sama panjang
+	// dengan jumlah kolomnya.
+	var kepala = [];
+	if (UM_DT) {
+		UM_DT.columns().every(function (kol) {
+			kepala.push($(this.header()));
+		});
+	}
+	var baris = $('#um-total tr');
+	if (!kepala.length || !baris.length) { return; }
+
+	var tabelKepala = $('#um-list-area .dataTables_scrollHead table').first();
+	var tabelKaki = $('#um-total').closest('table');
+	if (tabelKepala.length && tabelKaki.length) {
+		tabelKaki.css({ width: tabelKepala.outerWidth() + 'px', tableLayout: 'fixed' });
+	}
+	baris.each(function () {
+		$(this).children('td').each(function (i) {
+			if (i >= kepala.length) { return; }
+			var lebar = kepala[i].outerWidth();
+			$(this).css({ boxSizing: 'border-box', width: lebar + 'px',
+				minWidth: lebar + 'px', maxWidth: lebar + 'px' });
+		});
+	});
+}
+
+// Jumlah per mata uang, dipasang di kaki tabelnya.
+function um_gambar_total(total) {
+	if (!UM_DT) { return; }
+
+	var tampak = [];
+	UM_DT.columns().every(function (kol) {
+		if (this.visible()) { tampak.push(kol); }
+	});
+	// Kolom mana berisi apa - dipakai menaruh angkanya di tempat yang benar.
+	var nilai = {
+		12: 'beginning', 13: 'beginning_idr',
+		14: 'addition', 15: 'addition_idr',
+		17: 'deduction_invoice', 18: 'deduction_invoice_idr',
+		20: 'deduction_gm', 21: 'deduction_gm_idr',
+		22: 'ending', 23: 'ending_idr',
+		24: 'aging_1_30', 25: 'aging_31_60', 26: 'aging_61_90', 27: 'aging_91_120',
+		28: 'aging_121_180', 29: 'aging_181_360', 30: 'aging_lebih_360'
+	};
+
+	// Warna tiap kelompok, sama dengan kolomnya.
+	var warna = {};
+	$.each({ 'g-beg': [11, 12, 13], 'g-add': [14, 15], 'g-dedi': [16, 17, 18],
+		'g-dedm': [19, 20, 21], 'g-end': [22, 23],
+		'g-age': [24, 25, 26, 27, 28, 29, 30] }, function (kelas, kolom) {
+		$.each(kolom, function (i, k) { warna[k] = kelas; });
+	});
+
+	var isi = '';
+	$.each(total || [], function (i, t) {
+		isi += '<tr>';
+		$.each(tampak, function (k, kol) {
+			var kls = warna[kol] ? ' ' + warna[kol] : '';
+			if (kol === 0) {
+				isi += '<td><span class="um-total-label">Total ' + um_teks(t.curr) + '</span></td>';
+			} else if (nilai[kol]) {
+				isi += '<td class="dn-angka' + kls + '">' + um_angka(t[nilai[kol]]) + '</td>';
+			} else {
+				isi += '<td class="' + $.trim(kls) + '"></td>';
+			}
+		});
+		isi += '</tr>';
+	});
+	$('#um-total').html(isi);
+	um_luruskan_total();
+}
+
+// 'all' dikirim waktu tanggalnya dikosongkan - alamatnya tidak boleh punya
+// ruas kosong, nanti ruas berikutnya yang bergeser.
+function um_ruas(v) {
+	var s = String(v === null || v === undefined ? '' : v).trim();
+	// 'all_coa' & 'all_customer' adalah nilai pilihan "All" di layarnya -
+	// artinya sama dengan tanpa saringan, jadi alamatnya pun ditulis sama.
+	if (s === '' || s === 'all_coa' || s === 'all_customer') { return 'all'; }
+	return encodeURIComponent(s);
+}
+
+function um_alamat(awalan) {
+	return awalan + '/' + um_ruas($('#filter_from').val())
+		+ '/' + um_ruas($('#filter_to').val())
+		+ '/' + um_ruas($('#coa_um').val())
+		+ '/' + um_ruas($('#customer').val());
+}
+
+function um_cari() {
+	um_dt();
+	um_loading(true);
+
+	return $.ajax({
+		url: um_alamat('subledger_uang_muka_json'),
+		type: 'GET',
+		dataType: 'JSON'
+	}).done(function (j) {
+		if (!j || !j.status) {
+			nag_pesan((j && j.message) || 'The report could not be loaded.', 'Load failed', 'error');
+			return;
+		}
+		var baris = [];
+		$.each(j.baris || [], function (i, b) {
+			baris.push([
+				um_teks(b.no_coa),
+				um_teks(b.nama_coa),
+				um_isi(b.profit_center),
+				um_dok(b.no_pi),
+				um_isi(b.tgl_pi),
+				um_dok(b.no_bm),
+				um_isi(b.tgl_bm),
+				um_dok(b.no_alokasi),
+				um_isi(b.tgl_alokasi),
+				um_teks(b.customer),
+				um_isi(b.payer),
+				um_teks(b.curr),
+				um_angka(b.beginning),
+				um_angka(b.beginning_idr),
+				um_angka(b.addition),
+				um_angka(b.addition_idr),
+				um_dok(b.doc_deduction),
+				um_angka(b.deduction_invoice),
+				um_angka(b.deduction_invoice_idr),
+				um_dok(b.doc_deduction_gm),
+				um_angka(b.deduction_gm),
+				um_angka(b.deduction_gm_idr),
+				um_angka(b.ending),
+				um_angka(b.ending_idr),
+				um_angka(b.aging_1_30),
+				um_angka(b.aging_31_60),
+				um_angka(b.aging_61_90),
+				um_angka(b.aging_91_120),
+				um_angka(b.aging_121_180),
+				um_angka(b.aging_181_360),
+				um_angka(b.aging_lebih_360)
+			]);
+		});
+
+		UM_DT.clear();
+		if (baris.length) { UM_DT.rows.add(baris); }
+		UM_DT.draw();
+		um_gambar_total(j.total);
+		UM_DT.columns.adjust();
+		um_luruskan_total();
+	}).fail(function () {
+		nag_pesan('The report could not be loaded. Please try again.', 'Load failed', 'error');
+	}).always(function () {
+		um_loading(false);
+	});
+}
+
+function um_export() {
+	window.open(um_alamat('export_subledger_uang_muka'), '_blank');
+}
+
+/* ---------- Rincian satu dokumen ----------
+   Tiap nomor di laporan ini bisa diklik - jurnal, alokasi & pemakaiannya
+   muncul di modal, jadi user tidak perlu membuka menu lain. */
+
+function um_dok(v) {
+	var s = String(v === null || v === undefined ? '' : v).trim();
+	if (s === '' || s === '-') { return '-'; }
+	// Satu sel bisa memuat beberapa nomor, dipisah koma.
+	var keluar = [];
+	$.each(s.split(','), function (i, n) {
+		n = $.trim(n);
+		if (n === '') { return; }
+		keluar.push('<a class="um-dok" data-no="' + um_teks(n) + '">' + um_teks(n) + '</a>');
+	});
+	return keluar.length ? keluar.join(', ') : '-';
+}
+
+function um_dok_angka(v) {
+	var n = parseFloat(String(v === null || v === undefined ? '' : v).replace(/,/g, ''));
+	if (isNaN(n)) { n = 0; }
+	return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Satu tabel di dalam modalnya: judul, kepala kolom, lalu barisnya.
+function um_dok_tabel(judul, ikon, kolom, baris, isiBaris) {
+	var isi = '<div class="um-dok-bagian"><div class="um-dok-judul">'
+		+ '<i class="fas ' + ikon + '"></i>' + judul + '</div>';
+	if (!baris || !baris.length) {
+		return isi + '<div class="um-dok-kosong">Tidak ada data.</div></div>';
+	}
+	isi += '<div class="um-dok-wrap"><table><thead><tr>';
+	$.each(kolom, function (i, k) {
+		isi += '<th' + (k.angka ? ' class="angka"' : '') + '>' + k.nama + '</th>';
+	});
+	isi += '</tr></thead><tbody>';
+	$.each(baris, function (i, b) { isi += '<tr>' + isiBaris(b) + '</tr>'; });
+	return isi + '</tbody></table></div></div>';
+}
+
+function um_dok_buka(no) {
+	$('#um-dok-no').text(no);
+	$('#um-dok-isi').html('<div class="um-dok-kosong">Loading...</div>');
+	$('#modal-um-dok').modal('show');
+
+	// Nomornya DIKIRIM SEBAGAI DATA, bukan ditempel ke alamat: nomor dokumen
+	// AR memuat garis miring, dan garis miring tidak bisa lewat di path -
+	// Apache membalas 404 untuk %2F, jadi modalnya dulu selalu kosong.
+	return $.ajax({
+		url: 'dokumen_uang_muka_json',
+		type: 'POST',
+		data: { no_dok: no },
+		dataType: 'JSON'
+	}).done(function (j) {
+		if (!j || !j.status) {
+			$('#um-dok-isi').html('<div class="um-dok-kosong">'
+				+ um_teks((j && j.message) || 'The detail could not be loaded.') + '</div>');
+			return;
+		}
+
+		var isi = '';
+
+		/* ---- jurnalnya ---- */
+		var debit = 0, kredit = 0;
+		$.each(j.jurnal || [], function (i, b) {
+			debit += parseFloat(b.debit_idr) || 0;
+			kredit += parseFloat(b.credit_idr) || 0;
+		});
+		isi += um_dok_tabel('Journal', 'fa-book', [
+			{ nama: 'Date' }, { nama: 'COA' }, { nama: 'COA Name' }, { nama: 'Ref Doc' },
+			{ nama: 'Curr' }, { nama: 'Rate', angka: true },
+			{ nama: 'Debit', angka: true }, { nama: 'Credit', angka: true },
+			{ nama: 'Debit IDR', angka: true }, { nama: 'Credit IDR', angka: true },
+			{ nama: 'Description' }, { nama: 'Status' }
+		], j.jurnal, function (b) {
+			return '<td>' + um_teks(b.tgl_journal) + '</td>'
+				+ '<td>' + um_teks(b.no_coa) + '</td>'
+				+ '<td>' + um_teks(b.nama_coa) + '</td>'
+				+ '<td>' + um_isi(b.reff_doc) + '</td>'
+				+ '<td>' + um_teks(b.curr) + '</td>'
+				+ '<td class="angka">' + um_dok_angka(b.rate) + '</td>'
+				+ '<td class="angka">' + um_dok_angka(b.debit) + '</td>'
+				+ '<td class="angka">' + um_dok_angka(b.credit) + '</td>'
+				+ '<td class="angka">' + um_dok_angka(b.debit_idr) + '</td>'
+				+ '<td class="angka">' + um_dok_angka(b.credit_idr) + '</td>'
+				+ '<td>' + um_isi(b.keterangan) + '</td>'
+				+ '<td>' + um_isi(b.status) + '</td>';
+		});
+		if ((j.jurnal || []).length) {
+			// Jurnal yang benar selalu seimbang - kalau tidak, langsung kelihatan.
+			isi = isi.replace('</div></div>',
+				'</div><div class="um-dok-seimbang">Total debit <b>' + um_dok_angka(debit)
+				+ '</b> &middot; total credit <b>' + um_dok_angka(kredit) + '</b>'
+				+ (Math.abs(debit - kredit) < 0.5 ? ' &middot; balanced'
+					: ' &middot; <b>not balanced</b>') + '</div></div>');
+		}
+
+		/* ---- alokasinya ---- */
+		isi += um_dok_tabel('Allocation', 'fa-money-check-alt', [
+			{ nama: 'Allocation No' }, { nama: 'Date' }, { nama: 'BM / GM No' },
+			{ nama: 'Customer' }, { nama: 'COA' }, { nama: 'COA Name' },
+			{ nama: 'Ref No' }, { nama: 'Curr' }, { nama: 'Rate', angka: true },
+			{ nama: 'Bill', angka: true }, { nama: 'Allocated', angka: true },
+			{ nama: 'Status' }
+		], j.alokasi, function (b) {
+			return '<td>' + um_teks(b.no_alk) + '</td>'
+				+ '<td>' + um_teks(b.tgl_alk) + '</td>'
+				+ '<td>' + um_teks(b.doc_number) + '</td>'
+				+ '<td>' + um_teks(b.customer) + '</td>'
+				+ '<td>' + um_teks(b.coa) + '</td>'
+				+ '<td>' + um_teks(b.nama_coa) + '</td>'
+				+ '<td>' + um_teks(b.no_ref) + '</td>'
+				+ '<td>' + um_teks(b.curr) + '</td>'
+				+ '<td class="angka">' + um_dok_angka(b.rate) + '</td>'
+				+ '<td class="angka">' + um_dok_angka(b.total) + '</td>'
+				+ '<td class="angka">' + um_dok_angka(b.amount) + '</td>'
+				+ '<td>' + um_isi(b.status) + '</td>';
+		});
+
+		/* ---- pemakaiannya di invoice ---- */
+		isi += um_dok_tabel('Used in Invoice', 'fa-file-invoice', [
+			{ nama: 'Invoice No' }, { nama: 'Invoice Date' }, { nama: 'PI No' },
+			{ nama: 'Type' }, { nama: 'Customer' }, { nama: 'Curr' },
+			{ nama: 'PI Value', angka: true }, { nama: 'Used', angka: true },
+			{ nama: 'Status' }
+		], j.pemakaian, function (b) {
+			return '<td>' + um_teks(b.no_invoice) + '</td>'
+				+ '<td>' + um_teks(b.tgl_inv) + '</td>'
+				+ '<td>' + um_teks(b.no_proforma_invoice) + '</td>'
+				+ '<td>' + um_teks(b.type_pi) + '</td>'
+				+ '<td>' + um_teks(b.customer) + '</td>'
+				+ '<td>' + um_teks(b.curr) + '</td>'
+				+ '<td class="angka">' + um_dok_angka(b.nilai_pi) + '</td>'
+				+ '<td class="angka">' + um_dok_angka(b.amount) + '</td>'
+				+ '<td>' + um_isi(b.status) + '</td>';
+		});
+
+		$('#um-dok-isi').html(isi);
+	}).fail(function () {
+		$('#um-dok-isi').html('<div class="um-dok-kosong">'
+			+ 'The detail could not be loaded. Please try again.</div>');
+	});
+}
+
+$(document).off('click.umdok').on('click.umdok', '#um-list-area a.um-dok', function (e) {
+	e.preventDefault();
+	um_dok_buka($(this).data('no'));
+});
