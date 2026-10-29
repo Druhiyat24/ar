@@ -1214,6 +1214,8 @@
             curr: piCurr(),
             'no_so[]': piSoInvoice(),
             id_book_invoice: $('#ci-id-inv').val() || 0,
+            // Uang muka tidak boleh dipakai lintas profit center.
+            pc: inv.pc || '',
             sumber: kotak
         }).done(function (d) {
             inv[k.data] = (d && d.data) ? d.data : [];
@@ -1294,7 +1296,14 @@
                 + $('<div>').text(r.no_pi).html() + '">'
                 + '<td class="dn-tengah"><input type="checkbox" class="ci-pi-cek"'
                 + (dipilih ? ' checked' : '') + (bisa ? '' : ' disabled') + '></td>'
-                + '<td>' + teks(r.no_pi) + '</td>'
+                // Uang muka yang sumbernya BM/GM langsung belum punya nomor
+                // PI - kolomnya distrip, bukan dibiarkan kosong. Yang dipajang
+                // pi_label, BUKAN no_pi: no_pi itu kunci barisnya, dan untuk
+                // baris BM isinya nomor BM - tidak boleh nyasar ke kolom PI.
+                + '<td>' + (String(r.pi_label || '').trim() ? teks(r.pi_label) : '-') + '</td>'
+                + (kotak === 'OTHER'
+                    ? '<td>' + (String(r.no_bm || '').trim() ? teks(r.no_bm) : '-') + '</td>'
+                    : '')
                 + '<td>' + teks(r.type_pi) + '</td>'
                 + (kotak === 'OTHER' ? '<td>' + teks(r.customer) + '</td>' : '')
                 + '<td>' + teks(r.date_pi) + '</td>'

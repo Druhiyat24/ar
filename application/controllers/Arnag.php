@@ -2375,7 +2375,10 @@ public function pi_untuk_invoice_json()
         (string) $this->input->post('curr'),
         $so,
         (int) $this->input->post('id_book_invoice'),
-        (string) $this->input->post('sumber')
+        (string) $this->input->post('sumber'),
+        // Cadangan untuk invoice yang bookingnya belum tersimpan; kalau sudah,
+        // modelnya memakai isi bookingnya sendiri.
+        (string) $this->input->post('pc')
     );
     echo json_encode(array('status' => TRUE, 'data' => $data));
 }

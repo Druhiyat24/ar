@@ -117,7 +117,7 @@
   background: #eef2f7;
 }
 
-/* ---- Kartu Other Proforma Invoice ----
+/* ---- Kartu Others ----
    Keterangan kecil di sebelah judul & catatan peringatannya. Daftarnya tidak
    disaring customer, jadi kotak carinya ikut di baris judul. */
 .ci-pi-sub { display: block; font-size: 11px; font-weight: 400; color: #94a3b8; margin-top: 2px; }
@@ -1185,7 +1185,7 @@
           </div>
         </div>
       </div>
-      <!-- ===== Other Proforma Invoice =====
+      <!-- ===== Others =====
            Kartu di atas cuma memuat PI yang SO-nya ikut ditagih invoice ini -
            itu patokannya. Kartu ini memuat SISANYA yang masih outstanding:
            tanpa filter SO, tanpa filter customer, semua jenis (DP, CBD, PI
@@ -1198,7 +1198,7 @@
       <div class="card" id="ci-pi2-card" hidden>
         <div class="card-body">
           <div class="table-header">
-            <span class="table-title"><i class="fas fa-folder-open"></i>Other Proforma Invoice<small class="ci-pi-sub">all outstanding - not filtered by SO or customer</small></span>
+            <span class="table-title"><i class="fas fa-folder-open"></i>Others<small class="ci-pi-sub">all outstanding - not filtered by SO or customer</small></span>
             <div class="dn-filter-aksi">
               <input type="text" class="form-control ci-pi-cari" id="ci-pi2-cari" placeholder="Search proforma, customer, SO...">
               <span class="ci-pi-info" id="ci-pi2-info"></span>
@@ -1218,6 +1218,7 @@
                     <input type="checkbox" id="ci-pi2-semua" title="Select all">
                   </th>
                   <th>No Prof Inv</th>
+                  <th>BM / GM No</th>
                   <th>Proforma Type</th>
                   <th>Customer</th>
                   <th>Date</th>
@@ -1233,7 +1234,7 @@
               <tbody id="ci-pi2-tbody"></tbody>
               <tfoot>
                 <tr id="ci-pi2-kaki" hidden>
-                  <th colspan="10" class="text-right">Down Payment / Advance</th>
+                  <th colspan="11" class="text-right">Down Payment / Advance</th>
                   <th class="text-right" id="ci-pi2-dp">0.00</th>
                   <th class="text-right" id="ci-pi2-adv">0.00</th>
                 </tr>

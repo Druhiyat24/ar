@@ -12221,7 +12221,8 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
      * @param int    $id_book_invoice invoice yang sedang dibuat (0 = baru)
      * @param string $sumber          'PI' (kotak atas) atau 'OTHER' (kotak bawah)
      */
-    function pi_untuk_invoice($id_customer, $curr, $no_so = array(), $id_book_invoice = 0, $sumber = 'PI')
+    function pi_untuk_invoice($id_customer, $curr, $no_so = array(), $id_book_invoice = 0,
+                             $sumber = 'PI', $pc_invoice = '')
     {
         if (!$this->db->table_exists('tbl_invoice_proforma')) {
             return array();
@@ -12233,16 +12234,130 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         // Tabel catatannya baru ada setelah migrations/20261017 - selama belum
         // dijalankan, daftarnya tetap keluar dengan pemakaian nol.
         $ada_alokasi = $this->db->table_exists('tbl_invoice_proforma_alokasi');
+
+        // Invoice yang DIBATALKAN tidak lagi memegang uang mukanya.
+        //
+        // Cancel invoice cuma mengubah tbl_book_invoice.status jadi CANCEL;
+        // baris alokasinya sengaja tidak dihapus supaya riwayatnya tetap
+        // terbaca. Jadi penjumlahannya yang harus menyaring - tanpa ini
+        // uangnya tertahan selamanya di invoice yang sudah batal, padahal
+        // laporan Sub Ledger sudah melepasnya. Yang bookingnya tidak ketemu
+        // sama sekali tetap dihitung: lebih baik tertahan daripada terpakai
+        // dua kali.
+        $batal_inv = ($ada_alokasi && $this->db->table_exists('tbl_book_invoice'))
+            ? " AND NOT EXISTS (SELECT 1 FROM tbl_book_invoice AS bc
+                                 WHERE bc.id = k.id_book_invoice
+                                   AND IFNULL(bc.status, '') LIKE 'CANCEL%')"
+            : '';
+
+        // Berapa yang sudah dialokasikan ke PI ini - dari alokasi mana pun.
+        // Nol berarti uangnya belum masuk, jadi PI-nya belum boleh dipanggil.
+        //
+        // Kalau tabel alokasinya memang belum ada di pemasangan ini, batasnya
+        // tidak diterapkan: lebih baik PI-nya tetap bisa dipakai daripada
+        // seluruh daftarnya kosong tanpa penjelasan.
+        $dialokasikan = $this->db->table_exists('tbl_alokasi_detail')
+            ? "IFNULL((SELECT SUM(k.amount) FROM tbl_alokasi_detail k
+                        WHERE k.no_ref = a.no_proforma_invoice), 0)"
+            : '1';
         $terpakai = $ada_alokasi
             ? "IFNULL((SELECT SUM(k.amount) FROM tbl_invoice_proforma_alokasi k
                         WHERE k.no_proforma_invoice = a.no_proforma_invoice
-                          AND k.id_book_invoice <> $id_inv), 0)"
+                          AND k.id_book_invoice <> $id_inv
+                          $batal_inv), 0)"
             : '0';
+
+        // Uang muka LAMA tidak boleh ditawarkan lagi.
+        //
+        // Pemakaian uang muka baru tercatat per dokumen sejak Oktober 2026
+        // (tbl_invoice_proforma_alokasi). Yang dipakai sebelum itu dicatat
+        // langsung di jurnal, jadi tidak terbaca di sini - akibatnya PI lama
+        // yang sudah habis bertahun-tahun lalu masih tampak utuh dan
+        // ditawarkan lagi. Contohnya 0001/D/L/NAG/0223: uangnya sudah dipotong
+        // invoice 0002/L/NAG/0523 pada Mei 2023, tapi tetap muncul dengan
+        // sisa penuh.
+        //
+        // Jadi aturannya disamakan dengan laporan Sub Ledger: yang boleh
+        // ditawarkan cuma uang muka yang alokasinya terjadi sejak batas itu,
+        // ATAU yang sisanya memang sudah diperiksa tim AR dan dimasukkan ke
+        // tbl_uang_muka_awal.
+        $batas_um = self::AWAL_UANG_MUKA;
+        $alokasi_baru = $this->db->table_exists('tbl_alokasi')
+            ? "IFNULL((SELECT COUNT(*) FROM tbl_alokasi_detail AS kb
+                   INNER JOIN tbl_alokasi AS ab ON ab.no_alk = kb.no_alk
+                        WHERE kb.no_ref = a.no_proforma_invoice
+                          AND IFNULL(ab.status, '') NOT LIKE 'CANCEL%'
+                          AND ab.tgl_alk >= '$batas_um'), 0)"
+            : '1';
+        $ada_saldo_awal = $this->db->table_exists('tbl_uang_muka_awal')
+            ? "IFNULL((SELECT COUNT(*) FROM tbl_uang_muka_awal AS wa
+                        WHERE wa.no_pi = a.no_proforma_invoice
+                           OR wa.no_dokumen = a.no_proforma_invoice), 0)"
+            : '0';
+
+        // BERAPA UANGNYA YANG BENAR-BENAR ADA.
+        //
+        // Nilai PI itu batas atasnya - yang bisa dipotong cuma sebanyak uang
+        // yang sudah diterima. Uang itu datang dari dua arah, persis seperti
+        // di laporan Sub Ledger: saldo awal yang sudah diperiksa tim AR, dan
+        // alokasi sejak 1 Oktober 2026. Dijumlah, lalu dibatasi nilai PI-nya
+        // sendiri supaya tidak pernah melebihi tagihan yang boleh dipotong.
+        $saldo_awal_nilai = $this->db->table_exists('tbl_uang_muka_awal')
+            ? "IFNULL((SELECT SUM(wn.amount) FROM tbl_uang_muka_awal AS wn
+                        WHERE wn.no_pi = a.no_proforma_invoice
+                           OR wn.no_dokumen = a.no_proforma_invoice), 0)"
+            : '0';
+        $alokasi_nilai_baru = $this->db->table_exists('tbl_alokasi')
+            ? "IFNULL((SELECT SUM(kn.amount) FROM tbl_alokasi_detail AS kn
+                   INNER JOIN tbl_alokasi AS an ON an.no_alk = kn.no_alk
+                        WHERE kn.no_ref = a.no_proforma_invoice
+                          AND IFNULL(an.status, '') NOT LIKE 'CANCEL%'
+                          AND an.tgl_alk >= '$batas_um'), 0)"
+            : '0';
+        // Kalau tabel alokasinya memang belum ada di pemasangan ini, batas
+        // uang masuk tidak diterapkan - sama seperti saringan di atas.
+        $nilai_pakai = $this->db->table_exists('tbl_alokasi')
+            ? "LEAST($nilai, $saldo_awal_nilai + $alokasi_nilai_baru)"
+            : $nilai;
+
+        // Nomor bank masuk / memorial yang mendanai PI ini - dibaca dari
+        // alokasinya. Satu PI bisa didanai lebih dari satu dokumen, jadi
+        // semuanya ditulis dipisah koma, sama seperti di laporan Sub Ledger.
+        $no_bm = ($this->db->table_exists('tbl_alokasi_detail')
+                  && $this->db->table_exists('tbl_alokasi'))
+            ? "IFNULL((SELECT GROUP_CONCAT(DISTINCT az.doc_number
+                                   ORDER BY az.doc_number SEPARATOR ', ')
+                         FROM tbl_alokasi_detail AS dz
+                   INNER JOIN tbl_alokasi AS az ON az.no_alk = dz.no_alk
+                        WHERE dz.no_ref = a.no_proforma_invoice
+                          AND IFNULL(az.status, '') NOT LIKE 'CANCEL%'
+                          AND TRIM(IFNULL(az.doc_number, '')) NOT IN ('', '-')), '')"
+            : "''";
         $dipakai = $ada_alokasi
             ? "IFNULL((SELECT SUM(k.amount) FROM tbl_invoice_proforma_alokasi k
                         WHERE k.no_proforma_invoice = a.no_proforma_invoice
                           AND k.id_book_invoice = $id_inv), 0)"
             : '0';
+
+        // Profit center uang mukanya - dipakai menolak pemakaian lintas
+        // profit center. Sumbernya sama dengan yang dibaca laporan Sub
+        // Ledger: baris alokasinya, lalu catatan saldo awalnya.
+        $pcAlok = $this->kolom_ada('tbl_alokasi_detail', 'profit_center')
+            ? "(SELECT NULLIF(TRIM(IFNULL(dp.profit_center, '')), '')
+                  FROM tbl_alokasi_detail AS dp
+            INNER JOIN tbl_alokasi AS ap ON ap.no_alk = dp.no_alk
+                 WHERE dp.no_ref = a.no_proforma_invoice
+                   AND IFNULL(ap.status, '') NOT LIKE 'CANCEL%'
+                   AND TRIM(IFNULL(dp.profit_center, '')) <> ''
+              ORDER BY ap.tgl_alk, dp.id LIMIT 1)"
+            : 'NULL';
+        $pcAwalPI = $this->kolom_ada('tbl_uang_muka_awal', 'profit_center')
+            ? "(SELECT NULLIF(TRIM(IFNULL(wp.profit_center, '')), '')
+                  FROM tbl_uang_muka_awal AS wp
+                 WHERE wp.no_dokumen = a.no_proforma_invoice
+                   AND TRIM(IFNULL(wp.profit_center, '')) <> '' LIMIT 1)"
+            : 'NULL';
+        $pcPI = "UPPER(TRIM(IFNULL(COALESCE($pcAlok, $pcAwalPI), 'NAG')))";
 
         // Kotak atas cuma mengurus PI milik customer invoicenya; kotak bawah
         // memang tidak disaring customer - PI punya siapa pun boleh dipanggil,
@@ -12255,12 +12370,22 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         }
 
         $baris = $this->db->query("
-            SELECT a.id, a.no_proforma_invoice AS no_pi, a.status, a.id_customer,
+            SELECT a.id, a.no_proforma_invoice AS no_pi,
+                   -- Yang dipajang di kolom PI No. Untuk PI biasa sama dengan
+                   -- kunci barisnya; untuk baris BM/GM nanti kosong, karena
+                   -- dokumennya memang belum punya Proforma Invoice.
+                   a.no_proforma_invoice AS pi_label,
+                   a.status, a.id_customer,
                    IFNULL(s.supplier, a.id_customer) AS customer,
                    DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi,
                    $tipe AS type_pi,
-                   $nilai AS nilai,
+                   $nilai_pakai AS nilai,
                    $terpakai AS terpakai,
+                   $dialokasikan AS sudah_dialokasikan,
+                   $alokasi_baru AS alokasi_sejak_batas,
+                   $ada_saldo_awal AS ada_saldo_awal,
+                   $no_bm AS no_bm,
+                   $pcPI AS profit_center,
                    $dipakai AS dipakai,
                    IFNULL(a.dp, 0) AS dp,
                    (SELECT GROUP_CONCAT(DISTINCT d.curr ORDER BY d.curr SEPARATOR ',')
@@ -12274,10 +12399,226 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
              WHERE IFNULL(a.status, '') NOT LIKE 'CANCEL%'
                $saring_cust
             HAVING type_pi IN ('DP', 'CBD', 'PI NON SO')
+               -- SYARAT UANGNYA SUDAH ADA, dua jalan yang sama sahnya:
+               --
+               -- a. saldo awal yang sudah diperiksa tim AR. Ini yang menentukan
+               --    sendiri - PI-nya boleh saja belum pernah lewat menu Alokasi,
+               --    dan memang begitulah sebagian uang muka lama: uangnya masuk
+               --    lewat BM yang langsung mengkredit COA uang muka. Kalau di
+               --    sini masih disyaratkan ada alokasi, uang muka itu hilang
+               --    dari daftar padahal saldonya nyata.
+               --
+               -- b. alokasi yang terjadi SEJAK 1 Oktober 2026. Pemakaian sebelum
+               --    batas itu tidak tercatat per dokumen, jadi sisanya tidak bisa
+               --    dipastikan - uang muka lama yang sudah habis bertahun-tahun
+               --    lalu tidak boleh ditawarkan lagi. Lihat catatan batas tanggal
+               --    di atas.
+               AND (ada_saldo_awal > 0
+                    OR (sudah_dialokasikan > 0 AND alokasi_sejak_batas > 0))
           ORDER BY a.tgl_proforma_inv DESC, a.no_proforma_invoice DESC
         ", $bind)->result_array();
 
+        // ---------- SALDO AWAL yang tidak punya catatan Proforma Invoice ----------
+        //
+        // Uang muka yang masih bersisa per 1 Oktober 2026 sebagian besar
+        // nomornya dari sistem lama (PI-45930A, PI-44672, ...) dan tidak
+        // pernah tercatat di tbl_invoice_proforma. Query di atas membacanya
+        // dari tabel itu, jadi uang muka ini tidak akan pernah muncul -
+        // saldonya mengendap dan tidak bisa dipakai memotong invoice.
+        //
+        // Yang diambil cuma yang nomornya memang BUKAN Proforma Invoice:
+        // yang ada PI-nya sudah terbawa query di atas, kalau dibaca lagi
+        // barisnya dobel dan saldonya kelihatan dua kali lipat.
+        //
+        // Kuncinya no_dokumen - sama dengan kunci baris di laporan Sub Ledger.
+        // Dengan begitu potongan invoicenya pasti jatuh ke baris yang sama di
+        // laporan, tidak bikin baris sendiri.
+        //
+        // Tempatnya selalu kartu Others: uang muka ini tidak terikat SO
+        // invoice mana pun, jadi tidak pernah masuk kartu atas.
+        if ($sumber === 'OTHER' && $this->db->table_exists('tbl_uang_muka_awal')) {
+            // Sama urutannya dengan laporan: kolomnya sendiri, lalu jurnal
+            // dokumen BM/GM-nya.
+            $kodeAwalCI = $this->kolom_ada('tbl_uang_muka_awal', 'profit_center')
+                ? "NULLIF(TRIM(IFNULL(w.profit_center, '')), '')" : 'NULL';
+            $pcJurnalCI = $this->db->table_exists('tbl_list_journal')
+                ? "(SELECT NULLIF(TRIM(IFNULL(jw.profit_center, '')), '')
+                      FROM tbl_list_journal AS jw
+                     WHERE jw.no_journal = w.no_bm
+                       AND TRIM(IFNULL(jw.profit_center, '')) <> ''
+                  ORDER BY IF(jw.no_coa = w.no_coa, 0, 1), jw.id LIMIT 1)"
+                : 'NULL';
+            $terpakai_aw = $ada_alokasi
+                ? "IFNULL((SELECT SUM(k.amount) FROM tbl_invoice_proforma_alokasi k
+                            WHERE k.no_proforma_invoice = g.no_pi
+                              AND k.id_book_invoice <> $id_inv
+                              $batal_inv), 0)"
+                : '0';
+            $dipakai_aw = $ada_alokasi
+                ? "IFNULL((SELECT SUM(k.amount) FROM tbl_invoice_proforma_alokasi k
+                            WHERE k.no_proforma_invoice = g.no_pi
+                              AND k.id_book_invoice = $id_inv), 0)"
+                : '0';
+            $baris = array_merge($baris, $this->db->query("
+                SELECT 0 AS id, g.no_pi, g.pi_label, 'OPENING BALANCE' AS status,
+                       IFNULL(g.id_customer, '') AS id_customer,
+                       UPPER(IFNULL(NULLIF(TRIM(s.supplier), ''),
+                                    IFNULL(NULLIF(TRIM(g.nama_customer), ''),
+                                           IFNULL(g.id_customer, '')))) AS customer,
+                       g.date_pi,
+                       'ADVANCE' AS type_pi,
+                       g.nilai,
+                       $terpakai_aw AS terpakai,
+                       1 AS sudah_dialokasikan,
+                       0 AS alokasi_sejak_batas,
+                       1 AS ada_saldo_awal,
+                       g.no_bm,
+                       g.profit_center,
+                       $dipakai_aw AS dipakai,
+                       0 AS dp,
+                       g.curr,
+                       '' AS so_list
+                  FROM (SELECT w.no_dokumen AS no_pi,
+                               MAX(IFNULL(w.no_pi, '')) AS pi_label,
+                               UPPER(TRIM(IFNULL(MAX(COALESCE($kodeAwalCI,
+                                     $pcJurnalCI)), 'NAG'))) AS profit_center,
+                               MAX(w.id_customer) AS id_customer,
+                               MAX(w.customer) AS nama_customer,
+                               DATE_FORMAT(MIN(w.tgl_masuk), '%Y-%m-%d') AS date_pi,
+                               MAX(IFNULL(NULLIF(TRIM(w.curr), ''), 'IDR')) AS curr,
+                               SUM(w.amount) AS nilai,
+                               IFNULL(GROUP_CONCAT(DISTINCT NULLIF(TRIM(w.no_bm), '')
+                                      ORDER BY NULLIF(TRIM(w.no_bm), '')
+                                      SEPARATOR ', '), '') AS no_bm
+                          FROM tbl_uang_muka_awal AS w
+                         WHERE TRIM(IFNULL(w.no_dokumen, '')) <> ''
+                           AND NOT EXISTS (
+                               SELECT 1 FROM tbl_invoice_proforma AS pz
+                                WHERE pz.no_proforma_invoice = w.no_dokumen
+                                   OR pz.no_proforma_invoice =
+                                      NULLIF(TRIM(IFNULL(w.no_pi, '')), ''))
+                      GROUP BY w.no_dokumen) AS g
+             LEFT JOIN mastersupplier AS s ON s.Id_Supplier = g.id_customer
+              ORDER BY g.date_pi DESC, g.no_pi DESC
+            ")->result_array());
+        }
+
+        // ---------- BM / GM yang BELUM dialokasikan ----------
+        //
+        // Uangnya sudah diterima dan sudah mengkredit COA uang muka, tapi
+        // belum pernah lewat menu Alokasi - jadi belum punya nomor PI. Di
+        // laporan Sub Ledger barisnya sudah muncul sebagai Addition sejak
+        // 28-10-2026; kalau di sini tidak ditawarkan, uangnya kelihatan di
+        // laporan tapi tidak bisa dipakai memotong apa pun.
+        //
+        // Dibaca dari sumber yang SAMA dengan laporan - buku besarnya, bukan
+        // dokumen bank masuknya - supaya nomor yang muncul di sini pasti ada
+        // di laporan mutasinya, dan nilainya tidak pernah berbeda.
+        //
+        // Kuncinya nomor jurnalnya, sama dengan kunci baris di laporan.
+        if ($sumber === 'OTHER'
+            && $this->db->table_exists('tbl_list_journal')
+            && $this->db->table_exists('mastercoa_v2')) {
+            $coa_um_ci = "(SELECT no_coa FROM mastercoa_v2
+                            WHERE IFNULL(inv_type, '') LIKE '%DP/CBD%' GROUP BY no_coa)";
+            // Yang sudah dialokasikan tidak diulang di sini: yang mengkredit
+            // COA uang muka untuk dokumen itu adalah jurnal ALOKASInya, dan
+            // PI-nya sudah terbawa query pertama.
+            $belumAlk = ($this->db->table_exists('tbl_alokasi_detail')
+                         && $this->db->table_exists('tbl_alokasi'))
+                ? "AND NOT EXISTS (
+                       SELECT 1 FROM tbl_alokasi_detail AS dz
+                         INNER JOIN tbl_alokasi AS az ON az.no_alk = dz.no_alk
+                        WHERE az.doc_number = j.no_journal
+                          AND dz.coa = j.no_coa
+                          AND IFNULL(az.status, '') NOT LIKE 'CANCEL%')"
+                : '';
+            // Yang nomornya sudah masuk daftar saldo awal juga tidak diulang -
+            // sisanya sudah dihitung di sana.
+            $bukanAwal = $this->db->table_exists('tbl_uang_muka_awal')
+                ? "AND NOT EXISTS (SELECT 1 FROM tbl_uang_muka_awal AS wz
+                                    WHERE wz.no_dokumen = j.no_journal)"
+                : '';
+            // Namanya: buyer dulu, lalu Source bank masuk AP. Keterangan
+            // jurnalnya TIDAK dipakai - lihat catatan di subledger_uang_muka().
+            $srcCI = $this->db->table_exists('tbl_bankin_arcollection')
+                ? "(SELECT UPPER(TRIM(bk.customer)) FROM tbl_bankin_arcollection AS bk
+                     WHERE bk.doc_num = j.no_journal
+                       AND TRIM(IFNULL(bk.customer, '')) <> ''
+                  ORDER BY bk.id LIMIT 1)"
+                : 'NULL';
+            // Nomor PI cuma dipajang kalau reff_doc-nya memang Proforma
+            // Invoice yang ada - supaya nomor DN / invoice tidak nyasar.
+            $piLabelBM = "IFNULL((SELECT pz.no_proforma_invoice
+                                    FROM tbl_invoice_proforma AS pz
+                                   WHERE pz.no_proforma_invoice =
+                                         NULLIF(TRIM(NULLIF(TRIM(j.reff_doc), '-')), '')
+                                   LIMIT 1), '')";
+            $terpakai_bm = $ada_alokasi
+                ? "IFNULL((SELECT SUM(k.amount) FROM tbl_invoice_proforma_alokasi k
+                            WHERE k.no_proforma_invoice = b.no_pi
+                              AND k.id_book_invoice <> $id_inv
+                              $batal_inv), 0)"
+                : '0';
+            $dipakai_bm = $ada_alokasi
+                ? "IFNULL((SELECT SUM(k.amount) FROM tbl_invoice_proforma_alokasi k
+                            WHERE k.no_proforma_invoice = b.no_pi
+                              AND k.id_book_invoice = $id_inv), 0)"
+                : '0';
+            $baris = array_merge($baris, $this->db->query("
+                SELECT 0 AS id, b.no_pi, b.pi_label, 'NOT ALLOCATED' AS status,
+                       '' AS id_customer, b.customer, b.date_pi,
+                       'ADVANCE' AS type_pi, b.nilai,
+                       $terpakai_bm AS terpakai,
+                       1 AS sudah_dialokasikan,
+                       1 AS alokasi_sejak_batas,
+                       0 AS ada_saldo_awal,
+                       b.no_pi AS no_bm,
+                       b.profit_center,
+                       $dipakai_bm AS dipakai,
+                       0 AS dp, b.curr, '' AS so_list
+                  FROM (SELECT j.no_journal AS no_pi,
+                               MAX($piLabelBM) AS pi_label,
+                               MAX(UPPER(TRIM(IFNULL(IFNULL(
+                                   NULLIF(TRIM(NULLIF(TRIM(j.buyer), '-')), ''),
+                                   $srcCI), '')))) AS customer,
+                               DATE_FORMAT(MIN(j.tgl_journal), '%Y-%m-%d') AS date_pi,
+                               MAX(IFNULL(NULLIF(TRIM(j.curr), ''), 'IDR')) AS curr,
+                               UPPER(TRIM(IFNULL(MAX(NULLIF(TRIM(
+                                     IFNULL(j.profit_center, '')), '')), 'NAG')))
+                                     AS profit_center,
+                               SUM(j.credit) AS nilai
+                          FROM tbl_list_journal AS j
+                    INNER JOIN $coa_um_ci AS cu ON cu.no_coa = j.no_coa
+                         WHERE j.tgl_journal >= '$batas_um'
+                           AND IFNULL(j.status, '') NOT LIKE 'CANCEL%'
+                           AND IFNULL(j.credit, 0) > 0
+                           AND (UPPER(IFNULL(j.no_journal, '')) LIKE 'BM/%'
+                                OR UPPER(IFNULL(j.no_journal, '')) LIKE 'GM/%')
+                           $belumAlk
+                           $bukanAwal
+                      GROUP BY j.no_journal) AS b
+              ORDER BY b.date_pi DESC, b.no_pi DESC
+            ")->result_array());
+        }
+
         $mau = strtoupper(trim((string) $curr));
+        // Profit center invoicenya. Yang dikirim layar cuma cadangan - kalau
+        // bookingnya sudah tersimpan, yang dipakai isi bookingnya, supaya
+        // daftar di layar persis sama dengan yang nanti boleh disimpan.
+        $mau_pc = strtoupper(trim((string) $pc_invoice));
+        if ($id_inv > 0 && $this->db->table_exists('tbl_book_invoice')
+            && $this->kolom_ada('tbl_book_invoice', 'profit_center')) {
+            $bk = $this->db->query(
+                "SELECT profit_center FROM tbl_book_invoice WHERE id = ? LIMIT 1",
+                array($id_inv)
+            )->row_array();
+            $dari_db = strtoupper(trim((string) (isset($bk['profit_center'])
+                ? $bk['profit_center'] : '')));
+            if ($dari_db !== '') { $mau_pc = $dari_db; }
+        }
+        // Kosong berarti tidak disebut di mana pun - daftarnya tidak disaring,
+        // supaya pemanggil lama tidak ikut berubah perilaku.
         $so = array();
         foreach ((array) $no_so as $v) {
             $v = strtoupper(trim((string) $v));
@@ -12290,6 +12631,18 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
             // menyimpan currency sendiri.
             $curr_pi = strtoupper(trim((string) $r['curr']));
             $curr_sama = ($mau === '' || $curr_pi === '' || $curr_pi === $mau);
+
+            // LINTAS PROFIT CENTER TIDAK BOLEH. Uang muka knitting tidak
+            // boleh memotong invoice garment, dan sebaliknya - nilainya
+            // langsung mengurangi tagihan, jadi salah profit center berarti
+            // salah buku tanpa kelihatan.
+            //
+            // Yang kosong dianggap NAG, sama dengan bawaan di laporan - jadi
+            // tidak ada baris yang jadi "bebas dipakai siapa saja".
+            $pc_baris = strtoupper(trim((string) (isset($r['profit_center'])
+                ? $r['profit_center'] : '')));
+            if ($pc_baris === '') { $pc_baris = 'NAG'; }
+            $pc_sama = ($mau_pc === '' || $pc_baris === $mau_pc);
 
             // SO-nya ikut ditagih invoice ini? PI NON SO memang tidak punya SO,
             // jadi tidak pernah "cocok" - tempatnya di kotak bawah.
@@ -12311,6 +12664,10 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
             // DP) masuk Advance.
             $r['bagian'] = ((float) $r['dp']) > 0 ? 'DP' : 'ADVANCE';
             $r['sumber'] = $sumber;
+
+            // Baris beda profit center tidak didaftar sama sekali - sama
+            // seperti beda mata uang, memang tidak boleh dipakai.
+            if (!$pc_sama) { continue; }
 
             if ($sumber === 'PI') {
                 if (!$di_kotak_atas) { continue; }
@@ -12385,6 +12742,20 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
             if ($dari_db !== '') { $curr_inv = $dari_db; }
         }
 
+        // Profit center invoicenya, dari bookingnya sendiri - bukan dari
+        // layar. Ini saringan, jadi sumbernya harus yang tidak bisa diubah
+        // pengirim.
+        $pc_inv = '';
+        if ($this->db->table_exists('tbl_book_invoice')
+            && $this->kolom_ada('tbl_book_invoice', 'profit_center')) {
+            $bk = $this->db->query(
+                "SELECT profit_center FROM tbl_book_invoice WHERE id = ? LIMIT 1",
+                array($id)
+            )->row_array();
+            $pc_inv = strtoupper(trim((string) (isset($bk['profit_center'])
+                ? $bk['profit_center'] : '')));
+        }
+
         $isi = array();
         foreach ((array) $rows as $r) {
             $no = trim((string) (isset($r['no_proforma_invoice']) ? $r['no_proforma_invoice'] : ''));
@@ -12400,6 +12771,47 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
                   FROM tbl_invoice_proforma a
                  WHERE a.no_proforma_invoice = ? LIMIT 1
             ", array($no))->row_array();
+            if (!$pi && $this->db->table_exists('tbl_uang_muka_awal')) {
+                // Uang muka SALDO AWAL: nomornya dari sistem lama, tidak
+                // pernah tercatat sebagai Proforma Invoice di sini. Nilainya
+                // dibaca dari catatan saldo awal yang sudah diperiksa tim AR -
+                // itu yang jadi batas berapa boleh dipotong.
+                $aw = $this->db->query("
+                    SELECT MAX(IFNULL(NULLIF(TRIM(curr), ''), 'IDR')) AS curr,
+                           SUM(amount) AS nilai
+                      FROM tbl_uang_muka_awal
+                     WHERE no_dokumen = ?
+                ", array($no))->row_array();
+                if ($aw && isset($aw['nilai']) && $aw['nilai'] !== NULL) {
+                    $pi = array('id' => 0, 'no_proforma_invoice' => $no,
+                                'type_pi' => 'ADVANCE', 'nilai' => $aw['nilai'],
+                                'dp' => 0, 'curr' => $aw['curr']);
+                }
+            }
+            if (!$pi && $this->db->table_exists('tbl_list_journal')
+                && $this->db->table_exists('mastercoa_v2')) {
+                // Uang muka dari BM / GM yang belum dialokasikan: belum punya
+                // nomor PI, jadi yang dikirim layar nomor dokumennya. Batas
+                // nilainya sebanyak yang mengkredit COA uang muka.
+                $batas_bm = self::AWAL_UANG_MUKA;
+                $bm = $this->db->query("
+                    SELECT MAX(IFNULL(NULLIF(TRIM(j.curr), ''), 'IDR')) AS curr,
+                           SUM(j.credit) AS nilai
+                      FROM tbl_list_journal AS j
+                INNER JOIN (SELECT no_coa FROM mastercoa_v2
+                             WHERE IFNULL(inv_type, '') LIKE '%DP/CBD%'
+                          GROUP BY no_coa) AS cu ON cu.no_coa = j.no_coa
+                     WHERE j.no_journal = ?
+                       AND j.tgl_journal >= '$batas_bm'
+                       AND IFNULL(j.status, '') NOT LIKE 'CANCEL%'
+                       AND IFNULL(j.credit, 0) > 0
+                ", array($no))->row_array();
+                if ($bm && isset($bm['nilai']) && $bm['nilai'] !== NULL) {
+                    $pi = array('id' => 0, 'no_proforma_invoice' => $no,
+                                'type_pi' => 'ADVANCE', 'nilai' => $bm['nilai'],
+                                'dp' => 0, 'curr' => $bm['curr']);
+                }
+            }
             if (!$pi) {
                 return array('gagal' => 'Proforma invoice ' . $no . ' not found.');
             }
@@ -12413,10 +12825,31 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
                     . ' - this invoice is in ' . $curr_inv . '. Different currency cannot be used.');
             }
 
+            // Lintas profit center ditolak - lihat catatan di
+            // pi_untuk_invoice(). Yang kosong dianggap NAG.
+            if ($pc_inv !== '') {
+                $pc_um = strtoupper(trim((string) $this->_pc_uang_muka($no)));
+                if ($pc_um === '') { $pc_um = 'NAG'; }
+                if ($pc_um !== $pc_inv) {
+                    return array('gagal' => 'Advance ' . $no . ' belongs to profit center '
+                        . $pc_um . ' - this invoice is ' . $pc_inv
+                        . '. It cannot be used across profit centers.');
+                }
+            }
+
             $nilai = round((float) $pi['nilai'], 2);
+            // Sisanya diukur dengan aturan yang sama seperti daftarnya:
+            // pemakaian oleh invoice yang sudah dibatalkan tidak dihitung.
+            $batal_sim = $this->db->table_exists('tbl_book_invoice')
+                ? " AND NOT EXISTS (SELECT 1 FROM tbl_book_invoice AS bc
+                                     WHERE bc.id = k.id_book_invoice
+                                       AND IFNULL(bc.status, '') LIKE 'CANCEL%')"
+                : '';
             $lain = (float) $this->db->query("
-                SELECT IFNULL(SUM(amount), 0) AS n FROM tbl_invoice_proforma_alokasi
-                 WHERE no_proforma_invoice = ? AND id_book_invoice <> ?
+                SELECT IFNULL(SUM(k.amount), 0) AS n
+                  FROM tbl_invoice_proforma_alokasi AS k
+                 WHERE k.no_proforma_invoice = ? AND k.id_book_invoice <> ?
+                   $batal_sim
             ", array($no, $id))->row_array()['n'];
             $sisa = round($nilai - $lain, 2);
             if ($pakai > $sisa + 0.001) {
@@ -12463,6 +12896,68 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         }
         return array('baris' => count($isi));
     }
+    /**
+     * Profit center sebuah uang muka, dari nomor dokumennya.
+     *
+     * Satu nomor bisa datang dari tiga tempat, dan urutannya sama dengan yang
+     * dipakai laporan Sub Ledger supaya keduanya tidak pernah berbeda pendapat:
+     * baris alokasinya, catatan saldo awalnya, lalu jurnal dokumen BM/GM-nya.
+     * Kosong berarti belum diisi - pemanggilnya yang memutuskan bawaannya.
+     */
+    private function _pc_uang_muka($no)
+    {
+        $no = (string) $no;
+        if (trim($no) === '') { return ''; }
+
+        if ($this->kolom_ada('tbl_alokasi_detail', 'profit_center')
+            && $this->db->table_exists('tbl_alokasi')) {
+            $b = $this->db->query("
+                SELECT d.profit_center AS pc FROM tbl_alokasi_detail AS d
+          INNER JOIN tbl_alokasi AS a ON a.no_alk = d.no_alk
+               WHERE d.no_ref = ?
+                 AND IFNULL(a.status, '') NOT LIKE 'CANCEL%'
+                 AND TRIM(IFNULL(d.profit_center, '')) <> ''
+            ORDER BY a.tgl_alk, d.id LIMIT 1
+            ", array($no))->row_array();
+            if (!empty($b['pc'])) { return trim((string) $b['pc']); }
+        }
+
+        if ($this->kolom_ada('tbl_uang_muka_awal', 'profit_center')) {
+            $b = $this->db->query("
+                SELECT profit_center AS pc FROM tbl_uang_muka_awal
+                 WHERE no_dokumen = ?
+                   AND TRIM(IFNULL(profit_center, '')) <> '' LIMIT 1
+            ", array($no))->row_array();
+            if (!empty($b['pc'])) { return trim((string) $b['pc']); }
+        }
+
+        // Nomor dokumennya sendiri (baris BM/GM), atau dokumen BM/GM yang
+        // menerbitkan saldo awalnya.
+        if ($this->db->table_exists('tbl_list_journal')) {
+            $b = $this->db->query("
+                SELECT j.profit_center AS pc FROM tbl_list_journal AS j
+                 WHERE j.no_journal = ?
+                   AND TRIM(IFNULL(j.profit_center, '')) <> ''
+              ORDER BY j.id LIMIT 1
+            ", array($no))->row_array();
+            if (!empty($b['pc'])) { return trim((string) $b['pc']); }
+
+            if ($this->db->table_exists('tbl_uang_muka_awal')) {
+                $b = $this->db->query("
+                    SELECT j.profit_center AS pc
+                      FROM tbl_uang_muka_awal AS w
+                INNER JOIN tbl_list_journal AS j ON j.no_journal = w.no_bm
+                     WHERE w.no_dokumen = ?
+                       AND TRIM(IFNULL(j.profit_center, '')) <> ''
+                  ORDER BY IF(j.no_coa = w.no_coa, 0, 1), j.id LIMIT 1
+                ", array($no))->row_array();
+                if (!empty($b['pc'])) { return trim((string) $b['pc']); }
+            }
+        }
+
+        return '';
+    }
+
     /**
      * Ekspresi SQL nilai Proforma Invoice yang boleh memotong invoice - DPP,
      * tanpa PPN.
