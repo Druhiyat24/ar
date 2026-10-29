@@ -346,6 +346,17 @@
    selector di sini sengaja TANPA awalan .nag-skin. !important dipakai karena
    templates/header.php menimpa .btn/.btn-primary/.btn-secondary secara global
    dengan !important juga (tema sweetalert2-bootstrap-4 memakai class itu). */
+/* Dialog pemberitahuan - dipakai lewat nag_pesan() di crud-nag.js, jadi
+   semua layar yang memakai skin ini tampil sama. */
+.dn-swal { border-radius: 14px !important; padding: 8px 6px 14px !important; }
+.dn-swal .swal2-title { font-size: 19px !important; color: #1e3a5f; }
+.dn-swal .swal2-html-container { margin: 6px 14px 0 !important; font-size: 13px !important; }
+.dn-swal .swal2-actions .btn,
+.dn-swal .swal2-actions .swal2-styled {
+  min-width: 132px;
+  justify-content: center;
+  font-size: 13px;
+}
 .dn-swal-kirim { border-radius: 14px; }
 .dn-swal-kirim .swal2-title { color: #1e3a5f; font-size: 19px; }
 .dn-swal-kirim .swal2-icon.swal2-question { border-color: #1e3a5f !important; color: #1e3a5f !important; }
@@ -390,6 +401,23 @@
 /* ===== Bagian bawaan DataTables (search, jumlah baris, info, halaman) ===== */
 .nag-skin .dataTables_wrapper .row:first-child { margin-bottom: 12px; align-items: center; }
 .nag-skin .dataTables_wrapper .row:last-child { margin-top: 12px; align-items: center; }
+/* Pesan "belum ada data" di dalam tabel - ditaruh di tengah, bukan
+   menempel di kiri. Dulu cuma ada di List Debit Note; daftar lain yang
+   memakai kelas yang sama jadi tidak kebagian gayanya. */
+.nag-skin .dn-kosong {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 8px 0;
+}
+.nag-skin .dn-kosong-ikon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 50%; background: #eef2f7; color: #64748b;
+}
+.nag-skin .dn-kosong-ikon i { opacity: .55; font-size: 17px; }
+.nag-skin .dn-kosong-judul { color: #0f172a; font-weight: 700; font-size: 13.5px; white-space: normal; }
+/* Selnya sendiri ikut rata tengah - DataTables menaruh pesan ini di
+   satu sel yang selebar tabel. */
+.nag-skin td.dataTables_empty { text-align: center; }
+
 .nag-skin .dataTables_length label,
 .nag-skin .dataTables_filter label {
   display: flex;

@@ -626,6 +626,113 @@ private function _inv_cetak($mpdf, $id_inv, $nama_file, $judul = '')
  * punya kolom di tbl_invoice_pot (sama seperti layar lama), jadi baris itu
  * diambil dari rekap booking-nya di menu Invoice EXIM.
  */
+/**
+ * Invoice knitting ditagihkan ke KONSUMEN-nya, bukan ke customer booking -
+ * berlaku untuk pengiriman mulai 01-08-2026.
+ *
+ * Yang EXPORT dikecualikan: pembelinya memang perusahaan luar negeri yang
+ * tercatat di booking (mis. TEEJAY MAURITIUS), bukan konsumen knitting di
+ * dalam negeri - jadi "To"-nya tetap customer booking-nya.
+ *
+ * Mengembalikan baris invoice yang sudah disesuaikan, bukan mengubah di
+ * tempat, supaya aturannya cuma ditulis sekali dan dipakai semua cetakan.
+ */
+private function _inv_tagih_ke_konsumen($id_inv, $inv)
+{
+    if (!$inv
+        || strtoupper(trim((string) $inv['profit_center'])) !== 'NAK'
+        || (string) $inv['sj_date'] < '2026-08-01'
+        || strtolower(trim((string) (isset($inv['shipp']) ? $inv['shipp'] : ''))) === 'export') {
+        return $inv;
+    }
+
+    $konsumen = $this->Model_nag->get_konsumen_invoice($id_inv);
+    if ($konsumen) {
+        $inv['customer'] = $konsumen['supplier'];
+        $inv['alamat']   = $konsumen['alamat'];
+    }
+    return $inv;
+}
+
+/**
+ * Bentuk dokumen export untuk satu invoice - null kalau tidak dipakai.
+ *
+ * Invoice EXPORT biasanya dicetak sebagai Commercial Invoice, mengikuti
+ * menu Invoice EXIM. KNITTING tidak: di AR, invoice knitting (NAK)
+ * dicetak dengan bentuk yang sama dengan invoice lokalnya - baik yang
+ * lokal maupun yang export - karena isinya memang baris SJ knitting
+ * (style, color, product item, qty) dan bukan booking Invoice EXIM.
+ * Cetakan Commercial Invoice-nya sendiri tetap ada di menu Invoice EXIM.
+ */
+private function _cetak_export($id_inv)
+{
+    $cetak = $this->Model_nag->data_cetak_export($id_inv);
+    if ($cetak && strtoupper(trim((string) $cetak['header']['profit_center'])) === 'NAK') {
+        return null;
+    }
+    return $cetak;
+}
+
+/**
+ * Baris invoice untuk cetakan bentuk lokal.
+ *
+ * Biasanya dari tbl_invoice_detail. Invoice knitting yang dibooking lewat
+ * menu Invoice EXIM tidak punya baris di sana - barisnya ada di Invoice
+ * Summary booking exportnya, jadi diambil dari situ dan dibentuk sama
+ * supaya cetakan bentuk lokalnya tidak keluar dengan tabel kosong.
+ *
+ * Pemetaannya: satu baris summary = satu baris invoice. Nama warna jadi
+ * kolom Color, Product Description dari Shipment Details jadi Product
+ * Item, dan Extended Line Total jadi Total - angka yang sama persis
+ * dengan yang dicetak Commercial Invoice-nya.
+ */
+private function _inv_baris_lokal($id_inv, $baris)
+{
+    if ($baris) {
+        return $baris;
+    }
+
+    $cetak = $this->Model_nag->data_cetak_export($id_inv);
+    if (!$cetak || empty($cetak['summary'])) {
+        return $baris;
+    }
+
+    // Product Description & Style NO ada di Shipment Details - dipakai yang
+    // pertama terisi, karena satu invoice satu produk.
+    $pertama = function ($kunci) use ($cetak) {
+        foreach ((array) $cetak['kirim'] as $k) {
+            $isi = trim((string) (isset($k[$kunci]) ? $k[$kunci] : ''));
+            if ($isi !== '') {
+                return $isi;
+            }
+        }
+        return '';
+    };
+    $produk = $pertama('product_description');
+    $gaya   = $pertama('style_no');
+    $curr   = isset($cetak['header']['curr']) ? (string) $cetak['header']['curr'] : '';
+
+    $hasil = array();
+    foreach ((array) $cetak['summary'] as $r) {
+        $warna = trim((string) $r['color_name']);
+        $hasil[] = array(
+            'styleno'       => $gaya !== '' ? $gaya : '-',
+            'product_group' => '',
+            'product_item'  => $produk !== '' ? $produk : '-',
+            'color'         => $warna !== '' ? $warna : '-',
+            'size'          => '',
+            'qty'           => number_format((float) $r['qty'], 2),
+            'unit_price'    => number_format((float) $r['unit_cost'], 3),
+            'disc'          => 0,
+            'total_price'   => number_format((float) $r['extended'], 2),
+            'uom'           => (string) $r['satuan'],
+            'curr'          => $curr,
+            'id_bppb'       => 0,
+        );
+    }
+    return $hasil;
+}
+
 private function _rekap_export($cetak, $pot)
 {
     $pot = is_array($pot) ? $pot : array();
@@ -2225,6 +2332,58 @@ public function summary_export_json($id_inv = null)
 }
 
 /** Simpan Invoice Summary yang dirapikan tim AR. */
+/**
+ * Daftar Proforma Invoice (DP / CBD / PI NON SO) yang bisa dipakai memotong
+ * sebuah invoice - dipakai layar Create Invoice.
+ *
+ * SO-nya dikirim sebagai daftar karena DP & CBD cuma boleh dipakai kalau
+ * SO-nya memang ditagih invoice itu.
+ */
+public function pi_untuk_invoice_json()
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+    $so = $this->input->post('no_so');
+    if (!is_array($so)) {
+        $so = $so === null || $so === '' ? array() : explode(',', (string) $so);
+    }
+    // 'PI' = kotak atas (SO-nya ikut ditagih), 'OTHER' = kotak bawah.
+    $data = $this->Model_nag->pi_untuk_invoice(
+        (string) $this->input->post('id_customer'),
+        (string) $this->input->post('curr'),
+        $so,
+        (int) $this->input->post('id_book_invoice'),
+        (string) $this->input->post('sumber')
+    );
+    echo json_encode(array('status' => TRUE, 'data' => $data));
+}
+
+/** Catat Proforma Invoice yang dipakai sebuah invoice. */
+public function simpan_alokasi_pi_json()
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+    $hasil = $this->Model_nag->simpan_alokasi_pi(
+        (int) $this->input->post('id_book_invoice'),
+        (array) $this->input->post('data_table'),
+        (string) $this->session->userdata('username'),
+        date('Y-m-d H:i:s'),
+        (string) $this->input->post('no_invoice'),
+        // Cadangan kalau baris invoicenya belum tersimpan - PI mata uang lain
+        // tetap harus ditolak.
+        (string) $this->input->post('curr')
+    );
+    if (isset($hasil['gagal'])) {
+        $this->output->set_status_header(422);
+        echo json_encode(array('status' => FALSE, 'message' => $hasil['gagal']));
+        return;
+    }
+    echo json_encode(array('status' => TRUE, 'baris' => $hasil['baris']));
+}
 public function simpan_summary_export_json()
 {
     if (!$this->session->userdata('username')) {
@@ -2573,13 +2732,17 @@ public function preview_invoice_v2()
     $inv['tgl_inv'] = $tgl_sj !== '' ? date('d-m-Y', strtotime($tgl_sj)) : '';
 
     // Knitting mulai 01-08-2026 ditagih ke konsumennya, bukan ke customer
-    // booking - sama seperti cetakan setelah tersimpan.
+    // booking - sama seperti cetakan setelah tersimpan, termasuk
+    // pengecualian untuk yang export (lihat _inv_tagih_ke_konsumen()).
+    // Konsumennya tetap diambil: cetakan knitting - berkas keduanya - memang
+    // dialamatkan ke konsumen, export maupun lokal.
     $konsumen = null;
     if ($inv['profit_center'] == 'NAK') {
         $konsumen = $this->Model_nag->konsumen_knitting(
             isset($baris[0]['id_konsumen']) ? $baris[0]['id_konsumen'] : '');
     }
-    if ($konsumen && $tgl_sj >= '2026-08-01') {
+    if ($konsumen && $tgl_sj >= '2026-08-01'
+        && strtolower(trim((string) (isset($inv['shipp']) ? $inv['shipp'] : ''))) !== 'export') {
         $inv['customer'] = $konsumen['supplier'];
         $inv['alamat'] = $konsumen['alamat'];
     }
@@ -2638,8 +2801,8 @@ public function preview_invoice_v2()
     // Invoice Export di menu Invoice EXIM, versi CM). Isinya datang dari
     // booking-nya, bukan dari baris SJ di layar - yang dipakai dari layar cuma
     // angka rekapnya, karena DP / DP CBD / Return & VAT memang masih bisa
-    // diubah sebelum disimpan.
-    $cetak_export = $this->Model_nag->data_cetak_export($id_inv);
+    // diubah sebelum disimpan. Knitting dikecualikan - lihat _cetak_export().
+    $cetak_export = $this->_cetak_export($id_inv);
 
     // Shipment Details-nya diambil dari LAYAR, bukan database: bagian itu boleh
     // dilengkapi tim AR dan pratinjau harus memperlihatkan yang baru diketik -
@@ -2820,7 +2983,8 @@ public function report_invoice_v2($id)
 
     // Invoice EXPORT punya bentuk dokumen sendiri (mengikuti cetakan Invoice
     // Export di menu Invoice EXIM, versi CM) - bukan daftar baris SJ.
-    $cetak_export = $this->Model_nag->data_cetak_export($id);
+    // Knitting dikecualikan - lihat _cetak_export().
+    $cetak_export = $this->_cetak_export($id);
     if ($cetak_export) {
         $mpdf = $this->_dn_mpdf_baru();
         $mpdf->WriteHTML($this->load->view('arnag/reportinvoice_export_v2', array(
@@ -2839,15 +3003,11 @@ public function report_invoice_v2($id)
     if (!$data['data_invoice']) {
         show_404();
     }
-    // Knitting mulai 01-08-2026: yang ditagih konsumennya, bukan customer booking.
-    if ($data['data_invoice']['profit_center'] == 'NAK' && $data['data_invoice']['sj_date'] >= '2026-08-01') {
-        $data_konsumen = $this->Model_nag->get_konsumen_invoice($id);
-        if ($data_konsumen) {
-            $data['data_invoice']['customer'] = $data_konsumen['supplier'];
-            $data['data_invoice']['alamat'] = $data_konsumen['alamat'];
-        }
-    }
-    $data['data_invoice_detail'] = $this->Model_nag->report_invoice_detail($id);
+    // Knitting: yang ditagih konsumennya - kecuali export. Lihat
+    // _inv_tagih_ke_konsumen().
+    $data['data_invoice'] = $this->_inv_tagih_ke_konsumen($id, $data['data_invoice']);
+    $data['data_invoice_detail'] = $this->_inv_baris_lokal(
+        $id, $this->Model_nag->report_invoice_detail($id));
     $data['data_invoice_pot'] = $this->Model_nag->report_invoice_pot($id);
     $data['group_bppb_number'] = $this->Model_nag->group_bppb_number($id);
     $data['group_so_number'] = $this->Model_nag->group_so_number($id);
@@ -2873,13 +3033,9 @@ public function report_invoice3($id)
         //   
     $mpdf = new \Mpdf\Mpdf();
     $data['data_invoice'] = $this->Model_nag->report_invoice($id);
-    if ($data['data_invoice'] && $data['data_invoice']['profit_center'] == 'NAK' && $data['data_invoice']['sj_date'] >= '2026-08-01') {
-        $data_konsumen = $this->Model_nag->get_konsumen_invoice($id);
-        if ($data_konsumen) {
-            $data['data_invoice']['customer'] = $data_konsumen['supplier'];
-            $data['data_invoice']['alamat'] = $data_konsumen['alamat'];
-        }
-    }
+    // Knitting: yang ditagih konsumennya - kecuali export. Lihat
+    // _inv_tagih_ke_konsumen().
+    $data['data_invoice'] = $this->_inv_tagih_ke_konsumen($id, $data['data_invoice']);
     $data['data_invoice_detail'] = $this->Model_nag->report_invoice_detail($id);
     $data['data_invoice_pot'] = $this->Model_nag->report_invoice_pot($id);
     $data['group_bppb_number'] = $this->Model_nag->group_bppb_number($id);
@@ -2901,13 +3057,9 @@ public function export_excel_invoice($id)
     }
         //
     $data['data_invoice'] = $this->Model_nag->report_invoice($id);
-    if ($data['data_invoice'] && $data['data_invoice']['profit_center'] == 'NAK' && $data['data_invoice']['sj_date'] >= '2026-08-01') {
-        $data_konsumen = $this->Model_nag->get_konsumen_invoice($id);
-        if ($data_konsumen) {
-            $data['data_invoice']['customer'] = $data_konsumen['supplier'];
-            $data['data_invoice']['alamat'] = $data_konsumen['alamat'];
-        }
-    }
+    // Knitting: yang ditagih konsumennya - kecuali export. Lihat
+    // _inv_tagih_ke_konsumen().
+    $data['data_invoice'] = $this->_inv_tagih_ke_konsumen($id, $data['data_invoice']);
     $data['data_invoice_detail'] = $this->Model_nag->report_invoice_detail($id);
     $data['data_invoice_pot'] = $this->Model_nag->report_invoice_pot($id);
     $data['group_bppb_number'] = $this->Model_nag->group_bppb_number($id);
@@ -2921,7 +3073,8 @@ public function export_excel_invoice($id)
  * Ekspor Excel invoice - bentuknya mengikuti cetakan PDF desain baru.
  *
  * Tiga bentuk, sama seperti PDF-nya:
- *   - invoice export  -> arnag/excelinvoice_export_v2 (format Invoice EXIM CM)
+ *   - invoice export  -> arnag/excelinvoice_export_v2 (format Invoice EXIM CM;
+ *                        knitting tidak ikut - lihat _cetak_export())
  *   - invoice biasa   -> arnag/excelinvoice_v2
  *   - $jenis=knitting -> arnag/excelinvoice_knitting_v2 (berkas kedua khusus NAK)
  *
@@ -2937,7 +3090,7 @@ public function export_excel_invoice_v2($id, $jenis = '')
     $jenis = strtolower(trim((string) $jenis));
 
     // Invoice EXPORT: isinya dari booking Invoice EXIM, bukan baris SJ.
-    $cetak_export = $jenis === 'knitting' ? null : $this->Model_nag->data_cetak_export($id);
+    $cetak_export = $jenis === 'knitting' ? null : $this->_cetak_export($id);
     if ($cetak_export) {
         $this->load->view('arnag/excelinvoice_export_v2', array(
             'data_cetak' => $cetak_export,
@@ -2963,15 +3116,11 @@ public function export_excel_invoice_v2($id, $jenis = '')
         return;
     }
 
-    // Knitting mulai 01-08-2026: yang ditagih konsumennya, bukan customer booking.
-    if ($data['data_invoice']['profit_center'] == 'NAK' && $data['data_invoice']['sj_date'] >= '2026-08-01') {
-        $data_konsumen = $this->Model_nag->get_konsumen_invoice($id);
-        if ($data_konsumen) {
-            $data['data_invoice']['customer'] = $data_konsumen['supplier'];
-            $data['data_invoice']['alamat'] = $data_konsumen['alamat'];
-        }
-    }
-    $data['data_invoice_detail'] = $this->Model_nag->report_invoice_detail($id);
+    // Knitting: yang ditagih konsumennya - kecuali export. Lihat
+    // _inv_tagih_ke_konsumen().
+    $data['data_invoice'] = $this->_inv_tagih_ke_konsumen($id, $data['data_invoice']);
+    $data['data_invoice_detail'] = $this->_inv_baris_lokal(
+        $id, $this->Model_nag->report_invoice_detail($id));
     $data['data_invoice_pot'] = $this->Model_nag->report_invoice_pot($id);
     $data['group_bppb_number'] = $this->Model_nag->group_bppb_number($id);
     $data['group_so_number'] = $this->Model_nag->group_so_number($id);
@@ -3158,7 +3307,10 @@ public function approve_invoice()
 public function approve_profinvoice()
 {
     $id = $this->input->post('id_inv');
-    $this->Model_nag->approve_profinvoice($id);
+    $berhasil = $this->Model_nag->approve_profinvoice($id);
+    $q = $this->db->query("SELECT no_proforma_invoice FROM tbl_invoice_proforma WHERE id = ?", array($id));
+    $no_doc = ($q->row() && $q->row()->no_proforma_invoice) ? $q->row()->no_proforma_invoice : null;
+    echo json_encode(array('status' => (bool) $berhasil, 'no_doc' => $no_doc));
 }
 
     //ubah september
@@ -3196,7 +3348,10 @@ public function approve_invoice_second()
 public function approve_profinvoice_second()
 {
     $id = $this->input->post('id_inv');
-    $this->Model_nag->approve_profinvoice_second($id);
+    $berhasil = $this->Model_nag->approve_profinvoice_second($id);
+    $q = $this->db->query("SELECT no_proforma_invoice FROM tbl_invoice_proforma WHERE id = ?", array($id));
+    $no_doc = ($q->row() && $q->row()->no_proforma_invoice) ? $q->row()->no_proforma_invoice : null;
+    echo json_encode(array('status' => (bool) $berhasil, 'no_doc' => $no_doc));
 }
 
 public function approve_debitnote_second()
@@ -3271,7 +3426,93 @@ function cancel_duedate()
     //Proforma Invoice 
     // ubah september
 
-function proformainvoice()
+/**
+ * Layar input Proforma Invoice - satu layar untuk empat jenis.
+ *
+ * $tipe cuma menentukan pilihan awal dropdown Proforma Type: pi, pi-non-so,
+ * dp, cbd. Menu DP & CBD yang lama bisa diarahkan ke sini dengan /dp atau
+ * /cbd, jadi user langsung dapat tipe yang benar.
+ */
+/**
+ * Buka layar Proforma Invoice untuk MENGUBAH proforma yang sudah ada.
+ *
+ * Layarnya sama dengan waktu membuat baru - barisnya disalin dulu ke tabel
+ * sementara yang memang dibaca layar itu, jadi tidak ada layar kembar yang
+ * harus dirawat dua kali. Yang membedakan cuma $pi_edit: isian header diisi
+ * dari sana, dan nomornya tidak dibuatkan baru.
+ *
+ * Hanya proforma yang masih POST; yang sudah lewat approval dikembalikan ke
+ * daftarnya dengan keterangan.
+ */
+function edit_proforma_invoice($id)
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+    $pi = $this->Model_nag->pi_siapkan_edit($id);
+    if (!$pi) {
+        $this->session->set_flashdata('pesan_pi',
+            'Only a proforma invoice that is still POST can be edited.');
+        redirect('arnag/listproformainvoice');
+        return;
+    }
+
+    $data['pi_edit'] = $pi;
+    $data['tipe_awal'] = isset($pi['type_pi']) && trim((string) $pi['type_pi']) !== ''
+        ? $pi['type_pi'] : 'PI';
+    $data['kode_proforma_invoice'] = $pi['no_proforma_invoice'];
+    $data['title'] = 'Edit Proforma Invoice';
+    $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+    $data['customer'] = $this->Model_nag->cari_customer();
+    $data['type'] = $this->db->get('tbl_type')->result_array();
+    // Bank dari b_masterbank. Yang sedang dipakai PI ini ikut dikirim supaya
+    // tetap ada di pilihan walau banknya sudah dinonaktifkan.
+    $data['isi_bank'] = $this->Model_nag->load_bank_pi((int) $pi['id_bank']);
+    $data['isi_ppn'] = $this->Model_nag->load_ppn();
+    $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+    $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+    $data['user_access_3'] = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+    $data['user_access_4'] = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+    $data['user_access_5'] = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+    $data['user_access_6'] = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+    $data['user_access_7'] = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+    $data['user_access_reverse'] = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+    $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
+
+    // Periode yang masih terbuka: footer memakainya sebagai batas bawah
+    // kalender. Harus dikirim seperti di layar buat-baru - kalau tidak,
+    // peringatan PHP-nya tercetak di tengah skrip pemasang kalender dan
+    // tidak ada tanggal yang bisa dipilih sama sekali.
+    $query = $this->db->query("SELECT '2022-01-01' tgl_awal FROM tbl_closing_periode WHERE status_closing = 'Open' ORDER BY tgl_awal ASC LIMIT 1");
+    $result = $query->row();
+    $data['min_date'] = ($result && $result->tgl_awal != null) ? $result->tgl_awal : '';
+    $this->load->view('templates/header', $data);
+    $this->load->view('templates/sidebar', $data);
+    $this->load->view('arnag/proformainvoice', $data);
+    $this->load->view('templates/footer', $data);
+}
+
+/**
+ * Lepas proforma lama tepat sebelum isi layar ditulis ulang.
+ *
+ * Dipanggil layar PI sebagai langkah pertama waktu Save dalam mode edit.
+ * Nomornya dikembalikan supaya yang baru memakai nomor yang sama.
+ */
+function pi_hapus_untuk_edit_json()
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+    $hasil = $this->Model_nag->pi_hapus_untuk_edit((int) $this->input->post('id'));
+    if (isset($hasil['gagal'])) {
+        $this->output->set_status_header(422);
+        echo json_encode(array('status' => FALSE, 'message' => $hasil['gagal']));
+        return;
+    }
+    echo json_encode(array('status' => TRUE, 'no_pi' => $hasil['no_pi']));
+}
+function proformainvoice($tipe = '')
 {
     if (!$this->session->userdata('username')) {
         redirect('auth');
@@ -3280,11 +3521,17 @@ function proformainvoice()
     $kode_inv = "";
     $data['kode_proforma_invoice'] = $this->Model_nag->get_kode_proforma_invoice($kode_inv);
 
+    $peta = array('pi' => 'PI', 'pi-non-so' => 'PI NON SO', 'pinonso' => 'PI NON SO',
+                  'dp' => 'DP', 'cbd' => 'CBD');
+    $kunci = strtolower(trim((string) $tipe));
+    $data['tipe_awal'] = isset($peta[$kunci]) ? $peta[$kunci] : 'PI';
+
     $data['title'] = 'Proforma Invoice';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['customer'] = $this->Model_nag->cari_customer();
     $data['type'] = $this->db->get('tbl_type')->result_array();
-    $data['isi_bank'] = $this->Model_nag->load_bank();
+    // Bank dari b_masterbank - tabel bank yang sekarang dipakai.
+    $data['isi_bank'] = $this->Model_nag->load_bank_pi();
     $data['isi_ppn'] = $this->Model_nag->load_ppn();
     $data['user_access_1'] = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
     $data['user_access_2'] = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
@@ -3608,10 +3855,56 @@ public function update_faktur_pajak_cbd()
     $id          = $this->input->post('id_inv_prof');
     $faktur_pjk  = $this->input->post('no_paktur_pjk');
     $this->Model_nag->update_faktur_pajak_cbd($id, $faktur_pjk);
-    redirect('arnag/listproformainvoice_dp_cbd');
+    // Barisnya diisi dari daftar Proforma Invoice yang sudah digabung -
+    // balikkan ke sana, bukan ke menu DP & CBD yang lama.
+    redirect('arnag/listproformainvoice');
 }
 
-public function report_proforma_invoice($id)
+/**
+ * Cetak Proforma Invoice - satu cetakan saja.
+ *
+ * Bentuk barisnya ditentukan user waktu memilih SO (Group By) dan sudah
+ * tersimpan apa adanya, jadi di sini tidak ada lagi pilihan ringkas/detail.
+ * Ruas kedua dibiarkan ada supaya tautan lama yang membawa mode tidak error.
+ */
+/**
+ * Isi modal detail Proforma Invoice - header & baris SO-nya.
+ *
+ * Melayani proforma biasa maupun DP/CBD; keduanya bentuk datanya sama, cuma
+ * tabelnya yang berbeda sebelum migrasi penyatuan dijalankan.
+ */
+public function proforma_detail_json($id, $sumber = 'PI')
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+    $cbd = strtoupper(trim((string) $sumber)) === 'CBD';
+    $header = $cbd
+        ? $this->Model_nag->report_proforma_invoice_cbd($id)
+        : $this->Model_nag->report_proforma_invoice($id);
+    if (!$header) {
+        $this->output->set_status_header(404);
+        echo json_encode(array('status' => FALSE, 'message' => 'Proforma invoice not found.'));
+        return;
+    }
+    $baris = $cbd
+        ? $this->Model_nag->report_proforma_invoice_detail_cbd($id)
+        : $this->Model_nag->report_proforma_invoice_detail($id);
+    $jumlah = $cbd
+        ? $this->Model_nag->report_proforma_invoice_grandtotal_cbd($id)
+        : $this->Model_nag->report_proforma_invoice_grandtotal($id);
+
+    // Angka rekapnya digabung ke header supaya layar cukup membaca satu tempat.
+    foreach (array('total', 'twot', 'ppn', 'dp') as $k) {
+        $header[$k] = isset($jumlah[$k]) ? $jumlah[$k] : '0.00';
+    }
+    $header['grand_total'] = number_format(
+        (float) str_replace(',', '', (string) $header['total']), 2, '.', ',');
+
+    echo json_encode(array('status' => TRUE, 'header' => $header, 'baris' => $baris));
+}
+public function report_proforma_invoice($id, $mode = '')
 {
     if (!$this->session->userdata('username')) {
         redirect('auth');
@@ -3634,7 +3927,9 @@ public function report_proforma_invoice($id)
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
-    $html = $this->load->view('arnag/reportproformainvoice', $data, true);
+    // Cetakan desain baru - bentuknya mengikuti Commercial Invoice.
+    // Yang lama disimpan di arnag/reportproformainvoice.php.
+    $html = $this->load->view('arnag/reportproformainvoice_v2', $data, true);
     $mpdf->setFooter('{PAGENO} / {nbpg}');
     $mpdf->WriteHTML($html);
     $mpdf->Output();
@@ -3665,7 +3960,15 @@ public function report_proforma_invoice_cbd($id)
     $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
 
         //
-    $html = $this->load->view('arnag/reportproformainvoicedpcbd', $data, true);
+    // Cetakannya sama dengan Proforma Invoice biasa - bentuknya memang
+    // satu keluarga; yang membedakan cuma jenis & nilai yang ditagih di
+    // muka. Namanya dipetakan supaya cetakannya tidak perlu tahu bedanya.
+    $data['data_proforma_invoice'] = $data['data_proforma_invoice_cbd'];
+    $data['data_proforma_invoice_detail'] = $data['data_proforma_invoice_detail_cbd'];
+    $data['data_proforma_invoice_total'] = $data['data_proforma_invoice_total_cbd'];
+    $data['data_proforma_invoice_grandtotal'] = $data['data_proforma_invoice_grandtotal_cbd'];
+    $data['data_proforma_diskon'] = $data['data_proforma_diskon_cbd'];
+    $html = $this->load->view('arnag/reportproformainvoice_v2', $data, true);
     $mpdf->setFooter('{PAGENO} / {nbpg}');
     $mpdf->WriteHTML($html);
     $mpdf->Output();
@@ -4602,12 +4905,24 @@ public function userrole()
     $this->load->view('templates/footer', $data);
 }
 
-public function report_kwitansi($id)
+public function report_kwitansi($id = null)
 {
     if (!$this->session->userdata('username')) {
         redirect('auth');
     }
-        //   
+    // Yang dikirim bisa id kwitansi (dari daftar) atau NOMORNYA (sesudah
+    // disimpan). Nomor kwitansi mengandung garis miring, jadi di URL
+    // terpecah jadi beberapa ruas - ruas sesudah nama fungsi disambung lagi
+    // supaya nomornya utuh.
+    $ruas = array_slice($this->uri->rsegment_array(), 2);
+    $kunci = $ruas ? implode('/', $ruas) : (string) $id;
+    $kwt = $this->Model_nag->kwitansi_untuk_cetak($kunci);
+    if (!$kwt) {
+        show_404();
+        return;
+    }
+    $id = (int) $kwt['id'];
+
     $mpdf = new \Mpdf\Mpdf();
     $data['data_kwitansi'] = $this->Model_nag->cari_data_kwitansi($id);
     $data['data_kwitansi2'] = $this->Model_nag->cari_data_kwitansi2($id);
@@ -4794,7 +5109,22 @@ function update_status_kwt_inv2()
 {
     $no_invoice = $this->input->post('no_invoice');
     $no_kwt = $this->input->post('no_kwt');
-    $this->Model_nag->update_status_kwt_inv($no_invoice, $no_kwt);
+    // Dulu memanggil update_status_kwt_inv (tbl_book_invoice) - akibatnya
+    // invoice manual tidak pernah ditandai dan bisa ditarik ke kwitansi
+    // berkali-kali.
+    $this->Model_nag->update_status_kwt_inv2($no_invoice, $no_kwt);
+}
+
+/**
+ * Tandai Debit Note sudah masuk kwitansi (tbl_debitnote_h.no_kwt), supaya
+ * tidak bisa ditarik lagi - sepadan dengan update_status_kwt_inv untuk invoice.
+ */
+function update_status_kwt_dn()
+{
+    $no_dn  = $this->input->post('no_dn');
+    $no_kwt = $this->input->post('no_kwt');
+    $this->Model_nag->update_status_kwt_dn($no_dn, $no_kwt);
+    echo json_encode(array('status' => TRUE));
 }
 
 public function simpankwitansi()
@@ -5317,6 +5647,44 @@ public function cari_alokasi($dt_dari_kwt, $dt_sampai_kwt, $customer)
     echo json_encode($data);
 }
 
+// Isi modal detail Alokasi di layar daftar: kepala, baris yang dilunasi,
+// dan jurnalnya - sekali ambil, supaya modalnya tidak menembak tiga kali.
+public function alokasi_detail_json($id = null)
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    $id = (int) $id;
+    $kepala = $id ? $this->Model_nag->alokasi_kepala($id) : NULL;
+    if (!$kepala) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Allocation not found - please refresh the list.'));
+        return;
+    }
+
+    $jurnal = $this->Model_nag->alokasi_jurnal($id);
+    $debit = 0;
+    $kredit = 0;
+    foreach ($jurnal as $j) {
+        $debit  += (float) $j['debit'];
+        $kredit += (float) $j['credit'];
+    }
+
+    echo json_encode(array(
+        'status'  => TRUE,
+        'kepala'  => $kepala,
+        'baris'   => $this->Model_nag->alokasi_baris_detail($id),
+        'jurnal'  => $jurnal,
+        // Dihitung di sini supaya layarnya tinggal memajang - dan supaya
+        // jurnal yang tidak seimbang langsung kelihatan.
+        'jurnal_debit'  => round($debit, 2),
+        'jurnal_kredit' => round($kredit, 2),
+        'jurnal_imbang' => abs($debit - $kredit) < 0.005,
+        'cetak_url'     => base_url('arnag/report_invoice5/' . $id),
+    ));
+}
+
 public function cari_view_alokasi($no_kwt)
 {
     $data =  $this->Model_nag->cari_view_alokasi($no_kwt);
@@ -5475,7 +5843,7 @@ public function frm_report_invoice_dpcbd()
         redirect('auth');
     }
 
-    $data['title'] = 'Report Mutasi Invoice DP & CBD';
+    $data['title'] = 'Report Proforma Invoice';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['customer'] = $this->Model_nag->cari_customer();
     $data['bank'] = $this->Model_nag->load_bank();
@@ -5539,6 +5907,58 @@ public function cari_kartu_ar2($dt_dari_alk, $dt_sampai_alk, $id_cus)
 
 
     //ubah september
+// Isi laporan Report Proforma Invoice. Sumbernya PI yang sekarang
+// (tbl_invoice_proforma) dan potongannya dari alokasi - lihat
+// Model_nag::mutasi_pi_dpcbd(). Hitungannya di SQL, jadi layarnya tinggal
+// memajang: tidak ada lagi saldo awal yang dihitung ulang di browser.
+public function mutasi_pi_json($dt_dari = null, $dt_sampai = null, $id_customer = null)
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    $baris = $this->Model_nag->mutasi_pi_dpcbd($dt_dari, $dt_sampai, $id_customer);
+
+    // Jumlah per mata uang - dipakai sebagai baris total di kaki tabelnya.
+    $total = array();
+    foreach ($baris as $b) {
+        $curr = $b['curr'] === '' ? 'IDR' : $b['curr'];
+        if (!isset($total[$curr])) {
+            $total[$curr] = array('curr' => $curr, 'beginning' => 0, 'addition' => 0,
+                                   'deduction' => 0, 'ending' => 0, 'baris' => 0);
+        }
+        foreach (array('beginning', 'addition', 'deduction', 'ending') as $k) {
+            $total[$curr][$k] += (float) $b[$k];
+        }
+        $total[$curr]['baris']++;
+    }
+    foreach ($total as $curr => $t) {
+        foreach (array('beginning', 'addition', 'deduction', 'ending') as $k) {
+            $total[$curr][$k] = round($t[$k], 2);
+        }
+    }
+
+    echo json_encode(array(
+        'status' => TRUE,
+        'baris'  => $baris,
+        'total'  => array_values($total),
+    ));
+}
+
+// Unduhan laporan yang sama, isinya persis dari sumber yang sama.
+public function export_mutasi_pi($dt_dari = null, $dt_sampai = null, $id_customer = null)
+{
+    if (!$this->session->userdata('username')) {
+        redirect('auth');
+    }
+
+    $data['baris']          = $this->Model_nag->mutasi_pi_dpcbd($dt_dari, $dt_sampai, $id_customer);
+    $data['periode_dari']   = $dt_dari;
+    $data['periode_sampai'] = $dt_sampai;
+    $this->load->view('arnag/export_mutasi_pi', $data);
+}
+
 public function cari_mutasi_invoice_dp($dt_dari_alk, $dt_sampai_alk, $id_cus)
 {
     $data =  $this->Model_nag->cari_mutasi_invoice_dp($dt_dari_alk, $dt_sampai_alk, $id_cus);
@@ -6875,7 +7295,7 @@ public function dn_detail_json($id = null)
             'no_coa'    => $r['no_coa'],
             'nama_coa'  => isset($r['nama_coa']) ? $r['nama_coa'] : '',
             // Baris dari Memo / Request ditandai supaya kelihatan asalnya.
-            'terkunci'  => $this->Model_nag->dn_baris_terkunci($r) ? 1 : 0,
+            'dari_sumber' => $this->Model_nag->dn_baris_dari_sumber($r) ? 1 : 0,
         );
     }
 

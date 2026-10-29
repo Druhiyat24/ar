@@ -1,3 +1,4 @@
+<?php $this->load->view('arnag/_tgl_inggris'); ?>
 <!DOCTYPE html>
 
 <html lang="en">
@@ -131,7 +132,7 @@ CSS HEADER
                 :
             </td>
             <td colspan="3">
-                <?= $data_proforma_invoice_cbd['date_pi']; ?>
+                <?= tgl_inggris($data_proforma_invoice_cbd['date_pi']); ?>
             </td>
             <td class="position_top" colspan="8">
                 &nbsp;

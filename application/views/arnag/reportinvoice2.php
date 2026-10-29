@@ -79,6 +79,13 @@
                     <td colspan="3">DOWN PAYMENT</td>
                     <td><?= $data_invoice_pot['dp']; ?></td>
                 </tr>
+                <!-- Uang muka dari Proforma Invoice CBD / PI NON SO tanpa DP.
+                     Invoice lama belum punya kolomnya - dicetak nol. -->
+                <tr>
+                    <td colspan="2"></td>
+                    <td colspan="3">ADVANCE</td>
+                    <td><?= (isset($data_invoice_pot['dp_cbd']) ? $data_invoice_pot['dp_cbd'] : '0.00'); ?></td>
+                </tr>
                 <tr>
                     <td colspan="2"></td>
                     <td colspan="3">RETUR</td>

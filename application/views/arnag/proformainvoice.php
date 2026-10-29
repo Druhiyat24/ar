@@ -186,9 +186,33 @@
              <div class="card-body">
                <div class="row">
                  <div class="form-group col-sm-6">
-                   <label for="prof_inv_number">Proforma Number</label>
-                   <input type="text" class="form-control" id="prof_inv_number" name="prof_inv_number" value="<?= $kode_proforma_invoice; ?>" readonly required>
+                   <label for="prof_type_pi">Proforma Type</label>
+                   <!-- Satu layar untuk empat jenis proforma. Dulu DP & CBD
+                        punya menu sendiri padahal isiannya sama persis.
+                          PI / PI NON SO -> tbl_invoice_proforma, penanda SO no_pi
+                          DP / CBD       -> tbl_invoice_proforma_dp_cbd, penanda no_pi_cbd
+                        Namanya sengaja prof_type_pi: nama itu yang sudah dibaca
+                        alur simpan DP/CBD di crud-nag.js (nomor PI & jurnalnya).
+                        Letaknya di depan nomor karena tipe inilah yang
+                        menentukan bentuk nomornya. -->
+                   <?php $tipe_awal = isset($tipe_awal) ? $tipe_awal : 'PI'; ?>
+                   <select class="form-control select2bs4" id="prof_type_pi" name="prof_type_pi" required>
+                     <?php foreach (array('PI', 'PI NON SO', 'DP', 'CBD') as $tp) : ?>
+                       <option value="<?= $tp; ?>"<?= $tp === $tipe_awal ? ' selected' : ''; ?>><?= $tp; ?></option>
+                     <?php endforeach; ?>
+                   </select>
                  </div>
+                 <div class="form-group col-sm-6">
+                   <label for="prof_inv_number">Proforma Number</label>
+                   <!-- Nomornya baru lengkap sesudah Local / Export dipilih -
+                        bagiannya memang diisi dari situ. Sebelum itu kotaknya
+                        dikosongkan (lihat crud-proforma-invoice.js) supaya
+                        tidak memperlihatkan nomor setengah jadi. -->
+                   <input type="text" class="form-control" id="prof_inv_number" name="prof_inv_number" value="<?= $kode_proforma_invoice; ?>" placeholder="Pick Local or Export first" readonly required>
+                 </div>
+               </div>
+
+               <div class="row">
                  <div class="form-group col-sm-6">
                    <label for="prof_customer">Customer</label>
                    <select class="form-control select2bs4" id="prof_customer" name="prof_customer">
@@ -197,9 +221,6 @@
                      <?php endforeach; ?>
                    </select>
                  </div>
-               </div>
-
-               <div class="row">
                  <div class="form-group col-sm-6">
                    <label for="prof_shipp">Shipp</label>
                    <!-- Nomor PI-nya ikut Local / Export - get_kode_proforma_invoice()
@@ -210,32 +231,40 @@
                         Nilainya tetap masuk ke #prof_shipp: itu yang dibaca
                         waktu simpan, diisi handler di templates/footer.php. -->
                    <div class="pi-shipp" id="pi-shipp">
-                     <button id="prof_L" name="prof_L" type="button" class="btn" onclick="get_kode_proforma_invoice('L')"><i class="fas fa-truck"></i> Local</button>
-                     <button id="prof_E" name="prof_E" type="button" class="btn" onclick="get_kode_proforma_invoice('E')"><i class="fas fa-plane"></i> Export</button>
+                     <!-- Nomornya ikut TIPE juga, jadi lewat pembungkus di
+                          crud-proforma-invoice.js - bukan langsung ke
+                          get_kode_proforma_invoice(). -->
+                     <button id="prof_L" name="prof_L" type="button" class="btn" onclick="pi_shipp('L')"><i class="fas fa-truck"></i> Local</button>
+                     <button id="prof_E" name="prof_E" type="button" class="btn" onclick="pi_shipp('E')"><i class="fas fa-plane"></i> Export</button>
                      <input type="hidden" id="prof_shipp" name="prof_shipp" required>
+                     <!-- Alur simpan DP/CBD (nomor, COA & jurnalnya) membaca
+                          prof_shipp_cbd. Diisi berbarengan supaya kedua alur
+                          melihat angka yang sama. -->
+                     <input type="hidden" id="prof_shipp_cbd" name="prof_shipp_cbd">
+                     <!-- Diisi waktu layar ini dipakai MENGUBAH proforma yang
+                          sudah ada (Arnag::edit_proforma_invoice). Kosong
+                          berarti sedang membuat baru. -->
+                     <input type="hidden" id="prof_id_edit" name="prof_id_edit" value="<?= isset($pi_edit) ? (int) $pi_edit['id'] : ''; ?>">
                    </div>
-                 </div>
-                 <div class="form-group col-sm-6">
-                   <label for="prof_peb">PEB</label>
-                   <input type="text" class="form-control" id="prof_peb" name="prof_peb" autocomplete="off">
                  </div>
                </div>
 
+               <!-- Tiga kotak pendek dijadikan satu baris: kartunya jadi
+                    sama-sama tiga baris dengan Terms & Account di sebelahnya,
+                    tidak ada lagi kotak yang nyangkut sendirian di bawah. -->
                <div class="row">
                  <div class="form-group col-sm-6">
-                   <label for="prof_type">Invoice Type</label>
-                   <select id="prof_type" name="prof_type" class="form-control select2bs4" required>
-                     <?php foreach ($type as $t) : ?>
-                       <option value="<?= $t['id_type']; ?>"><?= $t['type']; ?></option>
+                   <label for="prof_billed_to">Billed To</label>
+                   <select class="form-control select2bs4" id="prof_billed_to" name="prof_billed_to">
+                     <option value="">Same as customer</option>
+                     <?php foreach ($customer as $cs) : ?>
+                       <option value="<?= $cs['Id_Supplier']; ?>"><?= $cs['Supplier']; ?></option>
                      <?php endforeach; ?>
                    </select>
                  </div>
                  <div class="form-group col-sm-6">
-                   <label for="prof_material_type">Material Type</label>
-                   <select id="prof_material_type" name="prof_material_type" class="form-control select2bs4" required>
-                     <option value="Barang Jadi">Barang Jadi</option>
-                     <option value="Non Barang Jadi">Non Barang Jadi</option>
-                   </select>
+                   <label for="prof_faktur_pajak">Tax Invoice No</label>
+                   <input type="text" class="form-control" id="prof_faktur_pajak" name="prof_faktur_pajak" autocomplete="off" placeholder="Fill in when the tax invoice is issued">
                  </div>
                </div>
 
@@ -246,23 +275,31 @@
          <div class="col-lg-6">
            <div class="card ci-ikut">
              <div class="card-header">
-               <h3 class="card-title"><i class="fas fa-sliders-h"></i>Terms &amp; Account</h3>
+               <h3 class="card-title"><i class="fas fa-sliders-h"></i>Billing &amp; Account</h3>
              </div>
              <div class="card-body">
+               <!-- Yang ditagih tidak selalu sama dengan pemilik SO-nya -
+                    cetakan memisahkan "Billed To" dari customernya. Dikosongkan
+                    berarti sama dengan customernya. -->
                <div class="row">
-                 <div class="form-group col-sm-6">
-                   <label for="prof_top">TOP Type</label>
-                   <div class="input-group">
-                     <input type="text" class="form-control" id="prof_top" name="prof_top" placeholder="Pick a term of payment" readonly required>
-                     <div class="input-group-append">
-                       <button type="button" id="prof_find_top" name="prof_find_top" class="btn btn-info" data-toggle="modal" data-target="#modal-add-prof-top" title="Search term of payment"><i class="fas fa-search"></i></button>
-                     </div>
-                   </div>
-                   <input type="hidden" id="prof_id_top" name="prof_id_top">
+                 <div class="form-group col-sm-4 mb-0">
+                   <label for="prof_peb">PEB</label>
+                   <input type="text" class="form-control" id="prof_peb" name="prof_peb" autocomplete="off">
                  </div>
-                 <div class="form-group col-sm-6">
-                   <label for="prof_top_time">Time Period</label>
-                   <input type="text" class="form-control" id="prof_top_time" name="prof_top_time" readonly required>
+                 <div class="form-group col-sm-4 mb-0">
+                   <label for="prof_type">Invoice Type</label>
+                   <select id="prof_type" name="prof_type" class="form-control select2bs4" required>
+                     <?php foreach ($type as $t) : ?>
+                       <option value="<?= $t['id_type']; ?>"><?= $t['type']; ?></option>
+                     <?php endforeach; ?>
+                   </select>
+                 </div>
+                 <div class="form-group col-sm-4 mb-0">
+                   <label for="prof_material_type">Material Type</label>
+                   <select id="prof_material_type" name="prof_material_type" class="form-control select2bs4" required>
+                     <option value="Barang Jadi">Barang Jadi</option>
+                     <option value="Non Barang Jadi">Non Barang Jadi</option>
+                   </select>
                  </div>
                </div>
 
@@ -310,8 +347,14 @@
             dihapus, baris per SO-nya tidak ikut tersimpan. -->
        <div class="card">
          <div class="card-body">
-           <div class="table-header">
+           <div class="table-header d-flex align-items-center justify-content-between">
              <span class="table-title"><i class="fas fa-layer-group"></i>Data SO</span>
+             <!-- PI NON SO: barisnya tidak diturunkan dari SO, tapi diketik
+                  sendiri. Tombolnya muncul cuma untuk tipe itu - diatur
+                  piAturTipe() di crud-proforma-invoice.js. -->
+             <button type="button" class="btn btn-primary btn-sm" id="pi-baris-tambah" hidden>
+               <i class="fas fa-plus"></i> Add Row
+             </button>
            </div>
            <div hidden>
              <table id="table-proforma-invoice" class="dn-table text-nowrap" style="width:100%">
@@ -342,6 +385,8 @@
                    <th>UOM</th>
                    <th class="text-right">Unit Price</th>
                    <th class="text-right">Price</th>
+                   <!-- Kolom aksi: isinya cuma untuk baris ketikan (PI NON SO). -->
+                   <th style="width:48px"><span class="sr-only">Action</span></th>
                  </tr>
                </thead>
                <tbody></tbody>
@@ -417,6 +462,18 @@
                    <input type="text" class="form-control text-right" id="prof_grandtotal_h" name="prof_grandtotal_h" placeholder="0.00" readonly>
                  </div>
                </div>
+               <!-- Patokan DP cuma dipakai tipe DP: boleh persen atau nominal.
+                    Untuk PI selalu nominal, jadi barisnya disembunyikan -
+                    piAturTipe() di crud-proforma-invoice.js yang mengaturnya. -->
+               <div class="form-group row ci-sum-row" id="pi-dp-patokan" hidden>
+                 <label for="pilih_dp_prof" class="col-sm-5 col-form-label">DP Basis</label>
+                 <div class="col-sm-7">
+                   <select class="form-control select2bs4" id="pilih_dp_prof" name="pilih_dp_prof" onchange="ganti_dp(this.value)">
+                     <option value="Amount">Amount</option>
+                     <option value="%">Percentage (%)</option>
+                   </select>
+                 </div>
+               </div>
                <div class="form-group row mb-0">
                  <label class="col-sm-5 col-form-label">
                    <div class="custom-control custom-checkbox">
@@ -426,14 +483,15 @@
                  </label>
                  <div class="col-sm-7">
                    <div class="input-group">
-                     <input type="text" class="form-control text-right" id="prof_dp" name="prof_dp" placeholder="0.00" readonly onkeypress="javascript:return isNumber(event)" oninput="input_dp_proforma_invoice()">
+                     <input type="text" class="form-control text-right" id="prof_dp" name="prof_dp" placeholder="0.00" readonly onkeypress="javascript:return isNumber(event)" oninput="input_dp_proforma_invoice2()">
                      <input type="text" class="form-control text-right" id="prof_dp_h" name="prof_dp_h" placeholder="0.00" readonly>
+                     <input type="hidden" id="prof_dp_h2" name="prof_dp_h2">
                    </div>
                  </div>
                </div>
              </div>
              <div class="card-footer ci-save-bar">
-               <a href="<?= base_url('arnag/listproformainvoice'); ?>" class="btn btn-danger"><i class="fas fa-arrow-left"></i> Back</a>
+               <a id="pi-kembali" href="<?= base_url('arnag/listproformainvoice'); ?>" class="btn btn-danger"><i class="fas fa-arrow-left"></i> Back</a>
                <button type="button" class="btn btn-primary" onclick="add_data_proforma_invoice()"><i class="fa fa-save"></i> Save</button>
              </div>
            </div>
@@ -499,12 +557,28 @@
              </div>
              <div class="modal-body">
                  <div class="row align-items-end mb-2">
-                     <div class="form-group col-md-4 mb-2">
+                     <div class="form-group col-md-3 mb-2">
                          <label>Customer</label>
                          <!-- Ikut customer yang dipilih di layar - SO yang boleh
                               ditarik memang cuma milik customer itu. Diisi JS
                               waktu modalnya dibuka. -->
                          <input type="text" class="form-control" id="pi-f-cust" readonly>
+                     </div>
+                     <div class="form-group col-md-3 mb-2">
+                         <label for="pi-grouping">Group By</label>
+                         <!-- Bentuk baris yang ditagih - letaknya di sebelah
+                              Customer karena dua-duanya menentukan BENTUK hasil
+                              pencarian, bukan isinya.
+                              Harga SELALU ikut jadi penentu: dua harga tidak
+                              pernah digabung, apa pun pilihannya. Pilihan ini
+                              ikut tersimpan di header, jadi cetakannya tinggal
+                              mencetak apa adanya. -->
+                         <select class="form-control select2bs4" id="pi-grouping">
+                             <option value="PRODUCT">Product Only</option>
+                             <option value="PRODUCT_COLOR">Product - Color</option>
+                             <option value="PRODUCT_SIZE">Product - Size</option>
+                             <option value="PRODUCT_COLOR_SIZE" selected>Product - Color - Size</option>
+                         </select>
                      </div>
                      <div class="form-group col-md-2 mb-2">
                          <label>From</label>
@@ -519,18 +593,28 @@
                               memanjang sampai ujung kolom. -->
                          <button type="button" class="btn btn-primary" id="pi-f-cari"><i class="fas fa-search"></i> Search</button>
                      </div>
-                     <div class="form-group col-md-3 mb-2">
-                         <label>Search</label>
+                     <!-- Kotak cari tabel: menyaring hasil yang SUDAH ditarik,
+                          jadi diletakkan terpisah di ujung kanan - bukan di
+                          sebelah tombol Search yang menarik datanya. -->
+                     <div class="form-group col-md-3 mb-2 ml-auto">
+                         <label for="pi-f-filter">Search</label>
                          <div class="ci-cari"><i class="fas fa-search"></i>
                              <input type="text" class="form-control" id="pi-f-filter" placeholder="SO number / product..." autocomplete="off">
                          </div>
                      </div>
-                     <div class="form-group col mb-2 text-right">
+                     <div class="form-group col-12 mb-2 text-right">
                          <small class="text-muted" id="pi-so-info"></small>
                      </div>
                      <!-- Tipe PI: kosong = PI biasa (penanda so_det.no_pi),
                           'CBD' = Proforma DP/CBD (no_pi_cbd). -->
                      <input type="hidden" id="pi-tipe-pi" value="">
+                     <!-- COA jurnal DP/CBD - diisi getcoa4()/getcoa_ppn4()
+                          sebelum simpan, lalu dibaca at_credit_dpcbd() &
+                          at_dp_dpcbd() di crud-nag.js. -->
+                     <input type="hidden" id="no_coa_deb4" name="no_coa_deb4">
+                     <input type="hidden" id="nama_coa_deb4" name="nama_coa_deb4">
+                     <input type="hidden" id="no_coa_ppn4" name="no_coa_ppn4">
+                     <input type="hidden" id="nama_coa_ppn4" name="nama_coa_ppn4">
                  </div>
 
                  <div class="ci-table-wrap" style="max-height:min(55vh,440px);overflow:auto">
@@ -543,7 +627,7 @@
                                  <th>SO Date</th>
                                  <th>Product</th>
                                  <th class="dn-tengah">Curr</th>
-                                 <th class="text-right">Qty</th>
+                                 <th class="text-right" style="width:130px">Qty</th>
                                  <th class="text-right">Unit Price</th>
                                  <th class="text-right">Total Price</th>
                              </tr>
@@ -600,3 +684,11 @@
 </script>
 
 <script defer src="<?= base_url('assets/build/js/crud/crud-proforma-invoice.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/build/js/crud/crud-proforma-invoice.js'); ?>"></script>
+
+<?php if (isset($pi_edit)) : ?>
+  <!-- Isi proforma yang sedang diubah, dititipkan apa adanya.
+       TIDAK boleh memakai jQuery di sini: halaman memuat view ini DULU,
+       jQuery-nya baru datang di footer. Pengisiannya dilakukan
+       crud-nag.js yang memang jalan sesudah jQuery siap. -->
+  <script>window.PI_EDIT = <?= json_encode($pi_edit); ?>;</script>
+<?php endif; ?>

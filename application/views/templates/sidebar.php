@@ -289,7 +289,7 @@
                             'invoice' => 'Invoice',
                             'proforma_invoice' => 'Proforma Invoice',
                             'return_invoice' => 'Return Invoice',
-                            'dp_invoice' => 'DP-CBD Invoice',
+                            // 'dp_invoice' => 'DP-CBD Invoice',
                             'debitnote' => 'Debit Note',
                             'projection' => 'Projection'
                         ];
@@ -403,9 +403,11 @@
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="<?= base_url('arnag/first_approval_invoice_dpcbd'); ?>" class="nav-link">
+                                    <!-- DP & CBD sudah jadi bagian Proforma Invoice, jadi
+                                         approval-nya pun satu layar. -->
+                                    <a href="<?= base_url('arnag/first_approval_proformainvoice'); ?>" class="nav-link">
                                         <i class="far fa-circle nav-icon" style="font-size:8px;"></i>
-                                        <p>Approval Invoice DP & CBD</p>
+                                        <p>Approval Proforma Invoice</p>
                                     </a>
                                 </li>
                             </ul>

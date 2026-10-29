@@ -146,8 +146,80 @@ class Model_nag extends CI_Model
     }
 
     //ubah desember
+    /**
+     * Lengkapi nama COA & nama cost center baris jurnal dari master.
+     *
+     * Layar cuma mengirim NOMORNYA dengan benar; namanya kadang dikirim '-'
+     * atau kosong. Nama itu yang kelihatan di laporan jurnal, jadi diisi di
+     * sini - sekali query untuk semua baris, bukan per baris.
+     *
+     * Yang sudah punya nama dibiarkan, dan nomor yang tidak ketemu di master
+     * juga dibiarkan apa adanya: jurnalnya tetap tersimpan, tidak digagalkan
+     * cuma karena namanya tidak ketemu.
+     */
+    private function _lengkapi_nama_jurnal($rows)
+    {
+        $rows = (array) $rows;
+        if (!$rows) {
+            return $rows;
+        }
+        $kosong = function ($v) {
+            $v = trim((string) $v);
+            return $v === '' || $v === '-';
+        };
+
+        $coa = array();
+        $cc  = array();
+        foreach ($rows as $r) {
+            if (!is_array($r)) { continue; }
+            if (isset($r['no_coa']) && !$kosong($r['no_coa']) && $kosong(isset($r['nama_coa']) ? $r['nama_coa'] : '')) {
+                $coa[trim((string) $r['no_coa'])] = TRUE;
+            }
+            if (isset($r['no_costcenter']) && !$kosong($r['no_costcenter']) && $kosong(isset($r['nama_costcenter']) ? $r['nama_costcenter'] : '')) {
+                $cc[trim((string) $r['no_costcenter'])] = TRUE;
+            }
+        }
+
+        $nama_coa = array();
+        if ($coa) {
+            $tanya = implode(',', array_fill(0, count($coa), '?'));
+            foreach ($this->db->query(
+                "SELECT no_coa, nama_coa FROM mastercoa_v2 WHERE no_coa IN ($tanya)",
+                array_keys($coa)
+            )->result_array() as $b) {
+                $nama_coa[(string) $b['no_coa']] = (string) $b['nama_coa'];
+            }
+        }
+        $nama_cc = array();
+        if ($cc) {
+            $tanya = implode(',', array_fill(0, count($cc), '?'));
+            foreach ($this->db->query(
+                "SELECT no_cc, cc_name FROM b_master_cc WHERE no_cc IN ($tanya)",
+                array_keys($cc)
+            )->result_array() as $b) {
+                $nama_cc[(string) $b['no_cc']] = (string) $b['cc_name'];
+            }
+        }
+
+        foreach ($rows as $i => $r) {
+            if (!is_array($r)) { continue; }
+            $no = isset($r['no_coa']) ? trim((string) $r['no_coa']) : '';
+            if ($no !== '' && isset($nama_coa[$no]) && $kosong(isset($r['nama_coa']) ? $r['nama_coa'] : '')) {
+                $rows[$i]['nama_coa'] = $nama_coa[$no];
+            }
+            $nc = isset($r['no_costcenter']) ? trim((string) $r['no_costcenter']) : '';
+            if ($nc !== '' && isset($nama_cc[$nc]) && $kosong(isset($r['nama_costcenter']) ? $r['nama_costcenter'] : '')) {
+                $rows[$i]['nama_costcenter'] = $nama_cc[$nc];
+            }
+        }
+        return $rows;
+    }
+
     function at_debit_inv($data)
     {
+        // Nama COA & cost center diisi dari master - layar cuma mengirim
+        // nomornya dengan benar.
+        $data = $this->_lengkapi_nama_jurnal($data);
         $this->db->insert_batch('tbl_list_journal', $data);
         return $this->db->insert_id();
     }
@@ -169,6 +241,7 @@ class Model_nag extends CI_Model
     //ubah desember
     function at_credit_inv($data)
     {
+        $data = $this->_lengkapi_nama_jurnal($data);
         $this->db->insert_batch('tbl_list_journal', $data);
         return $this->db->insert_id();
     }
@@ -425,24 +498,67 @@ class Model_nag extends CI_Model
     }
     
 
+    /**
+     * Salin baris satu invoice ke tabel arsipnya.
+     *
+     * Dulu caranya "INSERT INTO arsip SELECT * FROM sumber". Begitu sumber
+     * dapat kolom baru dan arsipnya belum, jumlah kolomnya tidak lagi sama
+     * dan MySQL menolak seluruh perintahnya - itu yang bikin Cancel Invoice
+     * dan langkah "Clearing the previous rows" di Edit sama-sama HTTP 500.
+     *
+     * Sekarang yang disalin kolom yang ADA DI KEDUANYA. Kolom yang belum
+     * ada di arsipnya dilewati: arsip tertinggal satu kolom tidak sepadan
+     * dengan membuat pembatalan invoice tidak bisa dipakai sama sekali.
+     *
+     * @return bool false kalau tabelnya tidak ada / tidak ada kolom yang sama
+     */
+    private function _salin_arsip($sumber, $arsip, $id_book_invoice)
+    {
+        if (!$this->db->table_exists($sumber) || !$this->db->table_exists($arsip)) {
+            return FALSE;
+        }
+        $sama = array_intersect($this->db->list_fields($sumber), $this->db->list_fields($arsip));
+        if (!$sama) { return FALSE; }
+
+        $kolom = implode(', ', array_map(function ($k) { return "`" . $k . "`"; }, $sama));
+        // IGNORE: langkah ini bisa diulang - sesudah Save gagal di tengah,
+        // tombol Try Again menjalankannya lagi dari awal. Baris yang sudah
+        // terlanjur masuk arsip dilewati; mengarsipkan dua kali tidak ada
+        // gunanya, dan menggagalkan seluruh pembatalan jauh lebih mahal.
+        $this->db->query("INSERT IGNORE INTO `$arsip` ($kolom)
+                          SELECT $kolom FROM `$sumber` WHERE id_book_invoice = ?",
+                         array($id_book_invoice));
+        return TRUE;
+    }
+
     function copy_invoice($id)
     {
-        $hasil = $this->db->query("insert into tplog_batalinvoice select * from tbl_book_invoice where id = '$id' ");
-        return $hasil;
+        // Kepala invoicenya dikunci lewat id, bukan id_book_invoice.
+        if (!$this->db->table_exists('tplog_batalinvoice')) { return FALSE; }
+        $sama = array_intersect($this->db->list_fields('tbl_book_invoice'),
+                                $this->db->list_fields('tplog_batalinvoice'));
+        if (!$sama) { return FALSE; }
+        $kolom = implode(', ', array_map(function ($k) { return "`" . $k . "`"; }, $sama));
+        // Lihat _salin_arsip() soal IGNORE-nya.
+        return $this->db->query("INSERT IGNORE INTO `tplog_batalinvoice` ($kolom)
+                                 SELECT $kolom FROM `tbl_book_invoice` WHERE id = ?",
+                                array((int) $id));
     }
 
     function copy_pot($id)
     {
-        $hasil = $this->db->query("insert into tplog_batalinvoice_pot select * from tbl_invoice_pot where id_book_invoice = '$id' ");
-        $hasil2 = $this->db->query("insert into tplog_batalinvoice_pot_knitting select * from tbl_invoice_pot_knitting where id_book_invoice = '$id' ");
-        $hasil3 = $this->db->query("insert into tplog_batalinvoice_other_charge select * from tbl_invoice_other_charge where id_book_invoice = '$id' ");
-
-        return $hasil;
+        $this->_salin_arsip('tbl_invoice_pot', 'tplog_batalinvoice_pot', $id);
+        $this->_salin_arsip('tbl_invoice_pot_knitting', 'tplog_batalinvoice_pot_knitting', $id);
+        $this->_salin_arsip('tbl_invoice_other_charge', 'tplog_batalinvoice_other_charge', $id);
+        return TRUE;
     }
     function copy_detail($id)
     {
-        $hasil = $this->db->query("insert into tplog_batalinvoice_detail select * from tbl_invoice_detail where id_book_invoice = '$id' ");
-        $hasil2 = $this->db->query("insert into tplog_batalinvoice_detail_knitting select * from tbl_invoice_detail_knitting where id_book_invoice = '$id' ");
+        // Lihat _salin_arsip(): kolom yang belum ada di arsipnya dilewati,
+        // jadi arsip yang tertinggal satu kolom tidak lagi menggagalkan
+        // seluruh pembatalan invoice.
+        $this->_salin_arsip('tbl_invoice_detail', 'tplog_batalinvoice_detail', $id);
+        $this->_salin_arsip('tbl_invoice_detail_knitting', 'tplog_batalinvoice_detail_knitting', $id);
 
         $db_pgsql = $this->load->database('db_pgsql', TRUE);
 
@@ -817,12 +933,11 @@ class Model_nag extends CI_Model
         $pot = $this->db->get_where('tbl_invoice_pot', array('id_book_invoice' => $id))->result_array();
 
         // ---- arsip ----
-        if ($detail && $this->db->table_exists('tbl_invoice_detail_edit')) {
-            $this->db->insert_batch('tbl_invoice_detail_edit', $detail);
-        }
-        if ($pot && $this->db->table_exists('tbl_invoice_pot_edit')) {
-            $this->db->insert_batch('tbl_invoice_pot_edit', $pot);
-        }
+        // Barisnya disaring ke kolom yang memang ada di tabel arsipnya.
+        // Tanpa itu, satu kolom baru di tabel aslinya bikin SELURUH Edit
+        // Invoice gagal di langkah pembersihan - lihat _saring_kolom().
+        $this->_arsipkan('tbl_invoice_detail_edit', $detail);
+        $this->_arsipkan('tbl_invoice_pot_edit', $pot);
 
         // ---- catat perubahannya per FG/OUT (garment saja, seperti sebelumnya) ----
         if ($inv && $detail && strtoupper(trim((string) $inv['profit_center'])) === 'NAG') {
@@ -841,6 +956,60 @@ class Model_nag extends CI_Model
         }
 
         return array('sj' => $sj, 'baris' => count($detail));
+    }
+
+    /**
+     * Simpan baris ke tabel arsip, hanya kolom yang ada di sana.
+     *
+     * Pasangan dari _salin_arsip() untuk baris yang sudah terlanjur dibaca
+     * ke PHP. Kolom yang belum ada di tabel arsipnya dilewati: arsip yang
+     * tertinggal satu kolom tidak sepadan dengan membuat Edit Invoice
+     * berhenti di tengah jalan.
+     */
+    private function _arsipkan($arsip, $baris)
+    {
+        if (!$baris || !$this->db->table_exists($arsip)) { return FALSE; }
+        $punya = $this->db->list_fields($arsip);
+
+        $bersih = array();
+        foreach ((array) $baris as $r) {
+            $satu = array();
+            foreach ((array) $r as $k => $v) {
+                if (in_array($k, $punya, TRUE)) { $satu[$k] = $v; }
+            }
+            if ($satu) { $bersih[] = $satu; }
+        }
+        if (!$bersih) { return FALSE; }
+
+        // Baris yang sudah pernah diarsipkan dilewati. Langkah ini bisa
+        // diulang - sesudah Save gagal di tengah, tombol Try Again
+        // menjalankannya lagi - dan id yang sama tidak boleh menggagalkan
+        // seluruh pembersihan invoicenya.
+        if (in_array('id', $punya, TRUE)) {
+            $id_baris = array();
+            foreach ($bersih as $r) {
+                if (isset($r['id']) && $r['id'] !== '') { $id_baris[] = $r['id']; }
+            }
+            if ($id_baris) {
+                $tanya = implode(',', array_fill(0, count($id_baris), '?'));
+                $ada = array();
+                foreach ($this->db->query("SELECT id FROM `$arsip` WHERE id IN ($tanya)",
+                                          $id_baris)->result_array() as $x) {
+                    $ada[(string) $x['id']] = TRUE;
+                }
+                if ($ada) {
+                    $sisa = array();
+                    foreach ($bersih as $r) {
+                        if (!isset($ada[(string) $r['id']])) { $sisa[] = $r; }
+                    }
+                    $bersih = $sisa;
+                }
+            }
+        }
+        if (!$bersih) { return TRUE; }
+
+        $this->db->insert_batch($arsip, $bersih);
+        return TRUE;
     }
 
     /** Log perubahan data (dashboard) waktu baris invoice dilepas dari bppb. */
@@ -1029,7 +1198,28 @@ class Model_nag extends CI_Model
         ", array($id_inv))->result_array() as $r) {
             $urutan = (string) (int) $r['urutan'];
             $qty = (float) $r['qty_invoiced'];
-            $ext = isset($kotor[$urutan]) ? $kotor[$urutan] : $qty * (float) $r['unit_cost_cm'];
+            // Nilai baris: jumlah baris SJ-nya kalau kaitannya ketemu.
+            //
+            // Kalau tidak - invoice lama yang baris SJ-nya belum membawa
+            // nomor urut summary, atau baris yang dirapikan tangan -
+            // dipakai total_cm yang TERSIMPAN, bukan dihitung ulang dari
+            // qty x unit cost. Unit cost yang tersimpan sudah dibulatkan 4
+            // angka, jadi menghitung ulang meleset: 4.562 x 1,7201 =
+            // 7.847,0962 padahal nilainya 7.847,165. Selisih itu yang bikin
+            // Sub Total tidak sama dengan Net Invoice Total.
+            //
+            // total_cm tersimpan SESUDAH diskon, sedangkan Extended Line
+            // Total dicetak sebelum diskon (diskonnya baris rekap sendiri),
+            // jadi diskonnya dikembalikan dulu.
+            $sisa = 1 - ((float) $r['disc'] / 100);
+            $tersimpan = (float) $r['total_cm'];
+            if (isset($kotor[$urutan])) {
+                $ext = $kotor[$urutan];
+            } elseif ($tersimpan != 0 && $sisa > 0) {
+                $ext = $tersimpan / $sisa;
+            } else {
+                $ext = $qty * (float) $r['unit_cost_cm'];
+            }
 
             // Total Pieces cuma dicetak untuk baris SET - untuk satuan asli
             // angkanya sama persis dengan Quantity Invoiced. Baris lama yang
@@ -1773,29 +1963,43 @@ function update_currency($curr, $shipp)
 }
 
     //ubah september
+/**
+ * Tandai so_det terpakai sebuah Proforma Invoice.
+ *
+ * $id_sodet boleh berupa DAFTAR id dipisah koma: satu baris di layar bisa
+ * mewakili banyak so_det (lihat pilihan Group By). Kalau cuma id pertamanya
+ * yang ditandai, sisanya tetap bisa ditarik proforma lain - itu yang harus
+ * dihindari.
+ */
 function update_pi_sodet($id_sodet, $no_pi)
 {
-        //Database Localhost / SB2
-        // $hasil = $this->db->query("UPDATE bppb SET stat_inv = '1' WHERE id = '$id' ");
-        // return $hasil;
-        //
-        //Database SignalBit
+    $id = $this->_daftar_id($id_sodet);
+    if (!$id) { return FALSE; }
     $db_nag = $this->load->database('db_nag', TRUE);
-    $hasil = $db_nag->query("UPDATE so_det SET no_pi = '$no_pi' WHERE id = '$id_sodet' ");
-    return $hasil;
+    return $db_nag->query("UPDATE so_det SET no_pi = ? WHERE id IN (" . implode(',', $id) . ")",
+        array($no_pi));
+}
+
+/** Daftar id dari satu nilai - boleh satu id, boleh dipisah koma. */
+private function _daftar_id($nilai)
+{
+    $keluar = array();
+    foreach (explode(',', (string) $nilai) as $x) {
+        $x = (int) trim($x);
+        if ($x > 0 && !in_array($x, $keluar, TRUE)) { $keluar[] = $x; }
+    }
+    return $keluar;
 }
 
      //ubah september
+/** Sama dengan update_pi_sodet(), penandanya saja yang lain. */
 function update_pi_sodet_cbd($id_sodet, $no_pi)
 {
-        //Database Localhost / SB2
-        // $hasil = $this->db->query("UPDATE bppb SET stat_inv = '1' WHERE id = '$id' ");
-        // return $hasil;
-        //
-        //Database SignalBit
+    $id = $this->_daftar_id($id_sodet);
+    if (!$id) { return FALSE; }
     $db_nag = $this->load->database('db_nag', TRUE);
-    $hasil = $db_nag->query("UPDATE so_det SET no_pi_cbd = '$no_pi' WHERE id = '$id_sodet' ");
-    return $hasil;
+    return $db_nag->query("UPDATE so_det SET no_pi_cbd = ? WHERE id IN (" . implode(',', $id) . ")",
+        array($no_pi));
 }
 
 
@@ -1872,9 +2076,18 @@ private function sync_bppb_invoice_and_log($data, $id_book_invoice, $created_by,
     }
 }
 
+/**
+ * Simpan baris potongan invoice.
+ *
+ * Kolom yang belum ada di database disaring dulu - kolom dp_cbd (Advance)
+ * baru datang lewat migrations/20261017b, dan layar sudah mengirimkannya
+ * sebelum migrasinya sempat dijalankan.
+ */
 function simpan_invoice_pot($data)
 {
-    $this->db->insert_batch('tbl_invoice_pot', $data);
+    $bersih = $this->_saring_kolom('tbl_invoice_pot', (array) $data);
+    if (!$bersih) { return 0; }
+    $this->db->insert_batch('tbl_invoice_pot', $bersih);
     return $this->db->insert_id();
 }
 
@@ -2003,7 +2216,10 @@ function report_invoice_detail($id)
 
 function report_invoice_pot($id)
 {
-    $hasil = $this->db->query("SELECT id, id_book_invoice, FORMAT(total, 2) AS total, FORMAT(discount, 2) AS discount, FORMAT(dp, 2) AS dp, 
+    // Kolom dp_cbd (Advance) baru ada setelah migrations/20261017b -
+    // selama belum dijalankan nilainya dikirim nol supaya cetakannya jalan.
+    $adv = $this->kolom_ada('tbl_invoice_pot', 'dp_cbd') ? 'FORMAT(dp_cbd, 2)' : "'0.00'";
+    $hasil = $this->db->query("SELECT id, id_book_invoice, FORMAT(total, 2) AS total, FORMAT(discount, 2) AS discount, FORMAT(dp, 2) AS dp, $adv AS dp_cbd, 
       FORMAT(retur, 2) AS retur, FORMAT(twot, 2) AS twot, FORMAT(vat, 2) AS vat, FORMAT(grand_total, 2) AS grand_total 
       FROM tbl_invoice_pot 
       WHERE id_book_invoice = '$id' ");
@@ -2092,16 +2308,32 @@ function cari_invoice_post($dt_dari_inv, $dt_sampai_inv, $profit_center)
 
 
     //ubah september
+/**
+ * Proforma Invoice yang menunggu First Approval - semua jenis.
+ *
+ * DP & CBD sudah jadi bagian Proforma Invoice, jadi approval-nya pun satu
+ * layar. Nilainya ikut jenisnya: DP/CBD memakai nilai DP-nya, bukan total
+ * proformanya - itu yang benar-benar ditagih lebih dulu.
+ */
 function cari_proforma_invoice_post($dt_dari_inv, $dt_sampai_inv)
 {
-    $hasil = $this->db->query("SELECT a.id, a.no_proforma_invoice AS no_pi, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi, b.supplier AS customer, a.shipp, a.peb,
-      c.type, a.status, a.no_faktur_pajak,  FORMAT(a.total, 2) AS amount
-      FROM tbl_invoice_proforma AS a INNER JOIN 
-      mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN 
-      tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
-      tbl_invoice_proforma_detail_so AS d ON a.no_proforma_invoice = d.no_invoice_proforma
-      WHERE a.status = 'POST' AND a.tgl_proforma_inv BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
-      GROUP BY a.no_proforma_invoice");
+    $tipe  = $this->_sql_tipe_pi('a');
+    $nilai = $this->_sql_nilai_dp('a');
+    $hasil = $this->db->query("
+        SELECT a.id, a.no_proforma_invoice AS no_pi,
+               DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi,
+               b.supplier AS customer, a.shipp, a.peb, c.type, a.status,
+               a.no_faktur_pajak,
+               FORMAT(IF($tipe IN ('DP','CBD'), $nilai, a.total), 2) AS amount,
+               $tipe AS type_pi
+          FROM tbl_invoice_proforma AS a
+    INNER JOIN mastersupplier AS b ON a.id_customer = b.Id_Supplier
+    INNER JOIN tbl_type AS c ON a.id_type = c.id_type
+    INNER JOIN tbl_invoice_proforma_detail_so AS d
+            ON a.no_proforma_invoice = d.no_invoice_proforma
+         WHERE a.status = 'POST' AND a.tgl_proforma_inv BETWEEN ? AND ?
+      GROUP BY a.no_proforma_invoice
+    ", array($dt_dari_inv, $dt_sampai_inv));
     return $hasil->result_array();
 }
 
@@ -2150,16 +2382,26 @@ function cari_invoice_second_approv($dt_dari_inv, $dt_sampai_inv, $profit_center
     return $this->inv_lengkapi_jml_dokumen($hasil->result_array());
 }
 
+/** Proforma Invoice yang menunggu Second Approval - semua jenis. */
 function cari_proforma_invoice_second_approv($dt_dari_inv, $dt_sampai_inv)
 {
-    $hasil = $this->db->query("SELECT a.id, a.no_proforma_invoice AS no_pi, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi, b.supplier AS customer, a.shipp, a.peb,
-      c.type, a.status, a.no_faktur_pajak, FORMAT(a.total, 2) AS amount
-      FROM tbl_invoice_proforma AS a INNER JOIN
-      mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN
-      tbl_type AS c ON a.id_type = c.id_type INNER JOIN
-      tbl_invoice_proforma_detail_so AS d ON a.no_proforma_invoice = d.no_invoice_proforma
-      WHERE a.status = 'FIRST APPROVED' AND a.tgl_proforma_inv BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv'
-      GROUP BY a.no_proforma_invoice");
+    $tipe  = $this->_sql_tipe_pi('a');
+    $nilai = $this->_sql_nilai_dp('a');
+    $hasil = $this->db->query("
+        SELECT a.id, a.no_proforma_invoice AS no_pi,
+               DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi,
+               b.supplier AS customer, a.shipp, a.peb, c.type, a.status,
+               a.no_faktur_pajak,
+               FORMAT(IF($tipe IN ('DP','CBD'), $nilai, a.total), 2) AS amount,
+               $tipe AS type_pi
+          FROM tbl_invoice_proforma AS a
+    INNER JOIN mastersupplier AS b ON a.id_customer = b.Id_Supplier
+    INNER JOIN tbl_type AS c ON a.id_type = c.id_type
+    INNER JOIN tbl_invoice_proforma_detail_so AS d
+            ON a.no_proforma_invoice = d.no_invoice_proforma
+         WHERE a.status = 'FIRST APPROVED' AND a.tgl_proforma_inv BETWEEN ? AND ?
+      GROUP BY a.no_proforma_invoice
+    ", array($dt_dari_inv, $dt_sampai_inv));
     return $hasil->result_array();
 }
 
@@ -2213,10 +2455,17 @@ return $hasil;
 }
 
     //ubah september
+/**
+ * First Approve sebuah Proforma Invoice - semua jenis, termasuk DP & CBD.
+ *
+ * Cuma yang masih POST. Mengembalikan TRUE kalau barisnya benar berubah,
+ * jadi layarnya bisa bilang apa adanya - approve ulang bukan keberhasilan.
+ */
 function approve_profinvoice($id)
 {
-    $hasil = $this->db->query("UPDATE tbl_invoice_proforma SET status = 'FIRST APPROVED' WHERE id = '$id' ");
-    return $hasil;
+    $this->db->query("UPDATE tbl_invoice_proforma SET status = 'FIRST APPROVED'
+                       WHERE id = ? AND status = 'POST'", array($id));
+    return $this->db->affected_rows() > 0;
 }
 
     //ubah september
@@ -2331,6 +2580,106 @@ function approve_debitnote($id)
         return $rapi;
     }
 
+    /**
+     * Satu blok SELECT di dalam query jurnal, dikenali dari potongan isinya.
+     *
+     * Tiap blok ditulis satu baris penuh, jadi batasnya baris itu sendiri.
+     *
+     * @return array|null array(posisi, panjang)
+     */
+    private function _jurnal_blok($sql, $tanda)
+    {
+        $pos = strpos($sql, $tanda);
+        if ($pos === FALSE) { return NULL; }
+        $awal = strrpos(substr($sql, 0, $pos), "\n");
+        $awal = $awal === FALSE ? 0 : $awal + 1;
+        $akhir = strpos($sql, "\n", $pos);
+        if ($akhir === FALSE) { $akhir = strlen($sql); }
+        return array($awal, $akhir - $awal);
+    }
+
+    /**
+     * Baris jurnal uang muka: Advance ikut dicatat, dan piutangnya dipajang
+     * penuh lalu dikredit balik.
+     *
+     * Hasilnya sama dengan contoh dari tim AR:
+     *
+     *   PIUTANG USAHA            debit   <seluruh tagihan sebelum uang muka>
+     *   PENJUALAN                        credit  <nilai penjualan>
+     *   UANG MUKA PENJUALAN      debit   <uang muka yang dipakai>
+     *   PIUTANG USAHA                    credit  <uang muka yang dipakai>
+     *
+     * Saldo tiap COA sama saja dengan cara lama (piutang langsung dicatat
+     * bersih), tapi jejak piutangnya kelihatan - dan kalau uang mukanya
+     * menutup seluruh tagihan, baris piutangnya tidak hilang sama sekali.
+     *
+     * Blok yang sudah ada DIGANDAKAN lalu nilainya ditukar, jadi COA, join,
+     * keterangan & kursnya dijamin sama dengan baris aslinya.
+     *
+     * Kolom dp_cbd baru ada setelah migrations/20261017b. Selama belum
+     * dijalankan, jurnalnya tetap seperti semula - bukan error.
+     */
+    private function _jurnal_tambah_advance($sql)
+    {
+        if (!$this->kolom_ada('tbl_invoice_pot', 'dp_cbd')) {
+            return $sql;
+        }
+
+        /* ---- 1. uang muka: baris DP digandakan untuk Advance ---- */
+        $tanda_dp = 'dp debit, 0 credit, (dp * COALESCE(rate,1)) debit_idr';
+        $p = $this->_jurnal_blok($sql, $tanda_dp);
+        if ($p === NULL) {
+            return $sql;
+        }
+        $blok_dp = substr($sql, $p[0], $p[1]);
+        $blok_adv = str_replace(
+            array($tanda_dp, 'ip.dp, ip.retur'),
+            array('dp_cbd debit, 0 credit, (dp_cbd * COALESCE(rate,1)) debit_idr',
+                  'ip.dp, ip.dp_cbd, ip.retur'),
+            $blok_dp
+        );
+        $sql = substr($sql, 0, $p[0] + $p[1]) . "\n        UNION\n" . $blok_adv
+             . substr($sql, $p[0] + $p[1]);
+
+        /* ---- 2. piutangnya penuh, lalu dikredit balik ---- */
+        $tanda_piutang = 'grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr';
+        $q = $this->_jurnal_blok($sql, $tanda_piutang);
+        if ($q === NULL) {
+            return $sql;   // bentuknya lain - biarkan apa adanya
+        }
+        $blok_piutang = substr($sql, $q[0], $q[1]);
+
+        // Nilai penuhnya: yang ditagih + uang muka yang memotongnya.
+        $penuh = '(grand_total + dp + dp_cbd) debit, 0 credit,'
+               . ' ((grand_total + dp + dp_cbd) * COALESCE(rate,1)) debit_idr, 0 credit_idr';
+        $gross = str_replace(
+            array($tanda_piutang, 'ip.dp, ip.retur'),
+            array($penuh, 'ip.dp, ip.dp_cbd, ip.retur'),
+            $blok_piutang
+        );
+
+        // Blok piutang itu blok PERTAMA, jadi barisnya masih membawa awalan
+        // query-nya. Salinannya dimulai dari SELECT-nya saja.
+        $salin = $blok_piutang;
+        $potong = strpos($salin, 'select a.no_invoice');
+        if ($potong !== FALSE) { $salin = substr($salin, $potong); }
+
+        $balik = array();
+        foreach (array('dp', 'dp_cbd') as $kolom) {
+            $balik[] = str_replace(
+                array($tanda_piutang, 'ip.dp, ip.retur'),
+                array("0 debit, $kolom credit, 0 debit_idr, ($kolom * COALESCE(rate,1)) credit_idr",
+                      'ip.dp, ip.dp_cbd, ip.retur'),
+                $salin
+            );
+        }
+
+        return substr($sql, 0, $q[0]) . $gross
+             . "\n        UNION\n" . $balik[0]
+             . "\n        UNION\n" . $balik[1]
+             . substr($sql, $q[0] + $q[1]);
+    }
+
     const KOLOM_JURNAL = 'no_journal, tgl_journal, type_journal, no_coa, nama_coa, no_costcenter, nama_costcenter, reff_doc, reff_date, faktur_pajak, tgl_faktur_pajak, buyer, no_ws, curr, rate, debit, credit, debit_idr, credit_idr, status, keterangan, create_by, create_date, approve_by, approve_date, cancel_by, cancel_date, created_at, updated_at, profit_center, supplier';
 
     /**
@@ -2345,7 +2694,7 @@ function approve_debitnote($id)
         $inv_pot = 'NAK_pot';
         $inv_credit = 'NAK_credit';
 
-        return "select a.*, a.buyer from (select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date,'' created_at,'' updated_at, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
+        return $this->_jurnal_tambah_advance("select a.*, a.buyer from (select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date,'' created_at,'' updated_at, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
             UNION
             select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, discount debit, 0 credit, (discount * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%$inv_pot%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
             UNION
@@ -2357,7 +2706,7 @@ function approve_debitnote($id)
             UNION
             select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, round(ip.total - ipk.total,4) total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, round(ip.grand_total - ipk.grand_total,4) grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN tbl_invoice_pot_knitting ipk on ipk.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%$inv_credit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
             UNION
-            select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, grand_total credit, 0 debit_idr, (grand_total * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date,'' created_at,'' updated_at, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, round(ip.grand_total - ipk.grand_total,4) grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN tbl_invoice_pot_knitting ipk on ipk.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr) a where debit > 0 OR credit > 0";
+            select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, grand_total credit, 0 debit_idr, (grand_total * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date,'' created_at,'' updated_at, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, round(ip.grand_total - ipk.grand_total,4) grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN tbl_invoice_pot_knitting ipk on ipk.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr) a where debit > 0 OR credit > 0");
     }
 
     /**
@@ -2372,7 +2721,7 @@ function approve_debitnote($id)
         $inv_pot = 'INV_pot';
         $inv_credit = 'INV_credit';
 
-        return "select a.*, a.buyer from (select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date,'' created_at,'' updated_at, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
+        return $this->_jurnal_tambah_advance("select a.*, a.buyer from (select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date,'' created_at,'' updated_at, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
         UNION
         select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, discount debit, 0 credit, (discount * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%$inv_pot%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
         UNION
@@ -2380,7 +2729,7 @@ function approve_debitnote($id)
         UNION
         select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, total credit, 0 debit_idr, (total * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%$inv_credit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
         UNION
-        select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, '2.53.01' no_coa, 'PPN KELUARAN' nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, vat credit, 0 debit_idr, (vat * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr) a where debit > 0 OR credit > 0";
+        select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, '2.53.01' no_coa, 'PPN KELUARAN' nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, vat credit, 0 debit_idr, (vat * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr) a where debit > 0 OR credit > 0");
     }
 
     /**
@@ -2392,7 +2741,7 @@ function approve_debitnote($id)
      */
     private function sql_jurnal_nak_baru($id, $created_by, $created_date)
     {
-        return "select a.*, a.buyer from (select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date,'' created_at,'' updated_at, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
+        return $this->_jurnal_tambah_advance("select a.*, a.buyer from (select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date,'' created_at,'' updated_at, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
             UNION ALL
             select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, discount debit, 0 credit, (discount * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%NAK_pot%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
             UNION ALL
@@ -2400,7 +2749,7 @@ function approve_debitnote($id)
             UNION ALL
             select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, total credit, 0 debit_idr, (total * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%NAK_credit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
             UNION ALL
-            select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, '2.53.01' no_coa, 'PPN KELUARAN' nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, vat credit, 0 debit_idr, (vat * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr) a where debit > 0 OR credit > 0";
+            select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, '2.53.01' no_coa, 'PPN KELUARAN' nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, '-' faktur_pajak, NULL tgl_faktur_pajak, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, vat credit, 0 debit_idr, (vat * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','','','', a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr) a where debit > 0 OR credit > 0");
     }
 
 function approve_invoice_second($id, $created_by, $created_date)
@@ -2430,7 +2779,7 @@ function approve_invoice_second($id, $created_by, $created_date)
         $this->db->query("insert into tbl_list_journal (" . self::KOLOM_JURNAL . ") "
             . $this->sql_jurnal_nak_lama($id, $created_by, $created_date));
 
-$this->db->query("insert into sb_list_journal select '', a.* from (select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
+$this->db->query($this->_jurnal_tambah_advance("insert into sb_list_journal select '', a.* from (select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
     UNION
     select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, discount debit, 0 credit, (discount * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','',a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%$inv_pot%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
     UNION
@@ -2442,7 +2791,7 @@ $this->db->query("insert into sb_list_journal select '', a.* from (select a.no_i
     UNION
     select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, '2.11.98' no_coa, 'UTANG USAHA PIHAK KETIGA - BENANG KNITTING' nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','',a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, round(ip.total - ipk.total,4) total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, round(ip.grand_total - ipk.grand_total,4) grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN tbl_invoice_pot_knitting ipk on ipk.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%$inv_credit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
     UNION
-    select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, grand_total credit, 0 debit_idr, (grand_total * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '' approve_by,'' approve_date,'' cancel_by,'' cancel_date, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, round(ip.grand_total - ipk.grand_total,4) grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN tbl_invoice_pot_knitting ipk on ipk.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr) a where debit > 0 OR credit > 0");
+    select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, grand_total credit, 0 debit_idr, (grand_total * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '' approve_by,'' approve_date,'' cancel_by,'' cancel_date, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, round(ip.grand_total - ipk.grand_total,4) grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN tbl_invoice_pot_knitting ipk on ipk.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr) a where debit > 0 OR credit > 0"));
 
     $jurnal_rows = $this->db->affected_rows();
 } else {
@@ -2671,7 +3020,7 @@ function approve_invoice_second_nak_new($id, $created_by, $created_date)
    $this->db->query("insert into tbl_list_journal (" . self::KOLOM_JURNAL . ") "
        . $this->sql_jurnal_nak_baru($id, $created_by, $created_date));
 
-    $this->db->query(" insert into sb_list_journal select '', a.* from (select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
+    $this->db->query($this->_jurnal_tambah_advance(" insert into sb_list_journal select '', a.* from (select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, grand_total debit, 0 credit, (grand_total * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '$created_by' approve_by,'$created_date' approve_date,'' cancel_by,'' cancel_date, a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%INV_debit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
     UNION
     select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, discount debit, 0 credit, (discount * COALESCE(rate,1)) debit_idr, 0 credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','',a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%NAK_pot%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
     UNION
@@ -2680,13 +3029,20 @@ function approve_invoice_second_nak_new($id, $created_by, $created_date)
     select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, total credit, 0 debit_idr, (total * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','',a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a INNER JOIN (SELECT no_coa, nama_coa, shipp_tipe, so_tipe, cus_ctg, grade from mastercoa_v2 where inv_type like '%NAK_credit%') b on b.shipp_tipe = a.shipp and b.so_tipe LIKE CONCAT('%', a.type_so, '%') and b.cus_ctg LIKE CONCAT('%', a.supplier_ctg, '%') and b.grade LIKE CONCAT('%', a.grade, '%') LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
     UNION
     select a.no_invoice, a.tgl_invoice, 'Invoice' type_journal, '2.53.01' no_coa, 'PPN KELUARAN' nama_coa, '-' no_cc, '-' nama_cc, reff_number ref_doc, '-' ref_date, a.buyer, a.ws, a.curr, COALESCE(rate,1) rate, 0 debit, vat credit, 0 debit_idr, (vat * COALESCE(rate,1)) credit_idr, 'APPROVED' status, a.keterangan, nama, tanggal_input, '','','','',a.profit_center from (select a.reff_number, a.no_invoice, DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice, ms.supplier buyer, b.ws, b.curr, log.nama, log.tanggal_input, a.profit_center, a.shipp, a.type_so, a.id_customer, IF(a.no_invoice like '%NAG%',RIGHT(c.grade,1),'A') grade, IF(supplier_ctg is null, 'Third', supplier_ctg) supplier_ctg, ip.total, ip.discount, ip.dp, ip.retur, ip.twot, ip.vat, ip.grand_total, CONCAT('PENJUALAN ',a.type_so,' ',a.no_invoice,' KE ',UPPER(ms.supplier)) keterangan from tbl_book_invoice a INNER JOIN tbl_invoice_detail b on b.id_book_invoice = a.id LEFT JOIN bppb c on c.id= b.id_bppb INNER JOIN mastersupplier ms on ms.id_supplier = a.id_customer INNER JOIN tbl_invoice_pot ip on ip.id_book_invoice = a.id INNER JOIN (select doc_number, nama, tanggal_input from tbl_log where activity = 'Create invoice' GROUP BY doc_number) log on log.doc_number = a.no_invoice LEFT JOIN (select id_supplier, supplier_ctg from tbl_ctg_supplier where status = 'Y' GROUP BY id_supplier) sc on sc.id_supplier = a.id_customer where a.id ='$id' GROUP BY a.id) a LEFT JOIN (select tanggal,curr,rate from masterrate where v_codecurr = 'PAJAK' AND curr = 'USD' GROUP BY tanggal) c on c.tanggal = a.tgl_invoice and c.curr = a.curr
-   ) a where debit > 0 OR credit > 0");
+   ) a where debit > 0 OR credit > 0"));
 }
 
+/**
+ * Second Approve - hanya untuk yang SUDAH lewat First Approval.
+ *
+ * Tanpa syarat itu baris yang masih POST bisa langsung jadi SECOND
+ * APPROVED, melompati First Approval.
+ */
 function approve_profinvoice_second($id)
 {
-    $hasil = $this->db->query("UPDATE tbl_invoice_proforma SET status = 'SECOND APPROVED' WHERE id = '$id' ");
-    return $hasil;
+    $this->db->query("UPDATE tbl_invoice_proforma SET status = 'SECOND APPROVED'
+                       WHERE id = ? AND status = 'FIRST APPROVED'", array($id));
+    return $this->db->affected_rows() > 0;
 }
 
 // Second approval hanya untuk DN yang sudah FIRST APPROVED (bukan POST, bukan
@@ -2784,9 +3140,14 @@ function cancel_duedate($id)
 
 function get_kode_proforma_invoice($kode_inv)
 {
+    // Sesudah DP & CBD ikut di tabel ini (migrations/20261016), barisnya
+    // harus dikecualikan: nomor PI dan nomor DP/CBD dua deret terpisah,
+    // dan nomor DP/CBD punya pengambilnya sendiri.
+    $bukan_dp = $this->_pi_satu_tabel()
+        ? " AND IFNULL(type_pi, '') NOT IN ('DP', 'CBD')" : '';
     $q = $this->db->query("SELECT no_proforma_invoice, MAX(LEFT(no_proforma_invoice, 4)) AS kd_max 
        FROM tbl_invoice_proforma 
-       WHERE YEAR(tgl_proforma_inv) = YEAR(CURRENT_DATE()) AND MONTH(tgl_proforma_inv) = MONTH(CURRENT_DATE()) AND STATUS <> 'CANCEL' ");
+       WHERE YEAR(tgl_proforma_inv) = YEAR(CURRENT_DATE()) AND MONTH(tgl_proforma_inv) = MONTH(CURRENT_DATE()) AND STATUS <> 'CANCEL' $bukan_dp ");
         //
     $kd = "";
     if ($q->num_rows() > 0) {
@@ -2882,8 +3243,16 @@ function so_proforma_grup($dt_dari, $dt_sampai, $id_customer, $tipe = '')
                IFNULL(NULLIF(TRIM(a.buyerno), ''), '-') AS buyerno,
                a.curr, mp.product_item, d.styleno,
                b.id AS id_sodet, b.color, b.size, b.unit AS uom,
-               b.qty, ROUND(b.price, 2) AS price,
-               ROUND(b.qty * b.price, 2) AS total_price
+               b.qty,
+               -- Harga apa adanya dari SO. Dulu ROUND(...,2) di sini, dan
+               -- harga rupiah memang banyak yang berdesimal panjang
+               -- (11711.7117117) - dibulatkan, totalnya ikut meleset.
+               b.price,
+               -- Totalnya pun apa adanya. Yang disimpan penuh; yang muncul
+               -- di layar & cetakan saja yang dibulatkan 2 angka - jadi
+               -- kalau nanti diminta total apa adanya, datanya sudah ada
+               -- dan databasenya tidak perlu diubah lagi.
+               b.qty * b.price AS total_price
           FROM so_det AS b
     INNER JOIN so AS a ON b.id_so = a.id
     INNER JOIN act_costing AS d ON a.id_cost = d.id
@@ -3009,21 +3378,54 @@ function cari_so_proforma_cbd($dt_dari_so_prof, $dt_sampai_so_prof, $id_customer
 
 function simpan_invoice_detail_proforma_temporary($data)
 {
+    // Tanpa baris sama sekali tidak ada yang perlu disimpan - mis. PI NON SO
+    // yang barisnya diketik sendiri, jadi tabel per SO-nya kosong.
+    if (!is_array($data) || !$data) { return 0; }
     $this->db->insert_batch('tbl_invoice_proforma_detail_temp', $data);
     return $this->db->insert_id();
 }
 
     //ubah september
+/**
+ * Buang isian yang kolomnya belum ada di tabel ini.
+ *
+ * Dipakai alur simpan Proforma Invoice: kolom grouping & id_so_det_list baru
+ * ada sesudah migrations/20261015b dijalankan. Selama belum, barisnya tetap
+ * tersimpan - cuma tanpa kolom barunya - daripada seluruh penyimpanan gagal.
+ */
+private function _saring_kolom($tabel, $data)
+{
+    // Kosong = memang tidak ada yang disimpan (mis. PI NON SO tidak punya
+    // baris per SO). insert_batch() dengan isi kosong bikin error, jadi
+    // pemanggilnya memeriksa hasil ini dulu.
+    if (!is_array($data) || !$data) { return array(); }
+    $punya = $this->db->list_fields($tabel);
+    $keluar = array();
+    foreach ($data as $baris) {
+        if (!is_array($baris)) { $keluar[] = $baris; continue; }
+        $keluar[] = array_intersect_key($baris, array_flip($punya));
+    }
+    return $keluar;
+}
+
 function simpan_so_detail_proforma_temporary($data)
 {
-    $this->db->insert_batch('tbl_so_det_proforma_temp', $data);
+    // Tanpa baris sama sekali tidak ada yang perlu disimpan - mis. PI NON SO
+    // yang barisnya diketik sendiri, jadi tabel per SO-nya kosong.
+    if (!is_array($data) || !$data) { return 0; }
+    $this->db->insert_batch('tbl_so_det_proforma_temp',
+        $this->_saring_kolom('tbl_so_det_proforma_temp', $data));
     return $this->db->insert_id();
 }
 
 function load_invoice_detail_proforma_temporary()
 {
+    // Harga & total dikirim dua kali: yang sudah dibulatkan 2 angka untuk
+    // dipajang, dan yang apa adanya (_raw) yang ikut tersimpan - sama
+    // seperti load_so_detail_proforma_temporary().
     $hasil = $this->db->query("SELECT id_so, so_no, DATE_FORMAT(so_date, '%Y-%m-%d') AS so_date, buyerno, curr, FORMAT(qty, 2) AS qty, 
-      FORMAT(unit_price, 2) AS unit_price, FORMAT(total_price, 2) AS total_price 
+      FORMAT(unit_price, 2) AS unit_price, FORMAT(total_price, 2) AS total_price, 
+      unit_price AS unit_price_raw, total_price AS total_raw 
       FROM tbl_invoice_proforma_detail_temp");
     return $hasil->result_array();
 }
@@ -3031,8 +3433,22 @@ function load_invoice_detail_proforma_temporary()
     //ubah september
 function load_so_detail_proforma_temporary()
 {
-    $hasil = $this->db->query("SELECT id_so_det, no_so, produk_det, curr, FORMAT(qty, 2) AS qty, uom,
-      FORMAT(price, 2) AS unit_price, FORMAT(total, 2) AS total_price 
+    // Harga satuan ditulis apa adanya - nol di belakang koma dibuang, jadi
+    // 1.16 tetap "1.16" dan 11711.7117117 tidak terpotong.
+    //
+    // Total dikirim DUA kali: total_price yang sudah dibulatkan 2 angka untuk
+    // dipajang, dan total_raw apa adanya yang ikut tersimpan waktu Proforma
+    // Invoice-nya disave (baris tabelnya dibaca ulang dari layar - lihat
+    // simpan_proforma_invoice_detail_so() di crud-nag.js).
+    $harga = "TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(price, 10)))";
+    // Satu baris bisa mewakili banyak so_det - ikut pilihan Group By di layar.
+    // Kolomnya baru ada sesudah migrations/20261015b; selama belum, dipakai
+    // id barisnya sendiri supaya layarnya tetap jalan.
+    $daftar = $this->kolom_ada('tbl_so_det_proforma_temp', 'id_so_det_list')
+        ? "IFNULL(NULLIF(id_so_det_list, ''), id_so_det)" : 'id_so_det';
+    $hasil = $this->db->query("SELECT id_so_det, $daftar AS id_so_det_list,
+      no_so, produk_det, curr, FORMAT(qty, 2) AS qty, uom,
+      $harga AS unit_price, FORMAT(total, 2) AS total_price, total AS total_raw
       FROM tbl_so_det_proforma_temp");
     return $hasil->result_array();
 }
@@ -3059,18 +3475,23 @@ function delete_so_detail_proforma_temporary()
 
 function simpan_proforma_invoice_header($data)
 {
-    $this->db->insert_batch('tbl_invoice_proforma', $data);
+    $this->db->insert_batch('tbl_invoice_proforma',
+        $this->_saring_kolom('tbl_invoice_proforma', $data));
     return $this->db->insert_id();
 }
     //ubah september
 function simpan_proforma_invoice_header_cbd($data)
 {
-    $this->db->insert_batch('tbl_invoice_proforma_dp_cbd', $data);
+    $this->db->insert_batch('tbl_invoice_proforma_dp_cbd',
+        $this->_saring_kolom('tbl_invoice_proforma_dp_cbd', $data));
     return $this->db->insert_id();
 }
 
 function simpan_proforma_invoice_detail($data)
 {
+    // Tanpa baris sama sekali tidak ada yang perlu disimpan - mis. PI NON SO
+    // yang barisnya diketik sendiri, jadi tabel per SO-nya kosong.
+    if (!is_array($data) || !$data) { return 0; }
     $this->db->insert_batch('tbl_invoice_proforma_detail', $data);
     return $this->db->insert_id();
 }
@@ -3078,6 +3499,9 @@ function simpan_proforma_invoice_detail($data)
     //ubah september
 function simpan_proforma_invoice_detail_cbd($data)
 {
+    // Tanpa baris sama sekali tidak ada yang perlu disimpan - mis. PI NON SO
+    // yang barisnya diketik sendiri, jadi tabel per SO-nya kosong.
+    if (!is_array($data) || !$data) { return 0; }
     $this->db->insert_batch('tbl_invoice_proforma_detail_dp_cbd', $data);
     return $this->db->insert_id();
 }
@@ -3085,44 +3509,140 @@ function simpan_proforma_invoice_detail_cbd($data)
     //ubah september
 function simpan_proforma_invoice_detail_so($data)
 {
-    $this->db->insert_batch('tbl_invoice_proforma_detail_so', $data);
+    // Tanpa baris sama sekali tidak ada yang perlu disimpan - mis. PI NON SO
+    // yang barisnya diketik sendiri, jadi tabel per SO-nya kosong.
+    if (!is_array($data) || !$data) { return 0; }
+    $this->db->insert_batch('tbl_invoice_proforma_detail_so',
+        $this->_saring_kolom('tbl_invoice_proforma_detail_so', $data));
     return $this->db->insert_id();
 }
 
     //ubah september
 function simpan_proforma_invoice_detail_so_cbd($data)
 {
-    $this->db->insert_batch('tbl_invoice_proforma_detail_so_dp_cbd', $data);
+    // Tanpa baris sama sekali tidak ada yang perlu disimpan - mis. PI NON SO
+    // yang barisnya diketik sendiri, jadi tabel per SO-nya kosong.
+    if (!is_array($data) || !$data) { return 0; }
+    $this->db->insert_batch('tbl_invoice_proforma_detail_so_dp_cbd',
+        $this->_saring_kolom('tbl_invoice_proforma_detail_so_dp_cbd', $data));
     return $this->db->insert_id();
 }
 
+/**
+ * Daftar Proforma Invoice - SATU daftar untuk empat jenis.
+ *
+ * Sesudah migrations/20261016 keempatnya tersimpan di tbl_invoice_proforma,
+ * dan nama tabel DP/CBD yang lama tinggal VIEW ke tabel yang sama. Jadi
+ * cukup satu cabang - membaca keduanya justru membuat barisnya dobel.
+ *
+ * Selama migrasi itu belum dijalankan, DP & CBD masih di tabelnya sendiri,
+ * jadi daftarnya menggabungkan keduanya. Penandanya kolom tipe_dp: kolom itu
+ * baru ada di tbl_invoice_proforma sesudah migrasinya jalan.
+ *
+ * Tiap baris membawa:
+ *   type_pi - PI / PI NON SO / DP / CBD. Baris lama yang kolomnya masih
+ *             kosong dibaca dari NOMORNYA: 0001/C/E/NAG/1026 -> CBD,
+ *             0001/D/E/... -> DP.
+ *   sumber  - 'PI' atau 'CBD'. Dipakai tombol di tiap baris (cetak, cancel,
+ *             faktur pajak): DP & CBD punya cetakan & alur sendiri.
+ */
 function cari_proforma_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer)
 {
+    $satu = $this->_pi_satu_tabel();
+    $saring = $id_customer === 'all_customer' ? '' : " AND a.id_customer = ?";
 
-    if ($id_customer == "all_customer") {
-        $hasil = $this->db->query("SELECT a.id, a.no_proforma_invoice AS no_pi, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi, b.supplier AS customer, a.shipp, a.peb,
-          c.type, a.status, a.no_faktur_pajak,  FORMAT(a.total, 2) AS amount
-          FROM tbl_invoice_proforma AS a INNER JOIN 
-          mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN 
-          tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
-          tbl_invoice_proforma_detail_so AS d ON a.no_proforma_invoice = d.no_invoice_proforma
-          WHERE a.status = 'POST' AND a.tgl_proforma_inv BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' 
-          GROUP BY a.no_proforma_invoice ");
-        return $hasil->result_array();
-    } else {
-        $hasil = $this->db->query("SELECT a.id, a.no_proforma_invoice AS no_pi, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi, b.supplier AS customer, a.shipp, a.peb,
-          c.type, a.status, a.no_faktur_pajak,  FORMAT(a.total, 2) AS amount
-          FROM tbl_invoice_proforma AS a INNER JOIN 
-          mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN 
-          tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
-          tbl_invoice_proforma_detail_so AS d ON a.no_proforma_invoice = d.no_invoice_proforma
-          WHERE a.status = 'POST' AND a.tgl_proforma_inv BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' AND a.id_customer = '$id_customer' 
-          GROUP BY a.no_proforma_invoice ");
+    // Jenisnya: dari kolomnya kalau ada, kalau kosong dari nomornya.
+    $dari_nomor = "CASE SUBSTRING_INDEX(SUBSTRING_INDEX(a.no_proforma_invoice, '/', 2), '/', -1)"
+        . " WHEN 'C' THEN 'CBD' WHEN 'D' THEN 'DP' ELSE %s END";
+    $tipe_pi  = $this->kolom_ada('tbl_invoice_proforma', 'type_pi')
+        ? "IFNULL(NULLIF(a.type_pi, ''), " . sprintf($dari_nomor, "'PI'") . ")"
+        : sprintf($dari_nomor, "'PI'");
+
+    // Nilai yang dipajang: PI pakai totalnya; DP/CBD pakai nilai DP-nya -
+    // itu yang benar-benar ditagih lebih dulu.
+    $nilai_dp = "IF(a.dp = '0', a.total, IF(a.tipe_dp = '%', (a.total * (a.dp/100)), a.dp))";
+
+    // Header tanpa baris sama sekali tidak ditampilkan - itu sisa simpan yang
+    // gagal, bukan proforma yang sah (lihat migrations/20261002).
+    $ada_baris = "(EXISTS (SELECT 1 FROM tbl_invoice_proforma_detail_so x
+                            WHERE x.no_invoice_proforma = a.no_proforma_invoice)
+                OR EXISTS (SELECT 1 FROM tbl_invoice_proforma_detail y
+                            WHERE y.no_invoice_proforma = a.no_proforma_invoice))";
+
+    if ($satu) {
+        $bind = array($dt_dari_inv, $dt_sampai_inv);
+        if ($saring !== '') { $bind[] = $id_customer; }
+        $hasil = $this->db->query("
+            SELECT a.id, a.no_proforma_invoice AS no_pi,
+                   DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi,
+                   b.supplier AS customer, a.shipp, a.peb, c.type, a.status,
+                   a.no_faktur_pajak,
+                   FORMAT(IF($tipe_pi IN ('DP','CBD'), $nilai_dp, a.total), 2) AS amount,
+                   $tipe_pi AS type_pi,
+                   IF($tipe_pi IN ('DP','CBD'), 'CBD', 'PI') AS sumber
+              FROM tbl_invoice_proforma AS a
+        INNER JOIN mastersupplier AS b ON a.id_customer = b.Id_Supplier
+        INNER JOIN tbl_type AS c ON a.id_type = c.id_type
+             WHERE a.tgl_proforma_inv BETWEEN ? AND ?$saring
+               AND $ada_baris
+          ORDER BY a.tgl_proforma_inv DESC, a.no_proforma_invoice DESC
+        ", $bind);
         return $hasil->result_array();
     }
+
+    // ---- belum dimigrasi: dua tabel, digabung di sini ----
+    $bind = array($dt_dari_inv, $dt_sampai_inv);
+    if ($saring !== '') { $bind[] = $id_customer; }
+    $bind = array_merge($bind, $bind);
+    $tipe_cbd = $this->kolom_ada('tbl_invoice_proforma_dp_cbd', 'type_pi')
+        ? "IFNULL(NULLIF(a.type_pi, ''), " . sprintf($dari_nomor, "'DP/CBD'") . ")"
+        : sprintf($dari_nomor, "'DP/CBD'");
+
+    $hasil = $this->db->query("
+        SELECT a.id, a.no_proforma_invoice AS no_pi,
+               DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi,
+               b.supplier AS customer, a.shipp, a.peb, c.type, a.status,
+               a.no_faktur_pajak, FORMAT(a.total, 2) AS amount,
+               $tipe_pi AS type_pi, 'PI' AS sumber
+          FROM tbl_invoice_proforma AS a
+    INNER JOIN mastersupplier AS b ON a.id_customer = b.Id_Supplier
+    INNER JOIN tbl_type AS c ON a.id_type = c.id_type
+    INNER JOIN tbl_invoice_proforma_detail_so AS d
+            ON a.no_proforma_invoice = d.no_invoice_proforma
+         WHERE a.tgl_proforma_inv BETWEEN ? AND ?$saring
+      GROUP BY a.no_proforma_invoice
+
+         UNION ALL
+
+        SELECT a.id, a.no_proforma_invoice AS no_pi,
+               DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi,
+               b.supplier AS customer, a.shipp, a.peb, c.type, a.status,
+               a.no_faktur_pajak, FORMAT($nilai_dp, 2) AS amount,
+               $tipe_cbd AS type_pi, 'CBD' AS sumber
+          FROM tbl_invoice_proforma_dp_cbd AS a
+    INNER JOIN mastersupplier AS b ON a.id_customer = b.Id_Supplier
+    INNER JOIN tbl_type AS c ON a.id_type = c.id_type
+    INNER JOIN tbl_invoice_proforma_detail_dp_cbd AS d
+            ON a.no_proforma_invoice = d.no_invoice_proforma
+         WHERE a.tgl_proforma_inv BETWEEN ? AND ?$saring
+      GROUP BY a.no_proforma_invoice
+
+      ORDER BY date_pi DESC, no_pi DESC
+    ", $bind);
+    return $hasil->result_array();
 }
 
-    //ubah september
+/**
+ * TRUE kalau DP & CBD sudah disatukan ke tbl_invoice_proforma.
+ *
+ * Penandanya kolom tipe_dp: kolom khusus DP itu baru ditambahkan ke tabel
+ * gabungan oleh migrations/20261016. Selama belum dijalankan, DP & CBD masih
+ * tersimpan di tabelnya sendiri dan kodenya tetap jalan seperti semula.
+ */
+private function _pi_satu_tabel()
+{
+    return $this->kolom_ada('tbl_invoice_proforma', 'tipe_dp');
+}    //ubah september
 function cari_proforma_invoice_cbd($dt_dari_inv, $dt_sampai_inv, $id_customer)
 {
 
@@ -3211,15 +3731,60 @@ function update_faktur_pajak_cbd($id, $faktur_pjk)
     return $hasil;
 }
 
+/**
+ * Kepala cetakan Proforma Invoice.
+ *
+ * Pihak yang DITAGIH ikut terbaca lengkap (nama, alamat & telponnya):
+ * proforma boleh ditagihkan ke pihak lain, dan cetakannya memajang yang
+ * ditagih itu - bukan pemilik SO-nya. Kolom billed_to baru ada setelah
+ * migrations/20261019b, jadi keberadaannya diperiksa dulu.
+ */
+/**
+ * Daftar bank untuk layar Proforma Invoice.
+ *
+ * Diambil dari b_masterbank - tabel bank yang sekarang dipakai. Kolomnya
+ * diberi nama seperti daftar bank yang lama (id / nama_bank / no_rek) supaya
+ * layarnya tidak perlu tahu datanya dari tabel mana.
+ *
+ * Yang ditawarkan cuma bank yang masih aktif, dengan satu pengecualian: bank
+ * yang sedang dipakai PI yang sedang diubah tetap ikut walau sudah
+ * dinonaktifkan - kalau tidak, pilihannya berganti diam-diam begitu PI itu
+ * disimpan lagi.
+ *
+ * @param int $id_terpakai id bank yang sedang dipakai (0 = tidak ada)
+ */
+function load_bank_pi($id_terpakai = 0)
+{
+    $hasil = $this->db->query("
+        SELECT id, bank_name AS nama_bank, bank_account AS no_rek, curr, id_coa,
+               beneficiary_name AS v_company, beneficiary_address AS v_companyaddress,
+               bank_branch AS v_branch, bank_address AS v_bankaddress,
+               swift_code AS v_swiftcode
+          FROM b_masterbank
+         WHERE COALESCE(status, 'Active') = 'Active' OR id = ?
+      ORDER BY bank_name, bank_account
+    ", array((int) $id_terpakai));
+    return $hasil->result_array();
+}
 function report_proforma_invoice($id)
 {
+    $ada = $this->kolom_ada('tbl_invoice_proforma', 'billed_to');
+    $billed = $ada ? 'a.billed_to' : "''";
+    $gabung = $ada
+        ? "LEFT JOIN mastersupplier AS e ON e.Id_Supplier = a.billed_to" : '';
+    $nama   = $ada ? "IFNULL(e.supplier, '')" : "''";
+    $alamat = $ada ? "IFNULL(e.alamat, '')" : "''";
+    $telp   = $ada ? "IFNULL(e.Phone, '')" : "''";
     $hasil = $this->db->query("SELECT a.id, a.no_proforma_invoice AS no_pi, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi, b.supplier AS customer, a.shipp, a.peb,
       UPPER(c.type) AS type, a.status, a.no_faktur_pajak, IFNULL(b.alamat, '-') AS alamat,
-      IFNULL(b.Phone, '-') AS phone, d.no_rek, d.nama_bank, d.v_bankaddress, d.curr
+      IFNULL(b.Phone, '-') AS phone, d.bank_account AS no_rek, d.bank_name AS nama_bank,
+      d.bank_address AS v_bankaddress, d.curr, d.swift_code AS v_swiftcode,
+      $billed AS billed_to, $nama AS billed_to_nama,
+      $alamat AS billed_to_alamat, $telp AS billed_to_phone
       FROM tbl_invoice_proforma AS a INNER JOIN
       mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN 
-      tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
-      masterbank AS d ON a.id_bank = d.id
+      tbl_type AS c ON a.id_type = c.id_type
+      LEFT JOIN b_masterbank AS d ON d.id = a.id_bank $gabung
       WHERE a.id = '$id' ");
     return $hasil->row_array();
 }
@@ -3228,11 +3793,12 @@ function report_proforma_invoice_cbd($id)
 {
     $hasil = $this->db->query("SELECT a.id, a.no_proforma_invoice AS no_pi, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi, b.supplier AS customer, a.shipp, a.peb,
       UPPER(c.type) AS type, a.status, a.no_faktur_pajak, IFNULL(b.alamat, '-') AS alamat,
-      IFNULL(b.Phone, '-') AS phone, d.no_rek, d.nama_bank, d.v_bankaddress, d.curr
+      IFNULL(b.Phone, '-') AS phone, d.bank_account AS no_rek, d.bank_name AS nama_bank,
+      d.bank_address AS v_bankaddress, d.curr, d.swift_code AS v_swiftcode
       FROM tbl_invoice_proforma_dp_cbd AS a INNER JOIN
       mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN 
-      tbl_type AS c ON a.id_type = c.id_type INNER JOIN 
-      masterbank AS d ON a.id_bank = d.id
+      tbl_type AS c ON a.id_type = c.id_type
+      LEFT JOIN b_masterbank AS d ON d.id = a.id_bank
       WHERE a.id = '$id' ");
     return $hasil->row_array();
 }
@@ -3497,8 +4063,10 @@ return $hasil->result_array();
 
 function report_proforma_invoice_detail($id)
 {
+    // Harga satuan dicetak apa adanya - lihat load_so_detail_proforma_temporary().
+    $harga = "TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(a.unit_price, 10)))";
     $hasil = $this->db->query("SELECT b.id, a.no_invoice_proforma, a.no_so, a.produk_detail, a.curr, FORMAT(a.qty, 2) AS qty, 
-      FORMAT(a.unit_price, 2) AS unit_price, 
+      $harga AS unit_price, 
       FORMAT(a.total_price, 2) AS total_price
       FROM tbl_invoice_proforma_detail_so AS a INNER JOIN 
       tbl_invoice_proforma AS b ON a.no_invoice_proforma = b.no_proforma_invoice
@@ -3928,13 +4496,73 @@ function block_page($user, $menu_name)
 }
 
 
+// ── Kwitansi: Debit Note ikut bisa ditarik ──────────────────────────────────
+// Satu kwitansi boleh berisi campuran invoice & DN. Bagian DN baru hidup
+// setelah migrations/20261020_kwitansi_debitnote.sql dijalankan; selama belum,
+// layarnya tetap jalan seperti dulu (invoice saja).
+//
+// DN yang ditawarkan: sudah disetujui penuh, ditagihkan dalam rupiah, dan
+// belum pernah masuk kwitansi lain.
+const KWT_DN_STATUS = "('APPROVED','SECOND APPROVED')";
+
+/** Kolom penanda dari migrasi 20261020 sudah ada semua? */
+public function kwt_dn_siap()
+{
+    return in_array('no_kwt', $this->db->list_fields('tbl_debitnote_h'), true)
+        && in_array('sumber', $this->db->list_fields('tbl_kwitansi_detail'), true)
+        && in_array('sumber', $this->db->list_fields('tbl_kwt_temp'), true);
+}
+
+/** Buang kolom yang belum ada di tabelnya, supaya insert tidak gagal. */
+private function kwt_buang_kolom($tabel, $rows)
+{
+    if (empty($rows)) {
+        return $rows;
+    }
+    $kolom = $this->db->list_fields($tabel);
+    foreach ($rows as &$row) {
+        foreach (array_keys($row) as $k) {
+            if (!in_array($k, $kolom, true)) {
+                unset($row[$k]);
+            }
+        }
+    }
+    unset($row);
+    return $rows;
+}
+
+/**
+ * Nilai DN yang ditagihkan ke customer = eqv_curr (nilai dalam to_curr).
+ * Yang dipakai kwitansi cuma DN yang to_curr-nya IDR - kwitansi nilainya
+ * rupiah dan terbilangnya pakai Rupiah.
+ */
+private function kwt_sql_dn($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer)
+{
+    $status = self::KWT_DN_STATUS;
+    return "(SELECT DISTINCT dn.no_dn AS no_invoice, UPPER(ms.supplier) AS customer, '-' AS shipp,
+      '-' AS doc_type, '-' AS doc_number, dn.to_curr AS curr,
+      DATE_FORMAT(dn.tgl_dn, '%Y-%m-%d') AS inv_date, 'Debit Note' AS type, dn.status, dn.id,
+      '' AS id_type, ms.Id_Supplier AS id_customer,
+      FORMAT(dn.eqv_curr, 2) AS amount, ROUND(dn.eqv_curr, 0) AS amount1, 'DN' AS sumber
+      FROM tbl_debitnote_h AS dn INNER JOIN
+      mastersupplier AS ms ON ms.id_supplier = dn.customer
+      WHERE dn.tgl_dn BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND dn.customer = '$id_customer'
+      AND dn.status IN $status AND dn.to_curr = 'IDR' AND (dn.no_kwt IS NULL OR dn.no_kwt = '')
+      ORDER BY dn.id)";
+}
+
 function cari_invoice_kwt($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer)
 {
 
+ // Debit Note ikut ditawarkan kalau migrasi 20261020 sudah dijalankan.
+ $bagian_dn = $this->kwt_dn_siap()
+     ? " union " . $this->kwt_sql_dn($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer)
+     : "";
+
  $hasil = $this->db->query("(SELECT distinct a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, a.shipp, a.doc_type, a.doc_number, e.curr,
-  DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date, c.type,  a.status, a.id, c.id_type, b.Id_Supplier AS id_customer, 
-  FORMAT((d.grand_total), 2) AS amount, round(d.grand_total,0) AS amount1
-  FROM  tbl_book_invoice AS a INNER JOIN 
+  DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date, c.type,  a.status, a.id, c.id_type, b.Id_Supplier AS id_customer,
+  FORMAT((d.grand_total), 2) AS amount, round(d.grand_total,0) AS amount1, 'INV' AS sumber
+  FROM  tbl_book_invoice AS a INNER JOIN
   mastersupplier AS b ON a.id_customer = b.id_supplier INNER JOIN 
   tbl_type AS c ON a.id_type = c.id_type INNER JOIN
   tbl_invoice_pot AS d ON a.id = d.id_book_invoice  INNER JOIN
@@ -3944,13 +4572,13 @@ function cari_invoice_kwt($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer)
 
   (SELECT distinct  f.no_inv AS no_invoice, UPPER(g.supplier) AS customer, f.shipp,                                     f.doc_type, f.doc_number,i.curr, 
   DATE_FORMAT(i.sj_date, '%Y-%m-%d') AS inv_date, f.type, f.status,f.id, f.type_so, g.Id_Supplier AS id_customer,
-  FORMAT((h.grand_total), 2) AS amount,round(h.grand_total,0) AS amount1
-  FROM  tbl_invoice_nb AS f INNER JOIN 
+  FORMAT((h.grand_total), 2) AS amount,round(h.grand_total,0) AS amount1, 'INV' AS sumber
+  FROM  tbl_invoice_nb AS f INNER JOIN
   mastersupplier AS g ON f.customer = g.id_supplier INNER JOIN 
   tbl_invoice_nb_pot AS h ON f.no_inv = h.no_inv INNER JOIN
   tbl_invoice_nb_detail as i on f.no_inv=i.no_inv      
   WHERE i.sj_date BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND f.customer = '$id_customer' and f.status like '%APPROVED%' and f.no_kwt is null  and i.curr = 'IDR'
-  ORDER BY f.id) ");
+  ORDER BY f.id) $bagian_dn ");
 
  return $hasil->result_array();
 
@@ -3958,16 +4586,28 @@ function cari_invoice_kwt($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer)
 
 function cari_kwitansi($dt_dari_kwt, $dt_sampai_kwt, $customer)
 {
+    // Kwitansi yang isinya Debit Note tidak ketemu lewat join ke tabel
+    // invoice - barisnya dicari lewat tbl_debitnote_h. Tanpa ini, kwitansi
+    // yang isinya DN saja tidak akan muncul di daftar.
+    $saring_cust = ($customer == "all_customer") ? "" : " AND a.supp = '$customer'";
+    $bagian_dn = $this->kwt_dn_siap()
+        ? " union (SELECT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%Y-%m-%d') as tgl_kwt, UPPER(b.supplier) AS supp,
+            FORMAT((a.total), 2) as total, a.terbilang as bilang, a.status, dn.to_curr as curr
+            from tbl_kwitansi a inner join mastersupplier AS b ON a.supp = b.id_supplier
+            inner join tbl_kwitansi_detail f on f.no_kwitansi = a.no_kwt
+            inner join tbl_debitnote_h dn on dn.no_dn = f.no_invoice
+            where a.tgl_kwt BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' $saring_cust GROUP BY a.id)"
+        : "";
 
     if ($customer == "all_customer") {
 
      $hasil = $this->db->query("SELECT * from ((SELECT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%Y-%m-%d') as tgl_kwt, UPPER(b.supplier) AS supp, FORMAT((a.total), 2) as total, a.terbilang as bilang, a.status, c.curr from tbl_kwitansi a inner join mastersupplier AS b ON a.supp = b.id_supplier inner join tbl_kwitansi_detail f on f.no_kwitansi = a.no_kwt inner join tbl_book_invoice d on f.no_invoice = d.no_invoice inner JOIN tbl_invoice_detail c on d.id = c.id_book_invoice  where a.tgl_kwt BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt'  GROUP BY a.id) union
-        (SELECT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%Y-%m-%d') as tgl_kwt, UPPER(b.supplier) AS supp, FORMAT((a.total), 2) as total, a.terbilang as bilang, a.status, c.curr from tbl_kwitansi a inner join mastersupplier AS b ON a.supp = b.id_supplier inner join tbl_kwitansi_detail f on f.no_kwitansi = a.no_kwt inner JOIN tbl_invoice_nb_detail c on f.no_invoice = c.no_inv  where a.tgl_kwt BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' GROUP BY a.id)) a ");
+        (SELECT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%Y-%m-%d') as tgl_kwt, UPPER(b.supplier) AS supp, FORMAT((a.total), 2) as total, a.terbilang as bilang, a.status, c.curr from tbl_kwitansi a inner join mastersupplier AS b ON a.supp = b.id_supplier inner join tbl_kwitansi_detail f on f.no_kwitansi = a.no_kwt inner JOIN tbl_invoice_nb_detail c on f.no_invoice = c.no_inv  where a.tgl_kwt BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' GROUP BY a.id) $bagian_dn ) a ");
 
      return $hasil->result_array();
  } else {
     $hasil = $this->db->query("SELECT * from ((SELECT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%Y-%m-%d') as tgl_kwt, UPPER(b.supplier) AS supp, FORMAT((a.total), 2) as total, a.terbilang as bilang, a.status, c.curr from tbl_kwitansi a inner join mastersupplier AS b ON a.supp = b.id_supplier inner join tbl_kwitansi_detail f on f.no_kwitansi = a.no_kwt inner join tbl_book_invoice d on f.no_invoice = d.no_invoice inner JOIN tbl_invoice_detail c on d.id = c.id_book_invoice  where a.tgl_kwt BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' AND a.supp = '$customer' GROUP BY a.id) union
-        (SELECT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%Y-%m-%d') as tgl_kwt, UPPER(b.supplier) AS supp, FORMAT((a.total), 2) as total, a.terbilang as bilang, a.status, c.curr from tbl_kwitansi a inner join mastersupplier AS b ON a.supp = b.id_supplier inner join tbl_kwitansi_detail f on f.no_kwitansi = a.no_kwt inner JOIN tbl_invoice_nb_detail c on f.no_invoice = c.no_inv  where a.tgl_kwt BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' AND a.supp = '$customer' GROUP BY a.id)) a");
+        (SELECT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%Y-%m-%d') as tgl_kwt, UPPER(b.supplier) AS supp, FORMAT((a.total), 2) as total, a.terbilang as bilang, a.status, c.curr from tbl_kwitansi a inner join mastersupplier AS b ON a.supp = b.id_supplier inner join tbl_kwitansi_detail f on f.no_kwitansi = a.no_kwt inner JOIN tbl_invoice_nb_detail c on f.no_invoice = c.no_inv  where a.tgl_kwt BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' AND a.supp = '$customer' GROUP BY a.id) $bagian_dn ) a");
     return $hasil->result_array();
 }
 
@@ -3975,8 +4615,17 @@ function cari_kwitansi($dt_dari_kwt, $dt_sampai_kwt, $customer)
 
 function cari_view_kwitansi($no_kwt)
 {
+ // Baris Debit Note: nilainya dari tbl_debitnote_h (eqv_curr = yang
+ // ditagihkan), bukan dari detail invoice.
+ $bagian_dn = $this->kwt_dn_siap()
+     ? " union (SELECT DISTINCT d.id, a.id as id_detail, a.no_invoice, a.invoice_date, a.customer, a.shipp,
+        a.doc_type, a.doc_number, a.type, FORMAT(dn.eqv_curr, 2) as total, dn.to_curr as curr, a.style
+        from tbl_kwitansi_detail a inner join tbl_debitnote_h dn on dn.no_dn = a.no_invoice
+        inner join tbl_kwitansi d on d.no_kwt = a.no_kwitansi
+        where d.id = '$no_kwt' GROUP BY a.no_invoice)"
+     : "";
 
- $hasil = $this->db->query("SELECT DISTINCT d.id, a.id as id_detail,a.no_invoice, a.invoice_date, a.customer, a.shipp, a.doc_type, a.doc_number, a.type, FORMAT(SUM(c.total_price), 2) as total, c.curr, a.style from tbl_kwitansi_detail a inner join tbl_book_invoice b on b.no_invoice = a.no_invoice inner JOIN tbl_invoice_detail c on b.id = c.id_book_invoice inner join tbl_kwitansi d on d.no_kwt = a.no_kwitansi where d.id = '$no_kwt' GROUP BY a.no_invoice");
+ $hasil = $this->db->query("(SELECT DISTINCT d.id, a.id as id_detail,a.no_invoice, a.invoice_date, a.customer, a.shipp, a.doc_type, a.doc_number, a.type, FORMAT(SUM(c.total_price), 2) as total, c.curr, a.style from tbl_kwitansi_detail a inner join tbl_book_invoice b on b.no_invoice = a.no_invoice inner JOIN tbl_invoice_detail c on b.id = c.id_book_invoice inner join tbl_kwitansi d on d.no_kwt = a.no_kwitansi where d.id = '$no_kwt' GROUP BY a.no_invoice) $bagian_dn");
 
  return $hasil->result_array();
 
@@ -4044,11 +4693,46 @@ function ubahnomor_kwt($kode)
     //     return $hasil->row();
     // }
 
+/**
+ * Kwitansi yang mau dicetak, dicari dari id ATAU nomornya.
+ *
+ * Dibedakan dengan tegas: angka murni berarti id, selain itu nomor
+ * kwitansi. Kalau tidak dipisah, MySQL diam-diam membaca
+ * '0178/INV/NAG/2026/KWT' sebagai angka 178 waktu dibandingkan dengan
+ * kolom id - dan yang ketemu kwitansi yang sama sekali lain.
+ *
+ * @return array|null baris tbl_kwitansi, atau NULL kalau tidak ada
+ */
+function kwitansi_untuk_cetak($kunci)
+{
+    $kunci = trim((string) $kunci);
+    if ($kunci === '') {
+        return NULL;
+    }
+    if (ctype_digit($kunci)) {
+        return $this->db->query("SELECT * FROM tbl_kwitansi WHERE id = ? LIMIT 1",
+            array((int) $kunci))->row_array();
+    }
+    return $this->db->query("SELECT * FROM tbl_kwitansi WHERE no_kwt = ? LIMIT 1",
+        array($kunci))->row_array();
+}
+
 function cari_data_kwitansi($id)
 {
+    // Kepala kwitansi untuk cetakan PDF. Kwitansi yang isinya Debit Note
+    // saja tidak ketemu lewat tabel invoice - dicari lewat tbl_debitnote_h.
+    $bagian_dn = $this->kwt_dn_siap()
+        ? " union
+        SELECT DISTINCT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%d %M %Y') as tgl_kwt, format(round(a.total,0),0) as total, a.terbilang, dn.to_curr as curr, d.Supplier
+        from tbl_kwitansi a inner join tbl_kwitansi_detail b on a.no_kwt = b.no_kwitansi
+        INNER JOIN tbl_debitnote_h dn on dn.no_dn = b.no_invoice
+        INNER JOIN mastersupplier d ON dn.customer = d.Id_Supplier where a.id = '$id'"
+        : "";
+
     $hasil = $this->db->query("SELECT DISTINCT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%d %M %Y') as tgl_kwt, format(round(a.total,0),0) as total, a.terbilang, c.curr, d.Supplier from tbl_kwitansi a inner join tbl_book_invoice b on a.no_kwt = b.no_kwt INNER JOIN tbl_invoice_detail c on b.id = c.id_book_invoice INNER JOIN mastersupplier d ON b.id_customer = d.Id_Supplier where a.id = '$id'
         union
-        SELECT DISTINCT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%d %M %Y') as tgl_kwt, format(round(a.total,0),0) as total, a.terbilang, c.curr, d.Supplier from tbl_kwitansi a inner join tbl_kwitansi_detail b on a.no_kwt = b.no_kwitansi INNER JOIN tbl_invoice_nb_detail c on b.no_invoice = c.no_inv INNER JOIN tbl_invoice_nb e on e.no_inv = c.no_inv INNER JOIN mastersupplier d ON e.customer = d.Id_Supplier where a.id = '$id'");
+        SELECT DISTINCT a.id, a.no_kwt, DATE_FORMAT(a.tgl_kwt, '%d %M %Y') as tgl_kwt, format(round(a.total,0),0) as total, a.terbilang, c.curr, d.Supplier from tbl_kwitansi a inner join tbl_kwitansi_detail b on a.no_kwt = b.no_kwitansi INNER JOIN tbl_invoice_nb_detail c on b.no_invoice = c.no_inv INNER JOIN tbl_invoice_nb e on e.no_inv = c.no_inv INNER JOIN mastersupplier d ON e.customer = d.Id_Supplier where a.id = '$id'
+        $bagian_dn");
     return $hasil->row_array();
 }
 
@@ -4159,14 +4843,26 @@ function get_rate()
 
 function simpan_kwt_detail_temporary($data)
 {
+    // Kolom sumber dibuang kalau migrasinya belum dijalankan.
+    $data = $this->kwt_buang_kolom('tbl_kwt_temp', $data);
     $this->db->insert_batch('tbl_kwt_temp', $data);
     return $this->db->insert_id();
 }
 
 function load_kwt_detail_temporary()
 {
-    $hasil = $this->db->query(" (SELECT DISTINCT a.no_invoice, a.invoice_date, a.customer, a.shipp, a.doc_type, a.doc_number, a.type, a.amount, c.styleno AS tipestyle, c.styleno, c.color FROM tbl_kwt_temp a inner join tbl_book_invoice b on b.no_invoice = a.no_invoice inner join tbl_invoice_detail c on c.id_book_invoice = b.id group by a.no_invoice) union 
-        (SELECT DISTINCT a.no_invoice, a.invoice_date, a.customer, a.shipp, a.doc_type, a.doc_number, a.type, a.amount, c.no_style AS tipestyle, c.no_style, c.color FROM tbl_kwt_temp a inner join tbl_invoice_nb_detail c on c.no_inv = a.no_invoice group by a.no_invoice)");
+    // Baris DN: keterangannya diisi deskripsi baris pertama DN - tinggal
+    // dirapikan user di kolom Style seperti baris invoice.
+    $bagian_dn = $this->kwt_dn_siap()
+        ? " union (SELECT DISTINCT a.no_invoice, a.invoice_date, a.customer, a.shipp, a.doc_type, a.doc_number, a.type, a.amount,
+            (SELECT dd.deskripsi FROM tbl_debitnote_det dd WHERE dd.no_dn = dn.no_dn ORDER BY dd.id LIMIT 1) AS tipestyle,
+            '' AS styleno, '' AS color, 'DN' AS sumber
+            FROM tbl_kwt_temp a inner join tbl_debitnote_h dn on dn.no_dn = a.no_invoice
+            WHERE a.sumber = 'DN' group by a.no_invoice)"
+        : "";
+
+    $hasil = $this->db->query(" (SELECT DISTINCT a.no_invoice, a.invoice_date, a.customer, a.shipp, a.doc_type, a.doc_number, a.type, a.amount, c.styleno AS tipestyle, c.styleno, c.color, 'INV' AS sumber FROM tbl_kwt_temp a inner join tbl_book_invoice b on b.no_invoice = a.no_invoice inner join tbl_invoice_detail c on c.id_book_invoice = b.id group by a.no_invoice) union
+        (SELECT DISTINCT a.no_invoice, a.invoice_date, a.customer, a.shipp, a.doc_type, a.doc_number, a.type, a.amount, c.no_style AS tipestyle, c.no_style, c.color, 'INV' AS sumber FROM tbl_kwt_temp a inner join tbl_invoice_nb_detail c on c.no_inv = a.no_invoice group by a.no_invoice) $bagian_dn");
     return $hasil->result_array();
 }
 
@@ -4179,20 +4875,33 @@ function update_style($id, $style)
 
 function simpan_kwt_detail($data)
 {
+    $data = $this->kwt_buang_kolom('tbl_kwitansi_detail', $data);
     $this->db->insert_batch('tbl_kwitansi_detail', $data);
     return $this->db->insert_id();
 }
 
+/**
+ * Tandai DN sudah masuk kwitansi - supaya tidak bisa ditarik lagi di
+ * kwitansi berikutnya. Sepadan dengan update_status_kwt_inv untuk invoice.
+ */
+function update_status_kwt_dn($no_dn, $no_kwt)
+{
+    if (!in_array('no_kwt', $this->db->list_fields('tbl_debitnote_h'), true)) {
+        return false;
+    }
+    return $this->db->where('no_dn', $no_dn)->update('tbl_debitnote_h', array('no_kwt' => $no_kwt));
+}
+
 function update_status_kwt_inv($no_invoice, $no_kwt)
 {
-    $this->db->query("UPDATE tbl_book_invoice SET no_kwt = '$no_kwt' WHERE no_invoice = '$no_invoice' ");
-    return $hasil;
+    // Dulu "return $hasil" padahal variabelnya tidak pernah diisi - cuma
+    // bikin notice di log tiap kwitansi disimpan.
+    return $this->db->query("UPDATE tbl_book_invoice SET no_kwt = '$no_kwt' WHERE no_invoice = '$no_invoice' ");
 }
 
 function update_status_kwt_inv2($no_invoice, $no_kwt)
 {
-    $this->db->query("UPDATE tbl_invoice_nb SET no_kwt = '$no_kwt' WHERE no_inv = '$no_invoice' ");
-    return $hasil;
+    return $this->db->query("UPDATE tbl_invoice_nb SET no_kwt = '$no_kwt' WHERE no_inv = '$no_invoice' ");
 }
 
 function simpankwitansi($data)
@@ -4661,7 +5370,11 @@ function cari_invoice_alo($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer, $rat
       WHERE a.id_customer = '$id_customer' and a.status = 'APPROVED' and if(h.amount is null,round(a.grand_total, 2),round((a.grand_total- (select sum(j.amount) from tbl_alokasi_detail j left join tbl_alokasi as k on j.no_alk = k.no_alk where no_ref = a.no_invoice)), 2)) != '0' and a.curr = 'USD' ORDER BY a.id)
     ");
 
-    return $hasil->result_array();
+    // Proforma Invoice (DP / CBD / PI NON SO) ikut sebagai tagihan yang
+    // dilunasi. Baris DP/CBD dari union lama digantikan versi ini supaya
+    // nilainya seragam & Equivalent IDR-nya ikut kurs, seperti invoice.
+    return $this->_gabung_pi_alokasi($hasil->result_array(),
+        $this->pi_untuk_alokasi($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer, $rate));
 }
 
 
@@ -4678,7 +5391,295 @@ function simpan_invoice_detail_alo($data)
     return $this->db->insert_id();
 }
 
-    //ubah desember
+    /**
+ * Lengkapi COA baris Alokasi yang kosong.
+ *
+ * Yang dilengkapi cuma baris yang referensinya invoice dan invoicenya belum
+ * punya no_coa. Aturannya sama dengan jurnal invoice: baris piutang di
+ * mastercoa_v2 yang cocok dengan Local/Export invoicenya dan kategori
+ * customernya (yang tidak terdaftar dianggap 'Third').
+ *
+ * Referensi lain dibiarkan - cuma teks yang dipajang diberi tanda '-' supaya
+ * kolomnya tidak kosong melompong.
+ */
+function _lengkapi_coa_baris_alokasi($baris)
+{
+    $baris = (array) $baris;
+    if (!$baris) {
+        return $baris;
+    }
+    $kosong = function ($v) {
+        $v = trim((string) $v);
+        return $v === '' || $v === '-';
+    };
+
+    $perlu = array();
+    foreach ($baris as $r) {
+        if (is_array($r) && isset($r['ref_number']) && $kosong(isset($r['no_coa']) ? $r['no_coa'] : '')) {
+            $perlu[trim((string) $r['ref_number'])] = TRUE;
+        }
+    }
+
+    $coa = array();
+    if ($perlu && $this->db->table_exists('tbl_book_invoice')) {
+        $tanya = implode(',', array_fill(0, count($perlu), '?'));
+        $hasil = $this->db->query("
+            SELECT inv.no_invoice, coa.no_coa, coa.nama_coa
+              FROM tbl_book_invoice inv
+         LEFT JOIN (SELECT id_supplier, supplier_ctg FROM tbl_ctg_supplier
+                     WHERE status = 'Y' GROUP BY id_supplier) sc
+                ON sc.id_supplier = inv.id_customer
+        INNER JOIN mastercoa_v2 coa
+                ON coa.inv_type LIKE '%INV_debit%'
+               AND coa.shipp_tipe = inv.shipp
+               AND coa.cus_ctg LIKE CONCAT('%', IFNULL(sc.supplier_ctg, 'Third'), '%')
+             WHERE inv.no_invoice IN ($tanya)
+          GROUP BY inv.no_invoice
+        ", array_keys($perlu))->result_array();
+        foreach ($hasil as $b) {
+            $coa[(string) $b['no_invoice']] = $b;
+        }
+    }
+
+    foreach ($baris as $i => $r) {
+        if (!is_array($r)) {
+            continue;
+        }
+        $ref = isset($r['ref_number']) ? trim((string) $r['ref_number']) : '';
+        if ($kosong(isset($r['no_coa']) ? $r['no_coa'] : '') && isset($coa[$ref])) {
+            $baris[$i]['no_coa'] = (string) $coa[$ref]['no_coa'];
+            $baris[$i]['nama_coa'] = (string) $coa[$ref]['nama_coa'];
+            $baris[$i]['coa'] = trim($coa[$ref]['no_coa'] . ' ' . $coa[$ref]['nama_coa']);
+            continue;
+        }
+        // Yang tetap tidak ketemu: kolomnya diberi tanda, bukan dibiarkan
+        // kosong - supaya kelihatan memang tidak ada, bukan gagal dimuat.
+        if ($kosong(isset($r['coa']) ? $r['coa'] : '')) {
+            $no = isset($r['no_coa']) ? trim((string) $r['no_coa']) : '';
+            $baris[$i]['coa'] = $no !== '' ? $no : '-';
+        }
+    }
+    return $baris;
+}
+//ubah desember
+/**
+ * Gabungkan baris Proforma Invoice ke daftar referensi Alokasi.
+ *
+ * Baris lama yang nomornya sama DIGANTI - bukan ditambah - supaya DP/CBD
+ * yang dulu sudah punya jalurnya sendiri tidak muncul dua kali, dan
+ * nilainya seragam dengan PI NON SO yang sekarang ikut.
+ */
+private function _gabung_pi_alokasi($lama, $pi, $kunci = 'no_invoice')
+{
+    $pi = (array) $pi;
+    if (!$pi) {
+        return (array) $lama;
+    }
+    $nomor = array();
+    foreach ($pi as $r) {
+        if (isset($r[$kunci])) { $nomor[trim((string) $r[$kunci])] = TRUE; }
+    }
+    $sisa = array();
+    foreach ((array) $lama as $r) {
+        $no = isset($r[$kunci]) ? trim((string) $r[$kunci]) : '';
+        if ($no !== '' && isset($nomor[$no])) { continue; }
+        $sisa[] = $r;
+    }
+    return array_merge($sisa, $pi);
+}
+
+/**
+ * Proforma Invoice yang bisa dilunasi lewat Alokasi.
+ *
+ * Yang ikut: DP, CBD & PI NON SO yang sudah di-approve dan belum lunas.
+ * Nilainya TAGIHAN PENUH - sudah termasuk PPN, karena itu yang ditransfer
+ * customer - dikurangi yang sudah pernah dialokasikan.
+ *
+ * Bentuk kolomnya sengaja disamakan dengan referensi lain di layar itu
+ * (no_invoice / inv_date / duedate / curr / amount / amount1 / amountrate /
+ * amountrate1), supaya layarnya tidak perlu tahu barisnya datang dari mana.
+ */
+/**
+ * Mutasi PI (DP, CBD, PI NON SO) dalam satu periode - dipakai layar Report
+ * Mutasi Invoice DP & CBD.
+ *
+ * Dulu laporannya membaca tabel PI yang lama (tbl_invoice_proforma_dp_cbd).
+ * PI sekarang satu tabel dengan penanda type_pi, jadi laporannya ikut ke sana.
+ * Potongannya diambil dari alokasi yang benar-benar terjadi - alokasi yang
+ * dibatalkan barisnya memang dihapus, jadi otomatis tidak ikut terhitung.
+ *
+ *   Beginning = nilai PI yang dibuat SEBELUM periode, dikurangi yang sudah
+ *               dialokasikan sebelum periode
+ *   Addition  = nilai PI yang dibuat DI DALAM periode
+ *   Deduction = yang dialokasikan DI DALAM periode
+ *   Ending    = Beginning + Addition - Deduction
+ *
+ * PI yang ketiga angkanya nol tidak ikut - tidak ada mutasinya di periode itu.
+ */
+function mutasi_pi_dpcbd($dt_dari, $dt_sampai, $id_customer)
+{
+    if (!$this->db->table_exists('tbl_invoice_proforma')) { return array(); }
+
+    // Tanggalnya dipakai di beberapa tempat sekaligus, jadi bentuknya
+    // dipastikan dulu - bukan ditempel apa adanya.
+    $bentuk = function ($v) {
+        return preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', (string) $v) ? (string) $v : NULL;
+    };
+    $dari   = $bentuk($dt_dari);
+    $sampai = $bentuk($dt_sampai);
+    if ($dari === NULL || $sampai === NULL) { return array(); }
+
+    $tipe  = $this->_sql_tipe_pi('a');
+    $nilai = $this->_sql_nilai_dp('a');
+
+    // Yang ditagih tidak selalu customer pemilik SO. Kolomnya baru ada
+    // sesudah migrasi 20261019b - kalau belum ada, dipakai customernya.
+    $adaBilled = $this->kolom_ada('tbl_invoice_proforma', 'billed_to');
+    $billed = $adaBilled
+        ? "UPPER(IFNULL(NULLIF(e.supplier, ''), IFNULL(b.supplier, a.id_customer)))"
+        : "UPPER(IFNULL(b.supplier, a.id_customer))";
+    $gabungBilled = $adaBilled
+        ? 'LEFT JOIN mastersupplier AS e ON e.Id_Supplier = a.billed_to' : '';
+
+    // Yang sudah dialokasikan, dipisah: sebelum periode dan di dalam periode.
+    $dialokasikan = function ($syarat) {
+        return "IFNULL((SELECT SUM(k.amount)
+                          FROM tbl_alokasi_detail k
+                    INNER JOIN tbl_alokasi al ON al.no_alk = k.no_alk
+                         WHERE k.no_ref = a.no_proforma_invoice
+                           AND IFNULL(al.status, '') NOT LIKE 'CANCEL%'
+                           AND " . $syarat . "), 0)";
+    };
+    $sebelum = $dialokasikan("al.tgl_alk < '$dari'");
+    $periode = $dialokasikan("al.tgl_alk BETWEEN '$dari' AND '$sampai'");
+
+    // Customer tertentu atau semuanya.
+    $saring = array();
+    $per_customer = '';
+    if ($id_customer !== NULL && $id_customer !== '' && $id_customer !== 'all_customer') {
+        $per_customer = ' AND a.id_customer = ?';
+        $saring[] = $id_customer;
+    }
+
+    $sql = "
+        SELECT x.*, ROUND(x.beginning + x.addition - x.deduction, 2) AS ending
+          FROM (
+                SELECT inv.*,
+                       ROUND(IF(inv.inv_date < '$dari', inv.nilai - inv.bayar_sebelum, 0), 2) AS beginning,
+                       ROUND(IF(inv.inv_date >= '$dari', inv.nilai, 0), 2) AS addition,
+                       ROUND(inv.bayar_periode, 2) AS deduction
+                  FROM (
+                        SELECT a.id,
+                               a.no_proforma_invoice AS no_invoice,
+                               UPPER(IFNULL(b.supplier, a.id_customer)) AS customer,
+                               a.id_customer,
+                               DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date,
+                               DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS duedate,
+                               '-' AS top,
+                               IFNULL((SELECT MAX(d.curr) FROM tbl_invoice_proforma_detail_so d
+                                        WHERE d.no_invoice_proforma = a.no_proforma_invoice), 'IDR') AS curr,
+                               a.status,
+                               " . $billed . " AS billed_to,
+                               $tipe AS type_pi,
+                               $nilai AS nilai,
+                               $sebelum AS bayar_sebelum,
+                               $periode AS bayar_periode
+                          FROM tbl_invoice_proforma AS a
+                     LEFT JOIN mastersupplier AS b ON b.Id_Supplier = a.id_customer
+                     " . $gabungBilled . "
+                         WHERE a.tgl_proforma_inv <= '$sampai'
+                           AND IFNULL(a.status, '') LIKE '%APPROVED%'
+                           AND IFNULL(a.status, '') NOT LIKE 'CANCEL%'
+                           $per_customer
+                       ) inv
+                 -- Semua Proforma Invoice masuk KECUALI PI biasa: yang itu
+                 -- ditagih lewat invoice, bukan dibayar di muka.
+                 WHERE IFNULL(inv.type_pi, '') <> 'PI'
+               ) x
+         WHERE x.beginning <> 0 OR x.addition <> 0 OR x.deduction <> 0
+      ORDER BY x.customer, x.inv_date, x.no_invoice";
+
+    return $this->db->query($sql, $saring)->result_array();
+}
+
+function pi_untuk_alokasi($dt_dari, $dt_sampai, $id_customer, $rate = 1)
+{
+    if (!$this->db->table_exists('tbl_invoice_proforma')) {
+        return array();
+    }
+    $tipe  = $this->_sql_tipe_pi('a');
+    $nilai = $this->_sql_nilai_dp('a');
+    $kurs  = (float) $rate > 0 ? (float) $rate : 1;
+    // Yang sudah pernah dialokasikan - berapa pun alokasinya, dari dokumen mana pun.
+    $terpakai = "IFNULL((SELECT SUM(k.amount) FROM tbl_alokasi_detail k
+                          WHERE k.no_ref = a.no_proforma_invoice), 0)";
+    $sisa = "ROUND(($nilai) - $terpakai, 2)";
+
+    return $this->db->query("
+        SELECT a.no_proforma_invoice AS no_invoice,
+               DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date,
+               '-' AS top,
+               DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS duedate,
+               UPPER(IFNULL(b.supplier, a.id_customer)) AS customer,
+               IFNULL((SELECT MAX(d.curr) FROM tbl_invoice_proforma_detail_so d
+                        WHERE d.no_invoice_proforma = a.no_proforma_invoice), 'IDR') AS curr,
+               a.status, a.id,
+               FORMAT($sisa, 2) AS amount,
+               $sisa AS amount1,
+               ROUND($sisa * $kurs, 2) AS amountrate,
+               FORMAT($sisa * $kurs, 2) AS amountrate1,
+               $tipe AS type_pi
+          FROM tbl_invoice_proforma AS a
+     LEFT JOIN mastersupplier AS b ON b.Id_Supplier = a.id_customer
+         WHERE a.id_customer = ?
+           AND a.tgl_proforma_inv BETWEEN ? AND ?
+           AND IFNULL(a.status, '') LIKE '%APPROVED%'
+           AND IFNULL(a.status, '') NOT LIKE 'CANCEL%'
+        HAVING type_pi IN ('DP', 'CBD', 'PI NON SO') AND amount1 > 0
+      ORDER BY a.tgl_proforma_inv DESC, a.no_proforma_invoice DESC
+    ", array($id_customer, $dt_dari, $dt_sampai))->result_array();
+}
+
+/**
+ * Baris Proforma Invoice yang sedang dialokasikan, untuk tabel detail.
+ *
+ * Selain COA uang muka DP/CBD, tiap baris membawa COA PPN & porsi DPP-nya:
+ * yang dilunasi tagihan penuh, tapi di jurnal cuma DPP yang masuk uang muka,
+ * PPN-nya ke VAT OUT.
+ */
+function pi_baris_alokasi()
+{
+    if (!$this->db->table_exists('tbl_invoice_proforma')
+        || !$this->db->table_exists('tbl_alokasi_temp')) {
+        return array();
+    }
+    $nilai = $this->_sql_nilai_dp('a');
+    $dpp   = $this->_sql_nilai_pi_dpp('a');
+    $tipe  = $this->_sql_tipe_pi('a');
+
+    return $this->db->query("
+        SELECT t.ref_number,
+               DATE_FORMAT(t.ref_date, '%Y-%m-%d') AS ref_date,
+               IF(t.due_date = '0000-00-00', '-', DATE_FORMAT(t.due_date, '%Y-%m-%d')) AS due_date,
+               t.total, t.curr, t.eqp_idr, t.amount,
+               IFNULL(coa.no_coa, '') AS no_coa,
+               IFNULL(coa.nama_coa, '') AS nama_coa,
+               TRIM(CONCAT(IFNULL(coa.no_coa, ''), ' ', IFNULL(coa.nama_coa, ''))) AS coa,
+               'NAG' AS profit_center,
+               IFNULL(ppn.no_coa, '') AS coa_ppn,
+               IFNULL(ppn.nama_coa, '') AS nama_coa_ppn,
+               IF(($nilai) > 0, ROUND(($dpp) / ($nilai), 6), 1) AS dpp_rasio,
+               $tipe AS type_pi
+          FROM tbl_alokasi_temp t
+    INNER JOIN tbl_invoice_proforma a ON a.no_proforma_invoice = t.ref_number
+     LEFT JOIN mastercoa_v2 coa
+            ON coa.inv_type LIKE '%DP/CBD%' AND coa.shipp_tipe = a.shipp
+     -- VAT OUT sama untuk Local maupun Export, jadi sengaja tidak disaring
+     -- shipp_tipe seperti COA uang mukanya.
+     LEFT JOIN mastercoa_v2 ppn ON ppn.inv_type LIKE '%PPN INV%'
+      GROUP BY t.ref_number
+    ")->result_array();
+}
 function load_invoice_detail_alo()
 {
     $hasil = $this->db->query("SELECT a.ref_number, DATE_FORMAT(a.ref_date, '%Y-%m-%d') AS ref_date, if(a.due_date = '0000-00-00', '-',DATE_FORMAT(a.due_date, '%Y-%m-%d')) AS due_date, a.total, a.curr, a.eqp_idr, a.amount,b.no_coa,b.nama_coa,concat(b.no_coa,' ',b.nama_coa) as coa, b.profit_center
@@ -4698,7 +5699,12 @@ function load_invoice_detail_alo()
        jurnal_invoice_dpcbd b on b.no_inv = a.ref_number
 
        ");
-    return $hasil->result_array();
+    // Invoice lama kadang belum punya no_coa - dilengkapi di sini supaya
+    // barisnya tidak tampil tanpa COA dan jurnalnya ikut kosong.
+    // Baris Proforma Invoice dipakai versi yang membawa COA PPN & porsi
+    // DPP-nya - jurnalnya dipecah di layar.
+    $baris = $this->_gabung_pi_alokasi($hasil->result_array(), $this->pi_baris_alokasi(), 'ref_number');
+    return $this->_lengkapi_coa_baris_alokasi($baris);
 }
 
 /*function load_invoice_detail_alo()
@@ -5099,6 +6105,78 @@ function cari_view_alokasi($no_kwt)
 
  return $hasil->result_array();
 
+}
+
+/* ---------------------------------------------------------------------
+ * Detail satu Alokasi - dipakai modal di layar daftar (arnag/alokasi_ar).
+ * Dipanggil lewat id barisnya, sama seperti tombol Print di daftar itu.
+ * Ketiganya hanya membaca.
+ * ------------------------------------------------------------------ */
+
+// Kepala alokasi: uang yang masuk, banknya, siapa yang membuat, dan berapa
+// yang sudah dipakai. `dialokasikan` dijumlah dari baris-barisnya sendiri,
+// jadi angkanya tidak mungkin berbeda dengan daftar di bawahnya.
+function alokasi_kepala($id)
+{
+    $sql = "SELECT a.id, a.no_alk, a.tgl_alk, a.customer AS id_customer,
+                   UPPER(b.supplier) AS customer, a.doc_number,
+                   IFNULL(NULLIF(c.nama_bank, ''), '-') AS bank,
+                   IFNULL(NULLIF(a.account, ''), '-') AS account,
+                   a.curr, a.rate, a.amount, a.eqp_idr, a.status,
+                   IFNULL(d.terpakai, 0) AS dialokasikan,
+                   (a.amount - IFNULL(d.terpakai, 0)) AS sisa,
+                   e.nama AS dibuat_oleh,
+                   DATE_FORMAT(e.tanggal_input, '%Y-%m-%d %H:%i') AS dibuat_tanggal
+            FROM tbl_alokasi AS a
+            INNER JOIN mastersupplier AS b ON b.Id_Supplier = a.customer
+            LEFT JOIN masterbank AS c ON c.id = a.bank
+            LEFT JOIN (SELECT no_alk, SUM(amount) AS terpakai
+                         FROM tbl_alokasi_detail GROUP BY no_alk) AS d ON d.no_alk = a.no_alk
+            LEFT JOIN (SELECT doc_number, MIN(nama) AS nama, MIN(tanggal_input) AS tanggal_input
+                         FROM tbl_log GROUP BY doc_number) AS e ON e.doc_number = a.no_alk
+            WHERE a.id = ?
+            LIMIT 1";
+    $row = $this->db->query($sql, array($id))->row_array();
+    return $row ? $row : NULL;
+}
+
+// Tagihan yang dilunasi alokasi ini. Nama COA & cost center diambil dari
+// masternya - yang tersimpan di barisnya cuma nomornya.
+function alokasi_baris_detail($id)
+{
+    // Kolom profit center baru ada di pemasangan yang lebih baru.
+    $pc = $this->kolom_ada('tbl_alokasi_detail', 'profit_center') ? 'a.profit_center' : "'-'";
+    $sql = "SELECT a.coa, IFNULL(NULLIF(c.nama_coa, ''), '-') AS nama_coa,
+                   a.cost_center,
+                   IFNULL(CONCAT(d.no_cc, ' - ', d.cc_name), '-') AS nama_cc,
+                   a.no_ref, a.ref_date, a.due_date, a.total, a.eqp_idr, a.amount,
+                   (a.total - a.amount) AS sisa, a.keterangan, a.status,
+                   " . $pc . " AS profit_center
+            FROM tbl_alokasi_detail AS a
+            INNER JOIN tbl_alokasi AS b ON b.no_alk = a.no_alk
+            LEFT JOIN mastercoa_v2 AS c ON c.no_coa = a.coa
+            LEFT JOIN b_master_cc AS d ON d.no_cc = a.cost_center
+            WHERE b.id = ?
+            GROUP BY a.id
+            ORDER BY a.id";
+    return $this->db->query($sql, array($id))->result_array();
+}
+
+// Jurnal yang terbentuk dari alokasi ini. Nama COA yang kosong di barisnya
+// dilengkapi dari master, supaya tidak ada baris bernama strip di layar.
+function alokasi_jurnal($id)
+{
+    if (!$this->db->table_exists('tbl_list_journal')) { return array(); }
+    $sql = "SELECT j.no_coa,
+                   IFNULL(NULLIF(j.nama_coa, ''), IFNULL(c.nama_coa, '-')) AS nama_coa,
+                   j.no_costcenter, j.reff_doc, j.curr, j.rate,
+                   j.debit, j.credit, j.debit_idr, j.credit_idr, j.keterangan
+            FROM tbl_list_journal AS j
+            INNER JOIN tbl_alokasi AS a ON a.no_alk = j.no_journal
+            LEFT JOIN mastercoa_v2 AS c ON c.no_coa = j.no_coa
+            WHERE a.id = ? AND j.type_journal = 'Alokasi'
+            ORDER BY j.id";
+    return $this->db->query($sql, array($id))->result_array();
 }
 
 function report_alokasi_detail($id)
@@ -7606,20 +8684,32 @@ public function get_debitnoteDet_by_id($id) {
 }
 
 // Baris detail yang berasal dari Memo (id_memo_det terisi) atau No Request
-// (nm_memo terisi nomor BPB request) - di edit tidak boleh diubah / dihapus.
-// Baris manual kedua kolom itu kosong.
-public function dn_baris_terkunci($row)
+// (nm_memo terisi nomor BPB request) - dua-duanya tidak boleh dihapus waktu
+// diedit. Baris manual kedua kolom itu kosong.
+public function dn_baris_dari_sumber($row)
 {
     return trim((string) $row['id_memo_det']) !== '' || trim((string) $row['nm_memo']) !== '';
+}
+
+// Baris yang isinya tidak boleh diubah: yang datang dari No Request. Cuma
+// Deskripsi, Value & Rate yang boleh dibetulkan - kolom lain diambil ulang
+// dari database. Baris dari Memo TIDAK termasuk: itu bebas diubah.
+public function dn_baris_terkunci($row)
+{
+    return trim((string) $row['id_memo_det']) === ''
+        && trim((string) $row['nm_memo']) !== '';
 }
 
 // Simpan hasil edit Debit Note: header + detail dalam SATU transaksi (dulu
 // detail dihapus dulu lewat request terpisah - kalau simpan barunya gagal,
 // detailnya hilang).
-// - Baris Memo/Request diambil ulang dari database berdasarkan id-nya (client
-//   cuma kirim id), jadi isinya tidak bisa diubah; semua baris itu juga WAJIB
-//   ada di kiriman (tidak boleh dihapus).
-// - Baris manual disimpan dari kiriman client (kolom memo/request dikosongkan).
+// - Baris yang sudah tersimpan dikenali dari id-nya. Yang dari Request cuma
+//   boleh berubah Deskripsi / Value / Rate / Amount-nya - kolom lain diambil
+//   ulang dari database. Yang dari Memo & baris manual seluruh isinya dari
+//   kiriman client. Kaitan ke sumbernya (nm_memo, id_memo_det, customer,
+//   Invoice Export) selalu dari database, jadi tidak bisa diutak-atik.
+// - Baris dari Memo / Request WAJIB ada di kiriman (tidak boleh dihapus).
+// - Baris baru disimpan dari kiriman client (kolom memo/request dikosongkan).
 // - Total dihitung ulang dari baris final.
 // - Nomor DN hanya dibuat ulang (dengan kunci, sama seperti create) kalau
 //   profit center diganti; tabel yang menyimpan no_dn ikut diperbarui.
@@ -7651,20 +8741,23 @@ public function update_debitnote($id_dn, $header, $baris)
         if (!empty($b['id_det'])) {
             $id = $b['id_det'];
             // id yang sama dikirim 2x = barisnya jadi dobel.
-            if (!is_scalar($id) || !isset($det_lama[$id]) || isset($dipakai[$id]) || !$this->dn_baris_terkunci($det_lama[$id])) {
+            if (!is_scalar($id) || !isset($det_lama[$id]) || isset($dipakai[$id])) {
                 return array('status' => false, 'message' => 'Invalid detail row, please reload the page.');
             }
             $r = $det_lama[$id];
             unset($r['id']);
-            // Deskripsi dan Value / Rate / Amount boleh dibetulkan lewat Edit
-            // (kurs sering baru ketahuan salah setelah DN dibuat, dan kalimat
-            // deskripsinya kadang perlu dirapikan sebelum dikirim ke customer).
-            // Kolom lain tetap diambil dari database supaya kaitan ke Memo /
-            // Request tidak bisa diutak-atik. Isian kosong diabaikan - yang lama
-            // dipakai lagi, supaya tidak terhapus karena kolomnya tidak terkirim.
-            foreach (array('deskripsi', 'value', 'rate', 'amount') as $kolom_nilai) {
-                if (isset($b[$kolom_nilai]) && is_scalar($b[$kolom_nilai]) && trim((string) $b[$kolom_nilai]) !== '') {
-                    $r[$kolom_nilai] = (string) $b[$kolom_nilai];
+            // Baris dari Request: cuma Deskripsi & Value / Rate / Amount yang
+            // boleh dibetulkan (kurs sering baru ketahuan salah setelah DN
+            // dibuat), kolom lain tetap dari database. Baris dari Memo & baris
+            // manual: seluruh kolom isian diambil dari layar. Kaitan ke
+            // sumbernya tidak pernah ikut ditulis ulang, jadi asal barisnya
+            // tidak bisa diutak-atik.
+            $boleh = $this->dn_baris_terkunci($r)
+                ? array('deskripsi', 'value', 'rate', 'amount')
+                : $kolom_manual;
+            foreach ($boleh as $kolom_isi) {
+                if (isset($b[$kolom_isi]) && is_scalar($b[$kolom_isi])) {
+                    $r[$kolom_isi] = (string) $b[$kolom_isi];
                 }
             }
             $final[] = $r;
@@ -7684,8 +8777,10 @@ public function update_debitnote($id_dn, $header, $baris)
             $final[] = $r;
         }
     }
+    // Baris yang datang dari Memo / Request wajib ikut dikirim - DN-nya harus
+    // tetap mewakili dokumen asalnya.
     foreach ($det_lama as $id => $r) {
-        if ($this->dn_baris_terkunci($r) && !isset($dipakai[$id])) {
+        if ($this->dn_baris_dari_sumber($r) && !isset($dipakai[$id])) {
             return array('status' => false, 'message' => 'Rows from Memo / Request cannot be deleted.');
         }
     }
@@ -7956,13 +9051,9 @@ FROM (
         i.id AS id_so,
         a.id AS id_bppb,
         b.id_item AS kain_id,
-        -- PO konsumen kosong / '-' / 'TBA' dianggap belum diisi, jatuh ke PO
-        -- buyer. Aturannya sama dengan baris OFC/OUT.
-        CASE
-            WHEN UPPER(TRIM(COALESCE(i.po_konsumen,''))) IN ('','-','TBA')
-                THEN i.po_buyer
-            ELSE i.po_konsumen
-        END AS po_konsumen,
+        -- PO yang dicetak = PO buyer; po_konsumen cuma cadangan untuk data
+        -- lama. Aturannya sama dengan baris OFC/OUT.
+        " . $this->_sql_po_buyer('i') . " AS po_konsumen,
         mk.kode_konsumen AS kode_konsumen
 
     FROM gp_out_greige_h a
@@ -8074,7 +9165,8 @@ FROM (
         ) AS qty_so,
         MAX(COALESCE(harga,0)) AS harga,
         b.kain_id AS kain_id,
-        i.po_konsumen AS po_konsumen,
+        -- PO yang dicetak = PO buyer; po_konsumen cuma cadangan untuk data lama.
+        " . $this->_sql_po_buyer('i') . " AS po_konsumen,
         mk.kode_konsumen AS kode_konsumen
 
     FROM official_out_h a
@@ -8104,7 +9196,7 @@ FROM (
 
     GROUP BY
         b.id, i.kode_so, kode_out, tgl_pengeluaran, lab_dip, nama_kain, warna,
-        i.currency, a.no_so, a.id, b.kain_id, i.po_konsumen, mk.kode_konsumen
+        i.currency, a.no_so, a.id, b.kain_id, i.po_buyer, i.po_konsumen, mk.kode_konsumen
 ) barcode_item
 
 GROUP BY
@@ -8147,9 +9239,17 @@ function simpan_invoice_detail_knitting($data)
     return $this->db->insert_id();
 }
 
+/**
+ * Simpan rekap invoice knitting.
+ *
+ * Kolom yang belum ada di database disaring dulu - sama alasannya dengan
+ * simpan_invoice_pot(): layar mengirim dp_cbd (Advance) ke sini juga.
+ */
 function simpan_invoice_pot_knitting($data)
 {
-    $this->db->insert_batch('tbl_invoice_pot_knitting', $data);
+    $bersih = $this->_saring_kolom('tbl_invoice_pot_knitting', (array) $data);
+    if (!$bersih) { return 0; }
+    $this->db->insert_batch('tbl_invoice_pot_knitting', $bersih);
     return $this->db->insert_id();
 }
 
@@ -8660,17 +9760,61 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         }
         $kolom = $this->db->list_fields('tbl_book_invoice_exim_det');
         $po = in_array('po_konsumen', $kolom) ? 'po_konsumen' : "'' AS po_konsumen";
+        // Angka tagih knitting - kolomnya ada sesudah migrasi 20261008.
+        $tagih = in_array('qty_tagih', $kolom, TRUE)
+            ? 'uom_tagih, qty_tagih, unit_price_tagih, total_price_tagih'
+            : "NULL AS uom_tagih, 0 AS qty_tagih, 0 AS unit_price_tagih, 0 AS total_price_tagih";
 
         $sql = "SELECT asal, id_bppb, id_baris, id_so,
                        so_number AS no_so, bppb_number AS sj, sj_date AS bppbdate,
                        shipp_number AS shipping_number, ws, styleno, product_group,
                        product_item, color, size, curr, uom, qty, unit_price, disc,
-                       total_price, $po, 'GRADE A' AS grade
+                       total_price, $tagih, $po, 'GRADE A' AS grade
                   FROM tbl_book_invoice_exim_det
                  WHERE id_book_invoice = ?
                  ORDER BY id";
         $baris = $this->db->query($sql, array((int) $id_book_invoice))->result_array();
+        $baris = $this->_pakai_billing_sj($baris);
         return $this->lengkapi_grade_nag($this->lengkapi_konsumen_knitting($baris));
+    }
+
+    /**
+     * Baris SJ knitting dipakai dengan angka BILLING-nya.
+     *
+     * Knitting punya dua angka untuk SJ yang sama: KIRIM - satuan & qty yang
+     * benar-benar dikirim, dipakai layar & cetakan Invoice EXIM - dan TAGIH,
+     * yang ditagihkan ke customer. Invoice AR menagih, jadi yang dipakai di
+     * sini angka tagihnya.
+     *
+     * Angka kirimnya tetap dibawa (qty_kirim, uom_kirim, unit_price_kirim,
+     * total_price_kirim) supaya layar masih bisa menyebut keduanya tanpa
+     * menanyakan ulang ke database.
+     *
+     * Baris tanpa angka tagih - garment, dan booking knitting yang dibuat
+     * sebelum kolomnya ada - tidak disentuh sama sekali.
+     */
+    private function _pakai_billing_sj($baris)
+    {
+        // Cast-nya di luar foreach: "foreach ((array) $x as &$r)" mengikat
+        // referensi ke salinan hasil cast, jadi perubahannya tidak tersimpan.
+        $baris = (array) $baris;
+        foreach ($baris as &$r) {
+            $qty = isset($r['qty_tagih']) ? (float) $r['qty_tagih'] : 0;
+            if ($qty <= 0) { continue; }
+
+            $r['uom_kirim']         = isset($r['uom']) ? $r['uom'] : null;
+            $r['qty_kirim']         = isset($r['qty']) ? $r['qty'] : 0;
+            $r['unit_price_kirim']  = isset($r['unit_price']) ? $r['unit_price'] : 0;
+            $r['total_price_kirim'] = isset($r['total_price']) ? $r['total_price'] : 0;
+
+            $uom = trim((string) (isset($r['uom_tagih']) ? $r['uom_tagih'] : ''));
+            if ($uom !== '') { $r['uom'] = $uom; }
+            $r['qty']         = $r['qty_tagih'];
+            $r['unit_price']  = isset($r['unit_price_tagih']) ? $r['unit_price_tagih'] : 0;
+            $r['total_price'] = isset($r['total_price_tagih']) ? $r['total_price_tagih'] : 0;
+        }
+        unset($r);
+        return $baris;
     }
 
     /**
@@ -8751,7 +9895,8 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         $in = implode(',', array_map(array($db_pgsql, 'escape'), array_keys($id_so)));
         $peta = array();
         foreach ($db_pgsql->query("
-            SELECT i.id AS id_so, mk.kode_konsumen, i.po_konsumen
+            SELECT i.id AS id_so, mk.kode_konsumen,
+                   " . $this->_sql_po_buyer('i') . " AS po_konsumen
               FROM sales_orders i
         INNER JOIN master_konsumen mk ON mk.id = i.konsumen_id
              WHERE i.id IN ($in)
@@ -9784,14 +10929,66 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         // hitungan, tapi layar memakainya untuk memperlihatkan nilai yang
         // benar-benar tersimpan.
         $kolom = implode(', ', $this->_kolom_summary_ada()) . ', total_cm, total_fob';
+        // Angka billing baris summary - kolomnya ada sesudah migrasi 20261023.
+        $punya = $this->db->list_fields('tbl_book_invoice_exim_export_det');
+        $billing = in_array('qty_invoiced_tagih', $punya, TRUE);
+        if ($billing) {
+            $kolom .= ', qty_invoiced_tagih, unit_tagih, total_cm_tagih, total_fob_tagih';
+        }
+
+        $baris = $this->db->query("
+            SELECT id, urutan, $kolom
+              FROM tbl_book_invoice_exim_export_det
+             WHERE id_book_invoice = ? ORDER BY urutan, id
+        ", array($id))->result_array();
+
         return array(
             'no_invoice' => (string) $h['no_invoice'],
-            'baris' => $this->db->query("
-                SELECT id, urutan, $kolom
-                  FROM tbl_book_invoice_exim_export_det
-                 WHERE id_book_invoice = ? ORDER BY urutan, id
-            ", array($id))->result_array(),
+            'baris' => $billing ? $this->_pakai_billing_summary($baris) : $baris,
         );
+    }
+
+    /**
+     * Baris Invoice Summary dipakai dengan angka BILLING-nya.
+     *
+     * Sama alasannya dengan _pakai_billing_sj(): invoice AR menagih, jadi
+     * yang dipajang & dipakai AR angka tagihnya. Angka kirimnya tetap
+     * dibawa dengan akhiran _kirim.
+     *
+     * Unit cost dihitung ulang dari total billing dibagi qty billing -
+     * bukan disalin dari unit cost kirim, karena satuannya memang beda.
+     */
+    private function _pakai_billing_summary($baris)
+    {
+        // Lihat catatan di _pakai_billing_sj() soal cast di dalam foreach.
+        $baris = (array) $baris;
+        foreach ($baris as &$r) {
+            $qty = isset($r['qty_invoiced_tagih']) ? (float) $r['qty_invoiced_tagih'] : 0;
+            if ($qty <= 0) { continue; }
+
+            $cm  = isset($r['total_cm_tagih']) ? (float) $r['total_cm_tagih'] : 0;
+            $fob = isset($r['total_fob_tagih']) ? (float) $r['total_fob_tagih'] : 0;
+
+            $r['qty_invoiced_kirim'] = isset($r['qty_invoiced']) ? $r['qty_invoiced'] : 0;
+            $r['total_cm_kirim']     = isset($r['total_cm']) ? $r['total_cm'] : 0;
+            $r['total_fob_kirim']    = isset($r['total_fob']) ? $r['total_fob'] : 0;
+            $r['unit_kirim']         = isset($r['total_pieces_unit']) ? $r['total_pieces_unit'] : null;
+
+            $r['qty_invoiced'] = $qty;
+            $r['total_cm']     = $cm;
+            $r['total_fob']    = $fob;
+            $r['unit_cost_cm']  = round($cm / $qty, 4);
+            $r['unit_cost_fob'] = round($fob / $qty, 4);
+            // Total Pieces knitting memang qty-nya sendiri, jadi ikut satuan
+            // & jumlah billing supaya satu baris tidak memuat dua satuan.
+            if (array_key_exists('total_pieces', $r)) { $r['total_pieces'] = $qty; }
+            $uom = trim((string) (isset($r['unit_tagih']) ? $r['unit_tagih'] : ''));
+            if ($uom !== '' && array_key_exists('total_pieces_unit', $r)) {
+                $r['total_pieces_unit'] = $uom;
+            }
+        }
+        unset($r);
+        return $baris;
     }
 
     /**
@@ -9860,11 +11057,577 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
             );
         }
 
+        // Rekap uangnya ikut dihitung ulang. Tanpa ini Sub Total di cetakan
+        // (dijumlah dari baris summary) dan Net Invoice Total (dari rekap)
+        // bicara soal isi yang berbeda - persis yang terjadi di
+        // 0230/E/NAG/1026: barisnya bertambah satu, Net-nya masih yang lama.
+        $this->_rekap_ulang_export($id);
+
         $this->db->trans_complete();
         if (!$this->db->trans_status()) {
             return array('gagal' => 'Invoice Summary could not be saved.');
         }
         return array('baris' => $urut);
+    }
+
+    /**
+     * Hitung ulang rekap uang Invoice Export dari baris summary-nya.
+     *
+     * Dipanggil sesudah baris Invoice Summary ditulis ulang dari AR. Rumusnya
+     * sama persis dengan menu Invoice EXIM waktu invoicenya disimpan, jadi
+     * angkanya tidak mungkin berbeda cara hitung:
+     *
+     *   total    = jumlah nilai KOTOR tiap baris (sebelum diskon)
+     *   discount = kotor - bersih
+     *   twot     = total - discount - DP - DP/CBD - retur
+     *   vat      = twot x tarif
+     *   grand    = twot + vat
+     *
+     * Nilai bersih tiap baris diambil dari total_cm yang TERSIMPAN - bukan
+     * dihitung ulang dari unit cost yang sudah dibulatkan 4 angka.
+     *
+     * DP, DP/CBD, retur & tarif VAT tidak disentuh: itu isian orang, bukan
+     * hasil hitungan baris.
+     */
+    private function _rekap_ulang_export($id_inv)
+    {
+        $id = (int) $id_inv;
+        if ($id < 1 || !$this->db->table_exists('tbl_book_invoice_exim_pot')) {
+            return;
+        }
+        $lama = $this->db->query(
+            "SELECT dp, dp_cbd, retur, vat_persen FROM tbl_book_invoice_exim_pot
+              WHERE id_book_invoice = ? LIMIT 1", array($id))->row_array();
+        if (!$lama) {
+            return;   // invoice ini memang belum punya baris rekap
+        }
+
+        $kolom = $this->db->list_fields('tbl_book_invoice_exim_export_det');
+        $ada_fob = in_array('total_fob', $kolom, TRUE);
+        $baris = $this->db->query("
+            SELECT qty_invoiced, total_pieces, unit_cost_cm, unit_cost_fob, disc, total_cm
+                   " . ($ada_fob ? ', total_fob' : ', 0 AS total_fob') . "
+              FROM tbl_book_invoice_exim_export_det WHERE id_book_invoice = ?
+        ", array($id))->result_array();
+
+        $total = 0; $bersih = 0; $total_fob = 0; $bersih_fob = 0;
+        foreach ($baris as $r) {
+            $sisa = 1 - ((float) $r['disc'] / 100);
+            $cm_bersih = (float) $r['total_cm'];
+            $cm_kotor = $sisa > 0 ? $cm_bersih / $sisa : (float) $r['qty_invoiced'] * (float) $r['unit_cost_cm'];
+            $total  += $cm_kotor;
+            $bersih += $cm_bersih;
+
+            $fob_bersih = (float) $r['total_fob'];
+            $fob_kotor = $sisa > 0 ? $fob_bersih / $sisa : (float) $r['total_pieces'] * (float) $r['unit_cost_fob'];
+            $total_fob  += $fob_kotor;
+            $bersih_fob += $fob_bersih;
+        }
+
+        $dp     = (float) $lama['dp'];
+        $dp_cbd = (float) $lama['dp_cbd'];
+        $retur  = (float) $lama['retur'];
+        $tarif  = (float) $lama['vat_persen'];
+
+        $discount = $total - $bersih;
+        $twot = $bersih - $dp - $dp_cbd - $retur;
+        $vat  = $twot * $tarif / 100;
+
+        $isi = array(
+            'total'       => round($total, 4),
+            'discount'    => round($discount, 4),
+            'twot'        => round($twot, 4),
+            'vat'         => round($vat, 4),
+            'grand_total' => round($twot + $vat, 4),
+        );
+        // Versi FOB-nya ikut kalau kolomnya memang ada.
+        $kol_pot = $this->db->list_fields('tbl_book_invoice_exim_pot');
+        if (in_array('total_fob', $kol_pot, TRUE)) {
+            $isi['total_fob'] = round($total_fob, 4);
+        }
+        if (in_array('grand_total_fob', $kol_pot, TRUE)) {
+            $twot_fob = $bersih_fob - $dp - $dp_cbd - $retur;
+            $isi['grand_total_fob'] = round($twot_fob + $twot_fob * $tarif / 100, 4);
+        }
+
+        $this->db->where('id_book_invoice', $id)->update('tbl_book_invoice_exim_pot', $isi);
+    }
+
+    /**
+     * Proforma Invoice yang boleh diubah.
+     *
+     * Hanya yang masih POST: begitu lewat approval, angkanya sudah disetujui
+     * dan tidak boleh berubah diam-diam. Yang tidak ada atau sudah lewat
+     * approval mengembalikan NULL - pemanggilnya yang memutuskan mau bilang
+     * apa ke user.
+     *
+     * @return array|null baris header apa adanya, siap dituang ke layar
+     */
+    function pi_untuk_edit($id)
+    {
+        $baris = $this->db->query(
+            "SELECT * FROM tbl_invoice_proforma WHERE id = ? LIMIT 1",
+            array((int) $id)
+        )->row_array();
+        if (!$baris) {
+            return NULL;
+        }
+        if (strtoupper(trim((string) $baris['status'])) !== 'POST') {
+            return NULL;
+        }
+        return $baris;
+    }
+
+    /**
+     * Siapkan layar PI untuk mengubah sebuah proforma.
+     *
+     * Barisnya disalin ke tabel sementara yang dibaca layar - pilihan SO yang
+     * mungkin masih tertinggal dari sesi sebelumnya dibuang dulu, supaya yang
+     * tampil benar-benar isi proforma ini saja.
+     *
+     * @return array|null header proformanya, atau NULL kalau tidak boleh diubah
+     */
+    function pi_siapkan_edit($id)
+    {
+        $pi = $this->pi_untuk_edit($id);
+        if (!$pi) {
+            return NULL;
+        }
+        $no = (string) $pi['no_proforma_invoice'];
+
+        $this->db->query("DELETE FROM tbl_so_det_proforma_temp");
+        $this->db->query("DELETE FROM tbl_invoice_proforma_detail_temp");
+
+        // Nama kolomnya berbeda antara tabel tetap & tabel sementara, jadi
+        // dipetakan satu per satu - bukan disalin mentah.
+        $so = $this->db->query("
+            SELECT id_so_det, id_so_det_list, no_so, produk_detail, curr, qty, uom,
+                   unit_price, total_price
+              FROM tbl_invoice_proforma_detail_so
+             WHERE no_invoice_proforma = ? ORDER BY id
+        ", array($no))->result_array();
+        $isi = array();
+        foreach ($so as $r) {
+            $isi[] = array(
+                'id_so_det' => $r['id_so_det'],
+                'id_so_det_list' => isset($r['id_so_det_list']) ? $r['id_so_det_list'] : '',
+                'no_so' => $r['no_so'],
+                'produk_det' => $r['produk_detail'],
+                'curr' => $r['curr'],
+                'qty' => $r['qty'],
+                'uom' => $r['uom'],
+                'price' => $r['unit_price'],
+                'total' => $r['total_price'],
+            );
+        }
+        if ($isi) {
+            $this->db->insert_batch('tbl_so_det_proforma_temp',
+                $this->_saring_kolom('tbl_so_det_proforma_temp', $isi));
+        }
+
+        $det = $this->db->query("
+            SELECT id_so, so_no, qty, unit_price, total_price
+              FROM tbl_invoice_proforma_detail
+             WHERE no_invoice_proforma = ? ORDER BY id
+        ", array($no))->result_array();
+        if ($det) {
+            $this->db->insert_batch('tbl_invoice_proforma_detail_temp',
+                $this->_saring_kolom('tbl_invoice_proforma_detail_temp', $det));
+        }
+
+        return $pi;
+    }
+
+    /**
+     * Lepas proforma lama sebelum ditulis ulang.
+     *
+     * Dipanggil tepat sebelum isi layar disimpan: baris SO-nya dibebaskan
+     * (penanda no_pi di so_det dilepas), lalu header & barisnya dihapus.
+     * Nomornya dikembalikan supaya yang baru memakai nomor yang sama -
+     * proforma yang diedit tidak berganti nomor.
+     *
+     * Hanya yang masih POST. Gagalnya dilaporkan, bukan didiamkan.
+     *
+     * @return array array('no_pi' => ..) atau array('gagal' => ..)
+     */
+    function pi_hapus_untuk_edit($id)
+    {
+        $pi = $this->pi_untuk_edit($id);
+        if (!$pi) {
+            return array('gagal' => 'Only a proforma invoice that is still POST can be edited.');
+        }
+        $no = (string) $pi['no_proforma_invoice'];
+
+        // Penanda di so_det dilepas lebih dulu - kalau langkah ini gagal,
+        // proformanya belum tersentuh dan tinggal diulang.
+        $id_sodet = array();
+        foreach ($this->db->query(
+            "SELECT id_so_det FROM tbl_invoice_proforma_detail_so WHERE no_invoice_proforma = ?",
+            array($no)
+        )->result_array() as $r) {
+            foreach ($this->_daftar_id(isset($r['id_so_det']) ? $r['id_so_det'] : '') as $v) {
+                $id_sodet[$v] = $v;
+            }
+        }
+        if ($id_sodet) {
+            $db_nag = $this->load->database('db_nag', TRUE);
+            $db_nag->query(
+                "UPDATE so_det SET no_pi = NULL
+                  WHERE id IN (" . implode(',', $id_sodet) . ") AND no_pi = ?",
+                array($no)
+            );
+        }
+
+        $this->db->query("DELETE FROM tbl_invoice_proforma_detail_so WHERE no_invoice_proforma = ?",
+            array($no));
+        $this->db->query("DELETE FROM tbl_invoice_proforma_detail WHERE no_invoice_proforma = ?",
+            array($no));
+        $this->db->query("DELETE FROM tbl_invoice_proforma WHERE id = ?", array((int) $id));
+
+        return array('no_pi' => $no);
+    }
+    /**
+     * Proforma Invoice yang bisa dipakai memotong sebuah invoice.
+     *
+     * Yang dipanggil cuma jenis DP, CBD & PI NON SO - PI biasa memang bukan
+     * uang muka. Aturannya:
+     *
+     *   - milik customer yang sama,
+     *   - mata uangnya sama; yang beda tidak ikut terdaftar sama sekali
+     *     (tidak boleh lintas currency),
+     *   - kotak ATAS (sumber 'PI') cuma memuat PI yang SO-nya ikut ditagih
+     *     invoice ini, milik customer yang sama; tidak ada yang cocok =
+     *     kotaknya kosong,
+     *   - kotak BAWAH (sumber 'OTHER') memuat SISANYA yang masih outstanding,
+     *     tanpa filter SO maupun customer - termasuk PI NON SO yang memang
+     *     tidak terikat SO. Yang mata uangnya lain tetap kelihatan tapi
+     *     tidak bisa dipakai,
+     *   - yang sudah CANCEL tidak ikut.
+     *
+     * Nilai yang boleh dipakai: kalau PI itu ber-DP dipakai nilai DP-nya,
+     * kalau tidak dipakai total penuhnya. Yang ber-DP nanti masuk ke Down
+     * Payment, sisanya ke Advance.
+     *
+     * Satu nomor PI boleh dipakai berulang, jadi tiap baris membawa:
+     *   terpakai - sudah dipakai invoice LAIN
+     *   dipakai  - sedang dipakai invoice ini (kalau sedang dibuka lagi)
+     *   sisa     - nilai - terpakai, inilah batas yang boleh diisi
+     *
+     * @param string $id_customer
+     * @param string $curr            mata uang invoicenya
+     * @param array  $no_so           nomor SO yang ditagih invoice ini
+     * @param int    $id_book_invoice invoice yang sedang dibuat (0 = baru)
+     * @param string $sumber          'PI' (kotak atas) atau 'OTHER' (kotak bawah)
+     */
+    function pi_untuk_invoice($id_customer, $curr, $no_so = array(), $id_book_invoice = 0, $sumber = 'PI')
+    {
+        if (!$this->db->table_exists('tbl_invoice_proforma')) {
+            return array();
+        }
+        $sumber = (strtoupper(trim((string) $sumber)) === 'OTHER') ? 'OTHER' : 'PI';
+        $id_inv = (int) $id_book_invoice;
+        $tipe  = $this->_sql_tipe_pi('a');
+        $nilai = $this->_sql_nilai_pi_dpp('a');
+        // Tabel catatannya baru ada setelah migrations/20261017 - selama belum
+        // dijalankan, daftarnya tetap keluar dengan pemakaian nol.
+        $ada_alokasi = $this->db->table_exists('tbl_invoice_proforma_alokasi');
+        $terpakai = $ada_alokasi
+            ? "IFNULL((SELECT SUM(k.amount) FROM tbl_invoice_proforma_alokasi k
+                        WHERE k.no_proforma_invoice = a.no_proforma_invoice
+                          AND k.id_book_invoice <> $id_inv), 0)"
+            : '0';
+        $dipakai = $ada_alokasi
+            ? "IFNULL((SELECT SUM(k.amount) FROM tbl_invoice_proforma_alokasi k
+                        WHERE k.no_proforma_invoice = a.no_proforma_invoice
+                          AND k.id_book_invoice = $id_inv), 0)"
+            : '0';
+
+        // Kotak atas cuma mengurus PI milik customer invoicenya; kotak bawah
+        // memang tidak disaring customer - PI punya siapa pun boleh dipanggil,
+        // jadi nama customernya ikut dibawa supaya kelihatan milik siapa.
+        $bind = array();
+        $saring_cust = '';
+        if ($sumber === 'PI') {
+            $saring_cust = 'AND a.id_customer = ?';
+            $bind[] = $id_customer;
+        }
+
+        $baris = $this->db->query("
+            SELECT a.id, a.no_proforma_invoice AS no_pi, a.status, a.id_customer,
+                   IFNULL(s.supplier, a.id_customer) AS customer,
+                   DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi,
+                   $tipe AS type_pi,
+                   $nilai AS nilai,
+                   $terpakai AS terpakai,
+                   $dipakai AS dipakai,
+                   IFNULL(a.dp, 0) AS dp,
+                   (SELECT GROUP_CONCAT(DISTINCT d.curr ORDER BY d.curr SEPARATOR ',')
+                      FROM tbl_invoice_proforma_detail_so d
+                     WHERE d.no_invoice_proforma = a.no_proforma_invoice) AS curr,
+                   (SELECT GROUP_CONCAT(DISTINCT d.no_so ORDER BY d.no_so SEPARATOR ',')
+                      FROM tbl_invoice_proforma_detail_so d
+                     WHERE d.no_invoice_proforma = a.no_proforma_invoice) AS so_list
+              FROM tbl_invoice_proforma AS a
+         LEFT JOIN mastersupplier AS s ON s.Id_Supplier = a.id_customer
+             WHERE IFNULL(a.status, '') NOT LIKE 'CANCEL%'
+               $saring_cust
+            HAVING type_pi IN ('DP', 'CBD', 'PI NON SO')
+          ORDER BY a.tgl_proforma_inv DESC, a.no_proforma_invoice DESC
+        ", $bind)->result_array();
+
+        $mau = strtoupper(trim((string) $curr));
+        $so = array();
+        foreach ((array) $no_so as $v) {
+            $v = strtoupper(trim((string) $v));
+            if ($v !== '' && $v !== '-') { $so[$v] = $v; }
+        }
+
+        $keluar = array();
+        foreach ($baris as $r) {
+            // Mata uangnya diambil dari baris PI-nya - header PI tidak
+            // menyimpan currency sendiri.
+            $curr_pi = strtoupper(trim((string) $r['curr']));
+            $curr_sama = ($mau === '' || $curr_pi === '' || $curr_pi === $mau);
+
+            // SO-nya ikut ditagih invoice ini? PI NON SO memang tidak punya SO,
+            // jadi tidak pernah "cocok" - tempatnya di kotak bawah.
+            $cocok_so = FALSE;
+            foreach (explode(',', (string) $r['so_list']) as $v) {
+                $v = strtoupper(trim($v));
+                if ($v !== '' && isset($so[$v])) { $cocok_so = TRUE; break; }
+            }
+            $cust_sama = ((string) $r['id_customer'] === (string) $id_customer);
+            // Baris yang tempatnya di kotak atas: SO-nya ikut ditagih, milik
+            // customer yang sama, dan mata uangnya sama.
+            $di_kotak_atas = ($cocok_so && $cust_sama && $curr_sama);
+
+            $r['nilai']    = round((float) $r['nilai'], 2);
+            $r['terpakai'] = round((float) $r['terpakai'], 2);
+            $r['dipakai']  = round((float) $r['dipakai'], 2);
+            $r['sisa']     = round($r['nilai'] - $r['terpakai'], 2);
+            // Yang ber-DP masuk Down Payment, sisanya (CBD & PI NON SO tanpa
+            // DP) masuk Advance.
+            $r['bagian'] = ((float) $r['dp']) > 0 ? 'DP' : 'ADVANCE';
+            $r['sumber'] = $sumber;
+
+            if ($sumber === 'PI') {
+                if (!$di_kotak_atas) { continue; }
+                $r['boleh'] = 1;
+                $r['alasan'] = '';
+            } else {
+                // Kotak bawah: yang sudah ada di kotak atas tidak diulang, dan
+                // yang sisanya habis tidak perlu ditawarkan lagi.
+                if ($di_kotak_atas) { continue; }
+                if ($r['sisa'] <= 0 && $r['dipakai'] <= 0) { continue; }
+                // Mata uang lain tidak ikut didaftar sama sekali - memang tidak
+                // boleh dipakai, jadi tidak perlu memanjangkan daftarnya.
+                if (!$curr_sama) { continue; }
+                $r['boleh'] = 1;
+                $r['alasan'] = '';
+            }
+
+            if ($r['boleh'] === 1 && $r['sisa'] <= 0 && $r['dipakai'] <= 0) {
+                $r['boleh'] = 0;
+                $r['alasan'] = 'Fully used';
+            }
+            $keluar[] = $r;
+        }
+        return $keluar;
+    }
+    /** Proforma Invoice yang sedang dipakai sebuah invoice. */
+    function alokasi_pi_invoice($id_book_invoice)
+    {
+        if (!$this->db->table_exists('tbl_invoice_proforma_alokasi')) {
+            return array();
+        }
+        return $this->db->query("
+            SELECT id, id_proforma, no_proforma_invoice, type_pi, curr,
+                   nilai_pi, amount, bagian
+              FROM tbl_invoice_proforma_alokasi
+             WHERE id_book_invoice = ?
+          ORDER BY id
+        ", array((int) $id_book_invoice))->result_array();
+    }
+
+    /**
+     * Catat Proforma Invoice yang dipakai sebuah invoice.
+     *
+     * Barisnya ditulis ulang - yang dilepas otomatis jadi sisa PI-nya lagi.
+     * Nilai & bagiannya tidak diambil dari layar tapi dihitung lagi di sini:
+     * yang dikirim layar cuma nomor PI & berapa yang mau dipakai.
+     *
+     * Pemakaian yang melebihi sisa PI ditolak, dan kalau ada satu saja yang
+     * ditolak tidak ada yang tersimpan - lebih baik diulang daripada separuh.
+     */
+    function simpan_alokasi_pi($id_book_invoice, $rows, $user, $now, $no_invoice = '', $curr_invoice = '')
+    {
+        $id = (int) $id_book_invoice;
+        if ($id < 1) {
+            return array('gagal' => 'Invoice not found.');
+        }
+        if (!$this->db->table_exists('tbl_invoice_proforma_alokasi')) {
+            return array('gagal' => 'Proforma allocation table is not ready yet.');
+        }
+
+        // Mata uang invoicenya: dari baris SJ-nya kalau sudah tersimpan,
+        // selain itu yang dikirim layar. Dipakai menolak PI mata uang lain -
+        // nilainya langsung memotong tagihan, jadi kalau beda angkanya salah
+        // tanpa kelihatan.
+        $curr_inv = strtoupper(trim((string) $curr_invoice));
+        if ($this->db->table_exists('tbl_invoice_detail')) {
+            $baris_inv = $this->db->query(
+                "SELECT MAX(curr) AS curr FROM tbl_invoice_detail WHERE id_book_invoice = ?",
+                array($id)
+            )->row_array();
+            $dari_db = strtoupper(trim((string) (isset($baris_inv['curr']) ? $baris_inv['curr'] : '')));
+            if ($dari_db !== '') { $curr_inv = $dari_db; }
+        }
+
+        $isi = array();
+        foreach ((array) $rows as $r) {
+            $no = trim((string) (isset($r['no_proforma_invoice']) ? $r['no_proforma_invoice'] : ''));
+            $pakai = round((float) (isset($r['amount']) ? $r['amount'] : 0), 2);
+            if ($no === '' || $pakai <= 0) { continue; }
+
+            $pi = $this->db->query("
+                SELECT a.id, a.no_proforma_invoice, " . $this->_sql_tipe_pi('a') . " AS type_pi,
+                       " . $this->_sql_nilai_pi_dpp('a') . " AS nilai, IFNULL(a.dp, 0) AS dp,
+                       (SELECT GROUP_CONCAT(DISTINCT d.curr ORDER BY d.curr SEPARATOR ',')
+                          FROM tbl_invoice_proforma_detail_so d
+                         WHERE d.no_invoice_proforma = a.no_proforma_invoice) AS curr
+                  FROM tbl_invoice_proforma a
+                 WHERE a.no_proforma_invoice = ? LIMIT 1
+            ", array($no))->row_array();
+            if (!$pi) {
+                return array('gagal' => 'Proforma invoice ' . $no . ' not found.');
+            }
+
+            // Mata uangnya diambil dari baris PI-nya - header PI tidak menyimpan
+            // currency sendiri. Kosong berarti PI-nya tidak punya baris SO, dan
+            // itu tidak bisa dibandingkan - dibiarkan lewat.
+            $curr_pi = strtoupper(trim((string) $pi['curr']));
+            if ($curr_inv !== '' && $curr_pi !== '' && $curr_pi !== $curr_inv) {
+                return array('gagal' => 'Proforma invoice ' . $no . ' is in ' . $curr_pi
+                    . ' - this invoice is in ' . $curr_inv . '. Different currency cannot be used.');
+            }
+
+            $nilai = round((float) $pi['nilai'], 2);
+            $lain = (float) $this->db->query("
+                SELECT IFNULL(SUM(amount), 0) AS n FROM tbl_invoice_proforma_alokasi
+                 WHERE no_proforma_invoice = ? AND id_book_invoice <> ?
+            ", array($no, $id))->row_array()['n'];
+            $sisa = round($nilai - $lain, 2);
+            if ($pakai > $sisa + 0.001) {
+                return array('gagal' => 'Proforma invoice ' . $no . ' only has '
+                    . number_format($sisa, 2) . ' left.');
+            }
+
+            // Kotak mana yang dipakai ikut dicatat: yang dari kotak bawah
+            // tidak terikat SO invoice ini, jadi perlu kelihatan di laporan.
+            // Kolomnya baru ada setelah migrations/20261020 - selama belum
+            // dijalankan, alokasinya tetap tersimpan tanpa penanda ini.
+            $asal = (strtoupper(trim((string) (isset($r['sumber']) ? $r['sumber'] : '')))
+                === 'OTHER') ? 'OTHER' : 'PI';
+            $isi[] = array(
+                'id_book_invoice' => $id,
+                'no_invoice' => (string) $no_invoice,
+                'id_proforma' => (int) $pi['id'],
+                'no_proforma_invoice' => $no,
+                'type_pi' => (string) $pi['type_pi'],
+                'curr' => (string) $pi['curr'],
+                'nilai_pi' => $nilai,
+                'amount' => $pakai,
+                'bagian' => ((float) $pi['dp']) > 0 ? 'DP' : 'ADVANCE',
+                'sumber' => $asal,
+                'created_by' => (string) $user,
+                'created_at' => (string) $now,
+            );
+        }
+
+        $ada_sumber = $this->kolom_ada('tbl_invoice_proforma_alokasi', 'sumber');
+        $this->db->trans_start();
+        $this->db->query("DELETE FROM tbl_invoice_proforma_alokasi WHERE id_book_invoice = ?",
+            array($id));
+        foreach ($isi as $baris) {
+            if (!$ada_sumber) { unset($baris['sumber']); }
+            $kolom = array(); $tanya = array(); $bind = array();
+            foreach ($baris as $k => $v) { $kolom[] = $k; $tanya[] = '?'; $bind[] = $v; }
+            $this->db->query("INSERT INTO tbl_invoice_proforma_alokasi ("
+                . implode(', ', $kolom) . ") VALUES (" . implode(', ', $tanya) . ")", $bind);
+        }
+        $this->db->trans_complete();
+        if (!$this->db->trans_status()) {
+            return array('gagal' => 'Proforma allocation could not be saved.');
+        }
+        return array('baris' => count($isi));
+    }
+    /**
+     * Ekspresi SQL nilai Proforma Invoice yang boleh memotong invoice - DPP,
+     * tanpa PPN.
+     *
+     * Yang dipajang di daftar & approval itu nilai TAGIHANNYA (sudah termasuk
+     * pajak), tapi yang memotong tagihan invoice cuma DPP-nya. Porsinya
+     * diambil dari perbandingan Total Without Tax : Grand Total pada PI itu,
+     * jadi berlaku untuk DP nominal maupun persen. Kalau PI-nya memang tanpa
+     * pajak, twot = total dan hasilnya sama saja.
+     */
+    private function _sql_nilai_pi_dpp($alias = 'a', $tabel = 'tbl_invoice_proforma')
+    {
+        $kotor = $this->_sql_nilai_dp($alias, $tabel);
+        if (!$this->kolom_ada($tabel, 'twot')) {
+            return $kotor;
+        }
+        return "IF(IFNULL($alias.total, 0) > 0 AND IFNULL($alias.twot, 0) > 0,"
+            . " ($kotor) * ($alias.twot / $alias.total), ($kotor))";
+    }
+
+    /**
+     * Ekspresi SQL jenis proforma: PI / PI NON SO / DP / CBD.
+     *
+     * Dibaca dari kolomnya kalau ada isinya. Baris lama yang kolomnya masih
+     * kosong - atau database yang belum dimigrasi - dikenali dari nomornya:
+     * ruas kedua 'D' berarti DP, 'C' berarti CBD.
+     */
+    /**
+     * PO yang dicetak di invoice knitting: PO BUYER, apa adanya.
+     *
+     * Dulu yang diambil po_konsumen. Sekarang patokannya po_buyer saja -
+     * tanpa jatuh ke po_konsumen kalau kosong: PO yang benar cuma satu, dan
+     * menukarnya diam-diam malah bikin cetakan menyebut PO yang bukan itu.
+     *
+     * Nama kolom keluarannya tetap po_konsumen: nama itu dipakai sepanjang
+     * alur simpan & cetak (tbl_invoice_detail_knitting dan cetakannya), jadi
+     * yang berubah sumbernya saja, bukan seluruh rantainya.
+     */
+    public function _sql_po_buyer($alias = 'i')
+    {
+        return "$alias.po_buyer";
+    }
+
+    private function _sql_tipe_pi($alias = 'a', $tabel = 'tbl_invoice_proforma', $bawaan = 'PI')
+    {
+        $dari_nomor = "CASE SUBSTRING_INDEX(SUBSTRING_INDEX($alias.no_proforma_invoice, '/', 2), '/', -1)"
+            . " WHEN 'C' THEN 'CBD' WHEN 'D' THEN 'DP' ELSE '$bawaan' END";
+        return $this->kolom_ada($tabel, 'type_pi')
+            ? "IFNULL(NULLIF($alias.type_pi, ''), $dari_nomor)"
+            : $dari_nomor;
+    }
+
+    /**
+     * Ekspresi SQL nilai DP - yang benar-benar ditagih lebih dulu.
+     *
+     * DP-nya boleh ditulis sebagai nominal atau persen dari total. DP nol
+     * berarti seluruhnya ditagih di muka (CBD). Selama kolom patokannya belum
+     * ada - database yang belum dimigrasi - tabel itu memang tidak memuat
+     * DP/CBD, jadi totalnya yang dipakai.
+     */
+    private function _sql_nilai_dp($alias = 'a', $tabel = 'tbl_invoice_proforma')
+    {
+        if (!$this->kolom_ada($tabel, 'tipe_dp')) {
+            return "$alias.total";
+        }
+        return "IF($alias.dp = '0', $alias.total,"
+            . " IF($alias.tipe_dp = '%', ($alias.total * ($alias.dp/100)), $alias.dp))";
     }
 
     /** Ada tidaknya satu kolom - dipakai kolom yang baru ada setelah migrasi. */

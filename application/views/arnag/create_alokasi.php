@@ -1,15 +1,95 @@
+<style type="text/css">
+/* Kolom terakhir tabel di layar ini berisi DATA, bukan tombol aksi - jadi
+   penguncian ke kanan dari dn_skin dimatikan. Kalau dibiarkan, kolom itu
+   mengambang menutupi kolom sebelahnya waktu tabelnya digeser. */
+.nag-skin #table-sj tbody td:last-child,
+.nag-skin #table-add-bi tbody td:last-child,
+.nag-skin #table-inv-alok tbody td:last-child,
+.nag-skin #tbl_top tbody td:last-child,
+.nag-skin #example4 tbody td:last-child { position: static; box-shadow: none; }
+.nag-skin #table-sj thead th:last-child,
+.nag-skin #table-add-bi thead th:last-child,
+.nag-skin #table-inv-alok thead th:last-child,
+.nag-skin #tbl_top thead th:last-child,
+.nag-skin #example4 thead th:last-child { position: sticky; top: 0; right: auto; box-shadow: none; }
+
+/* Lebar kolom tabel Detail dipatok di sini - baris dari data & baris yang
+   ditambah lewat Add Row dibuat di tempat berbeda, jadi kalau lebarnya
+   ikut isi masing-masing, kolomnya bergeser begitu ada baris baru. */
+.nag-skin #table-sj th:nth-child(1),
+.nag-skin #table-sj td:nth-child(1) { min-width: 230px; }  /* COA */
+.nag-skin #table-sj th:nth-child(2),
+.nag-skin #table-sj td:nth-child(2) { min-width: 190px; }  /* Cost Center */
+.nag-skin #table-sj th:nth-child(3),
+.nag-skin #table-sj td:nth-child(3) { min-width: 190px; }  /* Reference Number */
+.nag-skin #table-sj th:nth-child(4),
+.nag-skin #table-sj td:nth-child(4) { min-width: 120px; }  /* Date */
+.nag-skin #table-sj th:nth-child(5),
+.nag-skin #table-sj td:nth-child(5) { min-width: 120px; }  /* Due Date */
+.nag-skin #table-sj th:nth-child(6),
+.nag-skin #table-sj td:nth-child(6) { min-width: 140px; }  /* Total */
+.nag-skin #table-sj th:nth-child(7),
+.nag-skin #table-sj td:nth-child(7) { min-width: 150px; }  /* Equivalent IDR */
+.nag-skin #table-sj th:nth-child(8),
+.nag-skin #table-sj td:nth-child(8) { min-width: 140px; }  /* Amount */
+.nag-skin #table-sj th:nth-child(9),
+.nag-skin #table-sj td:nth-child(9) { min-width: 220px; }  /* Descriptions */
+.nag-skin #table-sj th:nth-child(10),
+.nag-skin #table-sj td:nth-child(10) { min-width: 200px; }  /* Profit Center */
+/* Baris Incoming Bank membawa id customer di kolom terakhir - dipakai
+   waktu barisnya dipilih (add_no_bi), tapi tidak perlu dilihat user.
+   Disembunyikan, bukan dibuang: JS membacanya lewat nomor kolom. */
+.nag-skin #table-add-bi tbody td:nth-child(12) { display: none; }
+
+/* Kolom angka rata kanan - Total, Equivalent IDR & Amount. Angka lebih
+   mudah dibandingkan kalau satuannya sejajar. */
+.nag-skin #table-sj th:nth-child(6),
+.nag-skin #table-sj th:nth-child(7),
+.nag-skin #table-sj th:nth-child(8) { text-align: right; }
+.nag-skin #table-sj td:nth-child(6) .form-control,
+.nag-skin #table-sj td:nth-child(7) .form-control,
+.nag-skin #table-sj td:nth-child(8) .form-control { text-align: right !important; }
+/* Isian & pilihan memenuhi selnya - lebar bawaannya dari template baris
+   baru tidak lagi menentukan. */
+.nag-skin #table-sj td .form-control,
+.nag-skin #table-sj td select { width: 100% !important; min-width: 0; }
+.nag-skin #table-sj td .select2-container { width: 100% !important; }
+
+/* Kartu ringkasan Alokasi - sebaris label & angka, seperti ringkasan
+   di layar Invoice. */
+.nag-skin .alo-sum-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 7px 0; border-bottom: 1px dashed #eef2f7;
+}
+.nag-skin .alo-sum-row:last-child { border-bottom: 0; }
+.nag-skin .alo-sum-row > span { font-size: 12px; color: #64748b; font-weight: 600; }
+.nag-skin .alo-sum-row .form-control[readonly] {
+  width: 190px; text-align: right; background: transparent !important;
+  border: 0; box-shadow: none; font-weight: 600; color: #1e293b;
+}
+.nag-skin .alo-sum-row.is-sisa > span { color: #1e293b; font-size: 13px; }
+.nag-skin .alo-sum-row.is-sisa .form-control[readonly] { font-size: 16px !important; color: #0f172a; }
+.nag-skin .alo-rincian.is-sembunyi { display: none; }
+.nag-skin .alo-save-bar { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+
+/* Penanda jenis Proforma Invoice di daftar referensi - nomor PI NON SO
+   bentuknya sama dengan nomor invoice biasa. */
+.alo-tag-pi {
+  display: inline-block; margin-left: 6px; padding: 1px 7px;
+  border-radius: 10px; background: #e0e7ff; color: #3730a3;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .02em; white-space: nowrap;
+}
+td .alo-tag-pi { margin-left: 0; margin-top: 3px; }
+</style>
+<?php $this->load->view('arnag/dn_skin'); ?>
+<?php $this->load->view('arnag/_ukuran_sm'); ?>
 <!-- Content Wrapper. Contains page content -->
-<div class="content-wrapper">
+<!-- Tampilannya mengikuti menu Invoice & Debit Note: skin .nag-skin di
+     dn_skin.php. Modal halaman ini ada di luar pembungkus ini, jadi
+     kelasnya dipasang juga di tiap modalnya. -->
+<div class="content-wrapper nag-skin ci-sm">
     <!-- Content Header (Page header) -->
-    <section class="content-header">
-        <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1><?= $title; ?></h1>
-                </div>
-            </div>
-        </div><!-- /.container-fluid -->
-    </section>
+    <!-- Judul halaman sengaja tidak dipakai: judul tiap kartu sudah cukup. -->
 
     <!-- Main content -->
     <section class="content">
@@ -17,11 +97,12 @@
             <div class="row">
                 <div class="col-md-6">
                     <!-- Form Element sizes -->
-                    <div class="card card-dark">
+                    <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">Form Alokasi</h3>
+                            <h3 class="card-title"><i class="fas fa-file-invoice-dollar"></i>Allocation</h3>
                         </div>
                         <div class="card-body">
+                            
                             <!-- Start Input -->
                             <div class="form-group col-md-12">
                                 <label>Alokasi Number</label>
@@ -83,11 +164,12 @@
                 <!--/.col (right) -->
                 <div class="col-md-6">
                     <!-- Form Element sizes -->
-                    <div class="card card-dark">
+                    <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">-</h3>
+                            <h3 class="card-title"><i class="fas fa-money-bill-wave"></i>Payment</h3>
                         </div>
                         <div class="card-body">
+                            
                             <!-- Start Input -->
                             <div class="form-group col-md-12">
                                <label>Currency</label>
@@ -150,17 +232,17 @@
             <div class="row">
                 <div class="col-12">
                     <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Detail</h3>
-                        </div>
-                        <div class="input-group-append col">
-                            <input  style="margin-right: 15px;border: 0; line-height: 1; padding: 10px 20px; font-size: 1rem; text-align: center; color: #fff; text-shadow: 1px 1px 1px #000; border-radius: 6px; background-color: rgb(30, 144, 255);" id="add" type="button" value="(+) Add"> 
-
-                            <input style="border: 0; line-height: 1; padding: 10px 20px; font-size: 1rem; text-align: center; color: #fff; text-shadow: 1px 1px 1px #000; border-radius: 6px; background-color: rgb(139, 5, 0);" id="delete" type="button" value="(-) Delete">
-                        </div>
-                        <!-- /.card-header -->
-                        <div class="card-body table-responsive p-0" style="height: 300px;">
-                            <table id="table-sj" class="table table-head-fixed text-nowrap table-striped table-bordered">
+                        
+                        <div class="card-body">
+                            <div class="table-header">
+                                <span class="table-title"><i class="fas fa-list-ul"></i>Detail</span>
+                                <div class="dn-filter-aksi">
+                                    <button type="button" class="btn btn-primary" id="add"><i class="fas fa-plus"></i> Add Row</button>
+                                    <button type="button" class="btn btn-dn-hapus-baris" id="delete"><i class="fas fa-trash-alt"></i> Delete Row</button>
+                                </div>
+                            </div>
+                            <div class="ci-table-wrap" id="alo-detail-wrap">
+                            <table id="table-sj" class="dn-table text-nowrap" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>COA</th>
@@ -190,6 +272,7 @@
                                     </tbody>
                                 </table>
                             </div>
+                            </div>
                             <!-- /.card-body -->
                         </div>
                         <!-- /.card -->
@@ -201,54 +284,50 @@
                     <!--/.col (right) -->
                     <div class="col-md-6">
                         <!-- Form Element sizes -->
-                        <div class="card card-success">
-                            <div class="card-body">
-                                <!-- Start Input -->
-                                <form class="form-horizontal">
-                                    <div class="card-body">
-                                        <div class="form-group row">
-                                            <label for="total_h" class="col-sm-4 col-form-label">Outstanding Amount Alokasi</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" id="out_alok" name="out_alok" style="text-align:right;" placeholder="0.00" autocomplete="off" readonly>
-                                                <input type="hidden" class="form-control" id="out_alok_h" name="out_alok_h" style="text-align:right;" placeholder="0.00">
-
-                                                <input type="hidden" class="form-control" id="total_alokasi" name="total_alokasi" style="text-align:right;" autocomplete="off" readonly>
-                                            </div>
-                                        </div>
-                                    <!-- <div class="form-group row">
-                                        <label for="discount" class="col-sm-4 col-form-label">Discount</label>
-                                        <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="diskon" name="diskon" style="text-align:right;" placeholder="0.00" autocomplete="off" readonly>
-                                        </div>
-                                    </div>
-                                    <div class="form-group row">
-                                        <label for="dp" class="col-sm-4 col-form-label">Down Payment</label>
-                                        <div class="col-sm-8">
-                                            <input type="text" class="form-control" id="dp" name="dp" style="text-align:right;" placeholder="0.00" onkeypress="javascript:return isNumber(event)" oninput="modal_inputdp(value)" autocomplete="off">
-                                        </div>
-                                    </div> -->
-                                    
-                                </div>
-                                <!-- /.card-body -->
-                                <!-- /.card-footer -->
-                            </form>
-                            <!--  End Start Input -->
+                        <div class="card alo-summary">
+                            <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-calculator"></i>Summary</h3>
                         </div>
-                        <!-- /.card-body -->
+                        <div class="card-body">
+                                
+
+                                <!-- Rincian: dari mana uangnya dan berapa yang sudah dipakai.
+                                     Bisa disembunyikan - yang selalu perlu kelihatan sisanya. -->
+                                <!-- Rinciannya tertutup dulu - yang paling sering dilihat sisanya.
+                                     Dibuka lewat tombol datar di bawah, sama seperti
+                                     ringkasan di layar Invoice. -->
+                                <div id="alo-rincian" class="alo-rincian is-sembunyi">
+                                    <div class="alo-sum-row">
+                                        <span>Bank Amount</span>
+                                        <input type="text" class="form-control" id="alo_bank_amount" name="alo_bank_amount" placeholder="0.00" readonly>
+                                    </div>
+                                    <div class="alo-sum-row">
+                                        <span>Allocated</span>
+                                        <input type="text" class="form-control" id="total_alokasi_show" placeholder="0.00" readonly>
+                                        <!-- Nilai mentahnya dipakai waktu Save - tidak boleh ikut diberi koma ribuan. -->
+                                        <input type="hidden" id="total_alokasi" name="total_alokasi">
+                                    </div>
+                                </div>
+
+                                <div class="alo-sum-row is-sisa">
+                                    <span>Outstanding Amount</span>
+                                    <input type="text" class="form-control" id="out_alok_show" placeholder="0.00" readonly>
+                                    <input type="hidden" id="out_alok" name="out_alok">
+                                    <input type="hidden" class="form-control" id="out_alok_h" name="out_alok_h" placeholder="0.00">
+                                </div>
+
+                                <button type="button" class="btn btn-ci-rinci" id="alo-rincian-toggle" onclick="alo_toggle_rincian()">
+                                    <i class="fas fa-chevron-down"></i> <span>Show details</span></button>
+
+                                <div class="alo-save-bar">
+                                    <button type="button" class="btn btn-danger" id="alo-btn-kembali" onclick="alo_kembali()"><i class="fas fa-arrow-left"></i> Back</button>
+                                    <button type="button" class="btn btn-primary" onclick="simpan_data_alokasi()"><i class="fa fa-save"></i> Save</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- /.alo-summary -->
                     </div>
                 </div>
-                <!--/.col (right) -->
-            </div>
-            <!--  -->
-            <!-- End Data Potongan Invoice  -->
-            <!--  -->
-            <!-- Button Simpan Data Invoice  -->
-            <div class="row col-sm-12">
-                <div class="input-group mb-3">
-                    <button type="button" class="btn btn-primary" data-toggle="modal" onclick="simpan_data_alokasi()"><i class="fa fa-save"></i> Save </button>
-                </div>
-            </div>
-            <!-- End Button Simpan Data Invoice  -->
             <!-- /.row -->
         </div><!-- /.container-fluid -->
     </section>
@@ -257,7 +336,7 @@
 <!-- /.content-wrapper -->
 
 <!-- Modal Add No Booking Invoice -->
-<div class="modal fade" id="modal-add-no-bi">
+<div class="modal fade nag-skin ci-sm" id="modal-add-no-bi">
     <div class=" modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
@@ -270,7 +349,7 @@
                 <!-- <p>One fine body&hellip;</p> -->
                 <!-- Datatable Nomor Booking Invoice -->
                 <div class="card">
-                    <div class="card-header">
+                    <div class="card-body ci-filter">
                         <!-- Date Range -->
                         <div class="row">
                             <div class="col-md-2">
@@ -307,13 +386,11 @@
                     </div>
                     <!-- /.card-header -->
                     <div class="card-body table-responsive p-0" style="height: 400px;">
-                        <div class="d-flex justify-content-between">
-                         <div class="ml-auto">
-                            <span class="input-group-text"><i class="fas fa-search"></i></span>
-                        </div>
-                        <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Incoming Bank.." onkeyup="cari_noinvoice()">
+                        <div class="d-flex justify-content-end alo-cari-bar">
+                            <div class="ci-cari"><i class="fas fa-search"></i>
+                            <input class="form-control" type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Incoming Bank.." onkeyup="cari_noinvoice()"></div>
                     </div>
-                    <table id="table-add-bi" class="table table-head-fixed text-nowrap">
+                    <table id="table-add-bi" class="dn-table text-nowrap" style="width:100%">
                         <thead>
                             <tr>
                                 <th style="width: 10px">Action</th>
@@ -347,7 +424,7 @@
 </div>
 
 <!-- Modal Add TOP -->
-<div class="modal fade" id="modal-add-top">
+<div class="modal fade nag-skin ci-sm" id="modal-add-top">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -360,12 +437,13 @@
             <div class="modal-body">
                 <div class="col-md-12">
                     <!-- Form Element sizes -->
-                    <div class="card card-success">
+                    <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">Table TOP</h3>
+                            <h3 class="card-title"><i class="fas fa-clock"></i>Table TOP</h3>
                         </div>
                         <div class="card-body">
-                            <table id="tbl_top" class="table table-bordered">
+                            
+                            <table id="tbl_top" class="dn-table text-nowrap" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th style="width: 35px">Action</th>
@@ -397,7 +475,7 @@
 </div>
 
 <!-- Modal Add SO And SJ -->
-<div class="modal fade" id="modal-add-so">
+<div class="modal fade nag-skin ci-sm" id="modal-add-so">
     <div class=" modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
@@ -410,7 +488,7 @@
                 <!-- <p>One fine body&hellip;</p> -->
                 <!-- Datatable Nomor SO -->
                 <div class="card">
-                    <div class="card-header">
+                    <div class="card-body ci-filter">
                         <!-- Date Range -->
                         <div class="row">
                             <div class="col-md-4">
@@ -453,15 +531,13 @@
                 </div>
                 <!-- /.card-header -->
                 <!-- Detail SO -->
-                       <!--  <div class="d-flex justify-content-between">
-                           <div class="ml-auto">
-                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                            </div>
-                                <input type="text"  id="cariso" name="cariso" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cariso()">
+                       <!--  <div class="d-flex justify-content-end alo-cari-bar">
+                            <div class="ci-cari"><i class="fas fa-search"></i>
+                            <input class="form-control" type="text"  id="cariso" name="cariso" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cariso()"></div>
                              </div>
 
                     <div class="card-body">
-                        <table id="example4" class="table table-bordered table-striped">
+                        <table id="example4" class="dn-table text-nowrap" style="width:100%">
                             <thead>
                                 <tr>
                                     <th style="width: 10px">Cek</th>
@@ -493,25 +569,22 @@
                         <div class="row">
                             <div class="col-12">
                                 <div class="card">
-                                    <div class="card-header">
-                                        <h3 class="card-title">Data</h3>
-                                    </div>
-                                    <!-- /.card-header -->
-                           <!--      <div class="d-flex justify-content-between">
-                           <div class="ml-auto">
-                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                            </div>
-                                <input type="text"  id="cariinvo" name="cariinvo" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cariinvo()">
+                                    <div class="card-body">
+                                        <div class="table-header">
+                                            <span class="table-title"><i class="fas fa-table"></i>Data</span>
+                                        </div>
+                                    <!-- judulnya lembut: modalnya sudah berkepala biru -->
+                           <!--      <div class="d-flex justify-content-end alo-cari-bar">
+                            <div class="ci-cari"><i class="fas fa-search"></i>
+                            <input class="form-control" type="text"  id="cariinvo" name="cariinvo" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cariinvo()"></div>
                             </div> -->
 
-                            <div class="d-flex justify-content-between">
-                             <div class="ml-auto">
-                                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                            </div>
-                            <input type="text"  id="carinoinv" name="carinoinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_inv_alok()">
+                            <div class="d-flex justify-content-end alo-cari-bar">
+                            <div class="ci-cari"><i class="fas fa-search"></i>
+                            <input class="form-control" type="text"  id="carinoinv" name="carinoinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_inv_alok()"></div>
                         </div>
-                        <div class="card-body table-responsive p-0" style="height: 300px;">
-                            <table id="table-inv-alok" class="table table-head-fixed text-nowrap">
+                        <div class="ci-table-wrap" style="max-height: 300px;">
+                            <table id="table-inv-alok" class="dn-table text-nowrap" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>Reference Number</th>
@@ -529,6 +602,7 @@
                                 </tbody>
                             </table>
                         </div>
+                        </div>
                         <!-- /.card-body -->
                     </div>
                     <!-- /.card -->
@@ -538,7 +612,7 @@
             <div class="row" style="display: flex; justify-content: flex-end">
                 <div class="col-md-6">
                     <!-- Form Element sizes -->
-                    <div class="card card-success">
+                    <div class="card">
                         <div class="card-body">
                             <!-- Start Input -->
                             <form class="form-horizontal">
@@ -628,40 +702,15 @@
 </div>
 
 
-<!-- Modal Simpan Invoice Status POST -->
-<div class="modal fade" id="modal-simpan-alokasi">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title">Save Alokasi</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-
-                <!-- No Invoice -->
-                <div class="form-group row">
-                    <label for="id_inv" class="col-sm-5 col-form-label">Save Alokasi Number :</label>
-                    <div class="col-sm-7">
-                        <input type="text" class="form-control" id="no_alokasi" name="no_alokasi" style="border:none;" readonly>
-                    </div>
-                </div>
-                <!-- ID Invoice, Pph -->
-                <input type="hidden" class="form-control" id="id_inv_post" name="id_inv_post" readonly>
-                <input type="hidden" class="form-control" id="pph_post" name="pph_post" readonly>
-
-            </div>
-            <div class="modal-footer justify-content-between">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary toastrDefaultSuccess" onclick="save_alokasi()">Save</button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Nomor alokasi & dua isian pendamping. Dulu ada di dalam modal Save
+     Alokasi; konfirmasinya sekarang pakai Swal, tapi isiannya tetap
+     dipakai waktu menyimpan. -->
+<input type="hidden" id="no_alokasi" name="no_alokasi">
+<input type="hidden" id="id_inv_post" name="id_inv_post">
+<input type="hidden" id="pph_post" name="pph_post">
 
 <!-- Modal Show Date 1 -->
-<div class="modal fade" id="modal-show-date1">
+<div class="modal fade nag-skin ci-sm" id="modal-show-date1">
     <div class="modal-dialog modal-sm">
         <div class="modal-content">
             <div class="modal-header">
@@ -694,7 +743,7 @@
 </div>
 
 <!-- Modal Show Date 2 -->
-<div class="modal fade" id="modal-show-date2">
+<div class="modal fade nag-skin ci-sm" id="modal-show-date2">
     <div class="modal-dialog modal-sm">
         <div class="modal-content">
             <div class="modal-header">
@@ -728,6 +777,9 @@
 
 <!-- Only Input Number In Text -->
 <script>
+  // Tujuan tombol Back & tujuan sesudah tersimpan.
+  var ALO_URL_LIST = <?= json_encode(base_url('arnag/alokasi_ar')); ?>;
+
     function isNumber(evt) {
         var iKeyCode = (evt.which) ? evt.which : evt.keyCode
         if (iKeyCode != 46 && iKeyCode > 31 && (iKeyCode < 48 || iKeyCode > 57))

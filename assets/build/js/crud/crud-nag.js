@@ -91,17 +91,26 @@ $(document).ready(function () {
 	// });
 	//
 	// TOP Create Invoice
-	document.querySelector("#find_top").addEventListener("click", function(){		
-		cari_top()
-	})	
+	// Layar yang tidak punya tombolnya - mis. Proforma Invoice - memang
+	// tidak perlu listenernya. Tanpa pemeriksaan ini querySelector()
+	// mengembalikan null, .addEventListener melempar, dan seluruh
+	// handler $(ready) sesudahnya ikut mati.
+	var tombolTop = document.querySelector("#find_top");
+	if (tombolTop) {
+		tombolTop.addEventListener("click", function () { cari_top(); });
+	}
 });
 
 //Cari Proforma TOP
 $(document).ready(function () {		
 	// TOP Proforma Invoice
-	document.querySelector("#prof_find_top").addEventListener("click", function(){		
-		cari_prof_top()
-	})
+	// Tombol ini sudah tidak ada sejak TOP dihilangkan dari layar
+	// Proforma Invoice; dibiarkan supaya layar lain yang masih
+	// memakainya tetap jalan.
+	var tombolTopPi = document.querySelector("#prof_find_top");
+	if (tombolTopPi) {
+		tombolTopPi.addEventListener("click", function () { cari_prof_top(); });
+	}
 });
 
 //Alert
@@ -1126,7 +1135,7 @@ function cari_bi() {
 
 			},
 			error: function (jqXHR, textStatus, errorThrown) {
-				alert('Error get data from ajax');
+				nag_pesan('Error get data from ajax');
 			}
 		});	
 	}
@@ -1168,7 +1177,7 @@ function cari_bi() {
 
 			},
 			error: function (jqXHR, textStatus, errorThrown) {
-				alert('Error get data from ajax');
+				nag_pesan('Error get data from ajax');
 			}
 		});	
 	}
@@ -4385,8 +4394,10 @@ function cari_proforma_invoice_post(){
 				var trHTML = '';
 				$.each(response, function (i, item) { 					
 					trHTML += '<tr>';					
-					trHTML += '<td>' + item.no_pi + "</td>";					
-					trHTML += '<td>' + item.date_pi + "</td>";	
+					trHTML += '<td>' + pi_detail_tautan(item.id, item.no_pi, 'PI') + "</td>";					
+					// Jenis proformanya - PI, PI NON SO, DP atau CBD.
+					trHTML += '<td>' + (item.type_pi || '') + "</td>";
+					trHTML += '<td>' + nag_tgl_inggris(item.date_pi) + "</td>";	
 					trHTML += '<td>' + item.customer + "</td>";
 					trHTML += '<td>' + item.shipp + "</td>";
 					trHTML += '<td>' + item.peb + "</td>";
@@ -4395,7 +4406,7 @@ function cari_proforma_invoice_post(){
 					trHTML += '<td>' + item.status + "</td>";
 					trHTML += '<td>' + item.amount + "</td>";	
 					trHTML += '<td>' + item.id + "</td>";					
-					trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_profinv_approv" id="pilih_profinv_approv" class="flat" value = ' + item.id + '></td>';										
+					trHTML += '<td class="dn-cek"><input type="checkbox" name="pilih_profinv_approv" id="pilih_profinv_approv" class="flat" value = ' + item.id + '></td>';										
 				//trHTML += '<td><button id="approv_inv" name="approv_inv" type="button" class="btn btn-warning btn-sm" onclick="approve_invoice(\'' + item.no_invoice + '\' , \'' + item.id + '\')"><i class="fa fa-stamp"></i> Approved</td>';
 				trHTML += '</tr>';
 
@@ -4477,21 +4488,9 @@ function approve_invoice_second(){
 	return Promise.all(promises);
 }
 
+/** Kirim Second Approve untuk tiap baris yang dicentang - lihat approve_profinvoice(). */
 function approve_profinvoice_second(){
-	var cek_inv = document.getElementsByName("pilih_profinv_approv");
-	for (var i = 0; i < cek_inv.length; i++) {
-		if (cek_inv[i].checked) {
-			var formData = { "id_inv": cek_inv[i].value };
-			$.ajax({
-				url: "approve_profinvoice_second/",
-				type: "POST",
-				data: formData,
-				dataType: "JSON",
-				error: function (jqXHR) { msg = 'Error Update ' + jqXHR.text; }
-			});
-			$('#modal-approve-profinvoice').modal('hide');
-		}
-	}
+	return pi_kirim_approve('approve_profinvoice_second/');
 }
 
 // ── Second Approval Debit Note ──────────────────────────────────────────────
@@ -4986,10 +4985,10 @@ async function retry_approve_invoice_second(){
 	}
 }
 
+/** Tombol Approved di dialog Second Approval - lihat refresh_pi(). */
 async function refresh_pi_second(){
-	await approve_profinvoice_second();
-	alert("Proforma Invoice Secondary Approved successfully");
-	cari_proforma_invoice_second_approv();
+	await pi_selesaikan_approve(approve_profinvoice_second, cari_proforma_invoice_second_approv,
+		'Proforma invoice secondary approved.');
 }
 
 async function refresh_dn_second(){
@@ -5324,8 +5323,10 @@ function cari_proforma_invoice_second_approv(){
 			var trHTML = '';
 			$.each(response, function (i, item) {
 				trHTML += '<tr>';
-				trHTML += '<td>' + item.no_pi + "</td>";
-				trHTML += '<td>' + item.date_pi + "</td>";
+				trHTML += '<td>' + pi_detail_tautan(item.id, item.no_pi, 'PI') + "</td>";
+				// Jenis proformanya - PI, PI NON SO, DP atau CBD.
+				trHTML += '<td>' + (item.type_pi || '') + "</td>";
+				trHTML += '<td>' + nag_tgl_inggris(item.date_pi) + "</td>";
 				trHTML += '<td>' + item.customer + "</td>";
 				trHTML += '<td>' + item.shipp + "</td>";
 				trHTML += '<td>' + item.peb + "</td>";
@@ -5334,7 +5335,7 @@ function cari_proforma_invoice_second_approv(){
 				trHTML += '<td>' + item.status + "</td>";
 				trHTML += '<td>' + item.amount + "</td>";
 				trHTML += '<td>' + item.id + "</td>";
-				trHTML += '<td style="text-align:center"><input type="checkbox" name="pilih_profinv_approv" id="pilih_profinv_approv" class="flat" value="' + item.id + '"></td>';
+				trHTML += '<td class="dn-cek"><input type="checkbox" name="pilih_profinv_approv" id="pilih_profinv_approv" class="flat" value="' + item.id + '"></td>';
 				trHTML += '</tr>';
 			});
 			$('#table-approval-profinvoice').append(trHTML);
@@ -5363,21 +5364,16 @@ function cari_proforma_invoice_second_approv(){
 	}
 
 //ubah september
-function check_approv_profinvoice(ele) { 
-
-	var checkboxes = document.getElementsByTagName('input');
-	if (ele.checked) {
-		for (var i = 0; i < checkboxes.length; i++) {
-			if (checkboxes[i].type == 'checkbox'  && !(checkboxes[i].disabled) ) {
-				checkboxes[i].checked = true;
-			}
-		}
-	} else {
-		for (var i = 0; i < checkboxes.length; i++) {
-			if (checkboxes[i].type == 'checkbox') {
-				checkboxes[i].checked = false;
-			}
-		}
+/**
+ * Centang-semua di kepala tabel.
+ *
+ * Yang disentuh cuma centang baris daftarnya. Dulu semua <input> di halaman
+ * ikut tercentang - termasuk centang di luar tabel.
+ */
+function check_approv_profinvoice(ele) {
+	var baris = document.getElementsByName('pilih_profinv_approv');
+	for (var i = 0; i < baris.length; i++) {
+		if (!baris[i].disabled) { baris[i].checked = ele.checked; }
 	}
 }
 
@@ -5414,16 +5410,20 @@ function pilihsemua(){
 }
 
 //ubah september
-function modal_show_approve_profinvoice() { 
-
-	var cek_inv = document.getElementsByName("pilih_profinv_approv");	
-	for (var i = 0; i < cek_inv.length; i++) {
-		    //Ceklist Invoice		
-		    if (cek_inv[i].checked) {				   
-		    	$('#modal-approve-profinvoice').modal('show');  
-		    } 
-		}	
+/** Dialog konfirmasi Approve - cuma dibuka kalau ada yang dicentang. */
+function modal_show_approve_profinvoice() {
+	var dipilih = document.querySelectorAll('input[name="pilih_profinv_approv"]:checked');
+	if (dipilih.length === 0) {
+		Swal.fire({
+			icon: 'info',
+			title: 'Nothing Selected',
+			text: 'Please select at least one proforma invoice first.',
+			confirmButtonText: 'OK'
+		});
+		return;
 	}
+	$('#modal-approve-profinvoice').modal('show');
+}
 
 //ubah september
 function modal_show_approve_debitnote() {
@@ -5501,49 +5501,52 @@ function modal_show_approve_debitnote() {
 	}
 
 //ubah september
+/**
+ * Kirim First Approve untuk tiap baris yang dicentang.
+ *
+ * Mengembalikan janji yang baru selesai kalau SEMUA permintaannya sudah
+ * dijawab server - tanpa ini daftarnya digambar ulang duluan dan baris yang
+ * baru di-approve masih kelihatan, seolah-olah gagal.
+ *
+ * Hasilnya: { berhasil: <jumlah>, gagal: [<nomor proforma>, ...] }
+ */
 function approve_profinvoice(){
-	//
-	var cek_inv = document.getElementsByName("pilih_profinv_approv");	
+	return pi_kirim_approve('approve_profinvoice/');
+}
+
+/**
+ * Isi bersama approve First & Second - yang beda cuma alamatnya.
+ */
+function pi_kirim_approve(alamat){
+	var cek_inv = document.getElementsByName("pilih_profinv_approv");
+	var janji = [];
+	var hasil = { berhasil: 0, gagal: [] };
+
 	for (var i = 0; i < cek_inv.length; i++) {
+		if (!cek_inv[i].checked) { continue; }
+		var id_inv = cek_inv[i].value;
+		// Nomor proformanya dibaca dari barisnya - dipakai kalau gagal, supaya
+		// user tahu yang mana.
+		var baris = cek_inv[i].closest ? cek_inv[i].closest('tr') : null;
+		var no_pi = baris && baris.cells.length ? baris.cells[0].textContent : id_inv;
 
-		    //Ceklist Invoice		
-		    if (cek_inv[i].checked) {	
-				//   
-				var id_inv = cek_inv[i].value
-                //
-                var formData = {
-                	"id_inv": id_inv,			
-                };
-				//
-				$.ajax({						
-					url: "approve_profinvoice/",		
-					type: "POST",	
-					data: formData,			
-					dataType: "JSON",
-					success: function (data) {		
-
-						if (data.status) //if success close modal and reload ajax table
-						{
-							msg = 'Success Update Invoice Approve'
-						} else {
-							msg = 'Error Update Invoice Approve'
-						}
-					},
-					error: function (jqXHR, textStatus, errorThrown) {
-						msg = 'Error Update Invoice Header' + jqXHR.text
-					}
-				});   	
-				//
-				$('#modal-approve-profinvoice').modal('hide');
-				console.log(id_inv);  
-				// window.location.reload();
-				// cari_invoice_post();
-
-				//
-			} 
-		}
-
+		janji.push(new Promise(function (selesai) {
+			$.ajax({
+				url: alamat,
+				type: "POST",
+				data: { "id_inv": id_inv },
+				dataType: "JSON",
+				success: function (d) {
+					if (d && d.status) { hasil.berhasil++; }
+					else { hasil.gagal.push(no_pi); }
+					selesai();
+				},
+				error: function () { hasil.gagal.push(no_pi); selesai(); }
+			});
+		}));
 	}
+	return Promise.all(janji).then(function () { return hasil; });
+}
 
 //ubah september
 function approve_debitnote(){
@@ -5669,21 +5672,63 @@ async function retry_approve_invoice(){
 }
 
 //ubah september
+/**
+ * Tombol Approved di dialog First Approval.
+ *
+ * Dialognya ditahan selama permintaannya jalan, jadi user tidak bisa menekan
+ * dua kali, dan daftarnya baru digambar ulang sesudah semuanya dijawab.
+ */
 async function refresh_pi(){
-	var result = await approve_profinvoice()
-	console.log(result);
-	var cek_inv = document.getElementsByName("pilih_profinv_approv");	
-	for (var i = 0; i < cek_inv.length; i++) {
+	await pi_selesaikan_approve(approve_profinvoice, cari_proforma_invoice_post,
+		'Proforma invoice approved.');
+}
 
-		    //Ceklist Invoice		
-		    if (cek_inv[i].checked) {	
-		    	var coba = parseInt(i + 1);		
-		    }
-		}
-		alert(" Proforma Invoice Successfully Approved");
-		cari_proforma_invoice_post();
+/**
+ * Isi bersama tombol Approved First & Second.
+ *
+ * kirim   - fungsi yang mengirim approve-nya, mengembalikan janji berisi hasil
+ * gambar  - penggambar daftarnya, dipanggil sesudah semuanya selesai
+ * kabar   - kalimat yang dipajang kalau semuanya berhasil
+ */
+async function pi_selesaikan_approve(kirim, gambar, kabar){
+	$('#modal-approve-profinvoice').modal('hide');
+	Swal.fire({
+		title: 'Approving...',
+		html: 'Please wait, approving the proforma invoice.',
+		allowOutsideClick: false,
+		allowEscapeKey: false,
+		didOpen: function () { Swal.showLoading(); }
+	});
+
+	var hasil = await kirim();
+	gambar();
+
+	if (!hasil || (hasil.berhasil === 0 && hasil.gagal.length === 0)) {
+		Swal.fire({
+			icon: 'info',
+			title: 'Nothing Selected',
+			text: 'Please select at least one proforma invoice first.',
+			confirmButtonText: 'OK'
+		});
+		return;
 	}
-
+	if (hasil.gagal.length) {
+		Swal.fire({
+			icon: hasil.berhasil ? 'warning' : 'error',
+			title: hasil.berhasil ? 'Partly Approved' : 'Approval Failed',
+			html: (hasil.berhasil ? hasil.berhasil + ' approved. ' : '')
+				+ 'Failed: <b>' + hasil.gagal.join(', ') + '</b>.',
+			confirmButtonText: 'OK'
+		});
+		return;
+	}
+	Swal.fire({
+		icon: 'success',
+		title: 'Approved',
+		html: kabar + ' (' + hasil.berhasil + ')',
+		confirmButtonText: 'OK'
+	});
+}
 
 //ubah september
 async function refresh_dn(){
@@ -6242,6 +6287,11 @@ function add_id_for_proforma_inv(){
     $('[name="prof_dp_h"]').val("");
     $('[name="prof_dp"]').prop('readonly', true);
     $('[name="prof_check_dp"]').prop('checked', false);
+    // Layar Proforma Invoice punya aturan DP per tipe: tipe DP centangnya
+    // dipasang & dikunci, CBD justru dilepas & dikunci. Pengosongan di atas
+    // menghapusnya, jadi aturannya dipasang lagi - tanpa ini centang DP yang
+    // terkunci tidak bisa dipasang lagi oleh user.
+    if (typeof pi_atur_tipe === 'function') { pi_atur_tipe(); }
 	//
 	$cust_prof = $("#prof_customer :selected").text(); 	
 	$idcust_prof = $('[name="prof_customer"]').val()	
@@ -6509,8 +6559,10 @@ function load_invoice_detail_proforma_temporary(){
 				trHTML += '<td>' + item.buyerno + "</td>";		
 				trHTML += '<td align="center">' + item.curr + "</td>";	
 				trHTML += '<td align="right">' + item.qty + "</td>";	
-				trHTML += '<td align="right">' + item.unit_price + "</td>";	
-				trHTML += '<td align="right">' + item.total_price + "</td>";											
+				// Sama seperti tabel so_det: yang dipajang 2 desimal, yang
+				// disimpan nilai apa adanya dari data-price / data-total.
+				trHTML += '<td align="right" data-price="' + pi_data_nilai(item.unit_price_raw) + '">' + item.unit_price + "</td>";
+				trHTML += '<td align="right" data-total="' + pi_data_nilai(item.total_raw) + '">' + item.total_price + "</td>";											
 				trHTML += '</tr>';
 
 			});
@@ -6538,15 +6590,24 @@ function load_so_detail_proforma_temporary(){
 		success: function (response) {
 			var trHTML = '';
 			$.each(response, function (i, item) {
-				trHTML += '<tr>';		
+				// Satu baris bisa mewakili banyak so_det - lihat pilihan Group By di
+				// modal Add SO. Daftar id-nya dibawa di data-ids: itu yang ditandai
+				// terpakai waktu simpan, bukan cuma id yang tampil di kolom pertama.
+				var ids = item.id_so_det_list ? item.id_so_det_list : item.id_so_det;
+				trHTML += '<tr data-ids="' + pi_data_nilai(ids) + '">';		
 				trHTML += '<td>' + item.id_so_det + "</td>";		
 				trHTML += '<td>' + item.no_so + "</td>";
 				trHTML += '<td>' + item.produk_det + "</td>";										    					
 				trHTML += '<td>' + item.curr + "</td>";	
-				trHTML += '<td align="right">' + item.qty + "</td>";		
+				// Qty boleh diketik ulang di sini juga - yang ditagih tidak selalu
+				// sama dengan qty SO-nya.
+				trHTML += '<td align="right"><input type="text" class="form-control form-control-sm text-right pi-qty-sodet"'
+					+ ' value="' + item.qty + '" autocomplete="off" inputmode="decimal"></td>';		
 				trHTML += '<td align="center">' + item.uom + "</td>";	
 				trHTML += '<td align="right">' + item.unit_price + "</td>";	
-				trHTML += '<td align="right">' + item.total_price + "</td>";											
+				// Yang dipajang total yang sudah dibulatkan 2 angka; nilai apa
+				// adanya dititipkan di data-total - itu yang ikut tersimpan.
+				trHTML += '<td align="right" data-total="' + pi_data_nilai(item.total_raw) + '">' + item.total_price + "</td>";											
 				trHTML += '</tr>';
 
 			});
@@ -6645,6 +6706,11 @@ function add_data_proforma_invoice(){
 	var peb   = $('[name="prof_peb"]').val();
 	var total = $('[name="prof_grandtotal"]').val();
 	var no_pi = $('[name="prof_inv_number"]').val();
+	// Satu layar untuk PI, PI NON SO, DP & CBD. DP & CBD punya tabel,
+	// penanda SO, dan jurnalnya sendiri - lihat pi_tipe_cbd() di
+	// crud-proforma-invoice.js.
+	var tipe  = (typeof pi_tipe === 'function') ? pi_tipe() : 'PI';
+	var cbd   = (typeof pi_tipe_cbd === 'function') ? pi_tipe_cbd() : false;
 
 	if (x == "") {
 		Swal.fire('Shipp is required', 'Pick Local or Export first.', 'warning');
@@ -6656,8 +6722,20 @@ function add_data_proforma_invoice(){
 		return false;
 	}
 	if (total == "" || total == "0") {
-		Swal.fire('No SO selected', 'Grand total is still zero. Please add the SO first.', 'warning');
-		$('[name="prof_so_number2"]').focus();
+		// PI NON SO barisnya diketik sendiri - tidak ada SO yang bisa ditambah.
+		if (tipe == 'PI NON SO') {
+			Swal.fire('No row yet', 'Grand total is still zero. Please add a row first.', 'warning');
+			$('#pi-baris-tambah').focus();
+		} else {
+			Swal.fire('No SO selected', 'Grand total is still zero. Please add the SO first.', 'warning');
+			$('[name="prof_so_number2"]').focus();
+		}
+		return false;
+	}
+	// DP tanpa nilai DP tidak ada artinya - itu yang ditagih.
+	if (tipe == 'DP' && !(parseFloat($('[name="prof_dp"]').val()) > 0)) {
+		Swal.fire('DP is required', 'Tick DP Max 75% and fill the down payment first.', 'warning');
+		$('[name="prof_dp"]').focus();
 		return false;
 	}
 
@@ -6665,12 +6743,20 @@ function add_data_proforma_invoice(){
 	Swal.fire({
 		icon: 'question',
 		title: 'Save this proforma invoice?',
-		html: 'Number <b>' + no_pi + '</b> will be saved.',
+		html: 'Number <b>' + no_pi + '</b> (' + tipe + ') will be saved.',
 		showCancelButton: true,
 		confirmButtonText: 'Yes, save it',
 		cancelButtonText: 'Back'
 	}).then(function (h) {
-		if (h.isConfirmed) { save_proforma_invoice(); }
+		if (!h.isConfirmed) { return; }
+		if (!cbd) { save_proforma_invoice(); return; }
+		// DP & CBD menulis jurnal juga, dan jurnalnya membaca COA yang
+		// diambil dari server - jadi ditunggu dulu sampai dapat.
+		if (typeof pi_ambil_coa === 'function') {
+			pi_ambil_coa().always(function () { save_proforma_invoice_cbd(); });
+		} else {
+			save_proforma_invoice_cbd();
+		}
 	});
 }
 
@@ -6974,7 +7060,10 @@ function simpan_proforma_invoice_header() {
             var id_type            = $('#prof_type').val();
             var status             = "POST";                        
             var type_barang        = $('#prof_material_type').val();
-            var id_top             = $('#prof_id_top').val();
+            // TOP tidak dipakai di proforma lagi. Yang ditagih & nomor faktur
+            // pajaknya diisi langsung di layar ini.
+            var billed_to          = $('#prof_billed_to').val() || '';
+            var no_faktur_pajak    = $('#prof_faktur_pajak').val() || '';
             var id_bank            = $('#id_bank_prof').val();
             var type_so            = $('#type_so_prof').val();
             var twot               = $('#prof_twot').val();
@@ -6984,6 +7073,25 @@ function simpan_proforma_invoice_header() {
             var diskon             = $('#prof_diskon').val();
             var type_diskon        = $('#pilih_diskn_prof').val();
             var percentage_ppn     = $('#id_ppn_prof').val();
+            // Jenis proformanya (PI, PI NON SO, DP, CBD) ikut tersimpan -
+            // menu Create Invoice yang akan membacanya nanti.
+            var type_pi            = $('#prof_type_pi').val() || 'PI';
+            // Mode edit: proforma lamanya dilepas dulu - baris SO-nya
+            // dibebaskan dan barisnya dihapus - lalu isi layar ditulis
+            // ulang dengan NOMOR YANG SAMA. Dikerjakan serentak supaya
+            // urutannya pasti: lepas dulu, baru simpan.
+            var id_edit = $.trim(String($('#prof_id_edit').val() || ''));
+            if (id_edit !== '') {
+                $.ajax({
+                    url: 'pi_hapus_untuk_edit_json/',
+                    type: 'POST',
+                    data: { id: id_edit },
+                    dataType: 'JSON',
+                    async: false
+                });
+            }
+            // Bentuk baris SO-nya juga: cetakan & layar Edit memakainya.
+            var grouping           = $('#pi-grouping').val() || 'PRODUCT_COLOR_SIZE';
 			//					
 			//Set Now Date Proforma Invoice
 			var tgl_proforma_inv   = new Date();		
@@ -6993,6 +7101,8 @@ function simpan_proforma_invoice_header() {
 			tgl_proforma_inv = yyyy+'-'+mm+'-'+dd;
 			//			
 			data.push({		
+				"type_pi": type_pi,
+				"grouping": grouping,
 				"no_proforma_invoice": no_proforma_inv,
 				"id_customer": id_customer,
 				"shipp": shipp,	
@@ -7001,7 +7111,8 @@ function simpan_proforma_invoice_header() {
 				"status": status,
 				"tgl_proforma_inv": tgl_proforma_inv,	
 				"type_barang": type_barang,		
-				"id_top": id_top,	
+				"billed_to": billed_to,
+				"no_faktur_pajak": no_faktur_pajak,	
 				"id_bank": id_bank,		
 				"type_so": type_so,
 				"twot": twot,	
@@ -7224,7 +7335,10 @@ function simpan_proforma_invoice_header_cbd() {
             var id_type            = $('#prof_type').val();
             var status             = "POST";                        
             var type_barang        = $('#prof_material_type').val();
-            var id_top             = $('#prof_id_top').val();
+            // TOP tidak dipakai di proforma lagi. Yang ditagih & nomor faktur
+            // pajaknya diisi langsung di layar ini.
+            var billed_to          = $('#prof_billed_to').val() || '';
+            var no_faktur_pajak    = $('#prof_faktur_pajak').val() || '';
             var id_bank            = $('#id_bank_prof').val();
             var type_so            = $('#type_so_prof').val();
             var twot               = $('#prof_twot').val();
@@ -7236,6 +7350,10 @@ function simpan_proforma_invoice_header_cbd() {
             var percentage_ppn     = $('#id_ppn_prof').val();
             var tipe_dp     	   = $('#pilih_dp_prof').val();
             var value_dp     	   = $('#prof_dp_h2').val();
+            // Jenis proformanya (DP / CBD) ikut tersimpan - dibaca menu
+            // Create Invoice nanti. Bentuk baris SO-nya juga.
+            var type_pi            = $('#prof_type_pi').val() || 'CBD';
+            var grouping           = $('#pi-grouping').val() || 'PRODUCT_COLOR_SIZE';
 			//					
 			//Set Now Date Proforma Invoice
 			var tgl_proforma_inv   = new Date();		
@@ -7253,7 +7371,8 @@ function simpan_proforma_invoice_header_cbd() {
 				"status": status,
 				"tgl_proforma_inv": tgl_proforma_inv,	
 				"type_barang": type_barang,		
-				"id_top": id_top,	
+				"billed_to": billed_to,
+				"no_faktur_pajak": no_faktur_pajak,	
 				"id_bank": id_bank,		
 				"type_so": type_so,
 				"twot": twot,	
@@ -7264,7 +7383,9 @@ function simpan_proforma_invoice_header_cbd() {
 				"type_diskon": type_diskon,		
 				"percentage_ppn": percentage_ppn,
 				"tipe_dp": tipe_dp,		
-				"value_dp": value_dp,												
+				"value_dp": value_dp,
+				"type_pi": type_pi,
+				"grouping": grouping,												
 			})	
 			
 			var fdata = {
@@ -7297,6 +7418,13 @@ function simpan_proforma_invoice_header_cbd() {
 					).done(function () {
 					    //Hide Modal
 					    $('#modal-simpan-proforma-invoice').modal('hide'); 
+						// Layar Proforma Invoice yang baru menampilkan pesan
+						// tersimpan beserta nomornya sendiri - sama seperti
+						// alur PI biasa. Layar lama tetap muat ulang.
+						if (typeof pi_setelah_simpan === 'function') {
+							pi_setelah_simpan(no_proforma_inv);
+							return;
+						}
 						//Reload Page
 						window.location.reload();
 					}).fail(function () {
@@ -7321,6 +7449,45 @@ function simpan_proforma_invoice_header_cbd() {
 
 }
 
+// Qty satu baris Data SO: diambil dari kotak isiannya kalau memang bisa
+// diketik, kalau tidak dari isi selnya (layar lama).
+// Isi satu sel: nilai kotak isiannya kalau memang bisa diketik (baris PI NON
+// SO diketik seluruhnya), kalau tidak isi selnya.
+function pi_sel_teks(sel) {
+	if (!sel) { return ''; }
+	var kotak = sel.getElementsByTagName ? sel.getElementsByTagName('input') : [];
+	return String(kotak.length ? kotak[0].value : sel.innerHTML);
+}
+
+function pi_qty_baris(baris) {
+	return pi_sel_teks(baris.cells[4]).replace(/,/g, '');
+}
+
+// Daftar id so_det yang diwakili satu baris - satu baris bisa mewakili
+// banyak so_det sesuai pilihan Group By.
+function pi_ids_baris(baris) {
+	var ids = baris.getAttribute ? baris.getAttribute('data-ids') : null;
+	if (ids === null || ids === '') { ids = baris.cells[0].innerHTML; }
+	return String(ids).replace(/\s/g, '');
+}
+
+// Isi atribut data-price / data-total pada sel tabel Proforma Invoice.
+// Angka ini yang ikut tersimpan ke database, jadi ditulis apa adanya -
+// tanpa pemisah ribuan dan tanpa dibulatkan.
+function pi_data_nilai(v) {
+	if (v === null || v === undefined || v === '') { return ''; }
+	return String(v).replace(/,/g, '');
+}
+
+// Nilai apa adanya dari sebuah sel: data-*-nya kalau ada, kalau tidak isi
+// selnya. Dipakai keempat fungsi simpan di bawah supaya yang masuk ke
+// database bukan angka yang sudah dibulatkan untuk dipajang.
+function pi_nilai_utuh(sel, nama) {
+	var utuh = sel && sel.getAttribute ? sel.getAttribute(nama) : null;
+	var nilai = (utuh === null || utuh === '') ? pi_sel_teks(sel) : utuh;
+	return String(nilai).replace(/,/g, '');
+}
+
 function simpan_proforma_invoice_detail(){ 
 
 	var msg
@@ -7329,12 +7496,12 @@ function simpan_proforma_invoice_detail(){
 	for (var i = 1; i < (table.rows.length); i++) {
 				//
 				var qty_det = table.rows[i].cells[5].innerHTML; 
-				var unit_price_det = table.rows[i].cells[6].innerHTML;
-				var total_price_det = table.rows[i].cells[7].innerHTML;
+				// Harga & total yang DISIMPAN diambil apa adanya dari data-*,
+				// bukan dari angka 2 desimal yang dipajang di selnya.
+				var unit_price_det = pi_nilai_utuh(table.rows[i].cells[6], 'data-price');
+				var total_price_det = pi_nilai_utuh(table.rows[i].cells[7], 'data-total');
 				//				
 				qty_det = qty_det.replace(/,/g, '');
-				unit_price_det = unit_price_det.replace(/,/g, '');
-				total_price_det = total_price_det.replace(/,/g, '');
 				//				
 				data.push({		
 					"no_invoice_proforma": $('#prof_inv_number').val(),
@@ -7383,24 +7550,29 @@ function simpan_proforma_invoice_detail_so(){
 	var table = document.getElementById("table-proforma-sodet");
 	for (var i = 1; i < (table.rows.length); i++) {
 				//
-				var qty_det = table.rows[i].cells[4].innerHTML; 
-				var unit_price_det = table.rows[i].cells[6].innerHTML;
-				var total_price_det = table.rows[i].cells[7].innerHTML;
+				var qty_det = pi_qty_baris(table.rows[i]); 
+				// Harga & total yang DISIMPAN diambil apa adanya dari data-*,
+				// bukan dari angka 2 desimal yang dipajang di selnya.
+				var unit_price_det = pi_nilai_utuh(table.rows[i].cells[6], 'data-price');
+				var total_price_det = pi_nilai_utuh(table.rows[i].cells[7], 'data-total');
 				//				
 				qty_det = qty_det.replace(/,/g, '');
-				unit_price_det = unit_price_det.replace(/,/g, '');
-				total_price_det = total_price_det.replace(/,/g, '');
 				//				
 				data.push({		
 					"no_invoice_proforma": $('#prof_inv_number').val(),
-					"id_so_det": table.rows[i].cells[0].innerHTML,
-					"no_so": table.rows[i].cells[1].innerHTML,
-					"produk_detail": table.rows[i].cells[2].innerHTML,					
-					"curr":table.rows[i].cells[3].innerHTML,
+					// Baris PI NON SO diketik seluruhnya, jadi selnya dibaca lewat
+					// pi_sel_teks() - bukan langsung innerHTML.
+					"id_so_det": pi_sel_teks(table.rows[i].cells[0]),
+					"no_so": pi_sel_teks(table.rows[i].cells[1]),
+					"produk_detail": pi_sel_teks(table.rows[i].cells[2]),					
+					"curr": pi_sel_teks(table.rows[i].cells[3]),
 					"qty": qty_det,
-					"uom": table.rows[i].cells[5].innerHTML,		
+					"uom": pi_sel_teks(table.rows[i].cells[5]),		
 					"unit_price": unit_price_det,
-					"total_price": total_price_det,			
+					"total_price": total_price_det,
+					// Daftar so_det yang diwakili baris ini - ikut tersimpan supaya
+					// ketahuan baris ini mewakili SO yang mana saja.
+					"id_so_det_list": pi_ids_baris(table.rows[i]),			
 
 				})		
 			}
@@ -7438,7 +7610,12 @@ function update_proforma_invoice_sodet() {
 	var antrean = [];
 	for (var i = 1; i < (table.rows.length); i++) {
 				//   
-				var id_sodet = table.rows[i].cells[0].innerHTML
+				// Semua so_det yang diwakili baris ini ikut ditandai - kalau cuma
+				// id pertamanya, sisanya tetap bisa ditarik proforma lain.
+				var id_sodet = pi_ids_baris(table.rows[i])
+				// Baris PI NON SO diketik sendiri - tidak ada so_det yang perlu
+				// ditandai, jadi barisnya dilewati.
+				if (!/[0-9]/.test(id_sodet)) { continue; }
 				var prof_inv_number =  $('#prof_inv_number').val()
                 //
                 var formData = {
@@ -7480,7 +7657,12 @@ function update_proforma_invoice_sodet_cbd() {
 	var antrean = [];
 	for (var i = 1; i < (table.rows.length); i++) {
 				//   
-				var id_sodet = table.rows[i].cells[0].innerHTML
+				// Semua so_det yang diwakili baris ini ikut ditandai - kalau cuma
+				// id pertamanya, sisanya tetap bisa ditarik proforma lain.
+				var id_sodet = pi_ids_baris(table.rows[i])
+				// Baris PI NON SO diketik sendiri - tidak ada so_det yang perlu
+				// ditandai, jadi barisnya dilewati.
+				if (!/[0-9]/.test(id_sodet)) { continue; }
 				var prof_inv_number =  $('#prof_inv_number').val()
                 //
                 var formData = {
@@ -7522,12 +7704,12 @@ function simpan_proforma_invoice_detail_cbd(){
 	for (var i = 1; i < (table.rows.length); i++) {
 				//
 				var qty_det = table.rows[i].cells[5].innerHTML; 
-				var unit_price_det = table.rows[i].cells[6].innerHTML;
-				var total_price_det = table.rows[i].cells[7].innerHTML;
+				// Harga & total yang DISIMPAN diambil apa adanya dari data-*,
+				// bukan dari angka 2 desimal yang dipajang di selnya.
+				var unit_price_det = pi_nilai_utuh(table.rows[i].cells[6], 'data-price');
+				var total_price_det = pi_nilai_utuh(table.rows[i].cells[7], 'data-total');
 				//				
 				qty_det = qty_det.replace(/,/g, '');
-				unit_price_det = unit_price_det.replace(/,/g, '');
-				total_price_det = total_price_det.replace(/,/g, '');
 				//				
 				data.push({		
 					"no_invoice_proforma": $('#prof_inv_number').val(),
@@ -7609,24 +7791,29 @@ function simpan_proforma_invoice_detail_so_cbd(){
 	var table = document.getElementById("table-proforma-sodet");
 	for (var i = 1; i < (table.rows.length); i++) {
 				//
-				var qty_det = table.rows[i].cells[4].innerHTML; 
-				var unit_price_det = table.rows[i].cells[6].innerHTML;
-				var total_price_det = table.rows[i].cells[7].innerHTML;
+				var qty_det = pi_qty_baris(table.rows[i]); 
+				// Harga & total yang DISIMPAN diambil apa adanya dari data-*,
+				// bukan dari angka 2 desimal yang dipajang di selnya.
+				var unit_price_det = pi_nilai_utuh(table.rows[i].cells[6], 'data-price');
+				var total_price_det = pi_nilai_utuh(table.rows[i].cells[7], 'data-total');
 				//				
 				qty_det = qty_det.replace(/,/g, '');
-				unit_price_det = unit_price_det.replace(/,/g, '');
-				total_price_det = total_price_det.replace(/,/g, '');
 				//				
 				data.push({		
 					"no_invoice_proforma": $('#prof_inv_number').val(),
-					"id_so_det": table.rows[i].cells[0].innerHTML,
-					"no_so": table.rows[i].cells[1].innerHTML,
-					"produk_detail": table.rows[i].cells[2].innerHTML,					
-					"curr":table.rows[i].cells[3].innerHTML,
+					// Baris PI NON SO diketik seluruhnya, jadi selnya dibaca lewat
+					// pi_sel_teks() - bukan langsung innerHTML.
+					"id_so_det": pi_sel_teks(table.rows[i].cells[0]),
+					"no_so": pi_sel_teks(table.rows[i].cells[1]),
+					"produk_detail": pi_sel_teks(table.rows[i].cells[2]),					
+					"curr": pi_sel_teks(table.rows[i].cells[3]),
 					"qty": qty_det,
-					"uom": table.rows[i].cells[5].innerHTML,		
+					"uom": pi_sel_teks(table.rows[i].cells[5]),		
 					"unit_price": unit_price_det,
-					"total_price": total_price_det,			
+					"total_price": total_price_det,
+					// Daftar so_det yang diwakili baris ini - ikut tersimpan supaya
+					// ketahuan baris ini mewakili SO yang mana saja.
+					"id_so_det_list": pi_ids_baris(table.rows[i]),			
 
 				})		
 			}
@@ -7657,6 +7844,218 @@ function simpan_proforma_invoice_detail_so_cbd(){
 		}
 
 
+/**
+ * Tanggal gaya Inggris untuk layar - "15 Oct 2026".
+ *
+ * Sama dengan cetakannya, supaya yang dilihat di layar dan yang tercetak
+ * tidak berbeda bentuk. Sumbernya Y-m-d atau d-m-Y; yang bukan tanggal
+ * dibiarkan apa adanya.
+ */
+/**
+ * Nomor proforma sebagai tautan yang membuka modal detailnya.
+ *
+ * Dipakai tiga layar: daftar Proforma Invoice, First & Second Approval.
+ * Gayanya sama dengan nomor invoice di List Invoice.
+ */
+function pi_detail_tautan(id, nomor, sumber) {
+	var teks = $('<div>').text(nomor === undefined || nomor === null ? '' : nomor).html();
+	var asal = String(sumber || 'PI') === 'CBD' ? 'CBD' : 'PI';
+	return '<a href="javascript:void(0)" class="dn-no-link" title="View proforma invoice"'
+		+ ' onclick="pi_detail_buka(' + id + ', \'' + asal + '\')">' + teks + '</a>';
+}
+
+/**
+ * Buka modal detail proforma invoice.
+ *
+ * Isinya diambil dari server - layar daftar cuma punya ringkasannya, sedangkan
+ * yang ingin dilihat orang biasanya barisnya. Tanpa dokumen & jurnal:
+ * proforma belum punya lampiran dan belum menjurnal apa pun.
+ */
+function pi_detail_buka(id, sumber) {
+	var asal = String(sumber || 'PI') === 'CBD' ? 'CBD' : 'PI';
+	var $modal = $('#modal-pi-detail');
+	if (!$modal.length) { return; }
+
+	$('#pi-detail-judul').text('Proforma Invoice');
+	$('#pi-detail-status').html('');
+	$('#pi-detail-isi').prop('hidden', true);
+	$('#pi-detail-loader').prop('hidden', false);
+	$('#pi-detail-cetak').off('click').on('click', function () {
+		// Alamatnya relatif - sama dengan pemanggilan lain di berkas ini.
+		window.open((asal === 'CBD' ? 'report_proforma_invoice_cbd/' : 'report_proforma_invoice/')
+			+ id + '/', '_blank');
+	});
+	$modal.modal('show');
+
+	$.getJSON('proforma_detail_json/' + id + '/' + asal + '/')
+		.done(function (d) { pi_detail_isi(d); })
+		.fail(function () {
+			$('#pi-detail-loader').prop('hidden', true);
+			$('#pi-detail-isi').prop('hidden', false);
+			$('#pi-detail-tabel tbody').html('');
+			$('#pi-detail-kosong').prop('hidden', false)
+				.text('The proforma invoice could not be loaded.');
+		});
+}
+
+/** Tuangkan isi modal detail proforma. */
+function pi_detail_isi(d) {
+	var h = (d && d.header) ? d.header : {};
+	var baris = (d && d.baris) ? d.baris : [];
+	var esc = function (v) { return $('<div>').text(v === undefined || v === null ? '' : v).html(); };
+	var isi = function (v, bawaan) {
+		var s = String(v === undefined || v === null ? '' : v).trim();
+		return s === '' ? (bawaan || '-') : s;
+	};
+
+	$('#pi-detail-judul').text(isi(h.no_pi, 'Proforma Invoice'));
+	$('#pi-detail-status').html(h.status
+		? '<span class="dn-badge">' + esc(h.status) + '</span>' : '');
+
+	// Di atas customer pemilik SO-nya; siapa yang ditagih ada di
+	// keterangan di bawahnya. Keduanya bisa berbeda, dan dua-duanya perlu
+	// kelihatan tanpa harus membuka cetakannya.
+	$('#pi-detail-label-nama').text('Customer');
+	$('#pi-detail-nama').text(isi(h.customer));
+	$('#pi-detail-alamat').text(isi(h.alamat));
+	$('#pi-detail-grand').text(isi(h.curr, '') + ' ' + isi(h.grand_total, '0.00'));
+	$('#pi-detail-tanggal').text(nag_tgl_inggris(h.date_pi));
+
+	var info = [
+		['Proforma Type', isi(h.type_pi, 'PI')],
+		// Kosong berarti ditagih ke customernya sendiri - ditulis apa
+		// adanya, bukan dibiarkan jadi strip yang bikin bertanya-tanya.
+		['Billed To', String(h.billed_to_nama || '').trim() !== ''
+			? h.billed_to_nama : 'Same as customer'],
+		['Invoice Type', isi(h.type)],
+		['Shipment', isi(h.shipp)],
+		['PEB', isi(h.peb)],
+		['Tax Invoice No', isi(h.no_faktur_pajak)],
+		['Down Payment', isi(h.curr, '') + ' ' + isi(h.dp, '0.00')]
+	];
+	$('#pi-detail-info').html(info.map(function (x) {
+		return '<div><dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd></div>';
+	}).join(''));
+
+	$('#pi-detail-jml-baris').text(baris.length + (baris.length === 1 ? ' row' : ' rows'));
+	$('#pi-detail-tabel tbody').html(baris.map(function (r) {
+		return '<tr>'
+			+ '<td>' + esc(isi(r.no_so)) + '</td>'
+			+ '<td>' + esc(isi(r.produk_detail)) + '</td>'
+			+ '<td class="text-right">' + esc(isi(r.qty, '0')) + '</td>'
+			+ '<td>' + esc(isi(r.uom)) + '</td>'
+			+ '<td class="text-right">' + esc(isi(r.unit_price, '0')) + '</td>'
+			+ '<td class="text-right">' + esc(isi(r.total_price, '0.00')) + '</td>'
+			+ '</tr>';
+	}).join(''));
+	$('#pi-detail-kosong').prop('hidden', baris.length > 0)
+		.text('No rows on this proforma invoice.');
+
+	$('#pi-detail-loader').prop('hidden', true);
+	$('#pi-detail-isi').prop('hidden', false);
+}
+/**
+ * Isi layar Proforma Invoice dari proforma yang sedang diubah.
+ *
+ * Baris SO-nya tidak diurus di sini: waktu layar edit dibuka, barisnya sudah
+ * disalin ke tabel sementara yang memang dibaca layar ini, jadi tabelnya
+ * terisi sendiri seperti biasa.
+ */
+function pi_isi_edit(d) {
+	if (!d) { return; }
+	var isi = function (sel, nilai) {
+		if (nilai === undefined || nilai === null) { return; }
+		$(sel).val(nilai);
+	};
+
+	$('#prof_id_edit').val(d.id);
+	isi('#prof_type_pi', d.type_pi || 'PI');
+	isi('#prof_inv_number', d.no_proforma_invoice);
+	isi('#prof_customer', d.id_customer);
+	isi('#prof_billed_to', d.billed_to || '');
+	isi('#prof_faktur_pajak', d.no_faktur_pajak || '');
+	isi('#prof_shipp', d.shipp);
+	isi('#prof_shipp_cbd', d.shipp);
+	isi('#prof_peb', d.peb || '');
+	isi('#prof_type', d.id_type);
+	isi('#prof_material_type', d.type_barang);
+	isi('#id_bank_prof', d.id_bank);
+	isi('#type_so_prof', d.type_so);
+	isi('#pi-grouping', d.grouping || 'PRODUCT_COLOR_SIZE');
+	isi('#pilih_diskn_prof', d.type_diskon);
+	isi('#prof_diskon', d.diskon);
+	isi('#id_ppn_prof', d.percentage_ppn);
+	isi('#prof_dp', d.dp);
+	isi('#pi-dp-patokan', d.tipe_dp);
+
+	// Pilihan select2 & tombol Local/Export baru kelihatan sesudah diberi tahu.
+	if (typeof $.fn !== 'undefined' && $.fn.select2) {
+		$('#prof_customer, #prof_billed_to, #prof_type, #prof_material_type,'
+			+ ' #id_bank_prof, #type_so_prof, #id_ppn_prof, #pi-grouping').trigger('change');
+	}
+	if (typeof window.pi_atur_tipe === 'function') { window.pi_atur_tipe(); }
+	if (typeof hitung_total_proforma === 'function') { hitung_total_proforma(); }
+}
+
+// Layar PI dibuka untuk MENGUBAH proforma yang sudah ada: isiannya diisi dari
+// data yang dititipkan view, lalu baris SO-nya dimuat dari tabel sementara -
+// isinya sudah disalin ke sana waktu layar edit dibuka.
+$(function () {
+	if (typeof window.PI_EDIT === 'undefined' || !window.PI_EDIT) { return; }
+	// Kegagalan di sini TIDAK boleh menjalar: handler $(ready) dijalankan
+	// berurutan, dan begitu satu melempar, sisanya tidak pernah jalan -
+	// termasuk pemasang datepicker & select2 di footer. Gejalanya halus:
+	// layarnya kelihatan normal, tapi kalender di modal Add SO tidak muncul.
+	try {
+		pi_isi_edit(window.PI_EDIT);
+	} catch (e) {
+		if (window.console && window.console.error) {
+			window.console.error('Edit PI: isian gagal diisi', e);
+		}
+	}
+	try {
+		if (typeof load_so_detail_proforma_temporary === 'function') {
+			load_so_detail_proforma_temporary();
+		}
+		if (typeof load_invoice_detail_proforma_temporary === 'function') {
+			load_invoice_detail_proforma_temporary();
+		}
+	} catch (e2) {
+		if (window.console && window.console.error) {
+			window.console.error('Edit PI: baris SO gagal dimuat', e2);
+		}
+	}
+});
+// ---- Alamat AJAX diseragamkan ----
+// Pemanggilan di berkas ini ditulis relatif ("cari_proforma_invoice/" dsb.),
+// dan itu benar selama halamannya persis satu ruas di bawah /arnag/. Layar
+// yang alamatnya lebih dalam - mis. edit_proforma_invoice/39 - bikin
+// permintaannya nyasar ke ruas yang salah. CI_URL disediakan tiap layar,
+// jadi dipakai sebagai awalan. Yang sudah lengkap atau menuju ke luar
+// dibiarkan.
+$.ajaxPrefilter(function (opt) {
+	if (typeof CI_URL === 'undefined' || !CI_URL) { return; }
+	var u = String(opt.url || '');
+	if (u === '') { return; }
+	if (/^(https?:)?\/\//i.test(u)) { return; }   // ke luar
+	if (u.charAt(0) === '/') { return; }          // sudah dari akar
+	if (u.indexOf(CI_URL) === 0) { return; }      // sudah diberi awalan
+	opt.url = CI_URL + u;
+});
+function nag_tgl_inggris(nilai) {
+	var BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+	             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+	var teks = String(nilai === undefined || nilai === null ? '' : nilai).trim();
+	var pecah = teks.replace(/\//g, '-').split('-');
+	if (pecah.length !== 3) { return teks; }
+	var awalTahun = pecah[0].length === 4;
+	var th = parseInt(awalTahun ? pecah[0] : pecah[2], 10);
+	var bl = parseInt(pecah[1], 10);
+	var hr = parseInt(awalTahun ? pecah[2] : pecah[0], 10);
+	if (!th || !bl || !hr || bl < 1 || bl > 12) { return teks; }
+	return (hr < 10 ? '0' + hr : hr) + ' ' + BULAN[bl - 1] + ' ' + th;
+}
+
 		function cari_proforma_invoice(){
 
 			$('#table-list-proforma-invoice tbody tr').remove();
@@ -7673,24 +8072,58 @@ function simpan_proforma_invoice_detail_so_cbd(){
 
 				var trHTML = '';
 				$.each(response, function (i, item) { 					
-					trHTML += '<tr>';					
+					// Satu daftar, dua sumber: PI & PI NON SO dari tbl_invoice_proforma,
+					// DP & CBD dari tbl_invoice_proforma_dp_cbd. Tombol di tiap baris
+					// ikut sumbernya - endpoint cetak, cancel & faktur pajaknya beda.
+					var cbd = String(item.sumber || '') === 'CBD';
+					var tipePi = String(item.type_pi || 'PI');
+					// Tombolnya ikut status: yang sudah CANCEL cuma riwayat, dan
+					// Cancel hanya untuk yang masih POST - batal_proforma_invoice()
+					// di server memang menolak status lain.
+					var status = String(item.status || '').toUpperCase();
+					var batal = status.indexOf('CANCEL') === 0;
+					var post = status === 'POST';
+					trHTML += '<tr data-tipe="' + tipePi + '">';					
 					trHTML += '<td>' + item.id + "</td>";
-					trHTML += '<td>' + item.no_pi + "</td>";	
-					trHTML += '<td>' + item.date_pi + "</td>";
+					trHTML += '<td>' + pi_detail_tautan(item.id, item.no_pi, item.sumber) + "</td>";	
+					trHTML += '<td>' + tipePi + "</td>";	
+					// Yang dipajang gaya Inggris; yang dipakai DataTables mengurutkan
+					// tanggal aslinya - "19 Oct 2026" tidak bisa diurutkan apa adanya.
+					trHTML += '<td data-order="' + item.date_pi + '">' + nag_tgl_inggris(item.date_pi) + "</td>";
 					trHTML += '<td>' + item.customer + "</td>";
 					trHTML += '<td>' + item.shipp + "</td>";	
 					trHTML += '<td>' + item.peb + "</td>";	
 					trHTML += '<td>' + item.type + "</td>";	
 					trHTML += '<td>' + item.status + "</td>";	
 					trHTML += '<td>' + item.no_faktur_pajak + "</td>";	
-					trHTML += '<td align="right">' + item.amount + "</td>";	
-					trHTML += '<td><button id="faktur_pjk" name="faktur_pjk" type="button" class="btn btn-info btn-sm" onclick="update_faktur_pjk(' + item.id + ')" >Update</button> ' + '' + ' <button id="print_inv_pi" name="print_inv_pi" type="button" class="btn btn-primary btn-sm" onclick="print_proforma_invoice(' + item.id + ')"><i class="fa fa-print"></i> Print</button> <button type="button" class="btn btn-danger btn-sm" onclick="batal_proforma_invoice(' + item.id + ', 0)"><i class="fa fa-times"></i> Cancel</button></td>';					
+					trHTML += '<td align="right" data-order="' + String(item.amount || '0').replace(/,/g, '')
+						+ '">' + item.amount + "</td>";	
+					var aksi = '';
+					if (!batal) {
+						// Edit cuma untuk yang masih POST: begitu lewat approval,
+						// angkanya sudah disetujui. Nomor faktur pajaknya pun
+						// sekarang diisi di layar PI, bukan lewat tombol sendiri.
+						if (post) {
+							aksi += '<button type="button" class="btn btn-info btn-sm" onclick="location.href=\'edit_proforma_invoice/' + item.id + '/\'"><i class="fas fa-pen"></i> Edit</button> ';
+						}
+						aksi += '<button id="print_inv_pi" name="print_inv_pi" type="button" class="btn btn-primary btn-sm" onclick="' + (cbd ? 'print_proforma_invoice_cbd' : 'print_proforma_invoice') + '(' + item.id + ')"><i class="fa fa-print"></i> Print</button>';
+						if (post) {
+							aksi += ' <button type="button" class="btn btn-danger btn-sm" onclick="batal_proforma_invoice(' + item.id + ', ' + (cbd ? 1 : 0) + ')"><i class="fa fa-times"></i> Cancel</button>';
+						}
+					}
+					trHTML += '<td>' + aksi + '</td>';					
 				// trHTML += '<td><button id="export_to_excel" name="export_to_excel" type="button" class="btn btn-primary btn-sm" onclick="export_to_excel_pi(' + item.id + ')"><i class="fa fa-download"></i> Export To Xls</button></td>';					
 
 				trHTML += '</tr>';
 			});
 
-				$('#table-list-proforma-invoice').append(trHTML);				
+				$('#table-list-proforma-invoice').append(trHTML);
+				// Tabelnya dipasangi DataTables sesudah barisnya lengkap -
+				// 10 baris per halaman, bisa diurutkan & dicari.
+				pi_list_dt_pasang();
+				// Saringan jenisnya dipasang lagi - baris yang baru digambar harus
+				// ikut pilihan yang sedang aktif.
+				saring_tipe_proforma();
 
 			},
 			error: function (jqXHR, textStatus, errorThrown) {
@@ -7700,7 +8133,81 @@ function simpan_proforma_invoice_detail_so_cbd(){
 
 	}
 
-//ubah september
+/**
+ * Saring daftar Proforma Invoice menurut jenisnya (PI, PI NON SO, DP, CBD).
+ *
+ * Disaring DI LAYAR: daftarnya memang sudah diambil utuh, jadi mengganti
+ * pilihan tidak perlu menunggu server. Jenis tiap baris dibawa di data-tipe.
+ */
+// Tabel daftar Proforma Invoice. Disimpan supaya bisa dilepas lagi sebelum
+// barisnya digambar ulang - DataTables tidak mau dipasang dua kali.
+var PI_LIST_DT = null;
+
+/**
+ * Pasang DataTables pada daftar Proforma Invoice.
+ *
+ * Dipanggil tiap daftarnya selesai digambar. Yang lama dilepas dulu supaya
+ * barisnya tidak ditumpuk.
+ */
+function pi_list_dt_pasang() {
+	var $tabel = $('#table-list-proforma-invoice');
+	if (!$tabel.length || !$.fn || !$.fn.DataTable) { return; }
+	if (PI_LIST_DT) {
+		PI_LIST_DT.destroy();
+		PI_LIST_DT = null;
+	}
+	PI_LIST_DT = $tabel.DataTable({
+		autoWidth: false,
+		pageLength: 10,
+		lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+		// Terbaru dulu - nomornya naik mengikuti waktu dibuat.
+		order: [[0, 'desc']],
+		columnDefs: [
+			// Nomornya berisi tautan ke modal; yang dipakai mengurutkan &
+			// mencari cuma teksnya.
+			{
+				targets: 1,
+				render: function (data, type) {
+					if (type === 'display' || type === 'export') { return data; }
+					return $('<div>').html(data).text() || data;
+				}
+			},
+			{ targets: 10, className: 'dn-angka' },
+			{ targets: 11, orderable: false, searchable: false, className: 'dn-tengah' }
+		],
+		language: {
+			search: '',
+			searchPlaceholder: 'Search in list...',
+			lengthMenu: 'Show _MENU_ rows',
+			info: 'Showing _START_-_END_ of _TOTAL_',
+			infoEmpty: 'No data',
+			infoFiltered: '(filtered from _MAX_)',
+			zeroRecords: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-search"></i></span>'
+				+ '<div class="dn-kosong-judul">No proforma invoice matches the search.</div></div>',
+			emptyTable: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-file-invoice-dollar"></i></span>'
+				+ '<div class="dn-kosong-judul">No data yet - set the filter above, then click Search.</div></div>',
+			paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Prev' }
+		}
+	});
+	// Saringan jenis yang sedang dipilih ikut dipasang lagi.
+	saring_tipe_proforma();
+}
+/**
+ * Saring daftar menurut jenis proformanya (PI, PI NON SO, DP, CBD).
+ *
+ * Lewat DataTables, bukan menyembunyikan <tr>: baris di halaman lain memang
+ * tidak ada di DOM, jadi menyembunyikannya cuma menyaring halaman yang
+ * sedang terbuka.
+ */
+function saring_tipe_proforma() {
+	var $pilih = $('#list_prof_tipe');
+	if (!$pilih.length || !PI_LIST_DT) { return 0; }
+	var pilih = String($pilih.val() || '');
+	// Dicocokkan persis supaya "PI" tidak ikut menarik "PI NON SO".
+	PI_LIST_DT.column(2).search(pilih === '' ? '' : '^' + pilih + '$', true, false).draw();
+	return PI_LIST_DT.rows({ search: 'applied' }).count();
+}
+
 function cari_proforma_invoice_cbd(){
 
 	$('#table-list-proforma-invoice tbody tr').remove();
@@ -8540,7 +9047,7 @@ function dn_detail_render(res) {
 			var digabung = lanjutan[i] || lanjutan[i + 1];
 			var kelasKet = $.trim((lanjutan[i] ? 'sambung-atas' : '') + (lanjutan[i + 1] ? ' sambung-bawah' : '')
 				+ (digabung ? (ganjilInduk[i] ? ' sambung-ganjil' : ' sambung-genap') : ''));
-			return '<tr' + (r.terkunci ? ' class="is-terkunci" title="From Memo / Request"' : '') + '>'
+			return '<tr' + (r.dari_sumber ? ' class="is-dari-sumber" title="From Memo / Request"' : '') + '>'
 				+ '<td' + (kelasKet ? ' class="' + kelasKet + '"' : '') + '>' + (lanjutan[i] ? '' : dn_list_teks(r.deskripsi)) + '</td>'
 				+ kolomHeader.map(function (k) { return '<td>' + dn_list_teks(r[k.key]) + '</td>'; }).join('')
 				+ '<td class="dn-angka">' + dn_list_uang(r.value) + '</td>'
@@ -8848,6 +9355,13 @@ function update_faktur_pjk_cbd(id) {
 
 }
 
+/**
+ * Cetak Proforma Invoice - satu cetakan saja.
+ *
+ * Bentuk barisnya sudah ditentukan user waktu memilih SO (Group By), dan
+ * baris yang tersimpan memang sudah berbentuk itu - jadi cetakannya tinggal
+ * mencetak apa adanya.
+ */
 function print_proforma_invoice($id) {
 
 	window.open(".../../report_proforma_invoice/" + $id + "/");  	
@@ -9541,15 +10055,17 @@ function cari_data_inv() {
 			success: function (response) {
 
 				var trHTML = '';
-				$.each(response, function (i, item) { 								
-					trHTML += '<tr>';					
+				$.each(response, function (i, item) {
+					// data-sumber: INV (invoice) atau DN (debit note). Dibawa
+					// terus sampai disimpan - satu kwitansi boleh campur.
+					trHTML += '<tr data-sumber="' + (item.sumber === 'DN' ? 'DN' : 'INV') + '">';
 					trHTML += '<td>' + item.no_invoice + "</td>";
 					trHTML += '<td>' + item.inv_date + "</td>";
-					trHTML += '<td>' + item.customer + "</td>";	
-					trHTML += '<td>' + item.shipp + "</td>";	
+					trHTML += '<td>' + item.customer + "</td>";
+					trHTML += '<td>' + item.shipp + "</td>";
 					trHTML += '<td>' + item.doc_type + "</td>";
 					trHTML += '<td>' + item.doc_number + "</td>";
-					trHTML += '<td>' + item.type + "</td>";	
+					trHTML += '<td>' + item.type + "</td>";
 					trHTML += '<td>' + item.amount1 + "</td>";
 					trHTML += '<td><input type="checkbox" name="mdl_cek_kwt" id="mdl_cek_kwt" class="flat"  onclick="modal_sum_total_kwt(value = ' +  item.amount1 + ');"></td>';
 
@@ -9754,16 +10270,17 @@ function simpan_kwt_detail_temporary() {
 				// $(this).closest('tr').find("input[name='cek_tgl']").each(function() {				
 				// 	var tgl_sj = this.value	
 
-				data.push({			
-					"no_invoice": rows.cells[0].innerHTML,				
+				data.push({
+					"no_invoice": rows.cells[0].innerHTML,
 					"invoice_date": rows.cells[1].innerHTML,
-					"customer": rows.cells[2].innerHTML,	
+					"customer": rows.cells[2].innerHTML,
 					"shipp": rows.cells[3].innerHTML,
 					"doc_type": rows.cells[4].innerHTML,
 					"doc_number": rows.cells[5].innerHTML,
 					"type": rows.cells[6].innerHTML,
-					"amount": rows.cells[7].innerHTML,			
-				})	
+					"amount": rows.cells[7].innerHTML,
+					"sumber": rows.getAttribute('data-sumber') || 'INV',
+				})
 
 			  // });
 
@@ -9816,14 +10333,14 @@ function load_kwt_detail_temporary() {
 		success: function (response) {
 			var trHTML = '';
 			$.each(response, function (i, item) {
-				trHTML += '<tr>';
+				trHTML += '<tr data-sumber="' + (item.sumber === 'DN' ? 'DN' : 'INV') + '">';
 				trHTML += '<td>' + item.no_invoice + "</td>";
 				trHTML += '<td>' + item.invoice_date + "</td>";
-				trHTML += '<td>' + item.customer + "</td>";	
-				trHTML += '<td>' + item.shipp + "</td>";	
+				trHTML += '<td>' + item.customer + "</td>";
+				trHTML += '<td>' + item.shipp + "</td>";
 				trHTML += '<td>' + item.doc_type + "</td>";
 				trHTML += '<td>' + item.doc_number + "</td>";
-				trHTML += '<td>' + item.type + "</td>";	
+				trHTML += '<td>' + item.type + "</td>";
 				trHTML += '<td><input type="text" value="'+ item.tipestyle +'" class="form-control" id="stylein" name="stylein" style="width: 100%; text-align: center;"  autocomplete="off"></td>';
 						// trHTML += '<td>' + item.styleno +' '+ item.color + "</td>";		
 						// trHTML += '<td><input type="checkbox" name="cek_pilih_sj" id="cek_pilih_sj" class="flat" checked></td>';												
@@ -9839,11 +10356,12 @@ function load_kwt_detail_temporary() {
 }
 
 function save_kwitansi() {
-	
+
 	simpan_kwt_detail();
 	update_status_kwt_inv();
 	update_status_kwt_inv2();
-	simpankwitansi();	
+	update_status_kwt_dn();
+	simpankwitansi();
 	//	
 	$('#modal-simpan-kwt').modal('hide');
 	
@@ -9861,18 +10379,21 @@ function simpan_kwt_detail()
 
 				var style = document.getElementById("tabelkwt").rows[i].cells[7].children[0].value;
 				
-				data.push({		
+				data.push({
 					"no_kwitansi": $('#kwt_number').val(),
 					"no_invoice": table.rows[i].cells[0].innerHTML,
 					"invoice_date": table.rows[i].cells[1].innerHTML,
-					"customer": table.rows[i].cells[2].innerHTML,	
-					"shipp": table.rows[i].cells[3].innerHTML,					
+					"customer": table.rows[i].cells[2].innerHTML,
+					"shipp": table.rows[i].cells[3].innerHTML,
 					"doc_type":table.rows[i].cells[4].innerHTML,
 					"doc_number": table.rows[i].cells[5].innerHTML,
 					"type": table.rows[i].cells[6].innerHTML,
-					"style": style,								
+					"style": style,
+					// INV / DN - dipakai layar & cetakan untuk tahu baris ini
+					// invoice atau debit note.
+					"sumber": table.rows[i].getAttribute('data-sumber') || 'INV',
 
-				})		
+				})
 			}
 
 			var fdata = {
@@ -9976,6 +10497,27 @@ function update_status_kwt_inv() {
 			}				
 		}
 
+		// Baris Debit Note ditandai sudah masuk kwitansi (tbl_debitnote_h.no_kwt),
+		// supaya tidak bisa ditarik lagi di kwitansi berikutnya - sama seperti
+		// invoice. Baris invoice dilewati, itu urusan update_status_kwt_inv.
+		function update_status_kwt_dn() {
+
+			var table = document.getElementById("tabelkwt");
+			for (var i = 1; i < (table.rows.length); i++) {
+				if ((table.rows[i].getAttribute('data-sumber') || 'INV') !== 'DN') { continue; }
+
+				$.ajax({
+					url: "update_status_kwt_dn/",
+					type: "POST",
+					data: {
+						"no_dn": table.rows[i].cells[0].innerHTML,
+						"no_kwt": $('[name="kwt_number"]').val()
+					},
+					dataType: "JSON"
+				});
+			}
+		}
+
 		function cari_kwitansi() {
 
 			$('#table-kwitansi tbody tr').remove();
@@ -10039,6 +10581,71 @@ function update_status_kwt_inv() {
 	// $('#id_bppb').val(shipp_number);
 	$('#modal-cancel-kwt').modal('show');  
 
+}
+
+/**
+ * Pemberitahuan singkat dengan gaya aplikasi.
+ *
+ * Menggantikan alert() bawaan browser: tampilannya ikut skin dan tidak
+ * membekukan halaman. Dipakai layar Alokasi; layar lain boleh ikut.
+ *
+ * @param {string} teks  isi pesannya
+ * @param {string} [judul]  judulnya - bawaannya 'Information'
+ * @param {string} [ikon]   'info' | 'warning' | 'error' | 'success'
+ */
+/**
+ * Buka / tutup rincian ringkasan Alokasi.
+ *
+ * Yang selalu kelihatan cuma sisanya; nilai bank & yang sudah
+ * dialokasikan dibuka sendiri - sama seperti rincian di layar Invoice.
+ */
+/**
+ * Perbarui angka di kartu Summary Alokasi.
+ *
+ * Nilai mentahnya tetap di isian tersembunyi - itu yang dibaca waktu Save.
+ * Yang dipajang diberi pemisah ribuan supaya angka ratusan juta masih
+ * terbaca sekilas.
+ */
+function alo_perbarui_ringkasan() {
+	var angka = function (v) {
+		var n = parseFloat(String(v === undefined || v === null ? '' : v).replace(/,/g, ''));
+		return isNaN(n) ? 0 : n;
+	};
+	var rapi = function (n) {
+		return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+	};
+	var isi = function (id, nilai) {
+		var el = document.getElementById(id);
+		if (el) { el.value = rapi(nilai); }
+	};
+	// Bank Amount = uang yang masuk; sumbernya nilai pembayaran di kartu atas.
+	isi('alo_bank_amount', angka($('[name="am_awal"]').val()));
+	isi('total_alokasi_show', angka($('[name="total_alokasi"]').val()));
+	isi('out_alok_show', angka($('[name="out_alok"]').val()));
+}
+
+function alo_toggle_rincian() {
+	var kotak = document.getElementById('alo-rincian');
+	var tombol = document.getElementById('alo-rincian-toggle');
+	if (!kotak) { return; }
+	var sembunyi = kotak.classList.toggle('is-sembunyi');
+	if (tombol) {
+		tombol.classList.toggle('is-buka', !sembunyi);
+		var teks = tombol.querySelector('span');
+		if (teks) { teks.textContent = sembunyi ? 'Show details' : 'Hide details'; }
+	}
+}
+
+function nag_pesan(teks, judul, ikon) {
+	// Tanpa SweetAlert (halaman yang tidak memuatnya) tetap ada kabar.
+	if (typeof Swal === 'undefined') { alert(teks); return; }
+	Swal.fire({
+		icon: ikon || 'info',
+		title: judul || 'Information',
+		html: teks,
+		confirmButtonText: 'OK',
+		customClass: { popup: 'dn-swal' }
+	});
 }
 
 function print_kwitansi(id) {
@@ -10177,7 +10784,7 @@ $('.form-group').removeClass('has-error'); // clear error class
 			
 		},
 		error: function (jqXHR, textStatus, errorThrown) {
-			alert('Error get data from ajax');
+			nag_pesan('The allocation number could not be loaded. Please try again.', 'Load failed', 'error');
 		}
 	});
 }
@@ -11621,19 +12228,28 @@ function modal_input_amt(){
 	for (var i = 1; i < (table.rows.length); i++) {
 
 		var price = document.getElementById("table-sj").rows[i].cells[7].children[0].value;
-		var outstan = $('[name="am_awal"]').val();
 		if (price == '') {
 			price_h = 0;
 		}else{
 			price_h = price;
 		}
 		tota += parseFloat(price_h);
-		totall = parseFloat(outstan - tota);
-
-		document.getElementsByName("out_alok")[0].value = totall.toFixed(2);
-		document.getElementsByName("total_alokasi")[0].value = tota.toFixed(2);
-
 	}
+
+	// Dijumlah dulu SEMUA barisnya, termasuk baris yang baru ditambah lewat
+	// Add Row, baru ringkasannya ditulis. Kalau ringkasannya dihitung di
+	// tengah loop, Allocated-nya selalu tertinggal satu baris dari
+	// Outstanding - angkanya jadi tidak nyambung satu sama lain.
+	var outstan = parseFloat(String($('[name="am_awal"]').val()).replace(/,/g, ''));
+	if (isNaN(outstan)) { outstan = 0; }
+	totall = outstan - tota;
+
+	document.getElementsByName("out_alok")[0].value = totall.toFixed(2);
+	document.getElementsByName("total_alokasi")[0].value = tota.toFixed(2);
+	// Versi tersembunyinya ikut, supaya tidak ada dua angka sisa yang beda.
+	var sisaH = document.getElementsByName("out_alok_h")[0];
+	if (sisaH) { sisaH.value = totall; }
+	alo_perbarui_ringkasan();
 }
 
 
@@ -11779,6 +12395,7 @@ function input_awal(){
 		totall = parseFloat(outstan - tota);
 
 		document.getElementsByName("out_alok")[0].value = totall.toFixed(2);
+		alo_perbarui_ringkasan();
 
 	}
 	document.getElementsByName("am_akhir")[0].value = formatMoney(rate * amt);
@@ -11846,7 +12463,7 @@ function simpan_data_alokasi() {
 	let account   = $('[name="acc"]').val();
 	let outstand   = $('[name="out_alok"]').val();
 	if (doc_num == "") {
-		alert("Document Number is required");
+		nag_pesan("Document Number is required");
 		$("#doc_number").focus();	
 		return false;
 	}
@@ -11855,9 +12472,9 @@ function simpan_data_alokasi() {
 
 	$('[name="no_alokasi"]').val($no_invoice);
 	if (outstand >= 0) {
-		$('#modal-simpan-alokasi').modal('show')	
+		alo_konfirmasi_simpan();
 	}else{
-		alert("Outstanding Can't be minus");
+		nag_pesan("Outstanding Can't be minus");
 	}
 
 }
@@ -12005,7 +12622,15 @@ function cari_data_invoic() {
 					}
 
 					trHTML += '<tr>';
-					trHTML += '<td>' + item.no_invoice + "</td>";
+					// Nomor PI NON SO bentuknya sama dengan nomor invoice biasa, jadi
+					// jenisnya dipajang di sebelahnya. Baris lain tidak diberi apa-apa.
+					// Nomornya disimpan apa adanya di input tersembunyi: yang dipajang
+					// sudah bercampur penanda jenis PI, jadi tidak bisa dibaca dari
+					// isi selnya lagi.
+					trHTML += '<td><input type="hidden" name="mdl_no_ref" value="' + item.no_invoice + '">'
+						+ item.no_invoice
+						+ (item.type_pi ? ' <span class="alo-tag-pi">' + item.type_pi + '</span>' : '')
+						+ "</td>";
 					trHTML += '<td>' + item.inv_date + "</td>";
 					trHTML += '<td>' + item.duedate + "</td>";
 					trHTML += '<td>' + item.curr + "</td>";
@@ -12023,7 +12648,7 @@ function cari_data_invoic() {
 
 			},
 			error: function (jqXHR, textStatus, errorThrown) {
-				alert('Error get data from ajax');
+				nag_pesan('Error get data from ajax');
 			}
 		});	
 
@@ -12069,7 +12694,7 @@ function modal_get_amount(){
 	var ost = 0;
 
 	//    	
-    		// alert(totmdl_amo);
+    		// nag_pesan(totmdl_amo);
     		for (var i = 0; i < input_kwt.length; i++) {
     			if (input_kwt[i].checked) {
     				if(totmdl_amo[i].value == ''){
@@ -12163,15 +12788,11 @@ function modal_get_amount(){
 //ubah desember
 function duplicate_data_alo(){ 
 
-	var saldo    = $('[name="val_alo"]').val();
-	var pay      = $('[name="val_kwt"]').val();
-	var total = saldo - pay;
-	console.log(saldo);
-	console.log(pay);
-	console.log(total);
-	$('[name="out_alok"]').val(total.toFixed(2));
-	$('[name="out_alok_h"]').val(total);
-	$('[name="total_alokasi"]').val(pay);
+	// Ringkasannya sengaja TIDAK diisi dari val_alo / val_kwt: dua angka
+	// itu berisi rupiah kalau "Payment With" dibiarkan IDR padahal banknya
+	// USD, jadi Allocated-nya tidak sebanding dengan Bank Amount. Ketiga
+	// angka di ringkasan dihitung dari tabel detail - dalam mata uang
+	// aslinya - begitu tabelnya selesai dimuat (load_invoice_detail_alo).
  	// delete_invoice_detail_alo();
  	simpan_invoice_detail_alo();
 
@@ -12216,7 +12837,9 @@ function duplicate_data_alo(){
                 //
                 data.push({							
 					//"id_invoice_proforma": rows.cells[0].innerHTML,
-					"ref_number": rows.cells[0].innerHTML,	
+					// Dari input tersembunyi, bukan isi selnya - selnya memuat penanda
+					// jenis PI. Cadangannya isi sel, untuk baris yang belum punya input itu.
+					"ref_number": rows.querySelector('[name="mdl_no_ref"]').value,	
 					"ref_date": rows.cells[1].innerHTML,						
 					"due_date": rows.cells[2].innerHTML,
 					"curr": rows.cells[3].innerHTML,
@@ -12287,9 +12910,19 @@ function load_invoice_detail_alo(){
 					displayLabel = 'NIRWANA ALABARE KNITTING';
 				}
 				trHTML += '<tr>';		
-				trHTML += '<td width = "300px"><input type="hidden" value="'+ item.no_coa +'" class="form-control" id="stylein" name="stylein" style="width: 300px;" autocomplete="off" readonly>'+item.coa+'</td>';		
+				trHTML += '<td width = "300px"><input type="hidden" value="'+ item.no_coa +'" class="form-control" id="stylein" name="stylein" style="width: 300px;" autocomplete="off" readonly>'+ '<input type="hidden" value="'+ (item.nama_coa || '') +'" name="nama_coa">'
+					// Baris Proforma Invoice membawa COA PPN & porsi DPP-nya: yang
+					// dilunasi tagihan penuh, tapi di jurnal cuma DPP yang masuk uang
+					// muka - PPN-nya ke VAT OUT.
+					+ '<input type="hidden" value="'+ (item.coa_ppn || '') +'" name="coa_ppn">'
+					+ '<input type="hidden" value="'+ (item.nama_coa_ppn || '') +'" name="nama_coa_ppn">'
+					+ '<input type="hidden" value="'+ (item.dpp_rasio || '') +'" name="dpp_rasio">' + (item.coa || item.no_coa || '-') + '</td>';		
 				trHTML += '<td style="width: 300px;"><input type="text" value="-" class="form-control" style="width: 250px;"  autocomplete="off" readonly></td>';
-				trHTML += '<td><input type="text" value="'+ item.ref_number +'" class="form-control" id="stylein" name="stylein" style="width: 180px; text-align: center;"  autocomplete="off" readonly></td>';
+				// Jenis PI-nya ikut dipajang di bawah nomornya - nomor PI NON SO
+				// bentuknya sama dengan nomor invoice biasa.
+				trHTML += '<td><input type="text" value="'+ item.ref_number +'" class="form-control" id="stylein" name="stylein" style="width: 180px; text-align: center;"  autocomplete="off" readonly>'
+					+ (item.type_pi ? '<span class="alo-tag-pi">' + item.type_pi + '</span>' : '')
+					+ '</td>';
 				trHTML += '<td><input type="text" value="'+ item.ref_date +'" class="form-control" id="stylein" name="stylein" style="width: 150px; text-align: center;"  autocomplete="off" readonly></td>';
 				trHTML += '<td><input type="text" value="'+ item.due_date +'" class="form-control" id="stylein" name="stylein" style="width: 150px; text-align: center;"  autocomplete="off" readonly></td>';
 				trHTML += '<td><input type="text" value="'+ item.total +'" class="form-control" id="stylein" name="stylein" style="width: 180px; text-align: center;"  autocomplete="off" readonly></td>';
@@ -12304,27 +12937,103 @@ trHTML += '</tr>';
 
 });
 			$('#table-sj').append(trHTML);
+						// Ringkasannya dihitung dari tabel ini, jadi tiap kali tabelnya
+						// selesai dimuat angkanya diperbarui - termasuk sesudah Add Data.
+						modal_input_amt();
                         //Grand Total SO Proforma
 						// sum_grandtotal_proforma(); 
 
 					},
 					error: function (jqXHR, textStatus, errorThrown) {
-						alert('Error get data from ajax');
+						nag_pesan('Error get data from ajax');
 					}
 				});  	  	
 
 }
 
 //ubah desember
-function save_alokasi() {
-	
-	simpanalokasi();	
-	simpan_alokasi_detail();
-	at_debit_alokasi();
-	at_credit_alokasi();
-	//	
-	$('#modal-simpan-alokasi').modal('hide');
-	
+// Alamat daftar Alokasi dikirim dari view (ALO_URL_LIST); kalau layarnya
+// dibuka tanpa itu, dipakai alamat bawaannya.
+function alo_tujuan_daftar() {
+	return (typeof ALO_URL_LIST !== 'undefined' && ALO_URL_LIST) ? ALO_URL_LIST : '';
+}
+
+// Konfirmasi sebelum menyimpan. Dulu modal bootstrap sendiri - tampilannya
+// beda dari layar ini, jadi disamakan dengan dialog lain.
+function alo_konfirmasi_simpan() {
+	var nomor = $('[name="alk_number"]').val();
+	if (typeof Swal === 'undefined') { save_alokasi(); return; }
+	Swal.fire({
+		icon: 'question',
+		title: 'Save Alokasi',
+		html: 'Alokasi <b>' + nomor + '</b> will be saved and posted.',
+		customClass: { popup: 'dn-swal' },
+		showCancelButton: true,
+		confirmButtonText: '<i class="fa fa-save"></i> Save',
+		cancelButtonText: 'Cancel',
+		reverseButtons: true,
+		allowOutsideClick: false
+	}).then(function (pilih) {
+		if (pilih && pilih.isConfirmed) { save_alokasi(); }
+	});
+}
+
+async function save_alokasi() {
+	var nomor = $('[name="alk_number"]').val();
+
+	// Satu per satu sampai selesai - header dulu, baru detail & jurnalnya.
+	// Halamannya baru boleh pindah sesudah semuanya terkirim.
+
+	// Satu langkah yang gagal TIDAK menghentikan langkah berikutnya: jurnal
+	// debit & kreditnya dikirim terpisah, jadi berhenti di tengah malah
+	// meninggalkan separuh jurnal - lebih berbahaya daripada mencoba semuanya
+	// lalu melapor. Kiriman juga bisa ditolak walaupun datanya sudah tersimpan
+	// (jawaban yang tidak terbaca sebagai JSON dianggap gagal oleh jQuery).
+	var langkahSimpan = [
+		['allocation', simpanalokasi],
+		['allocation lines', simpan_alokasi_detail],
+		['journal (debit)', at_debit_alokasi],
+		['journal (credit)', at_credit_alokasi]
+	];
+	var belumPasti = [];
+	for (var i = 0; i < langkahSimpan.length; i++) {
+		try {
+			await langkahSimpan[i][1]();
+		} catch (e) {
+			belumPasti.push(langkahSimpan[i][0]);
+		}
+	}
+
+	if (belumPasti.length) {
+		// Sengaja tidak bilang "gagal": datanya bisa saja sudah tersimpan,
+		// yang tidak pasti cuma jawabannya. Halamannya ditahan di sini supaya
+		// jurnalnya bisa diperiksa dulu.
+		nag_pesan('Alokasi ' + nomor + ' was sent, but these steps did not confirm: '
+			+ belumPasti.join(', ') + '.<br>Please check the journal of this allocation before leaving this page.',
+			'Not confirmed', 'warning');
+		return;
+	}
+
+	var tujuan = alo_tujuan_daftar();
+	if (!tujuan) {
+		// Layar lama yang ikut memakai fungsi ini (update due date, reverse)
+		// tidak mengirim alamat daftar - di sana perilakunya tetap seperti
+		// dulu: modalnya ditutup, halamannya tidak pindah.
+		$('#modal-simpan-alokasi').modal('hide');
+		return;
+	}
+
+	if (typeof Swal === 'undefined') { window.location.href = tujuan; return; }
+	await Swal.fire({
+		icon: 'success',
+		title: 'Alokasi saved',
+		html: 'Alokasi <b>' + nomor + '</b> has been saved.',
+		customClass: { popup: 'dn-swal' },
+		confirmButtonText: '<i class="fa fa-list"></i> Back to List',
+		allowOutsideClick: false,
+		allowEscapeKey: false
+	});
+	window.location.href = tujuan;
 }
 
 //ubah desember
@@ -12337,7 +13046,12 @@ function at_debit_alokasi() {
 
     var id_cust    = $('[name="customer"]').val();
     var inv_rate   = $('[name="rate"]').val();
-    var inv_curr   = $('[name="pay_type"]').val();
+    // Mata uangnya ikut BANK-nya (#currn) - sama dengan yang disimpan di kepala
+    // alokasi. Dropdown "Payment With" bawaannya IDR dan sering tidak diubah,
+    // jadi alokasi dari bank USD dulu tercatat IDR dengan kurs 1 dan nilai
+    // rupiahnya tidak ikut dikonversi. Layar lama yang ikut memakai fungsi ini
+    // tidak punya #currn - di sana dropdown itu tetap dipakai seperti dulu.
+    var inv_curr   = $('[name="currn"]').val() || $('[name="pay_type"]').val();
     var buyer      = $('[name="cust"]').val();
     var kata1      = "PELUNASAN PIUTANG USAHA DARI";
     var keter      = kata1 + ' ' + buyer;
@@ -12373,6 +13087,11 @@ function at_debit_alokasi() {
     // ðŸ”¥ STEP 2: Convert hasil grouping jadi array data
     Object.keys(grouping).forEach(function(pc) {
         var total = grouping[pc];
+        // Jumlahnya bisa minus kalau barisnya koreksi. Nilai minus tidak
+        // ditulis apa adanya - sisinya yang dibalik, nilainya tetap positif.
+        if (!total) { return; }
+        var ke_debit = total > 0;
+        total = Math.abs(total);
         var total_idr = total * rate;
 
         data.push({
@@ -12387,12 +13106,12 @@ function at_debit_alokasi() {
             "reff_date": '',
             "buyer": buyer,
             "no_ws": '',
-            "curr": $('#pay_type').val(),
+            "curr": inv_curr,
             "rate": rate,
-            "debit": total,
-            "credit": '0',
-            "debit_idr": total_idr,
-            "credit_idr": '0',
+            "debit": ke_debit ? total : 0,
+            "credit": ke_debit ? 0 : total,
+            "debit_idr": ke_debit ? total_idr : 0,
+            "credit_idr": ke_debit ? 0 : total_idr,
             "status": 'POST',
             "keterangan": keter,
             "create_by": '',
@@ -12412,20 +13131,22 @@ function at_debit_alokasi() {
     console.log("ðŸš€ Data yang akan dikirim:", formData);
 
     // ðŸ”¥ STEP 3: Simpan via AJAX
-    $.ajax({
+    // Kirimannya dikembalikan supaya pemanggilnya bisa menunggu sampai
+    // selesai sebelum pindah halaman.
+    return $.ajax({
         url: "at_debit_inv/",
         type: "POST",
         data: formData,
         dataType: "JSON",
         success: function (data) {
             if (data.status) {
-                // alert('Success Update Invoice Header');
+                // nag_pesan('Success Update Invoice Header');
             } else {
-                // alert('Error Update Invoice Header');
+                // nag_pesan('Error Update Invoice Header');
             }
         },
         error: function (jqXHR, textStatus, errorThrown) {
-            // alert('Error Update Invoice Header ' + jqXHR.responseText);
+            // nag_pesan('Error Update Invoice Header ' + jqXHR.responseText);
         }
     });
 
@@ -12468,7 +13189,12 @@ function at_credit_alokasi()
 			var keterangan = '';		
 
 			var inv_rate 	 	= $('[name="rate"]').val();
-			var inv_curr 	 	= $('[name="pay_type"]').val();
+			// Mata uangnya ikut BANK-nya (#currn) - sama dengan yang disimpan di kepala
+			// alokasi. Dropdown "Payment With" bawaannya IDR dan sering tidak diubah,
+			// jadi alokasi dari bank USD dulu tercatat IDR dengan kurs 1 dan nilai
+			// rupiahnya tidak ikut dikonversi. Layar lama yang ikut memakai fungsi ini
+			// tidak punya #currn - di sana dropdown itu tetap dipakai seperti dulu.
+			var inv_curr 	 	= $('[name="currn"]').val() || $('[name="pay_type"]').val();
 			var buyer 	 		= $('[name="cust"]').val();
 			var kata1 		= "PELUNASAN PIUTANG USAHA DARI";
 			var keter 		 = kata1 +' '+buyer;
@@ -12476,6 +13202,21 @@ function at_credit_alokasi()
 			for (var i = 1; i < (table.rows.length); i++) {
 
 				var coa = document.getElementById("table-sj").rows[i].cells[0].children[0].value;
+				// Nama COA-nya ikut dari baris; kalau barisnya memang tidak membawa
+				// nama, server yang melengkapi dari master.
+				var sel_nama = document.getElementById("table-sj").rows[i].cells[0].querySelector('[name="nama_coa"]');
+				var nama_coa_baris = sel_nama ? sel_nama.value : '';
+				// Baris Proforma Invoice: COA PPN & porsi DPP-nya ikut, jadi jurnalnya
+				// bisa dipecah - uang muka sebesar DPP, sisanya PPN ke VAT OUT.
+				var sel_kolom = document.getElementById("table-sj").rows[i].cells[0];
+				var baca_kolom = function (nama) {
+					var el = sel_kolom.querySelector('[name="' + nama + '"]');
+					return el ? el.value : '';
+				};
+				var coa_ppn = baca_kolom('coa_ppn');
+				var nama_coa_ppn = baca_kolom('nama_coa_ppn');
+				var dpp_rasio = parseFloat(baca_kolom('dpp_rasio'));
+				var pecah_ppn = !!coa_ppn && dpp_rasio > 0 && dpp_rasio < 1;
 				var cost_center = document.getElementById("table-sj").rows[i].cells[1].children[0].value;
 				var no_ref = document.getElementById("table-sj").rows[i].cells[2].children[0].value;
 				var ref_date = document.getElementById("table-sj").rows[i].cells[3].children[0].value;
@@ -12483,12 +13224,20 @@ function at_credit_alokasi()
 				var total = document.getElementById("table-sj").rows[i].cells[5].children[0].value;
 				var eqp_idr = document.getElementById("table-sj").rows[i].cells[6].children[0].value;
 				var amount = document.getElementById("table-sj").rows[i].cells[7].children[0].value;
-				var amount2 = amount * -1;
+				// Dibaca sebagai angka, bukan teks. Pemisah positif/negatifnya dulu
+				// memakai ambang 1, jadi nilai pecahan seperti 0.36 ikut dianggap
+				// minus lalu dibalik ke debit - di jurnalnya terbaca debit -0.36,
+				// padahal mestinya kredit 0.36.
+				var angka_baris = parseFloat(amount);
+				if (isNaN(angka_baris)) { angka_baris = 0; }
+				// Baris yang nilainya belum diisi tidak usah jadi baris jurnal.
+				if (angka_baris === 0) { continue; }
+				var amount2 = Math.abs(angka_baris);
 				var keterangan2 = document.getElementById("table-sj").rows[i].cells[8].children[0].value;
 				var profit_center = document.getElementById("table-sj").rows[i].cells[9].children[0].value;
 				var status      = "POST";
 
-				if(amount >= 1){
+				if (angka_baris > 0) {
 					if (inv_curr == 'IDR') {
 						rate = 1;
 						total_idr = amount * rate;
@@ -12514,20 +13263,20 @@ function at_credit_alokasi()
 					keterangan = keterangan2;
 				}
 				
-				if (amount >= 1) {
+				if (angka_baris > 0) {
 					data.push({		
 						"no_journal": $('#alk_number').val(),
 						"tgl_journal": $('#alo_date').val(),
 						"type_journal": 'Alokasi',
 						"no_coa": coa,
-						"nama_coa": '-',		
+						"nama_coa": nama_coa_baris,		
 						"no_costcenter":cost_center,
 						"nama_costcenter": '-',
 						"reff_doc": no_ref,
 						"reff_date": ref_date,
 						"buyer": buyer,
 						"no_ws": '',
-						"curr": $('#pay_type').val(),
+						"curr": inv_curr,
 						"rate": rate,
 						"debit": '0',
 						"credit": amount,
@@ -12546,20 +13295,47 @@ function at_credit_alokasi()
 						"profit_center": profit_center,									
 
 					})	
+					if (pecah_ppn) {
+						// Baris terakhir dipecah: yang tadi dicatat penuh dikecilkan jadi
+						// DPP-nya, selisihnya jadi baris PPN sendiri - supaya jumlahnya
+						// tetap sama persis dengan yang dilunasi.
+						var induk = data[data.length - 1];
+						var penuh_kredit = parseFloat(induk.credit) || 0;
+						var penuh_debit = parseFloat(induk.debit) || 0;
+						var penuh_kredit_idr = parseFloat(induk.credit_idr) || 0;
+						var penuh_debit_idr = parseFloat(induk.debit_idr) || 0;
+						var bulat = function (v) { return Math.round(v * 100) / 100; };
+						var dpp_kredit = bulat(penuh_kredit * dpp_rasio);
+						var dpp_debit = bulat(penuh_debit * dpp_rasio);
+						var dpp_kredit_idr = bulat(penuh_kredit_idr * dpp_rasio);
+						var dpp_debit_idr = bulat(penuh_debit_idr * dpp_rasio);
+						induk.credit = dpp_kredit;
+						induk.debit = dpp_debit;
+						induk.credit_idr = dpp_kredit_idr;
+						induk.debit_idr = dpp_debit_idr;
+						var baris_ppn = JSON.parse(JSON.stringify(induk));
+						baris_ppn.no_coa = coa_ppn;
+						baris_ppn.nama_coa = nama_coa_ppn;
+						baris_ppn.credit = bulat(penuh_kredit - dpp_kredit);
+						baris_ppn.debit = bulat(penuh_debit - dpp_debit);
+						baris_ppn.credit_idr = bulat(penuh_kredit_idr - dpp_kredit_idr);
+						baris_ppn.debit_idr = bulat(penuh_debit_idr - dpp_debit_idr);
+						data.push(baris_ppn);
+					}
 				}else{
 					data.push({		
 						"no_journal": $('#alk_number').val(),
 						"tgl_journal": $('#alo_date').val(),
 						"type_journal": 'Alokasi',
 						"no_coa": coa,
-						"nama_coa": '-',		
+						"nama_coa": nama_coa_baris,		
 						"no_costcenter":cost_center,
 						"nama_costcenter": '-',
 						"reff_doc": '-',
 						"reff_date": '',
 						"buyer": buyer,
 						"no_ws": '',
-						"curr": $('#pay_type').val(),
+						"curr": inv_curr,
 						"rate": rate,
 						"debit": amount2,
 						"credit": '0',
@@ -12578,6 +13354,33 @@ function at_credit_alokasi()
 						"profit_center": profit_center,									
 
 					})	
+					if (pecah_ppn) {
+						// Baris terakhir dipecah: yang tadi dicatat penuh dikecilkan jadi
+						// DPP-nya, selisihnya jadi baris PPN sendiri - supaya jumlahnya
+						// tetap sama persis dengan yang dilunasi.
+						var induk = data[data.length - 1];
+						var penuh_kredit = parseFloat(induk.credit) || 0;
+						var penuh_debit = parseFloat(induk.debit) || 0;
+						var penuh_kredit_idr = parseFloat(induk.credit_idr) || 0;
+						var penuh_debit_idr = parseFloat(induk.debit_idr) || 0;
+						var bulat = function (v) { return Math.round(v * 100) / 100; };
+						var dpp_kredit = bulat(penuh_kredit * dpp_rasio);
+						var dpp_debit = bulat(penuh_debit * dpp_rasio);
+						var dpp_kredit_idr = bulat(penuh_kredit_idr * dpp_rasio);
+						var dpp_debit_idr = bulat(penuh_debit_idr * dpp_rasio);
+						induk.credit = dpp_kredit;
+						induk.debit = dpp_debit;
+						induk.credit_idr = dpp_kredit_idr;
+						induk.debit_idr = dpp_debit_idr;
+						var baris_ppn = JSON.parse(JSON.stringify(induk));
+						baris_ppn.no_coa = coa_ppn;
+						baris_ppn.nama_coa = nama_coa_ppn;
+						baris_ppn.credit = bulat(penuh_kredit - dpp_kredit);
+						baris_ppn.debit = bulat(penuh_debit - dpp_debit);
+						baris_ppn.credit_idr = bulat(penuh_kredit_idr - dpp_kredit_idr);
+						baris_ppn.debit_idr = bulat(penuh_debit_idr - dpp_debit_idr);
+						data.push(baris_ppn);
+					}
 				}	
 			}
 
@@ -13550,7 +14353,7 @@ function cari_alokasi() {
 
 			},
 			error: function (jqXHR, textStatus, errorThrown) {
-				alert('Error get data from ajax');
+				nag_pesan('The allocation list could not be loaded. Please try again.', 'Load failed', 'error');
 			}
 		});	
 
@@ -13561,7 +14364,33 @@ function cari_alokasi() {
 
 	$('#txt_cancel_book').val(no_invoice);
 	$('#id_book_inv').val(no_invoice);
-	$('#modal-cancel-inv').modal('show');  
+
+	// Layar daftar yang baru mengirimnya lewat form tersembunyi, konfirmasinya
+	// Swal - sama seperti dialog lain di menu ini. Layar lain yang masih
+	// memakai modal lama tidak berubah.
+	var form = document.getElementById('alo-form-cancel');
+	if (!form || typeof Swal === 'undefined') {
+		$('#modal-cancel-inv').modal('show');
+		return;
+	}
+
+	Swal.fire({
+		icon: 'warning',
+		title: 'Cancel Allocation',
+		html: 'Allocation <b>' + no_invoice + '</b> will be cancelled.<br>'
+			+ 'Its incoming bank number and the invoices or proforma invoices it paid'
+			+ ' become available again in Create Alokasi.',
+		customClass: { popup: 'dn-swal' },
+		showCancelButton: true,
+		confirmButtonText: '<i class="fas fa-trash-alt"></i> Cancel Allocation',
+		cancelButtonText: 'Close',
+		// Warnanya sama dengan tombol Cancel di daftarnya.
+		confirmButtonColor: '#dc3545',
+		reverseButtons: true,
+		allowOutsideClick: false
+	}).then(function (pilih) {
+		if (pilih && pilih.isConfirmed) { form.submit(); }
+	});  
 
 }
 
@@ -13621,7 +14450,7 @@ function cari_view_alokasi(no_kwt) {
 
 			},
 			error: function (jqXHR, textStatus, errorThrown) {
-				alert('Error get data from ajax');
+				nag_pesan('The allocation could not be loaded. Please try again.', 'Load failed', 'error');
 			}
 		});	
 
@@ -16146,7 +16975,7 @@ function rvs_alokasi(){
 
 			},
 			error: function (jqXHR, textStatus, errorThrown) {
-				alert('Error get data from ajax');
+				nag_pesan('The invoice list could not be loaded. Please try again.', 'Load failed', 'error');
 			}
 		});	
 	}
@@ -16175,7 +17004,7 @@ function rvs_alokasi(){
 		    	var coba = parseInt(i + 1);		
 		    }
 		}
-		alert(" Invoice Successfully Reverse");
+		nag_pesan('Invoice successfully reversed.', 'Reverse', 'success');
    // cari_invoice_manual_appv();
 }
 
@@ -20229,3 +21058,621 @@ function cari_detail_duedate_update(id) {
 
 
 
+
+
+// Tombol Back di samping Save - kembali ke daftar Alokasi tanpa menyimpan.
+function alo_kembali() {
+	var tujuan = alo_tujuan_daftar();
+	if (tujuan) { window.location.href = tujuan; }
+}
+
+
+/* ===================== Modal detail Alokasi =====================
+   Dipakai layar daftar Alokasi: nomornya diklik, lalu seluruh isinya
+   diambil sekali lewat arnag/alokasi_detail_json - kepala, baris yang
+   dilunasi, dan jurnalnya. */
+
+// Angka dengan pemisah ribuan & dua desimal. Yang bukan angka jadi 0.00.
+function alo_d_angka(v) {
+	var n = parseFloat(String(v === undefined || v === null ? '' : v).replace(/,/g, ''));
+	if (isNaN(n)) { n = 0; }
+	return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Teks yang kosong (termasuk tanggal nol dari MySQL) ditulis strip.
+function alo_d_teks(v) {
+	var s = String(v === undefined || v === null ? '' : v).trim();
+	return (s === '' || s === '0000-00-00') ? '-' : s;
+}
+
+// Isi dari server tidak pernah dimasukkan sebagai HTML.
+function alo_d_aman(v) {
+	return $('<div>').text(alo_d_teks(v)).html();
+}
+
+// Sel angka; yang nol ditulis redup supaya sisi yang terisi langsung terbaca.
+function alo_d_sel_angka(v) {
+	var n = parseFloat(String(v === undefined || v === null ? '' : v).replace(/,/g, ''));
+	if (isNaN(n)) { n = 0; }
+	return '<td' + (n === 0 ? ' class="alo-d-nol"' : '') + '>' + alo_d_angka(n) + '</td>';
+}
+
+function alo_detail_gagal(pesan) {
+	$('#alo-d-loader').prop('hidden', true);
+	$('#alo-d-isi').prop('hidden', true);
+	$('#alo-d-gagal').prop('hidden', false).text(pesan);
+}
+
+// Nomor alokasi diklik di daftar.
+function alo_detail_buka(id) {
+	var kotak = $('#modal-alo-detail');
+	if (!kotak.length) { return; }
+	$('#alo-d-loader').prop('hidden', false);
+	$('#alo-d-isi').prop('hidden', true);
+	$('#alo-d-gagal').prop('hidden', true);
+	$('#alo-d-nomor').text('Allocation');
+	$('#alo-d-status').prop('hidden', true);
+	kotak.modal('show');
+
+	return $.ajax({
+		url: 'alokasi_detail_json/' + id,
+		type: 'GET',
+		dataType: 'JSON'
+	}).done(function (j) {
+		if (!j || !j.status) {
+			alo_detail_gagal((j && j.message) || 'The allocation could not be loaded.');
+			return;
+		}
+		alo_detail_isi(j);
+	}).fail(function () {
+		alo_detail_gagal('The allocation could not be loaded. Please try again.');
+	});
+}
+
+function alo_detail_isi(j) {
+	var k = (j && j.kepala) || {};
+
+	$('#alo-d-nomor').text(alo_d_teks(k.no_alk));
+	var st = alo_d_teks(k.status);
+	var stAtas = st.toUpperCase();
+	$('#alo-d-status').prop('hidden', st === '-').text(st)
+		.toggleClass('is-post', stAtas === 'POST')
+		.toggleClass('is-batal', stAtas === 'CANCEL' || stAtas === 'CANCELED');
+	$('#alo-d-customer').text(alo_d_teks(k.customer));
+	$('#alo-d-doc').text('Doc Number ' + alo_d_teks(k.doc_number));
+	$('#alo-d-amount').text(alo_d_teks(k.curr) + ' ' + alo_d_angka(k.amount));
+	$('#alo-d-eqv').text('Equivalent IDR ' + alo_d_angka(k.eqp_idr));
+	$('#alo-d-tanggal').text(alo_d_teks(k.tgl_alk));
+	$('#alo-d-bank').text(alo_d_teks(k.bank));
+	$('#alo-d-account').text(alo_d_teks(k.account));
+	$('#alo-d-curr').text(alo_d_teks(k.curr) + ' / ' + alo_d_angka(k.rate));
+	$('#alo-d-dialokasikan').text(alo_d_angka(k.dialokasikan));
+
+	// Sisa nol = uang banknya terpakai habis; itu keadaan yang diharapkan,
+	// jadi warnanya beda dari sisa yang masih menggantung.
+	var sisa = parseFloat(k.sisa);
+	if (isNaN(sisa)) { sisa = 0; }
+	var lunas = Math.abs(sisa) < 0.005;
+	$('#alo-d-sisa').text(alo_d_angka(sisa))
+		.toggleClass('is-sisa', !lunas)
+		.toggleClass('is-lunas', lunas);
+	$('#alo-d-dibuat').text(alo_d_teks(k.dibuat_oleh)
+		+ (k.dibuat_tanggal ? ' \u00b7 ' + k.dibuat_tanggal : ''));
+
+	// ---- tagihan yang dilunasi ----
+	var baris = (j && j.baris) || [];
+	$('#alo-d-jml-baris').text(baris.length);
+	var isi = '';
+	$.each(baris, function (i, b) {
+		isi += '<tr>';
+		isi += '<td>' + alo_d_aman(b.coa) + ' ' + alo_d_aman(b.nama_coa) + '</td>';
+		isi += '<td>' + alo_d_aman(b.nama_cc) + '</td>';
+		isi += '<td>' + alo_d_aman(b.no_ref) + '</td>';
+		isi += '<td>' + alo_d_aman(b.ref_date) + '</td>';
+		isi += '<td>' + alo_d_aman(b.due_date) + '</td>';
+		isi += alo_d_sel_angka(b.total);
+		isi += alo_d_sel_angka(b.eqp_idr);
+		isi += alo_d_sel_angka(b.amount);
+		isi += alo_d_sel_angka(b.sisa);
+		isi += '<td>' + alo_d_aman(b.keterangan) + '</td>';
+		isi += '<td>' + alo_d_aman(b.profit_center) + '</td>';
+		isi += '</tr>';
+	});
+	if (!baris.length) {
+		isi = '<tr><td colspan="11"><div class="alo-d-kosong">No allocation lines.</div></td></tr>';
+	}
+	$('#table-alo-detail tbody').html(isi);
+
+	// ---- jurnalnya ----
+	var jurnal = (j && j.jurnal) || [];
+	var isiJ = '';
+	var debitIdr = 0;
+	var kreditIdr = 0;
+	$.each(jurnal, function (i, r) {
+		debitIdr += parseFloat(r.debit_idr) || 0;
+		kreditIdr += parseFloat(r.credit_idr) || 0;
+		isiJ += '<tr>';
+		isiJ += '<td>' + alo_d_aman(r.no_coa) + '</td>';
+		isiJ += '<td>' + alo_d_aman(r.nama_coa) + '</td>';
+		isiJ += '<td>' + alo_d_aman(r.no_costcenter) + '</td>';
+		isiJ += '<td>' + alo_d_aman(r.reff_doc) + '</td>';
+		// Mata uang & kursnya ikut - jurnal mata uang asing tidak bisa dibaca
+		// tanpa tahu kurs yang dipakai waktu itu.
+		isiJ += '<td>' + alo_d_aman(r.curr) + '</td>';
+		isiJ += alo_d_sel_angka(r.rate);
+		isiJ += alo_d_sel_angka(r.debit);
+		isiJ += alo_d_sel_angka(r.credit);
+		isiJ += alo_d_sel_angka(r.debit_idr);
+		isiJ += alo_d_sel_angka(r.credit_idr);
+		isiJ += '</tr>';
+	});
+	if (!jurnal.length) {
+		isiJ = '<tr><td colspan="10"><div class="alo-d-kosong">No journal for this allocation.</div></td></tr>';
+	}
+	$('#table-alo-jurnal tbody').html(isiJ);
+	$('#alo-d-j-debit').text(alo_d_angka(j.jurnal_debit));
+	$('#alo-d-j-kredit').text(alo_d_angka(j.jurnal_kredit));
+	$('#alo-d-j-debit-idr').text(alo_d_angka(debitIdr));
+	$('#alo-d-j-kredit-idr').text(alo_d_angka(kreditIdr));
+
+	// Jurnal yang tidak seimbang harus kelihatan tanpa dihitung sendiri.
+	var lencana = $('#alo-d-imbang');
+	if (!jurnal.length) {
+		lencana.prop('hidden', true);
+	} else {
+		lencana.prop('hidden', false)
+			.text(j.jurnal_imbang ? 'Balanced' : 'Not balanced')
+			// Kelas warnanya ikut yang sudah ada di skin DN.
+			.toggleClass('is-second', !!j.jurnal_imbang)
+			.toggleClass('is-batal', !j.jurnal_imbang);
+	}
+
+	$('#alo-d-cetak').off('click.alod').on('click.alod', function () {
+		if (j.cetak_url) { window.open(j.cetak_url, '_blank'); }
+	});
+
+	$('#alo-d-loader').prop('hidden', true);
+	$('#alo-d-gagal').prop('hidden', true);
+	$('#alo-d-isi').prop('hidden', false);
+}
+
+/* ===================== Daftar Alokasi (arnag/alokasi_ar) =====================
+   Tampilannya mengikuti List Invoice: DataTables dengan kotak Search sendiri,
+   pilihan jumlah baris, dan loader selagi datanya diambil.
+
+   Fungsi lama cari_alokasi() sengaja tidak diutak-atik - layar Reverse Alokasi
+   masih memakainya untuk mengisi tabelnya sendiri. */
+
+var ALO_LIST_DT = null;
+var ALO_LIST_DATA = [];
+var ALO_LIST_HALAMAN = -1;
+var ALO_LIST_KUNCI = 'alo_list_filter';
+
+function alo_list_teks(v) {
+	return $('<div>').text((v === null || v === undefined) ? '' : v).html();
+}
+
+// Sel yang boleh kosong diisi garis redup, supaya kolomnya tidak melompong.
+function alo_list_isi(v) {
+	var s = String(v === null || v === undefined ? '' : v).trim();
+	return (s === '' || s === '-') ? '<span class="alo-kosong">-</span>' : alo_list_teks(s);
+}
+
+// Nomor alokasi = pintu ke detailnya.
+function alo_list_nomor(item) {
+	return '<span class="dn-no-link" role="button" tabindex="0" title="Show detail" onclick="alo_detail_buka('
+		+ alo_list_teks(item.id) + ')">' + alo_list_teks(item.no_alk) + '</span>';
+}
+
+// Nama pembuatnya di atas, tanggalnya di bawah.
+function alo_list_dibuat(item) {
+	var nama = String(item.nama || '').trim();
+	var tgl = String(item.tanggal_input || '').trim();
+	if (!nama && !tgl) { return '<span class="alo-kosong">-</span>'; }
+	return '<span class="alo-dibuat"><b>' + alo_list_teks(nama || '-') + '</b>'
+		+ (tgl ? '<small>' + alo_list_teks(tgl) + '</small>' : '') + '</span>';
+}
+
+function alo_list_status(status) {
+	var s = String(status || '').trim();
+	if (!s) { return '<span class="alo-kosong">-</span>'; }
+	var atas = s.toUpperCase();
+	var kelas = 'dn-badge';
+	if (atas === 'POST') { kelas += ' is-post'; }
+	else if (atas === 'CANCEL' || atas === 'CANCELED') { kelas += ' is-batal'; }
+	return '<span class="' + kelas + '">' + alo_list_teks(s) + '</span>';
+}
+
+function alo_list_aksi(item) {
+	var id = alo_list_teks(item.id);
+	var no = alo_list_teks(item.no_alk).replace(/'/g, '');
+	var tombol = '<button type="button" class="btn btn-sm btn-primary" onclick="print_alokasi(' + id + ')">'
+		+ '<i class="fa fa-print"></i> Print</button>';
+	// Yang sudah dibatalkan tidak perlu tombol Cancel lagi.
+	if (String(item.status || '').toUpperCase() !== 'CANCEL') {
+		tombol += ' <button type="button" class="btn btn-sm btn-danger" onclick="cancel_alokasi(\'' + id + '\',\'' + no + '\')">'
+			+ '<i class="fas fa-trash-alt"></i> Cancel</button>';
+	}
+	return tombol;
+}
+
+function alo_list_loading(tampil) {
+	$('#alo-list-area').toggleClass('is-muat-ulang',
+		!!tampil && !!ALO_LIST_DT && ALO_LIST_DT.rows().count() > 0);
+	$('#alo-list-loader').toggleClass('show', !!tampil);
+}
+
+function alo_list_dt() {
+	if (ALO_LIST_DT) { return ALO_LIST_DT; }
+
+	// Nomor alokasinya juga bisa dibuka lewat papan ketik.
+	$('#alo-list-area').off('keydown.alolist').on('keydown.alolist', '.dn-no-link', function (e) {
+		if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(this).trigger('click'); }
+	});
+
+	ALO_LIST_DT = $('#table-alokasi').DataTable({
+		scrollX: true,
+		autoWidth: false,
+		// Kotak pencarian, urutan, jumlah baris & halaman diingat selama tab
+		// browsernya masih terbuka, jadi kembali dari Create Alokasi tampilannya
+		// sama seperti tadi.
+		stateSave: true,
+		stateDuration: -1,
+		pageLength: 10,
+		lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+		order: [[1, 'desc']],
+		columnDefs: [
+			// Sel nomor berisi tautan; yang dipakai mengurutkan & mencari cuma
+			// nomornya.
+			{
+				targets: 0,
+				render: function (data, type) {
+					if (type === 'display' || type === 'export') { return data; }
+					return $('<div>').html(data).text() || data;
+				}
+			},
+			{ targets: [3, 4, 5], type: 'html' },
+			{ targets: 6, className: 'dn-tengah' },
+			// Angkanya sudah diberi pemisah ribuan oleh server - 'num-fmt' supaya
+			// urutannya tetap urut angka, bukan urut huruf.
+			{ targets: [7, 8, 9], className: 'dn-angka', type: 'num-fmt' },
+			{
+				targets: 10,
+				render: function (data, type) {
+					if (type === 'display' || type === 'export') { return data; }
+					return $('<div>').html(data).text() || data;
+				}
+			},
+			{ targets: 11, type: 'html', className: 'dn-tengah' },
+			{ targets: 12, orderable: false, searchable: false }
+		],
+		language: {
+			search: '',
+			searchPlaceholder: 'Search in list...',
+			lengthMenu: 'Show _MENU_ rows',
+			info: 'Showing _START_-_END_ of _TOTAL_',
+			infoEmpty: 'No data',
+			infoFiltered: '(filtered from _MAX_)',
+			zeroRecords: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-search"></i></span>'
+				+ '<div class="dn-kosong-judul">No allocation matches the search.</div></div>',
+			emptyTable: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-hand-holding-usd"></i></span>'
+				+ '<div class="dn-kosong-judul">No data yet - set the filter above, then click Search.</div></div>',
+			paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Prev' }
+		}
+	});
+
+	// Saringan Status bekerja di layar ini saja - datanya sudah ada.
+	$('#status').off('change.alolist').on('change.alolist', alo_list_saring_status);
+
+	if (ALO_LIST_DATA.length) { ALO_LIST_DT.rows.add(ALO_LIST_DATA).draw(); }
+	ALO_LIST_DT.columns.adjust();
+
+	// Lebar kolomnya dihitung ulang sesudah halaman benar-benar selesai
+	// dipasang (sidebar, font) dan setiap kali layarnya diubah ukurannya.
+	$(window).off('resize.alolist').on('resize.alolist', function () {
+		if (ALO_LIST_DT) { ALO_LIST_DT.columns.adjust(); }
+	});
+	$(window).off('load.alolist').on('load.alolist', function () {
+		if (ALO_LIST_DT) { ALO_LIST_DT.columns.adjust(); }
+	});
+	setTimeout(function () { if (ALO_LIST_DT) { ALO_LIST_DT.columns.adjust(); } }, 300);
+
+	return ALO_LIST_DT;
+}
+
+function alo_list_saring_status() {
+	if (!ALO_LIST_DT) { return; }
+	var v = $('#status').val();
+	// Dicocokkan utuh, supaya POST tidak ikut menarik baris lain yang
+	// kebetulan memuat kata itu.
+	ALO_LIST_DT.column(11).search(
+		(!v || v === 'all_status') ? '' : '^' + v + '$', true, false).draw();
+}
+
+function alo_list_simpan_filter() {
+	try {
+		sessionStorage.setItem(ALO_LIST_KUNCI, JSON.stringify({
+			customer: $('#customer').val(),
+			status: $('#status').val(),
+			from: $('#filter_from').val(),
+			to: $('#filter_to').val()
+		}));
+	} catch (e) { /* penyimpanan browser dimatikan - biarkan saja */ }
+}
+
+function alo_list_baca_filter() {
+	try {
+		var isi = sessionStorage.getItem(ALO_LIST_KUNCI);
+		return isi ? JSON.parse(isi) : null;
+	} catch (e) { return null; }
+}
+
+// Dipanggil sekali waktu halaman dibuka: filter terakhir dipakai lagi, lalu
+// daftarnya langsung diambil - jadi tidak perlu mengisi filter & menekan
+// Search lagi sesudah kembali dari layar Create.
+function alo_list_pulihkan() {
+	var f = alo_list_baca_filter();
+	if (!f) { return; }
+
+	if (f.from) { $('#filter_from').val(f.from); }
+	if (f.to) { $('#filter_to').val(f.to); }
+	if (f.customer) { $('#customer').val(f.customer).trigger('change'); }
+	if (f.status) { $('#status').val(f.status).trigger('change'); }
+
+	var st = ALO_LIST_DT ? ALO_LIST_DT.state.loaded() : null;
+	var panjang = ALO_LIST_DT ? ALO_LIST_DT.page.len() : 0;
+	ALO_LIST_HALAMAN = (st && st.start && panjang > 0) ? Math.floor(st.start / panjang) : -1;
+
+	alo_list_cari();
+}
+
+function alo_list_cari() {
+	var from = $('#filter_from').val();
+	var to = $('#filter_to').val();
+	var customer = $('#customer').val();
+
+	alo_list_dt();
+	alo_list_simpan_filter();
+	alo_list_loading(true);
+
+	return $.ajax({
+		url: 'cari_alokasi/' + from + '/' + to + '/' + customer + '/',
+		type: 'GET',
+		dataType: 'JSON'
+	}).done(function (response) {
+		var baris = [];
+		$.each(response || [], function (i, item) {
+			baris.push([
+				alo_list_nomor(item),
+				alo_list_teks(item.tgl_alk),
+				alo_list_teks(item.supplier),
+				alo_list_isi(item.doc_number),
+				alo_list_isi(item.bank),
+				alo_list_isi(item.account),
+				alo_list_teks(item.curr),
+				alo_list_teks(item.rate),
+				alo_list_teks(item.amount),
+				alo_list_teks(item.eqp_idr),
+				alo_list_dibuat(item),
+				alo_list_status(item.status),
+				alo_list_aksi(item)
+			]);
+		});
+		ALO_LIST_DATA = baris;
+
+		ALO_LIST_DT.clear();
+		if (baris.length) { ALO_LIST_DT.rows.add(baris); }
+		ALO_LIST_DT.draw();
+		// Halaman yang tadi dibuka dipulihkan setelah datanya masuk.
+		if (ALO_LIST_HALAMAN > 0) { ALO_LIST_DT.page(ALO_LIST_HALAMAN).draw('page'); }
+		ALO_LIST_HALAMAN = -1;
+		alo_list_saring_status();
+		ALO_LIST_DT.columns.adjust();
+	}).fail(function () {
+		nag_pesan('The allocation list could not be loaded. Please try again.', 'Load failed', 'error');
+	}).always(function () {
+		alo_list_loading(false);
+	});
+}
+
+/* ===================== Report Mutasi Invoice DP & CBD =====================
+   Sumbernya PI yang sekarang, potongannya dari alokasi - semuanya dihitung di
+   SQL (arnag/mutasi_pi_json), jadi di sini tinggal memajang. Versi lamanya
+   menghitung saldo awal & penambahan sendiri di browser dari dua angka
+   pembayaran; itu yang dulu bikin angkanya sulit dicocokkan dengan alokasi. */
+
+var MPI_DT = null;
+var MPI_DATA = [];
+
+function mpi_teks(v) {
+	return $('<div>').text((v === null || v === undefined) ? '' : v).html();
+}
+
+function mpi_angka(v) {
+	var n = parseFloat(String(v === null || v === undefined ? '' : v).replace(/,/g, ''));
+	if (isNaN(n)) { n = 0; }
+	return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Nol ditulis sama saja dengan angka lain - dibuat redup malah lebih susah
+// dibaca waktu satu kolom isinya nol semua.
+function mpi_sel_angka(v) {
+	return mpi_angka(v);
+}
+
+function mpi_tipe(v) {
+	var s = String(v || '').trim();
+	if (!s) { return '-'; }
+	return '<span class="dn-badge mpi-tipe">' + mpi_teks(s) + '</span>';
+}
+
+function mpi_loading(tampil) {
+	$('#mpi-list-area').toggleClass('is-muat-ulang', !!tampil && !!MPI_DT && MPI_DT.rows().count() > 0);
+	$('#mpi-list-loader').toggleClass('show', !!tampil);
+}
+
+function mpi_dt() {
+	if (MPI_DT) { return MPI_DT; }
+
+	MPI_DT = $('#table-mutasi-pi').DataTable({
+		scrollX: true,
+		autoWidth: false,
+		stateSave: true,
+		stateDuration: -1,
+		pageLength: 10,
+		lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+		order: [[1, 'asc'], [0, 'asc']],
+		columnDefs: [
+			{ targets: 2, type: 'html', className: 'dn-tengah' },
+			// Angkanya sudah berpemisah ribuan - 'num-fmt' supaya urutannya
+			// tetap urut angka, bukan urut huruf.
+			{ targets: [5, 6, 7, 8], className: 'dn-angka', type: 'num-fmt' }
+		],
+		language: {
+			search: '',
+			searchPlaceholder: 'Search in list...',
+			lengthMenu: 'Show _MENU_ rows',
+			info: 'Showing _START_-_END_ of _TOTAL_',
+			infoEmpty: 'No data',
+			infoFiltered: '(filtered from _MAX_)',
+			zeroRecords: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-search"></i></span>'
+				+ '<div class="dn-kosong-judul">No invoice matches the search.</div></div>',
+			emptyTable: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-chart-line"></i></span>'
+				+ '<div class="dn-kosong-judul">No data yet - set the period above, then click Search.</div></div>',
+			paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Prev' }
+		}
+	});
+
+	$(window).off('resize.mpi').on('resize.mpi', function () {
+		if (MPI_DT) { MPI_DT.columns.adjust(); }
+		mpi_luruskan_total();
+	});
+	$(window).off('load.mpi').on('load.mpi', function () {
+		if (MPI_DT) { MPI_DT.columns.adjust(); }
+	});
+	setTimeout(function () { if (MPI_DT) { MPI_DT.columns.adjust(); } }, 300);
+
+	MPI_DT.columns.adjust();
+	return MPI_DT;
+}
+
+// Lebar sel baris jumlah disalin dari kolom kepalanya - lihat penjelasan di
+// atas mpi_gambar_total(). Tanpa ini angkanya meleset dari kolomnya.
+function mpi_luruskan_total() {
+	var kepala = $('#mpi-list-area .dataTables_scrollHead thead th');
+	var baris = $('#mpi-total tr');
+	if (!kepala.length || !baris.length) { return; }
+
+	// Tabel kakinya dibuat selebar tabel kepalanya dulu, baru tiap selnya.
+	var tabelKepala = $('#mpi-list-area .dataTables_scrollHead table').first();
+	var tabelKaki = $('#mpi-total').closest('table');
+	if (tabelKepala.length && tabelKaki.length) {
+		tabelKaki.css({ width: tabelKepala.outerWidth() + 'px', tableLayout: 'fixed' });
+	}
+
+	baris.each(function () {
+		$(this).children('td').each(function (i) {
+			if (i >= kepala.length) { return; }
+			var lebar = kepala.eq(i).outerWidth();
+			$(this).css({
+				boxSizing: 'border-box',
+				width: lebar + 'px',
+				minWidth: lebar + 'px',
+				maxWidth: lebar + 'px'
+			});
+		});
+	});
+}
+
+// Jumlah per mata uang, dipasang di kaki tabelnya. Angkanya dihitung server
+// dari baris yang sama dengan isi tabelnya, jadi tidak mungkin berbeda.
+//
+// Mata uangnya tidak lagi jadi kolom sendiri, jadi disebut di baris ini -
+// satu baris untuk tiap mata uang.
+function mpi_gambar_total(total) {
+	if (!MPI_DT) { return; }
+
+	// Selnya mengikuti kolom yang sedang terlihat, jadi tetap lurus dengan
+	// kolom di atasnya kalau suatu saat ada kolom yang disembunyikan.
+	var tampak = [];
+	MPI_DT.columns().every(function (kol) {
+		if (this.visible()) { tampak.push(kol); }
+	});
+
+	var nilai = { 5: 'beginning', 6: 'addition', 7: 'deduction', 8: 'ending' };
+
+	var isi = '';
+	$.each(total || [], function (i, t) {
+		isi += '<tr>';
+		$.each(tampak, function (k, kol) {
+			if (kol === 0) {
+				isi += '<td><span class="mpi-total-label">Total ' + mpi_teks(t.curr) + '</span></td>';
+			} else if (nilai[kol]) {
+				isi += '<td class="dn-angka">' + mpi_angka(t[nilai[kol]]) + '</td>';
+			} else {
+				isi += '<td></td>';
+			}
+		});
+		isi += '</tr>';
+	});
+	$('#mpi-total').html(isi);
+	mpi_luruskan_total();
+}
+
+function mpi_cari() {
+	var dari = $('#filter_from').val();
+	var sampai = $('#filter_to').val();
+	var customer = $('#customer').val();
+
+	mpi_dt();
+	mpi_loading(true);
+
+	return $.ajax({
+		url: 'mutasi_pi_json/' + dari + '/' + sampai + '/' + customer,
+		type: 'GET',
+		dataType: 'JSON'
+	}).done(function (j) {
+		if (!j || !j.status) {
+			nag_pesan((j && j.message) || 'The report could not be loaded.', 'Load failed', 'error');
+			return;
+		}
+		var baris = [];
+		$.each(j.baris || [], function (i, b) {
+			baris.push([
+				mpi_teks(b.no_invoice),
+				mpi_teks(b.inv_date),
+				mpi_tipe(b.type_pi),
+				mpi_teks(b.customer),
+				mpi_teks(b.billed_to),
+				mpi_sel_angka(b.beginning),
+				mpi_sel_angka(b.addition),
+				mpi_sel_angka(b.deduction),
+				mpi_sel_angka(b.ending)
+			]);
+		});
+		MPI_DATA = baris;
+
+		MPI_DT.clear();
+		if (baris.length) { MPI_DT.rows.add(baris); }
+		MPI_DT.draw();
+		// Baris jumlahnya diisi DULU, baru lebar kolomnya dihitung ulang -
+		// kaki tabelnya tabel tersendiri, jadi kalau diisi sesudah hitungan
+		// itu angkanya meleset dari kolomnya.
+		mpi_gambar_total(j.total);
+		MPI_DT.columns.adjust();
+		// Hitung ulang kolom bisa menggeser lebarnya lagi - diluruskan sekali
+		// lagi sesudahnya.
+		mpi_luruskan_total();
+	}).fail(function () {
+		nag_pesan('The report could not be loaded. Please try again.', 'Load failed', 'error');
+	}).always(function () {
+		mpi_loading(false);
+	});
+}
+
+function mpi_export() {
+	var dari = $('#filter_from').val();
+	var sampai = $('#filter_to').val();
+	var customer = $('#customer').val();
+	window.open('export_mutasi_pi/' + dari + '/' + sampai + '/' + customer, '_blank');
+}

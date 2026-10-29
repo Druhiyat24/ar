@@ -14,42 +14,8 @@
      persis sama dengan dua layar lama (lihat crud-create-invoice.js).
      ========================================================================== -->
 <?php $this->load->view('arnag/dn_skin'); ?>
+<?php $this->load->view('arnag/_ukuran_sm'); ?>
 <style type="text/css">
-/* ===== Ukuran "sm" =====
-   Isian, select2, dan tombol dibuat 31px - bukan 38px bawaan skin DN.
-   !important dipakai karena templates/header.php mengunci tinggi, padding, dan
-   font .form-control / .btn / .select2-selection secara global. Dipasang di
-   layar DAN di tiap modal (modal ada di luar .content-wrapper). */
-.ci-sm .form-control,
-.ci-sm .select2-container .select2-selection--single,
-.ci-sm .input-group-text,
-.ci-sm .btn {
-  height: 31px !important;
-  font-size: 12.5px !important;
-  border-radius: 6px !important;
-}
-.ci-sm .form-control { padding: 3px 10px !important; }
-.ci-sm .input-group > .form-control { border-radius: 6px 0 0 6px !important; }
-.ci-sm .input-group-append .btn { border-radius: 0 6px 6px 0 !important; }
-.ci-sm .input-group-text { padding: 0 10px !important; border-radius: 0 6px 6px 0 !important; }
-.ci-sm .select2-container .select2-selection--single .select2-selection__rendered {
-  line-height: 29px;
-  padding-left: 10px;
-  font-size: 12.5px;
-}
-.ci-sm .select2-container .select2-selection--single .select2-selection__arrow { height: 29px; }
-.ci-sm .btn { padding: 0 12px !important; }
-.ci-sm .btn i { font-size: 11.5px; }
-/* Isi dropdown select2 ikut mengecil - dropdown-nya dititipkan ke <body>,
-   jadi tidak bisa di-scope ke .ci-sm (aman, style ini cuma dimuat disini). */
-.select2-container--bootstrap4 .select2-results__option,
-.select2-container--bootstrap4 .select2-search--dropdown .select2-search__field { font-size: 12.5px; }
-/* Kotak kecil di dalam tabel & angka ringkasan punya ukuran sendiri. */
-.ci-sm .dn-table .form-control.ci-kecil { height: 26px !important; font-size: 12px !important; padding: 0 8px !important; }
-.ci-sm .ci-sum-row .form-control[readonly] { height: auto !important; padding: 0 !important; font-size: 13.5px !important; }
-.ci-sm .ci-sum-row.is-grand .form-control[readonly] { font-size: 18px !important; }
-.ci-sm .ci-save-bar .btn { height: 31px !important; font-size: 12.5px !important; padding: 0 16px !important; }
-
 /* ===== Khusus layar Create Invoice ===== */
 /* Kartu atas dibuat sama tinggi biar rapi bersebelahan. */
 .nag-skin .ci-baris-atas > [class*="col-"] { display: flex; }
@@ -114,6 +80,80 @@
   background: #1e3a5f;
   box-shadow: none;
 }
+/* Kartu PI digulung sendiri kalau barisnya lebih dari sepuluh; judul kolom &
+   baris totalnya dibuat menempel supaya tetap kelihatan. Berlaku untuk dua
+   kartunya - yang terikat SO maupun yang lain. */
+.nag-skin #ci-pi-gulung,
+.nag-skin #ci-pi2-gulung { overflow: auto; }
+.nag-skin #ci-pi-gulung thead th,
+.nag-skin #ci-pi2-gulung thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #1e3a5f;
+}
+/* Kolom terakhir kartu ini ISIAN (Amount Used), bukan Action: penguncian ke
+   kanan dari dn_skin dimatikan. Kalau dibiarkan, sel isinya mengambang di
+   atas judulnya sendiri begitu tabelnya digulung. */
+.nag-skin #ci-pi-gulung .dn-table tbody td:last-child,
+.nag-skin #ci-pi2-gulung .dn-table tbody td:last-child {
+  position: static;
+  box-shadow: none;
+}
+.nag-skin #ci-pi-gulung .dn-table thead th:last-child,
+.nag-skin #ci-pi2-gulung .dn-table thead th:last-child {
+  position: sticky;
+  top: 0;
+  right: auto;
+  z-index: 6;
+  background: #1e3a5f;
+  box-shadow: none;
+}
+.nag-skin #ci-pi-gulung tfoot th,
+.nag-skin #ci-pi2-gulung tfoot th {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  background: #eef2f7;
+}
+
+/* ---- Kartu Other Proforma Invoice ----
+   Keterangan kecil di sebelah judul & catatan peringatannya. Daftarnya tidak
+   disaring customer, jadi kotak carinya ikut di baris judul. */
+.ci-pi-sub { display: block; font-size: 11px; font-weight: 400; color: #94a3b8; margin-top: 2px; }
+.ci-pi-cari { width: 260px; height: 32px; font-size: 12px; }
+.ci-pi-catatan {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 10px; padding: 8px 12px; border-radius: 6px;
+  background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 12px;
+}
+.ci-pi-catatan i { color: #ea580c; }
+/* Kartu PI yang kosong - keterangannya, bukan tabel melompong */
+.ci-pi-kosong td { text-align: center; color: #94a3b8; padding: 22px 12px; font-size: 12px; }
+.ci-pi-kosong td i { margin-right: 6px; opacity: .7; }
+/* ---- Kartu Proforma Invoice (DP / CBD / Advance) ----
+   Barisnya pendek-pendek, jadi yang diatur cuma kotak jumlah pemakaian,
+   baris yang terkunci, dan keterangan di sebelah tombol Clear All. */
+.nag-skin #ci-pi-card .ci-pi-pakai {
+  height: 28px;
+  width: 100%;
+  padding: 0 8px;
+  text-align: right;
+  border: 1px solid #dbe3ee;
+  border-radius: 6px;
+  font-size: 12.5px;
+}
+.nag-skin #ci-pi-card .ci-pi-pakai:focus { border-color: #1e3a5f; outline: 0; }
+.nag-skin #ci-pi-card .ci-pi-pakai:disabled { background: #f1f5f9; color: #94a3b8; }
+.nag-skin #ci-pi-card tr.ci-pi-mati td { color: #94a3b8; }
+.nag-skin #ci-pi-card tr.ci-pi-mati .ci-pi-alasan { font-style: italic; }
+.nag-skin #ci-pi-card input[type="checkbox"] {
+  width: 16px; height: 16px; cursor: pointer; accent-color: #1e3a5f; vertical-align: middle;
+}
+.nag-skin #ci-pi-card input[type="checkbox"]:disabled { cursor: not-allowed; }
+.nag-skin .ci-pi-info { align-self: center; font-size: 12px; color: #64748b; }
+.nag-skin #ci-pi-card tfoot th,
+.nag-skin #ci-pi2-card tfoot th { background: #f8fafc; }
 /* Tabel yang kolom terakhirnya MEMANG Action (Detail SJ di layar & daftar SJ
    di modal): sel isinya dikunci ke kanan oleh dn_skin, jadi judulnya harus
    ikut dikunci - kalau tidak, judul Action-nya tertinggal waktu tabel digeser
@@ -218,22 +258,7 @@
 .nag-skin .ci-catatan-exim i { margin-right: 5px; opacity: .8; }
 .nag-skin .dn-table .ci-kunci { color: #94a3b8; font-size: 12px; }
 
-/* Kotak cari di atas tabel - ikon kaca pembesar di dalam kotaknya. */
-.nag-skin .ci-cari {
-  position: relative;
-  max-width: 280px;
-  width: 100%;
-}
-.nag-skin .ci-cari .form-control { padding-left: 30px !important; }
-.nag-skin .ci-cari i {
-  position: absolute;
-  top: 50%;
-  left: 10px;
-  transform: translateY(-50%);
-  color: #94a3b8;
-  font-size: 11.5px;
-  pointer-events: none;
-}
+
 
 /* Layar di bawah 1700px: Detail SJ kolomnya 17, jarak dalam selnya dirapatkan
    supaya tabelnya tetap muat utuh - bukan tabelnya yang digeser ke samping. */
@@ -327,41 +352,12 @@
 .nag-skin .ci-sum-row.is-grand { border-bottom: 0; padding-top: 12px; }
 .nag-skin .ci-sum-row.is-grand > span { color: #0f172a; font-size: 12.5px; }
 .nag-skin .ci-sum-row.is-grand .form-control[readonly] { font-size: 18px; font-weight: 700; color: #0f172a; }
-/* Tombol buka/tutup rincian - dibuat datar supaya Grand Total tetap yang
-   paling menonjol di kartu ini. */
-.nag-skin .btn-ci-rinci,
-.ci-sm .btn-ci-rinci {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  width: 100%;
-  margin-top: 10px;
-  padding: 0 !important;
-  border: 1px dashed #cbd5e1 !important;
-  border-radius: 8px !important;
-  background: #f8fafc;
-  color: #475569;
-  font-size: 11.5px !important;
-  letter-spacing: .2px;
-  box-shadow: none !important;
-}
-.nag-skin .btn-ci-rinci:hover { background: #eef2f7; color: #1e3a5f; }
-.nag-skin .btn-ci-rinci i { font-size: 10px; transition: transform .15s ease; }
-.nag-skin .btn-ci-rinci.is-buka i { transform: rotate(180deg); }
+
 
 .nag-skin .ci-save-bar { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 .nag-skin .ci-save-bar .btn { min-width: 120px; height: 40px; padding: 0 22px !important; font-size: 14px; }
 
-/* Panel filter di dalam modal. */
-.nag-skin .ci-filter {
-  background: #f8fafc;
-  border: 1px solid #eef2f7;
-  border-radius: 10px;
-  padding: 14px 16px;
-  margin-bottom: 14px;
-}
-.nag-skin .ci-filter .form-group { margin-bottom: 0; }
+
 
 /* Ringkasan pilihan di kaki modal Add SO. */
 /* Catatan SJ yang disembunyikan (sudah dipesan booking Invoice EXIM). */
@@ -1135,6 +1131,117 @@
         </div>
       </div>
 
+
+      <!-- ===== Proforma Invoice yang memotong tagihan =====
+           DP, CBD & PI NON SO milik customer ini. Daftarnya disaring: mata
+           uangnya harus sama dengan invoice, dan DP/CBD baru boleh dipakai
+           kalau SO-nya memang ditagih di sini - yang tidak tetap kelihatan
+           tapi centangnya mati, lengkap dengan alasannya.
+
+           Satu nomor PI boleh dipakai berulang: yang diisi bukan "pakai atau
+           tidak" tapi BERAPA yang dipakai, dibatasi sisanya. Yang ber-DP masuk
+           ke Down Payment, sisanya ke Advance - keduanya readonly di Summary
+           karena angkanya datang dari sini. -->
+      <div class="card" id="ci-pi-card" hidden>
+        <div class="card-body">
+          <div class="table-header">
+            <span class="table-title"><i class="fas fa-file-invoice-dollar"></i>Proforma Invoice (DP / CBD / Advance)<small class="ci-pi-sub">matching the SO on this invoice</small></span>
+            <div class="dn-filter-aksi">
+              <span class="ci-pi-info" id="ci-pi-info"></span>
+              <button type="button" class="btn btn-dn-hapus-baris" id="ci-pi-kosongkan"><i class="fas fa-eraser"></i> Clear All</button>
+            </div>
+          </div>
+          <!-- Tingginya dibatasi sepuluh baris - lihat piBatasiTinggi()
+               di crud-create-invoice.js. Customer yang PI-nya banyak
+               jangan sampai mendorong Summary jauh ke bawah. -->
+          <div class="ci-table-wrap" id="ci-pi-gulung">
+            <table class="dn-table text-nowrap" style="width:100%" data-kotak="PI">
+              <thead>
+                <tr>
+                  <th style="width:44px" class="dn-tengah">
+                    <input type="checkbox" id="ci-pi-semua" title="Select all">
+                  </th>
+                  <th>No Prof Inv</th>
+                  <th>Proforma Type</th>
+                  <th>Date</th>
+                  <th>Curr</th>
+                  <th>SO Number</th>
+                  <th>Allocated To</th>
+                  <th class="text-right">Value</th>
+                  <th class="text-right">Used Elsewhere</th>
+                  <th class="text-right">Remaining</th>
+                  <th class="text-right" style="width:150px">Amount Used</th>
+                </tr>
+              </thead>
+              <tbody id="ci-pi-tbody"></tbody>
+              <tfoot>
+                <tr id="ci-pi-kaki" hidden>
+                  <th colspan="9" class="text-right">Down Payment / Advance</th>
+                  <th class="text-right" id="ci-pi-dp">0.00</th>
+                  <th class="text-right" id="ci-pi-adv">0.00</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+      <!-- ===== Other Proforma Invoice =====
+           Kartu di atas cuma memuat PI yang SO-nya ikut ditagih invoice ini -
+           itu patokannya. Kartu ini memuat SISANYA yang masih outstanding:
+           tanpa filter SO, tanpa filter customer, semua jenis (DP, CBD, PI
+           NON SO). Dipisah supaya jelas mana yang terikat SO dan mana yang
+           dipanggil atas pertimbangan sendiri - penandanya ikut tersimpan di
+           catatan alokasinya (kolom sumber).
+
+           Mata uang tetap tidak boleh lintas: PI mata uang lain tetap
+           kelihatan supaya user tahu PI itu ada, tapi centangnya mati. -->
+      <div class="card" id="ci-pi2-card" hidden>
+        <div class="card-body">
+          <div class="table-header">
+            <span class="table-title"><i class="fas fa-folder-open"></i>Other Proforma Invoice<small class="ci-pi-sub">all outstanding - not filtered by SO or customer</small></span>
+            <div class="dn-filter-aksi">
+              <input type="text" class="form-control ci-pi-cari" id="ci-pi2-cari" placeholder="Search proforma, customer, SO...">
+              <span class="ci-pi-info" id="ci-pi2-info"></span>
+              <button type="button" class="btn btn-dn-hapus-baris" id="ci-pi2-kosongkan"><i class="fas fa-eraser"></i> Clear All</button>
+            </div>
+          </div>
+          <div class="ci-pi-catatan">
+            <i class="fas fa-exclamation-triangle"></i>
+            These proforma invoices are not tied to the SO on this invoice. Check the number and the customer before using one.
+          </div>
+          <!-- Tingginya dibatasi sepuluh baris, sama seperti kartu di atas. -->
+          <div class="ci-table-wrap" id="ci-pi2-gulung">
+            <table class="dn-table text-nowrap" style="width:100%" data-kotak="OTHER">
+              <thead>
+                <tr>
+                  <th style="width:44px" class="dn-tengah">
+                    <input type="checkbox" id="ci-pi2-semua" title="Select all">
+                  </th>
+                  <th>No Prof Inv</th>
+                  <th>Proforma Type</th>
+                  <th>Customer</th>
+                  <th>Date</th>
+                  <th>Curr</th>
+                  <th>SO Number</th>
+                  <th>Allocated To</th>
+                  <th class="text-right">Value</th>
+                  <th class="text-right">Used Elsewhere</th>
+                  <th class="text-right">Remaining</th>
+                  <th class="text-right" style="width:150px">Amount Used</th>
+                </tr>
+              </thead>
+              <tbody id="ci-pi2-tbody"></tbody>
+              <tfoot>
+                <tr id="ci-pi2-kaki" hidden>
+                  <th colspan="10" class="text-right">Down Payment / Advance</th>
+                  <th class="text-right" id="ci-pi2-dp">0.00</th>
+                  <th class="text-right" id="ci-pi2-adv">0.00</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
       <!-- ===== Shipment Details (khusus Invoice Export) =====
            Isinya milik Invoice EXIM Export - tabel yang sama persis dengan
            yang dibaca menu EXIM. Tim AR boleh melengkapinya dari sini supaya
@@ -1235,7 +1342,9 @@
                 <div class="ci-sum-row"><span>Total</span><input type="text" class="form-control" id="ci-total" name="total" value="0.00" readonly></div>
                 <div class="ci-sum-row"><span>Discount</span><input type="text" class="form-control" id="ci-discount" name="discount" value="0.00" readonly></div>
                 <div class="ci-sum-row"><span>Down Payment</span><input type="text" class="form-control" id="ci-dp" name="dp" value="0.00" readonly></div>
-                <div class="ci-sum-row"><span>DP/CBD from Invoice</span><input type="text" class="form-control" id="ci-dpcbd" name="dp_cbd" value="0.00" readonly></div>
+                <!-- Down Payment & Advance datang dari kartu Proforma Invoice di atas -
+                     jadi keduanya tidak diketik di sini. -->
+                <div class="ci-sum-row"><span>Advance</span><input type="text" class="form-control" id="ci-dpcbd" name="dp_cbd" value="0.00" readonly></div>
                 <div class="ci-sum-row"><span>Return</span><input type="text" class="form-control" id="ci-retur" name="return" value="0.00" readonly></div>
                 <div class="ci-sum-row"><span>Total Without Tax</span><input type="text" class="form-control" id="ci-twot" name="twot" value="0.00" readonly></div>
                 <div class="ci-sum-row"><span>VAT <small class="text-muted" id="ci-vat-label"></small></span><input type="text" class="form-control" id="ci-vat" name="vat" value="0.00" readonly></div>

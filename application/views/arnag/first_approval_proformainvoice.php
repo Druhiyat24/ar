@@ -1,144 +1,150 @@
-<!-- Content Wrapper. Contains page content -->
-<div class="content-wrapper">
-    <!-- Content Header (Page header) -->
-    <section class="content-header">
-        <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1><?= $title; ?></h1>
-                </div>
-            </div>
-        </div><!-- /.container-fluid -->
-    </section>
-    <!-- Main content -->
-    <section class="content">
-        <div class="container-fluid">
-            <div class="row">
-                <!-- left column -->
-                <div class="col-md-12">
-                    <!-- general form elements -->
-                    <div class="card card-info">
-                        <div class="card-header">
-                            <h3 class="card-title">List Proforma Invoice</h3>
-                        </div>
-                        <!-- /.card-header -->
-                    </div>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Date Range</label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
-                                    </div>
-                                    <input type="text" class="form-control float-right" id="reservation2" name="reservation2">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label>Action</label>
-                            <div class="input-group">
-                                <button type="button" id="find_profinvoice_post" name="find_profinvoice_post" class="btn btn-primary" href="javascript:void(0)" onclick="cari_proforma_invoice_post()"><i class="fa fa-search"></i> Search</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- /.card-header -->
-                    <div class="d-flex justify-content-between">
-                           <div class="ml-auto">
-                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                            </div>
-                                <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_noinv()">
-                             </div>
-                <div class="card-body table-responsive p-0" style="height: 300px;">
-                    <table id="table-approval-profinvoice" class="table table-head-fixed text-nowrap">
-                        <thead>
-                            <tr>
-                                <th>No Prof Inv</th>
-                                <th>Date</th>
-                                <th>Customer</th>
-                                <th>Shipp</th>
-                                <th>PEB</th>
-                                <th>Type</th>
-                                <th>Faktur Pajak</th>
-                                <th>Status</th>
-                                <th>Amount</th>
-                                <th>ID</th>
-                                <th style="text-align:center"><input type="checkbox" onchange="check_approv_profinvoice(this)" id="cek_profinv_approve" name="cek_profinv_approve"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
+<!-- ==========================================================================
+     First Approval Proforma Invoice
 
-                        </tbody>
-                    </table>
-                </div>
-                <!-- /.card-body -->
+     Satu layar untuk semua jenis proforma - PI, PI NON SO, DP & CBD - sejak
+     DP/CBD jadi bagian Proforma Invoice. Kolom Proforma Type menunjukkan
+     jenisnya, dan Amount mengikuti jenisnya (DP/CBD memakai nilai DP-nya).
+
+     Tampilannya mengikuti List Proforma Invoice (skin .nag-skin di dn_skin.php).
+     Isi tabelnya digambar cari_proforma_invoice_post() di crud-nag.js, jadi id
+     tabel & urutan kolomnya tidak boleh berubah. Kotak From & To juga dibaca
+     dari sana lewat #filter_from / #filter_to.
+     ========================================================================== -->
+<?php $this->load->view('arnag/dn_skin'); ?>
+<?php $this->load->view('arnag/pi_approval_skin'); ?>
+
+<div class="content-wrapper nag-skin">
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1><?= $title; ?></h1>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+
+      <!-- Filter -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title"><i class="fas fa-stamp"></i><?= $title; ?></h3>
+        </div>
+        <div class="card-body">
+          <div class="row align-items-end pi-filter">
+            <div class="form-group col-lg-3 col-md-3 col-6 pi-f-tgl">
+              <label for="filter_from">From</label>
+              <div class="input-group dn-date-group">
+                <input type="text" name="filter_from" id="filter_from" class="form-control tanggal" value="<?= date('Y-m-d'); ?>" autocomplete="off">
+                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+              </div>
             </div>
-            <!-- Button Approve -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <button type="button" id="approv_inv" name="approv_inv" class="btn btn-warning" onclick="modal_show_approve_profinvoice()"><i class="fa fa-thumbs-up"></i> Approved</button>
-                        </div>
-                    </div>
-                </div>
+            <div class="form-group col-lg-3 col-md-3 col-6 pi-f-tgl">
+              <label for="filter_to">To</label>
+              <div class="input-group dn-date-group">
+                <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?= date('Y-m-d'); ?>" autocomplete="off">
+                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+              </div>
             </div>
-            <!--  -->
-        </div><!-- /.container-fluid -->
-    </section>
+            <div class="form-group col-12 pi-f-aksi">
+              <div class="dn-filter-aksi pi-aksi">
+                <button type="button" id="find_profinvoice_post" name="find_profinvoice_post" class="btn btn-primary" onclick="cari_proforma_invoice_post()"><i class="fa fa-search"></i> Search</button>
+                <button type="button" id="approv_inv" name="approv_inv" class="btn btn-dn-approve" onclick="modal_show_approve_profinvoice()"><i class="fa fa-thumbs-up"></i> Approve</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daftar -->
+      <div class="card">
+        <div class="card-body">
+          <div class="table-header">
+            <span class="table-title"><i class="fas fa-table"></i>Waiting for First Approval</span>
+            <!-- Tabelnya digambar crud-nag.js, bukan DataTables, jadi kotak
+                 carinya disediakan sendiri di sini. -->
+            <div class="pi-cari">
+              <span class="pi-cari-ikon"><i class="fas fa-search"></i></span>
+              <input type="text" id="cari_noinv" name="cari_noinv" autocomplete="off" placeholder="Search No Invoice.." onkeyup="cari_noinv()">
+            </div>
+          </div>
+          <div class="dn-list-area">
+            <div class="pi-tabel-gulung">
+              <table id="table-approval-profinvoice" class="dn-table text-nowrap" width="100%">
+                <thead>
+                  <tr>
+                    <th>No Prof Inv</th>
+                    <!-- Jenisnya ikut dipajang: satu layar untuk PI, PI NON SO,
+                         DP & CBD - lihat daftar Proforma Invoice. -->
+                    <th>Proforma Type</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Shipp</th>
+                    <th>PEB</th>
+                    <th>Type</th>
+                    <th>Tax Invoice No</th>
+                    <th>Status</th>
+                    <th>Amount</th>
+                    <th>ID</th>
+                    <th class="dn-cek"><input type="checkbox" onchange="check_approv_profinvoice(this)" id="cek_profinv_approve" name="cek_profinv_approve"></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
 </div>
+
+
+<!-- Nomor proforma bisa diklik - detailnya muncul di modal ini. -->
+<?php $this->load->view('arnag/pi_detail_modal'); ?>
 
 <!-- Modal Approved Invoice -->
 <div class="modal fade" id="modal-approve-profinvoice">
-    <form>
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Confirm</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div class="form-group row">
-                        <label for="id_inv_approv1" class="col-sm-5 col-form-label">Approved Proforma Invoice? </label>
-                    </div>
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="refresh_pi()">Approved</button>
-                </div>
-            </div>
+  <form>
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title">Confirm</h4>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
         </div>
-    </form>
+        <div class="modal-body">
+          <div class="form-group row">
+            <label for="id_inv_approv1" class="col-sm-12 col-form-label">Approve the selected proforma invoice?</label>
+          </div>
+        </div>
+        <div class="modal-footer justify-content-between">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="refresh_pi()">Approved</button>
+        </div>
+      </div>
+    </div>
+  </form>
 </div>
 
+<script>
+  /** Saring baris daftar menurut nomor proformanya - kolom pertama. */
+  function cari_noinv() {
+    var input = document.getElementById("cari_noinv");
+    var filter = input.value.toUpperCase();
+    var table = document.getElementById("table-approval-profinvoice");
+    var tr = table.getElementsByTagName("tr");
 
-    <script>
-    function cari_noinv() {
-        // Declare variables
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("cari_noinv");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("table-approval-profinvoice");
-        tr = table.getElementsByTagName("tr");
-
-        // Loop through all table rows, and hide those who don't match the search query
-        for (i = 0; i < tr.length; i++) {
-            td = tr[i].getElementsByTagName("td")[0]; //kolom ke berapa.. ini kolom ke 1,, harusnya kolom ke 0
-            if (td) {
-                txtValue = td.textContent || td.innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    tr[i].style.display = "";
-                } else {
-                    tr[i].style.display = "none";
-                }
-            }
-        }
+    for (var i = 0; i < tr.length; i++) {
+      var td = tr[i].getElementsByTagName("td")[0];
+      if (td) {
+        var txtValue = td.textContent || td.innerText;
+        tr[i].style.display = txtValue.toUpperCase().indexOf(filter) > -1 ? "" : "none";
+      }
     }
+  }
 </script>

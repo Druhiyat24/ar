@@ -1109,12 +1109,18 @@ function change_top_5_sales(option) {
 <!-- DataTable example1  -->
 <script>
   $(function() {
-    $("#example1").DataTable({
+    var dt_export1 = $("#example1").DataTable({
       "responsive": true,
       "lengthChange": false,
       "autoWidth": false,
       "buttons": ["copy", "csv", "excel", "pdf", "print", "colvis"]
-    }).buttons().container().appendTo('#example1_wrapper .col-md-6:eq(0)');
+    });
+    // Tombol export cuma bisa dipasang kalau plugin Buttons ikut dimuat;
+    // di layar yang tidak memuatnya pemanggilan ini melempar dan sisa
+    // blok ini - termasuk DataTables berikutnya - ikut mati.
+    if (dt_export1.buttons) {
+      dt_export1.buttons().container().appendTo('#example1_wrapper .col-md-6:eq(0)');
+    }
     $('#example2').DataTable({
       "paging": true,
       "lengthChange": false,
@@ -1144,12 +1150,18 @@ function change_top_5_sales(option) {
 <!-- DataTable example3  -->
 <script>
   $(function() {
-    $("#example3").DataTable({
+    var dt_export3 = $("#example3").DataTable({
       "responsive": true,
       "lengthChange": false,
       "autoWidth": false,
       "buttons": ["copy", "csv", "excel", "pdf", "print", "colvis"]
-    }).buttons().container().appendTo('#example_wrapper .col-md-6:eq(0)');
+    });
+    // Tombol export cuma bisa dipasang kalau plugin Buttons ikut dimuat;
+    // di layar yang tidak memuatnya pemanggilan ini melempar dan sisa
+    // blok ini - termasuk DataTables berikutnya - ikut mati.
+    if (dt_export3.buttons) {
+      dt_export3.buttons().container().appendTo('#example_wrapper .col-md-6:eq(0)');
+    }
     $('#example').DataTable({
       "paging": true,
       "lengthChange": false,
@@ -1284,7 +1296,10 @@ function change_top_5_sales(option) {
 
 <script>
   $(document).ready(function () {
-    var minDate = '<?= $min_date ?>';
+    // Layar yang tidak punya batas periode mengirimnya kosong - atau tidak
+    // mengirimnya sama sekali. Tanpa isset(), peringatan PHP-nya tercetak
+    // di tengah string ini dan seluruh blok skrip ini mati.
+    var minDate = '<?= isset($min_date) ? $min_date : '' ?>';
 
     let datepickerOptions = {
       format: "yyyy-mm-dd",

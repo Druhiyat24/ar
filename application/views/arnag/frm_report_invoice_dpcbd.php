@@ -1,305 +1,170 @@
-<!-- Content Wrapper. Contains page content -->
-<div class="content-wrapper">
-    <!-- Content Header (Page header) -->
-    <section class="content-header">
-        <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1><?= $title; ?></h1>
-                </div>
-            </div>
-        </div><!-- /.container-fluid -->
-    </section>
+<!-- ==========================================================================
+     Report Proforma Invoice
+     Tampilannya mengikuti menu List Invoice / Alokasi (skin .nag-skin di
+     dn_skin.php): kartu filter di atas, lalu kartu tabel dengan loader &
+     DataTables, dan jumlah per mata uang di bawahnya.
 
-    <!-- Main content -->
-    <section class="content">
-        <div class="container-fluid">
-            <div class="row">
-                <!-- left column -->
-                <div class="col-md-12">
-                    <!-- general form elements -->
-                    <div class="card card-info">
-                        <div class="card-header">
-                            <h3 class="card-title">Mutasi Invoice DP and CBD</h3>
-                        </div>
-                        <!-- /.card-header -->
-                        <!-- form start -->
-                        <form>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="form-group col-md-3">
-                                        <label>Customer</label>
-                                        <select class="form-control select2bs4" id="customer" name="customer">
-                                            <option value="all_customer">All Customer</option>
-                                            <?php foreach ($customer as $cs) : ?>
-                                                <option value="<?= $cs['Id_Supplier']; ?>"><?= $cs['Supplier']; ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <!-- <label>Date Range</label> -->
-                                            <label>Date Range</label>
-                                            <div class="input-group">
-                                                <div class="input-group-prepend">
-                                                    <span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
-                                                </div>
-                                                <input type="text" class="form-control float-right" id="cobacoba" name="cobacoba">
-                                            </div>
-                                        </div>
-                                    </div>
+     Isinya diambil mpi_cari() di crud-nag.js lewat arnag/mutasi_pi_json -
+     sumbernya PI yang sekarang (tbl_invoice_proforma) dan potongannya dari
+     alokasi. Hitungan saldonya di SQL, bukan di browser.
+     ========================================================================== -->
+<?php $this->load->view('arnag/dn_skin'); ?>
+<?php $this->load->view('arnag/_ukuran_sm'); ?>
+<style type="text/css">
+/* Tombol unduh - warnanya sama dengan Export di menu lain. */
+.nag-skin .btn-dn-excel {
+  background: linear-gradient(135deg, #15803d, #16a34a) !important;
+  border: none !important;
+  color: #fff !important;
+}
 
-                                    <div class="form-group">
-                                        <label>Action</label>
-                                        <div class="input-group">
-                                            <button type="button" id="find_invoice" name="find_invoice" class="btn btn-primary" href="javascript:void(0)" onclick="cari_mutasi_invoice_dp()"><i class="fa fa-search"></i> Search</button>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label>Export Data</label>
-                                        <div class="input-group">
-                                            <button type="button" class="btn btn-info" onclick="export_mutasi_invoice_dp()"><i class="fa fa-download"></i> Export To Excel</button>
-                                        </div>
-                                    </div>
+.nag-skin .mpi-aksi { margin-top: 12px; }
+@media (min-width: 1280px) {
+  .nag-skin .mpi-filter > .mpi-f-customer { flex: 0 1 28%; max-width: 420px; min-width: 240px; }
+  .nag-skin .mpi-filter > .mpi-f-tgl { flex: 0 0 16%; max-width: 16%; }
+  .nag-skin .mpi-filter > .mpi-f-aksi { flex: 0 0 auto; width: auto; max-width: none; }
+  .nag-skin .mpi-filter .mpi-aksi { margin-top: 0; flex-wrap: nowrap; }
+}
+.nag-skin .mpi-aksi .btn { padding: 0 12px !important; }
+.nag-skin .mpi-aksi .btn i { font-size: 11.5px; }
 
-                                </div>
-                            </div>
-                            <!-- /.card-body -->
-                        </form>
-                    </div>
-                </div>
-            </div>
+/* Kolom angka rata kanan & digitnya sejajar. */
+#mpi-list-area .dn-table td.dn-angka,
+#mpi-list-area .dn-table th.dn-angka { text-align: right; font-variant-numeric: tabular-nums; }
+#mpi-list-area .dn-table td.dn-tengah,
+#mpi-list-area .dn-table th.dn-tengah { text-align: center; }
+/* Penanda DP / CBD / PI NON SO. */
+.nag-skin .dn-badge.mpi-tipe { background: #e0f2fe; color: #075985; }
+/* ---- Baris jumlah di kaki tabel ---- */
+#mpi-list-area .dn-table tfoot td {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #0f172a;
+  border-top: 2px solid #e2e8f0;
+}
+#mpi-list-area .dn-table tfoot td.dn-angka { text-align: right; font-variant-numeric: tabular-nums; }
+/* Tulisan TOTAL-nya rata tengah di selnya. */
+#mpi-list-area .dn-table tfoot td:first-child { text-align: center; }
+/* Tulisan TOTAL USD / TOTAL IDR dibuat sebesar angkanya - itu penanda
+   mata uang barisnya, bukan keterangan kecil. */
+#mpi-list-area .dn-table tfoot .mpi-total-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  color: #0f172a;
+}
 
-            <!-- Data Table List Invoice -->
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">DataTable Kartu AR Detail</h3>
-                        </div>
-                        <div class="d-flex justify-content-between">
-                           <div class="ml-auto">
-                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                            </div>
-                                <input type="text"  id="cari_noinv" name="cari_noinv" required autocomplete="off" placeholder="Search no invoice..." onkeyup="cari_noinvoice()">
-                             </div>
+/* Kolom terakhir berisi data, bukan tombol - jangan dikunci ke kanan. */
+#mpi-list-area .dn-table tbody td:last-child,
+#mpi-list-area .dn-table thead th:last-child {
+  position: static; right: auto; z-index: auto; box-shadow: none;
+}
+/* Tabelnya minimal selebar kartunya; kalau isinya lebih lebar tetap bisa digeser. */
+#mpi-list-area .dataTables_scrollHeadInner,
+#mpi-list-area .dataTables_scrollHeadInner > table,
+#mpi-list-area .dataTables_scrollBody > table { min-width: 100% !important; }
 
-                        <!-- /.card-header -->
-                        <div class="card-body table-responsive p-0" style="height: 400px;">
-                            <table id="table-mutasi_invoicedp" class="table table-bordered table-head-fixed text-nowrap">
-                                <thead >
-                                    <tr>
-                                        <th style="text-align: center;vertical-align: middle;">Customer</th>
-                                        <th style="text-align: center;vertical-align: middle;">No Invoice</th>
-                                        <th style="text-align: center;vertical-align: middle;">Invoice Date</th>
-                                        <th style="text-align: center;vertical-align: middle;">Due Date</th>
-                                        <th style="text-align: center;vertical-align: middle;">TOP</th>
-                                        <th style="text-align: center;vertical-align: middle;">Curr</th>
-                                        <th style="text-align: center;vertical-align: middle;">Beginning Balance</th>
-                                        <th style="text-align: center;vertical-align: middle;">Addition</th>
-                                        <th style="text-align: center;vertical-align: middle;">Deduction</th>
-                                        <th style="text-align: center;vertical-align: middle;">Ending Balance</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+</style>
 
-                                </tbody>
-                            </table>
-                        </div>
-                        <!-- /.card-body -->
-                    </div>
-                    <!-- /.card -->
-                </div>
-            </div>
-        </div><!-- /.container-fluid -->
-    </section>
-</div>
+<div class="content-wrapper nag-skin ci-sm">
+  <section class="content">
+    <div class="container-fluid">
 
-<div class="modal fade" id="modal-cancel-inv">
-    <form action="<?= base_url('arnag/cancel_invoice'); ?>" method="POST">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Confirm</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <!--  -->
-                    <div class="form-group row">
-                        <label for="id_inv" class="col-sm-5 col-form-label">Sure Cancel List Invoice :</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control" id="txt_cancel_book" name="txt_cancel_book" style="border:none;" readonly>
-                        </div>
-                    </div>
-                    <!-- Hidden Text -->
-                    <input type="hidden" id="id_book_inv" name="id_book_inv" readonly>
-                    <input type="hidden" id="id_bppb" name="id_bppb" readonly>
-                    <input type="hidden" id="user" name="user" value="<?= $user['username']; ?>" readonly>
-                    <!--  -->
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <?php $data = $user['username'];
-                    if ($data == 'willy' || $data == 'yulianto' || $data == 'hady' || $data == 'hadi' || $data == 'jefri' || $data == 'ramon' || $data == 'lukman' || $data == 'oktora' || $data == 'oktora malau') 
-                    {
-                        echo '<button type="submit" class="btn btn-primary toastsDefaultDanger">Cancel Invoice</button>';
-                     } else {
-                    echo '<button type="button" disabled class="btn btn-primary toastsDefaultDanger">Cancel Invoice</button>';
-                }
-                    ?>
-                </div>
-            </div>
+      <!-- Filter -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title"><i class="fas fa-chart-line"></i><?= $title; ?></h3>
         </div>
-    </form>
-</div>
-
-<!-- Modal Invoice Detail -->
-<div class="modal fade" id="modal-inv-detail">
-    <div class=" modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title">Invoice Detail</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+        <div class="card-body">
+          <div class="row align-items-end mpi-filter">
+            <div class="form-group col-lg-4 col-md-6 mpi-f-customer">
+              <label for="customer">Customer</label>
+              <select class="form-control select2bs4" id="customer" name="customer">
+                <option value="all_customer">All Customer</option>
+                <?php foreach ($customer as $cs) : ?>
+                  <option value="<?= $cs['Id_Supplier']; ?>"><?= $cs['Supplier']; ?></option>
+                <?php endforeach; ?>
+              </select>
             </div>
-            <div class="modal-body">
-                <!-- Datatable Invoice Detail -->
-                <div class="form-group">
-                    <div class="col-md-4">
-                        <label>Invoice Number</label>
-                        <div class="input-group mb-3">
-                            <input type="text" class="form-control" id="inv_number_list" name="inv_number_list" readonly>
-                        </div>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-header">
-                        <!-- /.card-header -->
-                        <div class="card-body table-responsive p-0" style="height: 400px;">
-                            <table id="table-inv-detail" class="table table-head-fixed text-nowrap">
-                                <thead>
-                                    <tr>
-                                        <th>SO Number</th>
-                                        <th>Bppb Number</th>
-                                        <th>Shipping Number</th>
-                                        <th>WS#</th>
-                                        <th>Styleno</th>
-                                        <th>Product Group</th>
-                                        <th>Product Item</th>
-                                        <th>Color</th>
-                                        <th>Size</th>
-                                        <th>Curr</th>
-                                        <th>UOM</th>
-                                        <th>Qty</th>
-                                        <th>Unit Price</th>
-                                        <th>Discount (%)</th>
-                                        <th>Total Price</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-
-                                </tbody>
-                            </table>
-                        </div>
-                        <!-- /.card-body -->
-                    </div>
-                    <!-- End Datatable Nomor Booking Invoice  -->
-                </div>
-                <!-- Datatable Potongan Invoice  -->
-                <div class="row" style="display: flex; justify-content: flex-end">
-                    <div class="col-md-6">
-                        <!-- Form Element sizes -->
-                        <div class="card card-success">
-                            <div class="card-body">
-                                <!-- Start Input -->
-                                <form class="form-horizontal">
-                                    <div class="card-body">
-                                        <div class="form-group row">
-                                            <label for="mdl_total_det" class="col-sm-4 col-form-label">Total</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" id="mdl_total_det" name="mdl_total_det" style="text-align:right;" placeholder="0.00" readonly>
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label for="mdl_discount_det" class="col-sm-4 col-form-label">Discount</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" id="mdl_discount_det" name="mdl_discount_det" style="text-align:right;" placeholder="0.00" readonly>
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label for="mdl_dp_det" class="col-sm-4 col-form-label">Down Payment</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" id="mdl_dp_det" name="mdl_dp_det" style="text-align:right;" placeholder="0.00" readonly>
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label for="mdl_return_det" class="col-sm-4 col-form-label">Return</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" id="mdl_return_det" name="mdl_return_det" style="text-align:right;" placeholder="0.00" readonly>
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label for="mdl_twot_det" class="col-sm-4 col-form-label">Total With Out Tax</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" id="mdl_twot_det" name="mdl_twot_det" style="text-align:right;" placeholder="0.00" readonly>
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label for="mdl_vat_det" class="col-sm-4 col-form-label">VAT</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" id="mdl_vat_det" name="mdl_vat_det" style="text-align:right;" placeholder="0.00" readonly>
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label for="mdl_grandtotal_det" class="col-sm-4 col-form-label">Grand Total</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" id="mdl_grandtotal_det" name="mdl_grandtotal_det" style="text-align:right;" placeholder="0.00" readonly>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- /.card-body -->
-                                    <!-- /.card-footer -->
-                                </form>
-                                <!--  End Start Input -->
-                            </div>
-                            <!-- /.card-body -->
-                        </div>
-                    </div>
-                    <!--  -->
-                </div>
-                <!--  -->
-                <div class="modal-footer right-content-between">
-                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
-                </div>
+            <div class="form-group col-lg-3 col-md-3 col-6 mpi-f-tgl">
+              <label for="filter_from">From</label>
+              <div class="input-group dn-date-group">
+                <input type="text" name="filter_from" id="filter_from" class="form-control tanggal" value="<?= date('Y-m-01'); ?>" autocomplete="off">
+                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+              </div>
             </div>
-            <!-- /.modal-content -->
+            <div class="form-group col-lg-3 col-md-3 col-6 mpi-f-tgl">
+              <label for="filter_to">To</label>
+              <div class="input-group dn-date-group">
+                <input type="text" name="filter_to" id="filter_to" class="form-control tanggal" value="<?= date('Y-m-d'); ?>" autocomplete="off">
+                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+              </div>
+            </div>
+            <div class="form-group col-12 mpi-f-aksi">
+              <div class="dn-filter-aksi mpi-aksi">
+                <button type="button" id="find_invoice" name="find_invoice" class="btn btn-primary" onclick="mpi_cari()"><i class="fa fa-search"></i> Search</button>
+                <button type="button" class="btn btn-dn-excel" onclick="mpi_export()"><i class="fas fa-file-excel"></i> Export</button>
+              </div>
+            </div>
+          </div>
         </div>
-        <!-- /.modal-dialog -->
+      </div>
+
+      <!-- Isi laporan -->
+      <div class="card">
+        <div class="card-body">
+          <div class="table-header">
+            <span class="table-title"><i class="fas fa-table"></i>Data Proforma Invoice</span>
+          </div>
+          <div class="dn-list-area" id="mpi-list-area">
+            <div class="nag-loader-overlay" id="mpi-list-loader">
+              <div class="nag-loader-card">
+                <div class="nag-loader-spinner">
+                  <span class="nag-loader-ring nag-loader-ring-outer"></span>
+                  <span class="nag-loader-ring nag-loader-ring-inner"></span>
+                  <span class="nag-loader-brand">NAG</span>
+                </div>
+                <div class="nag-loader-caption">Memuat data...</div>
+              </div>
+            </div>
+            <table id="table-mutasi-pi" class="dn-table text-nowrap" width="100%">
+              <thead>
+                <tr>
+                  <th>No Invoice</th>
+                  <th>Invoice Date</th>
+                  <th>Type Document</th>
+                  <th>Customer</th>
+                  <th>Billed To</th>
+                  <th>Beginning Balance</th>
+                  <th>Addition</th>
+                  <th>Deduction</th>
+                  <th>Ending Balance</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+              <!-- Jumlah per mata uang - diisi mpi_cari() dari angka yang
+                   dihitung server, jadi tidak mungkin beda dengan isinya.
+                   Selnya sebelas penuh (tanpa colspan) supaya tetap lurus
+                   dengan kolom di atasnya waktu tabelnya digeser. -->
+              <tfoot id="mpi-total"></tfoot>
+            </table>
+          </div>
+
+
+        </div>
+      </div>
+
     </div>
+  </section>
+</div>
 
-    <script>
-    function cari_noinvoice() {
-        // Declare variables
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("cari_noinv");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("table-kartu_ar2");
-        tr = table.getElementsByTagName("tr");
-
-        // Loop through all table rows, and hide those who don't match the search query
-        for (i = 0; i < tr.length; i++) {
-            td = tr[i].getElementsByTagName("td")[1]; //kolom ke berapa.. ini kolom ke 1,, harusnya kolom ke 0
-            if (td) {
-                txtValue = td.textContent || td.innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    tr[i].style.display = "";
-                } else {
-                    tr[i].style.display = "none";
-                }
-            }
-        }
-    }
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    $(function () {
+      // Tabelnya disiapkan sejak halaman dibuka: kotak Search, pilihan jumlah
+      // baris, dan pesan "belum ada data" sudah ada sebelum Search ditekan.
+      mpi_dt();
+    });
+  });
 </script>
