@@ -6122,6 +6122,41 @@ public function mutasi_pi_json($dt_dari = null, $dt_sampai = null, $id_customer 
     ));
 }
 
+// Rincian Deduction satu Proforma Invoice di Report Proforma Invoice -
+// alokasi mana saja, dan uangnya dari nomor bank masuk / memorial jurnal
+// yang mana. Dipanggil waktu angka Deduction-nya diklik.
+public function mutasi_pi_deduction_json($no_pi = null, $dt_dari = null, $dt_sampai = null)
+{
+    if (!$this->session->userdata('username')) {
+        echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
+        return;
+    }
+
+    // Nomor PI memuat garis miring, jadi ruas URL-nya disambung lagi -
+    // sama seperti cetakan kwitansi.
+    $ruas = array_slice($this->uri->rsegment_array(), 2);
+    $tgl  = array();
+    foreach ($ruas as $r) {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $r)) { $tgl[] = $r; }
+    }
+    $no = implode('/', array_slice($ruas, 0, max(0, count($ruas) - count($tgl))));
+    if ($no === '') { $no = (string) $no_pi; }
+    $dari   = isset($tgl[0]) ? $tgl[0] : (string) $dt_dari;
+    $sampai = isset($tgl[1]) ? $tgl[1] : (string) $dt_sampai;
+
+    $baris = $this->Model_nag->mutasi_pi_deduction($no, $dari, $sampai);
+    $total = 0;
+    foreach ($baris as $b) { $total += (float) $b['amount']; }
+
+    echo json_encode(array(
+        'status'  => TRUE,
+        'no_pi'   => $no,
+        'periode' => $dari . ' s/d ' . $sampai,
+        'baris'   => $baris,
+        'total'   => round($total, 4),
+    ));
+}
+
 // Unduhan laporan yang sama, isinya persis dari sumber yang sama.
 public function export_mutasi_pi($dt_dari = null, $dt_sampai = null, $id_customer = null)
 {

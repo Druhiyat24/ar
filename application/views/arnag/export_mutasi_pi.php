@@ -28,12 +28,21 @@ foreach ($baris as $b) {
     <title>REPORT PROFORMA INVOICE</title>
     <style>
         table { width: 100%; border-collapse: collapse; font-family: Calibri, Arial, sans-serif; font-size: 11pt; }
-        th, td { border: 1px solid #94a3b8; padding: 4px 7px; }
-        th { background: #1e3a5f; color: #fff; text-align: center; }
+        /* .5pt = tebal yang DITULIS EXCEL SENDIRI untuk garis tipis (yang
+           keluar kalau orang menekan All Borders). "1px" sama dengan 0.75pt,
+           jatuh di antara tipis dan sedang, dan Excel membulatkannya ke
+           SEDANG. mso-border-alt menegaskannya sekali lagi. */
+        th, td { border: .5pt solid #000000; mso-border-alt: solid #000000 .5pt;
+                 padding: 4px 7px; }
+        /* Tanpa warna latar sama sekali - kepala kolom cukup dibedakan dengan
+           huruf tebal, seperti tabel Excel yang dibuat tangan. */
+        th { font-weight: bold; text-align: center; }
         .angka { mso-number-format: "\#\,\#\#0\.00"; text-align: right; }
-        .judul { font-size: 14pt; font-weight: bold; border: none; }
-        .periode { border: none; }
-        .total td { font-weight: bold; background: #eef2f7; }
+        /* mso-border-alt tidak ikut mati oleh "border: none" - harus
+           dimatikan sendiri, kalau tidak judulnya ikut bergaris di Excel. */
+        .judul { font-size: 14pt; font-weight: bold; border: none; mso-border-alt: none; }
+        .periode { border: none; mso-border-alt: none; }
+        .total td { font-weight: bold; }
     </style>
 </head>
 <body>

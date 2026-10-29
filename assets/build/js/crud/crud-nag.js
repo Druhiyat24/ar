@@ -21547,6 +21547,15 @@ function mpi_dt() {
 		}
 	});
 
+	// Angka Deduction dibuka lewat satu pemasangan di wadahnya - barisnya
+	// digambar ulang tiap pencarian, jadi tidak dipasang per baris.
+	$('#mpi-list-area').off('click.mpided').on('click.mpided', '.mpi-ded-link', function () {
+		mpi_deduction_buka($(this).data('pi'));
+	});
+	$('#mpi-list-area').off('keydown.mpided').on('keydown.mpided', '.mpi-ded-link', function (e) {
+		if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(this).trigger('click'); }
+	});
+
 	$(window).off('resize.mpi').on('resize.mpi', function () {
 		if (MPI_DT) { MPI_DT.columns.adjust(); }
 		mpi_luruskan_total();
@@ -21650,7 +21659,7 @@ function mpi_cari() {
 				mpi_teks(b.billed_to),
 				mpi_sel_angka(b.beginning),
 				mpi_sel_angka(b.addition),
-				mpi_sel_angka(b.deduction),
+				mpi_sel_deduction(b),
 				mpi_sel_angka(b.ending)
 			]);
 		});
@@ -21679,6 +21688,94 @@ function mpi_export() {
 	var sampai = $('#filter_to').val();
 	var customer = $('#customer').val();
 	window.open('export_mutasi_pi/' + dari + '/' + sampai + '/' + customer, '_blank');
+}
+
+/* ---- Rincian Deduction ----
+   Angka Deduction di laporan adalah jumlah yang dialokasikan ke PI itu di
+   dalam periode. Di balik angkanya ada daftar alokasinya - dari nomor bank
+   masuk atau memorial jurnal yang mana. */
+
+// Nomor PI memuat garis miring; dipakai di alamat, jadi tiap ruasnya
+// dikodekan sendiri supaya garis miringnya tetap jadi pemisah ruas.
+function mpi_ruas_url(teks) {
+	return String(teks === null || teks === undefined ? '' : teks)
+		.split('/').map(encodeURIComponent).join('/');
+}
+
+function mpi_sel_deduction(b) {
+	var n = parseFloat(String(b.deduction === null || b.deduction === undefined ? '' : b.deduction)
+		.replace(/,/g, ''));
+	if (isNaN(n)) { n = 0; }
+	var angka = mpi_angka(n);
+	// Yang nol tidak perlu dibuka - tidak ada alokasinya.
+	if (n === 0) { return angka; }
+	return '<span class="mpi-ded-link" role="button" tabindex="0" title="Show allocations"'
+		+ ' data-pi="' + mpi_teks(b.no_invoice) + '">' + angka + '</span>';
+}
+
+function mpi_deduction_buka(noPi) {
+	var kotak = $('#modal-mpi-ded');
+	if (!kotak.length) { return; }
+
+	var dari = $('#filter_from').val();
+	var sampai = $('#filter_to').val();
+
+	$('#mpi-ded-judul').text(noPi);
+	$('#mpi-ded-no').text(noPi);
+	$('#mpi-ded-periode').text(dari + ' s/d ' + sampai);
+	$('#mpi-ded-total').text('0.00');
+	$('#table-mpi-ded tbody').html('<tr><td colspan="8"><div class="mpi-ded-kosong">Loading...</div></td></tr>');
+	$('#mpi-ded-kaki').empty();
+	kotak.modal('show');
+
+	return $.ajax({
+		url: 'mutasi_pi_deduction_json/' + mpi_ruas_url(noPi) + '/' + dari + '/' + sampai,
+		type: 'GET',
+		dataType: 'JSON'
+	}).done(function (j) {
+		if (!j || !j.status) {
+			$('#table-mpi-ded tbody').html('<tr><td colspan="8"><div class="mpi-ded-kosong">'
+				+ mpi_teks((j && j.message) || 'The allocations could not be loaded.')
+				+ '</div></td></tr>');
+			return;
+		}
+		mpi_deduction_isi(j);
+	}).fail(function () {
+		$('#table-mpi-ded tbody').html('<tr><td colspan="8"><div class="mpi-ded-kosong">'
+			+ 'The allocations could not be loaded. Please try again.</div></td></tr>');
+	});
+}
+
+function mpi_deduction_isi(j) {
+	var baris = (j && j.baris) || [];
+	var isi = '';
+	$.each(baris, function (i, r) {
+		var sumber = String(r.sumber || '').toUpperCase();
+		var kelas = sumber === 'BANK' ? 'mpi-sumber-bank'
+			: (sumber === 'MEMORIAL' ? 'mpi-sumber-memorial' : '');
+		isi += '<tr>';
+		isi += '<td>' + mpi_teks(r.no_alokasi) + '</td>';
+		isi += '<td>' + mpi_teks(r.tgl_alokasi) + '</td>';
+		isi += '<td>' + (kelas
+			? '<span class="dn-badge ' + kelas + '">' + mpi_teks(r.sumber) + '</span>'
+			: mpi_teks(r.sumber)) + '</td>';
+		isi += '<td>' + mpi_teks(r.doc_number) + '</td>';
+		isi += '<td>' + mpi_teks(r.bank) + '</td>';
+		isi += '<td>' + mpi_teks(r.account) + '</td>';
+		isi += '<td>' + mpi_teks(r.curr) + '</td>';
+		isi += '<td>' + mpi_angka(r.amount) + '</td>';
+		isi += '</tr>';
+	});
+	if (!baris.length) {
+		isi = '<tr><td colspan="8"><div class="mpi-ded-kosong">'
+			+ 'No allocation in this period.</div></td></tr>';
+	}
+	$('#table-mpi-ded tbody').html(isi);
+
+	$('#mpi-ded-total').text(mpi_angka(j.total));
+	$('#mpi-ded-kaki').html(baris.length
+		? '<tr><td colspan="7">Total</td><td>' + mpi_angka(j.total) + '</td></tr>'
+		: '');
 }
 
 /* ===================== Sub Ledger - Uang Muka Penjualan =====================

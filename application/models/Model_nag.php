@@ -6504,6 +6504,60 @@ function mutasi_pi_dpcbd($dt_dari, $dt_sampai, $id_customer)
     return $this->db->query($sql, $saring)->result_array();
 }
 
+/**
+ * Rincian Deduction satu Proforma Invoice di layar Report Proforma Invoice.
+ *
+ * Angka Deduction-nya adalah yang dialokasikan ke PI itu DI DALAM periode
+ * laporan; di sini angka yang sama dipecah per alokasi, lengkap dengan dari
+ * mana uangnya: nomor bank masuk atau nomor memorial jurnal.
+ *
+ * Satu alokasi bisa memuat beberapa baris untuk PI yang sama (misalnya dua
+ * baris dengan keterangan berbeda) - dijumlah jadi satu baris supaya
+ * rinciannya sejalan dengan angka di laporannya.
+ */
+function mutasi_pi_deduction($no_pi, $dt_dari, $dt_sampai)
+{
+    $no = trim((string) $no_pi);
+    if ($no === '' || !$this->db->table_exists('tbl_alokasi_detail')) { return array(); }
+
+    // Tanggalnya dipastikan bentuknya - sama seperti mutasi_pi_dpcbd().
+    $bentuk = function ($v) {
+        return preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', (string) $v) ? (string) $v : NULL;
+    };
+    $dari   = $bentuk($dt_dari);
+    $sampai = $bentuk($dt_sampai);
+    if ($dari === NULL || $sampai === NULL) { return array(); }
+
+    // Nomor dokumennya menyebut asal uangnya: BM = bank masuk, GM = memorial
+    // jurnal. Selain itu tidak ditebak - ditulis apa adanya.
+    $sumber = "CASE"
+            . " WHEN UPPER(IFNULL(a.doc_number, '')) LIKE 'BM/%' THEN 'Bank'"
+            . " WHEN UPPER(IFNULL(a.doc_number, '')) LIKE 'GM/%' THEN 'Memorial'"
+            . " ELSE '-' END";
+
+    return $this->db->query("
+        SELECT a.no_alk                          AS no_alokasi,
+               DATE_FORMAT(a.tgl_alk, '%Y-%m-%d') AS tgl_alokasi,
+               IFNULL(NULLIF(a.doc_number, ''), '-') AS doc_number,
+               $sumber AS sumber,
+               IFNULL(NULLIF(c.nama_bank, ''), '-') AS bank,
+               IFNULL(NULLIF(a.account, ''), '-')   AS account,
+               IFNULL(NULLIF(a.curr, ''), 'IDR')    AS curr,
+               a.rate,
+               ROUND(SUM(d.amount), 4)           AS amount,
+               ROUND(SUM(d.eqp_idr), 2)          AS amount_idr,
+               COUNT(*)                          AS jml_baris
+          FROM tbl_alokasi_detail AS d
+    INNER JOIN tbl_alokasi        AS a ON a.no_alk = d.no_alk
+     LEFT JOIN masterbank         AS c ON c.id = a.bank
+         WHERE d.no_ref = ?
+           AND a.tgl_alk BETWEEN '$dari' AND '$sampai'
+           AND IFNULL(a.status, '') NOT LIKE 'CANCEL%'
+      GROUP BY a.no_alk, a.tgl_alk, a.doc_number, c.nama_bank, a.account, a.curr, a.rate
+      ORDER BY a.tgl_alk, a.no_alk
+    ", array($no))->result_array();
+}
+
 function pi_untuk_alokasi($dt_dari, $dt_sampai, $id_customer, $rate = 1)
 {
     if (!$this->db->table_exists('tbl_invoice_proforma')) {

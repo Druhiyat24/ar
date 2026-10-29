@@ -33,6 +33,49 @@
 #mpi-list-area .dn-table th.dn-angka { text-align: right; font-variant-numeric: tabular-nums; }
 #mpi-list-area .dn-table td.dn-tengah,
 #mpi-list-area .dn-table th.dn-tengah { text-align: center; }
+/* Angka Deduction bisa diklik - di balik angkanya ada daftar alokasinya. */
+.nag-skin .mpi-ded-link {
+  color: #1d4ed8;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 1px dashed rgba(29, 78, 216, .45);
+}
+.nag-skin .mpi-ded-link:hover { color: #1e3a5f; border-bottom-style: solid; }
+.nag-skin .mpi-ded-link:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(44, 82, 130, .45); border-radius: 6px; }
+
+/* ---- Modal rincian Deduction ---- */
+#modal-mpi-ded .modal-body { background: #f8fafc; }
+#modal-mpi-ded .modal-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.nag-skin .mpi-ded-kepala {
+  display: flex; flex-wrap: wrap; gap: 1px; margin-bottom: 14px;
+  background: #eef2f7; border: 1px solid #eef2f7; border-radius: 10px; overflow: hidden;
+}
+.nag-skin .mpi-ded-kepala > div { flex: 1 1 200px; padding: 9px 12px; background: #fff; min-width: 0; }
+.nag-skin .mpi-ded-label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .4px;
+  text-transform: uppercase; color: #94a3b8; margin-bottom: 3px;
+}
+.nag-skin .mpi-ded-isi { font-size: 13px; font-weight: 600; color: #1e293b; overflow-wrap: anywhere; }
+.nag-skin .mpi-ded-isi.is-angka { font-variant-numeric: tabular-nums; }
+#modal-mpi-ded .ci-table-wrap { background: #fff; max-height: 320px; }
+#modal-mpi-ded .dn-table td { font-size: 12px; }
+#modal-mpi-ded .dn-table td:nth-child(7),
+#modal-mpi-ded .dn-table td:nth-child(8),
+#modal-mpi-ded .dn-table th:nth-child(7),
+#modal-mpi-ded .dn-table th:nth-child(8) { text-align: right; font-variant-numeric: tabular-nums; }
+/* Kolom terakhir berisi data, bukan tombol - jangan dikunci ke kanan. */
+#modal-mpi-ded .dn-table tbody td:last-child,
+#modal-mpi-ded .dn-table thead th:last-child {
+  position: static; right: auto; z-index: auto; box-shadow: none;
+}
+#modal-mpi-ded .dn-table tfoot td {
+  background: #f8fafc; font-weight: 700; color: #0f172a; border-top: 2px solid #e2e8f0;
+}
+/* Penanda asal uangnya. */
+.nag-skin .dn-badge.mpi-sumber-bank { background: #dcfce7; color: #166534; }
+.nag-skin .dn-badge.mpi-sumber-memorial { background: #fef3c7; color: #92400e; }
+.nag-skin .mpi-ded-kosong { padding: 26px 0; text-align: center; color: #94a3b8; font-size: 12px; }
+
 /* Penanda DP / CBD / PI NON SO. */
 .nag-skin .dn-badge.mpi-tipe { background: #e0f2fe; color: #075985; }
 /* ---- Baris jumlah di kaki tabel ---- */
@@ -125,14 +168,14 @@
                   <span class="nag-loader-ring nag-loader-ring-inner"></span>
                   <span class="nag-loader-brand">NAG</span>
                 </div>
-                <div class="nag-loader-caption">Memuat data...</div>
+                <div class="nag-loader-caption">Loading data...</div>
               </div>
             </div>
             <table id="table-mutasi-pi" class="dn-table text-nowrap" width="100%">
               <thead>
                 <tr>
-                  <th>No Invoice</th>
-                  <th>Invoice Date</th>
+                  <th>No Proforma Invoice</th>
+                  <th>Tgl Proforma Invoice</th>
                   <th>Type Document</th>
                   <th>Customer</th>
                   <th>Billed To</th>
@@ -157,6 +200,63 @@
 
     </div>
   </section>
+</div>
+
+<!-- Rincian Deduction: alokasi mana saja yang memotong PI ini, dan uangnya
+     dari nomor bank masuk / memorial jurnal yang mana. Diisi
+     mpi_deduction_buka() di crud-nag.js. -->
+<div class="modal fade nag-skin ci-sm" id="modal-mpi-ded" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">
+          <i class="fas fa-hand-holding-usd"></i>
+          <span id="mpi-ded-judul">Deduction</span>
+        </h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="mpi-ded-kepala">
+          <div>
+            <div class="mpi-ded-label">Proforma Invoice</div>
+            <div class="mpi-ded-isi" id="mpi-ded-no">-</div>
+          </div>
+          <div>
+            <div class="mpi-ded-label">Period</div>
+            <div class="mpi-ded-isi" id="mpi-ded-periode">-</div>
+          </div>
+          <div>
+            <div class="mpi-ded-label">Total Deduction</div>
+            <div class="mpi-ded-isi is-angka" id="mpi-ded-total">0.00</div>
+          </div>
+        </div>
+
+        <div class="ci-table-wrap">
+          <table id="table-mpi-ded" class="dn-table text-nowrap" style="width:100%">
+            <thead>
+              <tr>
+                <th>No Alokasi</th>
+                <th>Tgl Alokasi</th>
+                <th>Source</th>
+                <th>Doc Number</th>
+                <th>Bank</th>
+                <th>Account</th>
+                <th>Curr</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot id="mpi-ded-kaki"></tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
