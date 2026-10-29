@@ -846,7 +846,11 @@ function inv_detail_jurnal_render(res) {
 			+ '</tr>';
 	}).join(''));
 
-	var selisih = Math.abs((+res.debit || 0) - (+res.credit || 0));
+	// Seimbang atau tidak diukur dari RUPIAHnya, bukan dari mata uang asingnya.
+	// Satu invoice bisa punya baris rupiah di tengah baris dolar - baris
+	// selisih kurs uang muka salah satunya - jadi cuma kolom rupiah yang
+	// pasti bisa dijumlah utuh.
+	var selisih = Math.abs((+res.debit_idr || 0) - (+res.credit_idr || 0));
 	$('#inv-detail-jurnal-tabel tfoot').html('<tr><td colspan="4">Total'
 		+ (curr ? ' (' + curr + ')' : '') + '</td>'
 		+ '<td class="dn-angka">' + inv_detail_angka(res.debit) + '</td>'

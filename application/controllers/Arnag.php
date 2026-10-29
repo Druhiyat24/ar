@@ -974,13 +974,29 @@ public function jurnal_pratinjau_json($id = null)
     }
 
     $baris = $this->Model_nag->jurnal_pratinjau($id);
+
+    // Mata uang invoicenya - dibaca dari baris pertama, sama seperti judul
+    // kolom Total di layarnya.
+    $curr_inv = '';
+    foreach ($baris as $b) {
+        $curr_inv = strtoupper(trim((string) (isset($b['curr']) ? $b['curr'] : '')));
+        break;
+    }
+
     $debit = 0;
     $credit = 0;
     $debit_idr = 0;
     $credit_idr = 0;
     foreach ($baris as $b) {
-        $debit      += (float) $b['debit'];
-        $credit     += (float) $b['credit'];
+        $c = strtoupper(trim((string) (isset($b['curr']) ? $b['curr'] : '')));
+        // Kolom mata uang asing cuma menjumlah baris yang memang mata uang
+        // itu. Baris selisih kurs uang muka ditulis dalam rupiah, jadi kalau
+        // ikut dijumlah, total dolarnya jadi angka campuran yang tidak berarti
+        // - dan totalnya kelihatan tidak seimbang padahal jurnalnya benar.
+        if ($curr_inv === '' || $c === $curr_inv) {
+            $debit  += (float) $b['debit'];
+            $credit += (float) $b['credit'];
+        }
         $debit_idr  += (float) $b['debit_idr'];
         $credit_idr += (float) $b['credit_idr'];
     }
