@@ -817,13 +817,27 @@ private function _rate_dn($type, $end_date = null)
 // TERPISAH disini (bukan disisipkan lagi ke SQL raksasa cari_projection_report),
 // biar query utamanya yang sudah sangat rapuh tidak makin berisiko.
 //
-// Invoice biasa (NAG/NAK) & Invoice Manual ambil Tax Base/VAT/Total Invoice dari
-// tbl_invoice_pot / tbl_invoice_pot_knitting / tbl_invoice_nb_pot (kolom twot =
-// dasar pengenaan pajak SETELAH discount/dp/retur, SEBELUM vat - sudah diverifikasi
-// twot + vat = grand_total di data live). Income Tax Art 23 = Tax Base x
-// persentase PPh (dari mtax, di-lookup lewat id_pph yang tersimpan di header saat
-// invoice dibuat). Debit Note TIDAK kena PPN/PPh sama sekali (arahan eksplisit) -
-// Tax Base & Total Invoice-nya sama dengan amount aslinya, VAT & PPh = 0.
+// SELURUH kolomnya dikunci ke Invoice Amount, tidak ada satu pun yang diambil
+// mentah dari tabel potongan:
+//
+//     Total Invoice = Invoice Amount x Rate
+//     VAT           = Total Invoice x (vat / grand_total)     <- porsi PPN invoice itu
+//     Tax Base      = Total Invoice - VAT                     <- sisanya, jadi pasti pas
+//     PPh 23        = Tax Base x persentase mtax
+//     Collection    = Total Invoice - PPh 23
+//
+// Dengan begitu Tax Base + VAT SELALU sama dengan Total Invoice, dan Total
+// Invoice selalu sama dengan Invoice Amount x Rate. Rumus lama mengambil twot,
+// vat, dan grand_total mentah-mentah dari tabel potongan - akibatnya angkanya
+// tidak ikut berkurang waktu invoicenya dibayar sebagian, dan untuk invoice
+// knitting kolom total_other (grand_total = twot + vat + total_other) hilang
+// entah ke mana sehingga Tax Base + VAT tidak pernah pas.
+//
+// Tabel potongannya sekarang dipilih menurut profit_center-nya, BUKAN menurut
+// urutan hasil UNION: 889 dari 890 invoice knitting punya baris nyangkut di
+// tbl_invoice_pot dengan nilai yang berbeda, dan urutan hasil UNION ALL tidak
+// dijamin MySQL. Invoice Manual dari tbl_invoice_nb_pot. Debit Note & saldo
+// awal tidak punya baris potongan - tidak kena PPN/PPh (arahan eksplisit).
 private function _attach_receivable_breakdown($rows)
 {
     if (empty($rows)) return $rows;
@@ -836,12 +850,12 @@ private function _attach_receivable_breakdown($rows)
         SELECT bi.no_invoice, p.twot, p.vat, p.grand_total, bi.id_pph
         FROM tbl_book_invoice bi
         INNER JOIN tbl_invoice_pot p ON p.id_book_invoice = bi.id
-        WHERE bi.no_invoice IN ($in_list)
+        WHERE bi.no_invoice IN ($in_list) AND bi.profit_center <> 'NAK'
         UNION ALL
         SELECT bik.no_invoice, pk.twot, pk.vat, pk.grand_total, bik.id_pph
         FROM tbl_book_invoice bik
         INNER JOIN tbl_invoice_pot_knitting pk ON pk.id_book_invoice = bik.id
-        WHERE bik.no_invoice IN ($in_list)
+        WHERE bik.no_invoice IN ($in_list) AND bik.profit_center = 'NAK'
         UNION ALL
         SELECT nb.no_inv AS no_invoice, np.twot, np.vat, np.grand_total, nb.id_pph
         FROM tbl_invoice_nb nb
@@ -849,44 +863,42 @@ private function _attach_receivable_breakdown($rows)
         WHERE nb.no_inv IN ($in_list)
     ")->result_array();
 
+    // Yang pertama ketemu dipakai - cabangnya sudah saling lepas lewat
+    // profit_center, jadi satu nomor invoice tidak mungkin punya dua baris.
     $potMap = [];
-    foreach ($pot as $p) { $potMap[$p['no_invoice']] = $p; }
+    foreach ($pot as $p) {
+        if (!isset($potMap[$p['no_invoice']])) { $potMap[$p['no_invoice']] = $p; }
+    }
 
     $mtax = $this->db->query("SELECT idtax, percentage FROM mtax")->result_array();
     $pctMap = [];
     foreach ($mtax as $m) { $pctMap[$m['idtax']] = (float) $m['percentage']; }
 
     foreach ($rows as &$r) {
-        // Receivable Amount ditampilkan dalam IDR (dikali rate), beda dengan
-        // kolom Invoice Amount yang tetap pakai mata uang asli invoice.
-        $rate = isset($r['rate']) ? (float) $r['rate'] : 1;
+        // Receivable Amount ditampilkan dalam IDR, beda dengan kolom Invoice
+        // Amount yang tetap pakai mata uang asli invoicenya.
+        //
+        // Titik tolaknya SELALU Invoice Amount x Rate. Yang dicari ke tabel
+        // potongan cuma satu: berapa bagian PPN dari invoice itu.
+        $totalInv = (float) $r['amount_idr'];
+        $vat      = 0;
+        $pct      = 0;
 
         if (isset($potMap[$r['no_invoice']])) {
             $p     = $potMap[$r['no_invoice']];
             $grand = (float) $p['grand_total'];
 
-            // Yang diproyeksikan bukan nilai penuh invoice, tapi porsinya yang
-            // sama persis dengan kolom Invoice Amount: sisa tagihan setelah
-            // alokasi, atau pembayaran di periode ini kalau ada alokasinya.
-            // Tax Base & VAT dipecah proporsional dari potongan invoice-nya.
             if ($grand != 0) {
-                $porsi    = (float) $r['amount'] / $grand;
-                $taxBase  = (float) $p['twot'] * $porsi * $rate;
-                $vat      = (float) $p['vat'] * $porsi * $rate;
-            } else {
-                $taxBase  = (float) $r['amount_idr'];
-                $vat      = 0;
+                $vat = round($totalInv * ((float) $p['vat'] / $grand), 2);
             }
-            $totalInv = (float) $r['amount_idr'];
-            $pct      = ($p['id_pph'] !== null && isset($pctMap[$p['id_pph']])) ? $pctMap[$p['id_pph']] : 0;
-            $pph23    = round($taxBase * $pct / 100, 2);
-        } else {
-            // Debit Note (atau baris yang belum ketemu pot-nya) - tidak ada PPN/PPh.
-            $taxBase  = (float) $r['amount_idr'];
-            $vat      = 0;
-            $totalInv = (float) $r['amount_idr'];
-            $pph23    = 0;
+            $pct = ($p['id_pph'] !== null && isset($pctMap[$p['id_pph']])) ? $pctMap[$p['id_pph']] : 0;
         }
+        // Dihitung sebagai SISA, bukan dari twot - supaya penjumlahannya pasti
+        // kembali ke Total Invoice berapa pun pembulatannya, dan ongkos lain
+        // (total_other di invoice knitting) tidak hilang di tengah jalan.
+        $taxBase = $totalInv - $vat;
+        $pph23   = round($taxBase * $pct / 100, 2);
+
         $r['tax_base']          = $taxBase;
         $r['tax_vat']           = $vat;
         $r['total_invoice']     = $totalInv;
