@@ -13394,7 +13394,11 @@ function at_credit_alokasi()
 
 			console.log(formData);
 
-			$.ajax({				
+			// Kirimannya DIBALIKAN, bukan cuma dilepas: save_alokasi() menunggu
+			// janji ini, jadi halamannya tidak boleh pindah sebelum jawabannya
+			// sampai. Dulu resolve() dipanggil tepat sesudah $.ajax() dikirim -
+			// kalau halamannya keburu pindah, barisnya tidak pernah masuk.
+			resolve($.ajax({				
 				url: "at_credit_inv/",
 				type: "POST",
 				data: formData,
@@ -13414,10 +13418,7 @@ function at_credit_alokasi()
 				error: function (jqXHR, textStatus, errorThrown) {
 					msg = 'Error Input Detail' + jqXHR.text
 				}
-			});
-			resolve({
-				msg: msg,
-			});
+			}));
 
 		}, 100);
 });  
@@ -14285,7 +14286,11 @@ function simpan_alokasi_detail()
 				'data_table': data
 			}
 
-			$.ajax({				
+			// Kirimannya DIBALIKAN, bukan cuma dilepas: save_alokasi() menunggu
+			// janji ini, jadi halamannya tidak boleh pindah sebelum jawabannya
+			// sampai. Dulu resolve() dipanggil tepat sesudah $.ajax() dikirim -
+			// kalau halamannya keburu pindah, barisnya tidak pernah masuk.
+			resolve($.ajax({				
 				url: "simpan_alokasi_detail/",
 				type: "POST",
 				data: fdata,
@@ -14303,10 +14308,7 @@ function simpan_alokasi_detail()
 				error: function (jqXHR, textStatus, errorThrown) {
 					msg = 'Error Input Detail' + jqXHR.text
 				}
-			});
-			resolve({
-				msg: msg,
-			});
+			}));
 
 		}, 100);
 	});  

@@ -141,7 +141,7 @@
                   <span class="nag-loader-ring nag-loader-ring-inner"></span>
                   <span class="nag-loader-brand">NAG</span>
                 </div>
-                <div class="nag-loader-caption">Memuat data...</div>
+                <div class="nag-loader-caption">Loading data...</div>
               </div>
             </div>
             <table id="table-alokasi" class="dn-table text-nowrap" width="100%">
