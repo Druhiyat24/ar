@@ -6084,11 +6084,11 @@ function cari_alokasi_report($dt_dari_kwt, $dt_sampai_kwt, $id_customer)
 
     if ($id_customer == "all_customer") {
 
-     $hasil = $this->db->query("SELECT a.no_alk, a.tgl_alk, c.Supplier,a.doc_number,d.nama_bank,d.no_rek,a.curr,b.no_ref,b.ref_date,b.total,IF(a.rate = '0','1',a.rate) as rate,b.eqp_idr,b.amount,b.keterangan,b.status,DATE_FORMAT(e.tanggal_input, '%Y-%m-%d') as tanggal_input,e.nama from tbl_alokasi a inner join tbl_alokasi_detail b on b.no_alk = a.no_alk left join masterbank d on d.id = a.bank left join mastersupplier c on c.Id_Supplier = a.customer left join tbl_log e on e.doc_number = a.no_alk where a.tgl_alk BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' ");
+     $hasil = $this->db->query("SELECT a.no_alk, a.tgl_alk, c.Supplier,a.doc_number,d.nama_bank,d.no_rek,a.curr,b.no_ref,b.ref_date,b.total,IF(a.rate = '0','1',a.rate) as rate,b.eqp_idr,b.amount,b.keterangan,b.status,DATE_FORMAT(e.tanggal_input, '%Y-%m-%d') as tanggal_input,e.nama from tbl_alokasi a inner join tbl_alokasi_detail b on b.no_alk = a.no_alk left join masterbank d on d.id = a.bank left join mastersupplier c on c.Id_Supplier = a.customer left join (select * from tbl_log GROUP BY doc_number) e on e.doc_number = a.no_alk where a.tgl_alk BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' ");
 
      return $hasil->result_array();
  } else {
-    $hasil = $this->db->query("SELECT a.no_alk, a.tgl_alk, c.Supplier,a.doc_number,d.nama_bank,d.no_rek,a.curr,b.no_ref,b.ref_date,b.total,IF(a.rate = '0','1',a.rate) as rate,b.eqp_idr,b.amount,b.keterangan,b.status,DATE_FORMAT(e.tanggal_input, '%Y-%m-%d') as tanggal_input,e.nama from tbl_alokasi a inner join tbl_alokasi_detail b on b.no_alk = a.no_alk left join masterbank d on d.id = a.bank left join mastersupplier c on c.Id_Supplier = a.customer left join tbl_log e on e.doc_number = a.no_alk where a.tgl_alk BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' AND a.customer = '$id_customer' ");
+    $hasil = $this->db->query("SELECT a.no_alk, a.tgl_alk, c.Supplier,a.doc_number,d.nama_bank,d.no_rek,a.curr,b.no_ref,b.ref_date,b.total,IF(a.rate = '0','1',a.rate) as rate,b.eqp_idr,b.amount,b.keterangan,b.status,DATE_FORMAT(e.tanggal_input, '%Y-%m-%d') as tanggal_input,e.nama from tbl_alokasi a inner join tbl_alokasi_detail b on b.no_alk = a.no_alk left join masterbank d on d.id = a.bank left join mastersupplier c on c.Id_Supplier = a.customer left join (select * from tbl_log GROUP BY doc_number) e on e.doc_number = a.no_alk where a.tgl_alk BETWEEN '$dt_dari_kwt' AND '$dt_sampai_kwt' AND a.customer = '$id_customer' ");
     return $hasil->result_array();
 }
 
