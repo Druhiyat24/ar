@@ -98,6 +98,33 @@ if (count($kolom_header) >= 5) {
 //
 // Yang dihitung baris terpanjangnya, bukan seluruh isi sel: satu sel bisa
 // memuat beberapa nilai yang memang sengaja ditumpuk ke bawah dengan <br>.
+//
+// ISI SEL DIUKUR DARI KATA TERPANJANGNYA, bukan dari panjang seluruhnya.
+// Yang tidak bisa dipatah mPDF cuma kata - baris boleh putus di spasi. Jadi
+// kolom berisi kalimat ("BULK FABRIC - FLAT KNIT AND ACCESSORIES ...") tidak
+// perlu selebar kalimatnya; kalau diukur utuh, dia memakan jatah kolom
+// sebelahnya yang berisi nomor panjang tanpa spasi
+// ("26100876/TWN-FCL/IMP"). Nomor itu lalu tidak muat, mPDF melebarkan
+// kolomnya sendiri sampai tabelnya lebih lebar dari kertas, dan jawabannya
+// MENGECILKAN HURUF SELURUH TABEL - itulah sebabnya sebagian DN tabelnya
+// tercetak kecil sendiri.
+//
+// Nama kolomnya tetap dihitung utuh: judul memang pendek, dan lebih enak
+// dibaca satu baris.
+$kata_terpanjang = function ($teks) {
+    // Spasi-tanpa-putus sengaja BUKAN pemisah kata - angka seperti
+    // "4&nbsp;656" memang harus utuh. \s di PCRE hanya spasi ASCII, jadi
+    // U+00A0 tidak ikut memisah dengan sendirinya.
+    $n = 0;
+    foreach (preg_split('/\s+/u', trim($teks)) as $kata) {
+        $p = mb_strlen($kata, 'UTF-8');
+        if ($p > $n) {
+            $n = $p;
+        }
+    }
+    return $n;
+};
+
 $panjang_kolom = array();
 foreach ($kolom_header as $h => $nama_kolom) {
     $panjang_kolom[$h] = mb_strlen($nama_kolom, 'UTF-8');
@@ -106,9 +133,9 @@ foreach ($isi_header as $per_baris) {
     foreach ($per_baris as $h => $nilai) {
         foreach ($nilai as $satu) {
             // $satu sudah di-escape; &amp; & &nbsp; jangan ikut terhitung
-            // panjang. mb_strlen supaya spasi-tanpa-putus (2 byte) tetap
-            // dihitung satu huruf.
-            $n = mb_strlen(html_entity_decode($satu, ENT_QUOTES, 'UTF-8'), 'UTF-8');
+            // panjang. mb_strlen di dalam $kata_terpanjang supaya
+            // spasi-tanpa-putus (2 byte) tetap dihitung satu huruf.
+            $n = $kata_terpanjang(html_entity_decode($satu, ENT_QUOTES, 'UTF-8'));
             if ($n > $panjang_kolom[$h]) {
                 $panjang_kolom[$h] = $n;
             }
@@ -186,10 +213,17 @@ foreach ($baris_rincian as $i => $baris) {
         .rincian th { background: #f5f6f7; border: 1px solid #dcdcdc; padding: 7px 6px; font-weight: bold; text-align: center; }
         .rincian td { border: 1px solid #dcdcdc; padding: 7px 6px; vertical-align: top; }
         .rincian .angka { text-align: right; }
-        /* Kolom tambahan (nomor invoice, reff, PO, qty) isinya satu kesatuan -
-           nomor yang patah di tengah tidak bisa dibaca lagi. Lebarnya sudah
-           dibagi menurut panjang isinya, jadi tidak akan meluber. */
-        .rincian .kolom-header { white-space: nowrap; }
+        /* Kolom tambahan TIDAK boleh white-space: nowrap.
+           mPDF menerjemahkan nowrap jadi "lebar minimum sel = lebar penuh
+           isinya" (Mpdf.php: if ($c['nowrap']) { $miw = $c['maw']; }). Satu
+           saja isinya panjang - mis. Item atau Reference yang beberapa kata -
+           lebar minimum tabelnya langsung melebihi lebar kertas, dan mPDF
+           menjawabnya dengan MENGECILKAN HURUF SELURUH TABEL
+           (shrink_tables_to_fit). Itu sebabnya sebagian DN tabelnya tercetak
+           kecil sendiri sementara DN lain normal.
+           Nomor tetap aman tanpa nowrap: mPDF cuma memutus baris di SPASI,
+           jadi "26100876/TWN-FCL/IMP" tidak mungkin terbelah, dan angka yang
+           pemisah ribuannya spasi sudah diganti spasi-tanpa-putus di atas. */
         /* Sel Description yang disambung dengan baris di atas/bawahnya. */
         .rincian td.sambung-atas { border-top: none; }
         .rincian td.sambung-bawah { border-bottom: none; }
