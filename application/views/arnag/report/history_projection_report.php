@@ -448,6 +448,10 @@ function _initHistDT(url) {
                 render: function (d, t, r) {
                     return '<span style="white-space:nowrap;">' +
                         '<button class="btn btn-info btn-xs" onclick="view_history_detail(\'' + r.doc_number + '\')"><i class="fa fa-eye"></i> View</button> ' +
+                        // Realisasi AR-nya dibandingkan dengan dokumen proyeksi INI -
+                        // tidak ada menu tersendiri, karena laporannya memang selalu
+                        // mengacu ke satu dokumen yang sudah tersimpan.
+                        '<button class="btn btn-success btn-xs" onclick="view_realization(\'' + r.doc_number + '\')"><i class="fa fa-scale-balanced"></i> Realization</button> ' +
                         '<button class="btn btn-danger btn-xs" onclick="cancel_history_projection(\'' + r.doc_number + '\')"><i class="fa fa-times"></i> Cancel</button>' +
                         '</span>';
                 }
@@ -693,6 +697,15 @@ function formatDate(ymd) {
     let months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     let p = ymd.split('-');
     return p[2] + ' ' + months[parseInt(p[1]) - 1] + ' ' + p[0];
+}
+
+/* Laporan realisasi vs proyeksi untuk dokumen ini. Alamatnya dirakit dari ruas
+   terakhir alamat halaman ini, jadi tidak perlu tahu di folder mana aplikasinya
+   dipasang. */
+function view_realization(doc_number) {
+    if (!doc_number) { return; }
+    window.location.href = window.location.pathname.replace(/[^\/]*$/, 'realization_report')
+        + '?doc_number=' + encodeURIComponent(doc_number);
 }
 
 function cancel_history_projection(doc_number) {

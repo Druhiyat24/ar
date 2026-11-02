@@ -22180,3 +22180,434 @@ $(document).off('click.umdok').on('click.umdok', '#um-list-area a.um-dok', funct
 	e.preventDefault();
 	um_dok_buka($(this).data('no'));
 });
+
+/* =====================================================================
+ * AR Collection Realization & Variance Report
+ *
+ * Layarnya dibuka dari tombol "Realization" di daftar History Projection
+ * Report, jadi nomor dokumennya sudah pasti ada di alamatnya (RV_DOC).
+ *
+ * Semua angkanya dihitung server - Model_report::realization_report().
+ * Di sini tidak ada satu pun perhitungan ulang, supaya layar dan
+ * unduhannya tidak mungkin berbeda angka.
+ * ================================================================== */
+
+var RV_DT = null;
+
+function rv_teks(v) {
+	return $('<div>').text((v === null || v === undefined) ? '' : v).html();
+}
+
+function rv_isi(v) {
+	var s = String(v === null || v === undefined ? '' : v).trim();
+	return s === '' ? '-' : rv_teks(s);
+}
+
+/* Angka minus diberi warna - yang dicari mata di laporan selisih memang
+   yang minus. Nilainya sendiri tetap angka asli, bukan teks berformat,
+   supaya pengurutan kolomnya tetap urut angka. */
+function rv_render_angka(v, tipe) {
+	if (v === null || v === undefined || v === '') { return tipe === 'display' ? '-' : 0; }
+	var n = parseFloat(v);
+	if (isNaN(n)) { return tipe === 'display' ? '-' : 0; }
+	if (tipe !== 'display') { return n; }
+	var teks = n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+	return n < 0 ? '<span class="rv-minus">' + teks + '</span>' : teks;
+}
+
+function rv_render_persen(v, tipe) {
+	if (v === null || v === undefined || v === '') { return tipe === 'display' ? '-' : 0; }
+	var n = parseFloat(v);
+	if (isNaN(n)) { return tipe === 'display' ? '-' : 0; }
+	if (tipe !== 'display') { return n; }
+	return (n * 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+}
+
+/* Hari dibulatkan - minus berarti tertagih LEBIH CEPAT dari rencananya. */
+function rv_render_hari(v, tipe) {
+	if (v === null || v === undefined || v === '') { return tipe === 'display' ? '-' : 0; }
+	var n = parseInt(v, 10);
+	if (isNaN(n)) { return tipe === 'display' ? '-' : 0; }
+	if (tipe !== 'display') { return n; }
+	return n < 0 ? '<span class="rv-minus">' + n + '</span>' : String(n);
+}
+
+function rv_lencana(status) {
+	var kelas = { 'Collected': 's-collected', 'Partially Collected': 's-partial',
+		'Not Collected': 's-belum', 'Unplanned Collection': 's-unplanned' };
+	var s = String(status || '').trim();
+	if (s === '') { return '-'; }
+	return '<span class="rv-status ' + (kelas[s] || '') + '">' + rv_teks(s) + '</span>';
+}
+
+function rv_loading(tampil) {
+	$('#rv-list-area').toggleClass('is-muat-ulang', !!tampil && !!RV_DT && RV_DT.rows().count() > 0);
+	$('#rv-list-loader').toggleClass('show', !!tampil);
+}
+
+/* Alamat endpoint lain di controller yang sama - ruas terakhir alamat
+   halaman ini yang diganti, jadi tidak perlu tahu di folder mana aplikasi
+   dipasang. */
+function rv_alamat(nama) {
+	return window.location.pathname.replace(/[^\/]*$/, nama);
+}
+
+function rv_dt() {
+	if (RV_DT) { return RV_DT; }
+
+	// Peta kolomnya (0-based):
+	//   0 Customer  1 Invoice No  2 Invoice Date  3 Due Date  4 Currency
+	//   5-8   Projection  : tanggal, OCY, rate, eqv IDR
+	//   9-12  Realization : tanggal, OCY, rate, eqv IDR
+	//   13-20 Result      : status, achievement, date variance, days past due,
+	//                       explanation, variance excl FX, FX variance, total
+	//
+	// Tiap kolom HANYA disebut sekali: columnDefs yang belakangan MENIMPA
+	// className sebelumnya, bukan menambahkannya.
+	RV_DT = $('#table-realization').DataTable({
+		scrollX: true,
+		autoWidth: false,
+		stateSave: true,
+		stateDuration: -1,
+		pageLength: 10,
+		lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+		order: [[0, 'asc'], [1, 'asc']],
+		columnDefs: [
+			{ targets: [2, 3], className: 'dn-tengah' },
+			{ targets: 4, className: 'dn-tengah' },
+			{ targets: 5, className: 'dn-tengah g-proj rv-batas' },
+			{ targets: [6, 7, 8], className: 'dn-angka g-proj', render: rv_render_angka },
+			{ targets: 9, className: 'dn-tengah g-real rv-batas' },
+			{ targets: [10, 11, 12], className: 'dn-angka g-real', render: rv_render_angka },
+			{ targets: 13, className: 'dn-tengah g-hasil rv-batas' },
+			{ targets: 14, className: 'dn-angka g-hasil', render: rv_render_persen },
+			{ targets: [15, 16], className: 'dn-angka g-hasil', render: rv_render_hari },
+			{ targets: 17, className: 'g-hasil' },
+			{ targets: [18, 19, 20], className: 'dn-angka g-hasil', render: rv_render_angka }
+		],
+		language: {
+			search: '',
+			searchPlaceholder: 'Search in list...',
+			lengthMenu: 'Show _MENU_ rows',
+			info: 'Showing _START_-_END_ of _TOTAL_',
+			infoEmpty: 'No data',
+			infoFiltered: '(filtered from _MAX_)',
+			zeroRecords: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-search"></i></span>'
+				+ '<div class="dn-kosong-judul">No invoice matches the search.</div></div>',
+			emptyTable: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-scale-balanced"></i></span>'
+				+ '<div class="dn-kosong-judul">No data yet.</div></div>',
+			paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Prev' }
+		}
+	});
+
+	$(window).off('resize.rv').on('resize.rv', function () {
+		if (RV_DT) { RV_DT.columns.adjust(); }
+		rv_luruskan_total();
+	});
+	setTimeout(function () { if (RV_DT) { RV_DT.columns.adjust(); } }, 300);
+
+	RV_DT.columns.adjust();
+	return RV_DT;
+}
+
+/* Lebar sel baris jumlah disalin dari kolom kepalanya - kaki tabelnya tabel
+   tersendiri waktu scrollX menyala, jadi tanpa ini angkanya meleset. */
+function rv_luruskan_total() {
+	// Sel kepala TIAP KOLOM - bukan baris kepala terakhir. Lima kolom
+	// keterangan di depan memakai rowspan, jadi baris kepala terakhir tidak
+	// sama panjang dengan jumlah kolomnya.
+	var kepala = [];
+	if (RV_DT) {
+		RV_DT.columns().every(function () { kepala.push($(this.header())); });
+	}
+	var baris = $('#rv-total tr');
+	if (!kepala.length || !baris.length) { return; }
+
+	var tabelKepala = $('#rv-list-area .dataTables_scrollHead table').first();
+	var tabelKaki = $('#rv-total').closest('table');
+	if (tabelKepala.length && tabelKaki.length) {
+		tabelKaki.css({ width: tabelKepala.outerWidth() + 'px', tableLayout: 'fixed' });
+	}
+	baris.each(function () {
+		$(this).children('td').each(function (i) {
+			if (i >= kepala.length) { return; }
+			var lebar = kepala[i].outerWidth();
+			$(this).css({ boxSizing: 'border-box', width: lebar + 'px',
+				minWidth: lebar + 'px', maxWidth: lebar + 'px' });
+		});
+	});
+}
+
+function rv_gambar_papan(r) {
+	if (!r) { $('#rv-papan').empty(); return; }
+
+	var uang = function (v) {
+		return parseFloat(v || 0).toLocaleString('en-US',
+			{ minimumFractionDigits: 2, maximumFractionDigits: 2 });
+	};
+	var persen = function (v) {
+		if (v === null || v === undefined) { return '-'; }
+		return (parseFloat(v) * 100).toLocaleString('en-US',
+			{ minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+	};
+
+	// Rekonsiliasi harus nol. Kalau tidak, ada baris yang hilang atau
+	// terhitung dua kali - jadi angkanya diberi warna, bukan cuma dipajang.
+	var selisih = Math.abs(parseFloat(r.rekonsiliasi || 0));
+	var rekon = selisih < 0.01 ? 'is-pas' : 'is-meleset';
+
+	var kartu = [
+		['rv-proj',  'Projected Collection', uang(r.projected), 'Projected IDR at projected rate'],
+		['rv-real',  'Actual Collection', uang(r.actual), 'Actual IDR at actual rate'],
+		['rv-capai', 'Collection Achievement', persen(r.achievement), 'Includes FX impact'],
+		['rv-var',   'Total Collection Variance', uang(r.total_variance), 'Actual minus projected'],
+		['rv-var',   'Variance Excl. FX', uang(r.variance_excl_fx), 'At projected rate'],
+		['rv-fx',    'FX Variance', uang(r.fx_variance), 'On realized OCY'],
+		['rv-belum', 'Not Collected', uang(r.not_collected),
+			rv_teks(r.jml_not_collected) + ' invoice(s) fully unpaid'],
+		['rv-belum', 'Unplanned Collections', uang(r.unplanned), 'Collection without planned date'],
+		['rv-rekon ' + rekon, 'Reconciliation Check', uang(r.rekonsiliasi), 'Should equal zero']
+	];
+
+	var html = '';
+	$.each(kartu, function (i, k) {
+		html += '<div class="rv-kartu ' + k[0] + '">'
+			+ '<span class="rv-k-judul">' + rv_teks(k[1]) + '</span>'
+			+ '<span class="rv-k-nilai">' + rv_teks(k[2]) + '</span>'
+			+ '<span class="rv-k-kaki">' + k[3] + '</span>'
+			+ '</div>';
+	});
+	$('#rv-papan').html(html);
+}
+
+/* Rekap per buyer. Papan di atas menjawab "berapa", tabel ini menjawab
+   "siapa" - buyer mana yang tertinggal dari rencananya. */
+function rv_gambar_buyer(r) {
+	var tabel = $('#rv-buyer');
+	if (!tabel.length) { return; }
+
+	var uang = function (v) {
+		var n = parseFloat(v || 0);
+		var teks = n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+		return n < 0 ? '<span class="rv-minus">' + teks + '</span>' : teks;
+	};
+	var persen = function (v) {
+		if (v === null || v === undefined) { return '-'; }
+		return (parseFloat(v) * 100).toLocaleString('en-US',
+			{ minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+	};
+
+	var daftar = (r && r.buyer) || [];
+	if (!daftar.length) {
+		tabel.find('tbody').html('<tr><td colspan="5" class="rv-kosong">No data yet.</td></tr>');
+		tabel.find('tfoot').empty();
+		return;
+	}
+
+	var isi = '';
+	$.each(daftar, function (i, b) {
+		isi += '<tr>'
+			+ '<td>' + rv_teks(b.customer) + '</td>'
+			+ '<td class="dn-angka">' + uang(b.projected) + '</td>'
+			+ '<td class="dn-angka">' + uang(b.actual) + '</td>'
+			+ '<td class="dn-angka">' + uang(b.variance) + '</td>'
+			+ '<td class="dn-angka">' + persen(b.achievement) + '</td>'
+			+ '</tr>';
+	});
+	tabel.find('tbody').html(isi);
+
+	// Jumlahnya diambil dari angka ringkasan yang sama dengan papannya -
+	// bukan dijumlah ulang dari barisnya, supaya tidak mungkin berselisih.
+	tabel.find('tfoot').html('<tr>'
+		+ '<td>TOTAL</td>'
+		+ '<td class="dn-angka">' + uang(r.projected) + '</td>'
+		+ '<td class="dn-angka">' + uang(r.actual) + '</td>'
+		+ '<td class="dn-angka">' + uang(r.total_variance) + '</td>'
+		+ '<td class="dn-angka">' + persen(r.achievement) + '</td>'
+		+ '</tr>');
+}
+
+/* Baris jumlah di kaki tabel - diambil dari angka ringkasan yang sama
+   dengan papan di atasnya, bukan dijumlah ulang dari barisnya. */
+function rv_gambar_total(r) {
+	if (!RV_DT) { return; }
+	if (!r) { $('#rv-total').empty(); return; }
+
+	var uang = function (v) {
+		var n = parseFloat(v || 0);
+		var teks = n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+		return n < 0 ? '<span class="rv-minus">' + teks + '</span>' : teks;
+	};
+
+	// Satu sel per kolom - TANPA colspan. Kaki tabelnya tabel tersendiri
+	// waktu scrollX menyala; begitu ada colspan, lebarnya tidak bisa lagi
+	// disalin per kolom dan angkanya meleset dari kepalanya.
+	var nilai = { 8: 'projected', 12: 'actual', 18: 'variance_excl_fx',
+		19: 'fx_variance', 20: 'total_variance' };
+	var warna = {};
+	$.each({ 'g-proj': [5, 6, 7, 8], 'g-real': [9, 10, 11, 12],
+		'g-hasil': [13, 14, 15, 16, 17, 18, 19, 20] }, function (kelas, kolom) {
+		$.each(kolom, function (i, k) { warna[k] = kelas; });
+	});
+
+	var tampak = [];
+	RV_DT.columns().every(function (kol) { if (this.visible()) { tampak.push(kol); } });
+
+	var isi = '<tr>';
+	$.each(tampak, function (i, kol) {
+		var kls = warna[kol] ? ' ' + warna[kol] : '';
+		if (kol === 0) {
+			isi += '<td><span class="rv-total-label">TOTAL</span></td>';
+		} else if (nilai[kol]) {
+			isi += '<td class="dn-angka' + kls + '">' + uang(r[nilai[kol]]) + '</td>';
+		} else {
+			isi += '<td class="' + $.trim(kls) + '"></td>';
+		}
+	});
+	isi += '</tr>';
+
+	$('#rv-total').html(isi);
+	rv_luruskan_total();
+}
+
+function rv_muat() {
+	rv_dt();
+	if (!RV_DOC) {
+		nag_pesan('No projection document was selected.', 'Cannot open', 'warning');
+		return;
+	}
+	rv_loading(true);
+
+	return $.ajax({
+		url: rv_alamat('get_realization_report'),
+		type: 'POST',
+		data: { doc_number: RV_DOC },
+		dataType: 'JSON'
+	}).done(function (j) {
+		if (!j || j.status !== 'success') {
+			nag_pesan((j && j.message) || 'The report could not be loaded.', 'Load failed', 'error');
+			return;
+		}
+
+		var h = j.header || {};
+		$('#rv-doc').text(h.doc_number || '-');
+		$('#rv-periode').text((h.periode_dari || '-') + ' s/d ' + (h.periode_sampai || '-'));
+		$('#rv-customer').text(h.id_customer && String(h.id_customer).toLowerCase() !== 'all'
+			? h.id_customer : 'All Customer');
+		$('#rv-oleh').text((h.created_by || '-') + (h.created_at ? ' - ' + String(h.created_at).slice(0, 10) : ''));
+
+		var baris = [];
+		$.each(j.invoice || [], function (i, b) {
+			baris.push([
+				rv_teks(b.customer),
+				rv_teks(b.no_invoice),
+				rv_isi(b.inv_date),
+				rv_isi(b.due_date),
+				rv_isi(b.curr),
+				rv_isi(b.proj_date),
+				b.proj_ocy, b.proj_rate, b.proj_idr,
+				rv_isi(b.real_date),
+				b.real_ocy, b.real_rate, b.real_idr,
+				rv_lencana(b.status),
+				b.achievement, b.date_variance, b.days_past_due,
+				rv_catat_sel(b.no_invoice, b.explanation),
+				b.variance_excl_fx, b.fx_variance, b.total_variance
+			]);
+		});
+
+		RV_DT.clear();
+		if (baris.length) { RV_DT.rows.add(baris); }
+		RV_DT.draw();
+		rv_gambar_papan(j.ringkas);
+		rv_gambar_buyer(j.ringkas);
+		rv_gambar_total(j.ringkas);
+		RV_DT.columns.adjust();
+	}).fail(function () {
+		nag_pesan('The report could not be loaded. Please try again.', 'Load failed', 'error');
+	}).always(function () {
+		rv_loading(false);
+	});
+}
+
+function rv_export() {
+	if (!RV_DOC) { return; }
+	window.open(rv_alamat('export_realization_excel') + '?doc_number=' + encodeURIComponent(RV_DOC), '_blank');
+}
+
+function rv_kembali() {
+	window.location.href = rv_alamat('history_projection_report');
+}
+
+/* ---------- Variance Explanation ----------
+   Satu-satunya kolom yang diketik tangan: di lembar kerja tim AR kolom ini
+   memang tidak berumus. Disimpan per dokumen + per invoice, jadi penjelasan
+   bulan September tidak terbawa ke dokumen bulan berikutnya. */
+
+function rv_catat_sel(no_invoice, teks) {
+	var isi = String(teks === null || teks === undefined ? '' : teks).trim();
+	var kelas = isi === '' ? 'rv-catat is-kosong' : 'rv-catat';
+	var tampil = isi === '' ? 'Click to add...' : isi;
+	return '<a class="' + kelas + '" data-inv="' + rv_teks(no_invoice) + '">'
+		+ rv_teks(tampil) + '</a>';
+}
+
+function rv_catat_buka(no_invoice, teks_lama) {
+	if (typeof Swal === 'undefined') { return; }
+
+	Swal.fire({
+		title: 'Variance Explanation',
+		html: '<div style="font-size:12px;color:#64748b;margin-bottom:8px;">'
+			+ rv_teks(no_invoice) + '</div>',
+		input: 'textarea',
+		inputValue: teks_lama || '',
+		inputAttributes: { rows: 4, placeholder: 'Why does this invoice differ from the plan?' },
+		showCancelButton: true,
+		confirmButtonText: 'Save',
+		cancelButtonText: 'Cancel',
+		customClass: { popup: 'dn-swal' },
+		// Tombolnya dikunci selama kiriman belum dijawab, supaya tidak
+		// tersimpan dua kali kalau diklik berkali-kali.
+		showLoaderOnConfirm: true,
+		allowOutsideClick: function () { return !Swal.isLoading(); },
+		preConfirm: function (isi) {
+			return $.ajax({
+				url: rv_alamat('save_variance_explanation'),
+				type: 'POST',
+				data: { doc_number: RV_DOC, no_invoice: no_invoice, explanation: isi },
+				dataType: 'JSON'
+			}).then(function (j) {
+				if (!j || j.status !== 'success') {
+					throw new Error((j && j.message) || 'The explanation could not be saved.');
+				}
+				return isi;
+			}, function () {
+				throw new Error('The explanation could not be saved. Please try again.');
+			}).catch(function (e) {
+				Swal.showValidationMessage(e.message || 'The explanation could not be saved.');
+			});
+		}
+	}).then(function (hasil) {
+		if (!hasil || !hasil.isConfirmed) { return; }
+		rv_catat_perbarui(no_invoice, hasil.value);
+	});
+}
+
+/* Selnya diperbarui di tempat - tabelnya tidak perlu dimuat ulang, jadi
+   halaman, urutan, dan kotak pencariannya tidak ikut terlempar. */
+function rv_catat_perbarui(no_invoice, teks) {
+	if (!RV_DT) { return; }
+	RV_DT.rows().every(function () {
+		var d = this.data();
+		if (String(d[1]) !== rv_teks(no_invoice) && String(d[1]) !== String(no_invoice)) { return; }
+		d[17] = rv_catat_sel(no_invoice, teks);
+		this.data(d);
+	});
+	RV_DT.draw(false);
+}
+
+$(document).off('click.rvcatat').on('click.rvcatat', '#rv-list-area a.rv-catat', function (e) {
+	e.preventDefault();
+	var a = $(this);
+	var lama = a.hasClass('is-kosong') ? '' : a.text();
+	rv_catat_buka(a.data('inv'), lama);
+});

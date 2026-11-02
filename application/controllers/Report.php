@@ -746,4 +746,94 @@ public function export_projection_report($id_customer = '', $from = '', $to = ''
         $mpdf->Output('projection_history_' . $doc_number . '.pdf', 'I');
     }
 
+
+    // =========================================================
+    // AR COLLECTION REALIZATION & VARIANCE REPORT
+    //
+    // Tidak punya menu sendiri. Dibuka dari tombol "Realization" di daftar
+    // History Projection Report, karena laporannya memang selalu mengacu ke
+    // satu dokumen proyeksi yang sudah tersimpan.
+    // =========================================================
+
+    public function realization_report()
+    {
+        if (!$this->session->userdata('username')) { redirect('auth'); }
+
+        $data['title']      = 'AR Collection Realization & Variance Report';
+        $data['doc_number'] = (string) $this->input->get('doc_number');
+        $data['user']       = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
+        $data['user_access_1']      = $this->Model_nag->load_user_access_1($this->session->userdata('username'));
+        $data['user_access_2']      = $this->Model_nag->load_user_access_2($this->session->userdata('username'));
+        $data['user_access_3']      = $this->Model_nag->load_user_access_3($this->session->userdata('username'));
+        $data['user_access_4']      = $this->Model_nag->load_user_access_4($this->session->userdata('username'));
+        $data['user_access_5']      = $this->Model_nag->load_user_access_5($this->session->userdata('username'));
+        $data['user_access_6']      = $this->Model_nag->load_user_access_6($this->session->userdata('username'));
+        $data['user_access_7']      = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
+        $data['user_access_reverse']   = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
+        $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
+
+        $this->load->view('templates/header',  $data);
+        $this->load->view('templates/sidebar', $data);
+        $this->load->view('arnag/report/realization_report', $data);
+        $this->load->view('templates/footer',  $data);
+    }
+
+    public function get_realization_report()
+    {
+        $doc_number = $this->input->post('doc_number') ?: $this->input->get('doc_number');
+        if (!$doc_number) {
+            echo json_encode(['status' => 'error', 'message' => 'Document number is required.']);
+            return;
+        }
+
+        $hasil = $this->Model_report->realization_report($doc_number);
+        if (empty($hasil['header'])) {
+            echo json_encode(['status' => 'error', 'message' => 'Projection document was not found.']);
+            return;
+        }
+
+        // Lembar Projection & Realization hanya dipakai unduhannya - tidak
+        // perlu ikut dikirim ke layar, barisnya bisa ribuan.
+        echo json_encode([
+            'status'  => 'success',
+            'header'  => $hasil['header'],
+            'invoice' => $hasil['invoice'],
+            'ringkas' => $hasil['ringkas'],
+        ]);
+    }
+
+    public function save_variance_explanation()
+    {
+        $doc_number = $this->input->post('doc_number');
+        $no_invoice = $this->input->post('no_invoice');
+        if (!$doc_number || !$no_invoice) {
+            echo json_encode(['status' => 'error', 'message' => 'Document or invoice number is missing.']);
+            return;
+        }
+
+        $ok = $this->Model_report->simpan_variance_explanation(
+            $doc_number, $no_invoice, (string) $this->input->post('explanation'),
+            $this->session->userdata('username'));
+
+        echo json_encode($ok
+            ? ['status' => 'success']
+            : ['status' => 'error', 'message' => 'Table tbl_realization_variance does not exist yet. Please run the migration first.']);
+    }
+
+    public function export_realization_excel()
+    {
+        if (!$this->session->userdata('username')) { redirect('auth'); }
+
+        $doc_number = $this->input->get('doc_number');
+        $hasil = $this->Model_report->realization_report($doc_number);
+        if (empty($hasil['header'])) { show_404(); return; }
+
+        error_reporting(E_ALL & ~E_WARNING & ~E_NOTICE);
+        ini_set('display_errors', 0);
+
+        $this->load->library('ar_realization_xlsx');
+        $this->ar_realization_xlsx->berkas($hasil)
+            ->kirim($this->ar_realization_xlsx->nama_berkas($hasil));
+    }
+
 }

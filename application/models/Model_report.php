@@ -1341,4 +1341,444 @@ public function get_history_projection_detail($doc_number)
 }
 
 
+
+/* =====================================================================
+ * AR COLLECTION REALIZATION & VARIANCE REPORT
+ *
+ * Membandingkan satu DOKUMEN PROYEKSI yang sudah tersimpan
+ * (tbl_history_projection_h/_det, nomornya PR/MMYY/NNNNN) dengan alokasi
+ * yang benar-benar terjadi di periode dokumen itu.
+ *
+ * Acuannya sengaja dokumen, bukan rentang tanggal bebas: angka proyeksinya
+ * tidak ikut berubah kalau invoicenya diedit belakangan, jadi laporan yang
+ * sama dibuka bulan depan tetap mengeluarkan angka yang sama.
+ *
+ * Yang dikembalikan mengikuti lembar kerja tim AR:
+ *   header     - kepala dokumen proyeksinya
+ *   proyeksi   - isi tbl_history_projection_det apa adanya
+ *   realisasi  - satu baris per baris alokasi yang punya no_ref
+ *   invoice    - gabungan keduanya, satu baris per nomor invoice
+ *   ringkas    - indikator kinerja + rekap per buyer
+ * ================================================================== */
+
+/**
+ * Jenis baris potongan di alokasi, dikenali dari COA-nya.
+ *
+ * PPh 23, komisi, biaya bank, dan pembulatan TIDAK punya kolom sendiri di
+ * tbl_alokasi_detail. Masing-masing baris tersendiri TANPA no_ref, dan
+ * satu-satunya penanda jenisnya nomor COA-nya:
+ *
+ *   1.52.02  PAJAK DIBAYAR DIMUKA PPH PASAL 23
+ *   6.14.03  BEBAN KOMISI PENJUALAN
+ *   8.51.xx  BEBAN ADMINISTRASI BANK / PROVISI BANK / ADMINISTRASI REKENING
+ *   lainnya  pembulatan, selisih kurs, beban lain-lain, dst -> Others
+ */
+private function jenis_potongan_alokasi($coa)
+{
+    $coa = trim((string) $coa);
+    if ($coa === '1.52.02')          { return 'pph23'; }
+    if ($coa === '6.14.03')          { return 'komisi'; }
+    if (strpos($coa, '8.51.') === 0) { return 'bank'; }
+    return 'lain';
+}
+
+/**
+ * Baris realisasi: satu baris per baris alokasi yang menunjuk ke dokumen
+ * (no_ref terisi), lengkap dengan kolom potongannya.
+ *
+ * Potongan tadi ditempelkan kembali ke baris dokumen begini:
+ *
+ *   - PPh 23 DIBAGI ke semua baris dokumen di alokasi yang sama, menurut
+ *     besar nilainya. PPh memang melekat per invoice - yang tidak tersimpan
+ *     cuma rinciannya - jadi membaginya tetap menjaga jumlah per alokasi
+ *     sama persis dengan jurnalnya.
+ *   - Komisi, biaya bank, dan Others ditempel ke baris dokumen TERAKHIR.
+ *     Ketiganya biaya per transaksi bank, bukan per invoice, dan lembar
+ *     contoh dari tim AR menaruhnya persis begitu.
+ *
+ * Tandanya dibalik: di tabelnya potongan tersimpan minus, di laporan
+ * ditulis positif karena kolomnya memang kolom "dikurangi".
+ *
+ * Alokasi maupun baris yang berstatus CANCEL tidak ikut sama sekali.
+ */
+public function realisasi_alokasi($dari, $sampai, $id_customer = 'All')
+{
+    $dari   = $this->db->escape_str($dari);
+    $sampai = $this->db->escape_str($sampai);
+
+    $saring = '';
+    if ($id_customer !== '' && strtolower((string) $id_customer) !== 'all') {
+        $saring = " AND a.customer = '" . $this->db->escape_str($id_customer) . "' ";
+    }
+
+    $hasil = $this->db->query("
+        SELECT a.no_alk, a.tgl_alk, a.customer AS id_customer,
+               IFNULL(c.supplier, a.customer) AS customer,
+               a.doc_number, IFNULL(d.nama_bank, '-') AS bank,
+               IFNULL(a.account, '-') AS account, a.curr,
+               IF(IFNULL(a.rate, 0) = 0, 1, a.rate) AS rate,
+               b.id AS id_detail, b.coa, b.no_ref, b.ref_date, b.due_date,
+               b.total, b.eqp_idr, b.amount, b.keterangan, a.status,
+               DATE_FORMAT(e.tanggal_input, '%Y-%m-%d') AS create_date, e.nama AS create_by
+          FROM tbl_alokasi AS a
+          INNER JOIN tbl_alokasi_detail AS b ON b.no_alk = a.no_alk
+          LEFT JOIN mastersupplier AS c ON c.Id_Supplier = a.customer
+          LEFT JOIN masterbank AS d ON d.id = a.bank
+          LEFT JOIN (SELECT * FROM tbl_log GROUP BY doc_number) AS e ON e.doc_number = a.no_alk
+         WHERE a.tgl_alk BETWEEN '$dari' AND '$sampai'
+           AND IFNULL(a.status, '') <> 'CANCEL'
+           AND IFNULL(b.status, '') <> 'CANCEL'
+           $saring
+         ORDER BY a.no_alk, b.id
+    ");
+
+    // Dikelompokkan per nomor alokasi dulu - potongannya baru bisa dibagi
+    // kalau seluruh baris satu alokasi sudah di tangan.
+    $per_alokasi = array();
+    foreach ($hasil->result_array() as $r) {
+        $per_alokasi[$r['no_alk']][] = $r;
+    }
+
+    $baris = array();
+    foreach ($per_alokasi as $no_alk => $isi) {
+        $dokumen = array();
+        $potong  = array('pph23' => 0, 'komisi' => 0, 'bank' => 0, 'lain' => 0);
+
+        foreach ($isi as $r) {
+            $ref = trim((string) $r['no_ref']);
+            if ($ref !== '' && $ref !== '-') {
+                $dokumen[] = $r;
+            } else {
+                // Minus di tabelnya berarti dipotong; dibalik supaya kolom
+                // potongannya terbaca positif.
+                $potong[$this->jenis_potongan_alokasi($r['coa'])] += -(float) $r['amount'];
+            }
+        }
+
+        if (!$dokumen) { continue; }
+
+        $jml_dokumen = 0;
+        foreach ($dokumen as $r) { $jml_dokumen += (float) $r['amount']; }
+
+        $sisa_pph = $potong['pph23'];
+        $akhir    = count($dokumen) - 1;
+
+        foreach ($dokumen as $i => $r) {
+            $kurs  = (float) $r['rate'];
+            $nilai = (float) $r['amount'];
+
+            // Bagian PPh baris ini. Baris terakhir mengambil sisanya supaya
+            // jumlah pembagiannya tidak meleset karena pembulatan.
+            if ($i === $akhir || $jml_dokumen == 0) {
+                $pph = $sisa_pph;
+            } else {
+                $pph = round($potong['pph23'] * $nilai / $jml_dokumen, 2);
+            }
+            $sisa_pph -= $pph;
+
+            $ekor   = ($i === $akhir);
+            $komisi = $ekor ? $potong['komisi'] : 0;
+            $adm    = $ekor ? $potong['bank']   : 0;
+            $lain   = $ekor ? $potong['lain']   : 0;
+
+            // Potongannya tersimpan dalam mata uang alokasinya, jadi ikut
+            // dikalikan kurs yang sama dengan nilai barisnya.
+            $eqv        = $nilai * $kurs;
+            $pph_idr    = $pph * $kurs;
+            $komisi_idr = $komisi * $kurs;
+            $adm_idr    = $adm * $kurs;
+            $lain_idr   = $lain * $kurs;
+
+            $baris[] = array(
+                'no_alk'      => $no_alk,
+                'tgl_alk'     => $r['tgl_alk'],
+                'id_customer' => $r['id_customer'],
+                'customer'    => $r['customer'],
+                'doc_number'  => $r['doc_number'],
+                'bank'        => $r['bank'],
+                'account'     => $r['account'],
+                'curr'        => $r['curr'],
+                'no_ref'      => trim((string) $r['no_ref']),
+                'ref_date'    => $r['ref_date'],
+                'due_date'    => $r['due_date'],
+                'total'       => (float) $r['total'],
+                'rate'        => $kurs,
+                'eqp_idr'     => (float) $r['eqp_idr'],
+                'amount'      => $nilai,
+                'amount_idr'  => $eqv,
+                'income_tax_23' => $pph_idr,
+                'comission'     => $komisi_idr,
+                'bank_adm'      => $adm_idr,
+                'others'        => $lain_idr,
+                // Yang benar-benar diterima tunai dari baris ini.
+                'collection_amount' => $eqv - $pph_idr - $komisi_idr - $adm_idr - $lain_idr,
+                // Dua ini yang dipakai sisi realisasi di lembar utama: PPh
+                // ikut dipotong (proyeksinya juga sudah dipotong PPh),
+                // sedangkan biaya bank & komisi tidak - persis rumus tim AR.
+                'ocy'         => $nilai - $pph,
+                'idr'         => $eqv - $pph_idr,
+                'keterangan'  => $r['keterangan'],
+                'create_date' => $r['create_date'],
+                'create_by'   => $r['create_by'],
+                'status'      => $r['status'],
+            );
+        }
+    }
+
+    return $baris;
+}
+
+/**
+ * Penjelasan selisih yang diketik tim AR, per dokumen proyeksi.
+ *
+ * Kolomnya memang tidak berumus di lembar contoh - isinya diketik tangan -
+ * jadi di sini disimpan sendiri, dikunci ke nomor dokumen + nomor invoice.
+ */
+public function variance_explanation($doc_number)
+{
+    if (!$this->db->table_exists('tbl_realization_variance')) { return array(); }
+
+    $doc_number = $this->db->escape_str($doc_number);
+    $hasil = $this->db->query("
+        SELECT no_invoice, explanation FROM tbl_realization_variance
+         WHERE doc_number = '$doc_number'
+    ");
+
+    $peta = array();
+    foreach ($hasil->result_array() as $r) {
+        $peta[$r['no_invoice']] = $r['explanation'];
+    }
+    return $peta;
+}
+
+public function simpan_variance_explanation($doc_number, $no_invoice, $penjelasan, $oleh)
+{
+    if (!$this->db->table_exists('tbl_realization_variance')) { return false; }
+
+    $ada = $this->db->get_where('tbl_realization_variance', array(
+        'doc_number' => $doc_number, 'no_invoice' => $no_invoice,
+    ))->row_array();
+
+    $data = array(
+        'doc_number'  => $doc_number,
+        'no_invoice'  => $no_invoice,
+        'explanation' => $penjelasan,
+        'updated_by'  => $oleh,
+        'updated_at'  => date('Y-m-d H:i:s'),
+    );
+
+    if ($ada) {
+        $this->db->where('id', $ada['id'])->update('tbl_realization_variance', $data);
+    } else {
+        $this->db->insert('tbl_realization_variance', $data);
+    }
+    return true;
+}
+
+/**
+ * Laporan utuhnya. Semua kolom hasil dihitung di sini, bukan di layar,
+ * supaya layar dan unduhannya tidak mungkin berbeda angka.
+ */
+public function realization_report($doc_number)
+{
+    $kosong = array('header' => null, 'proyeksi' => array(), 'realisasi' => array(),
+                    'invoice' => array(), 'ringkas' => array());
+
+    $header = $this->db->get_where('tbl_history_projection_h',
+        array('doc_number' => $doc_number))->row_array();
+    if (!$header) { return $kosong; }
+
+    $doc_esc  = $this->db->escape_str($doc_number);
+    $proyeksi = $this->db->query("
+        SELECT * FROM tbl_history_projection_det
+         WHERE doc_number = '$doc_esc' ORDER BY id
+    ")->result_array();
+
+    $realisasi = $this->realisasi_alokasi(
+        $header['periode_dari'], $header['periode_sampai'], $header['id_customer']);
+
+    $penjelasan = $this->variance_explanation($doc_number);
+
+    // ---- sisi proyeksi, dikumpulkan per nomor invoice -------------------
+    $inv = array();
+    foreach ($proyeksi as $p) {
+        $no = trim((string) $p['no_invoice']);
+        if ($no === '') { continue; }
+        if (!isset($inv[$no])) { $inv[$no] = $this->baris_invoice_kosong($no); }
+
+        $inv[$no]['customer']  = $p['customer'];
+        $inv[$no]['inv_date']  = $p['inv_date'];
+        $inv[$no]['due_date']  = $p['duedate'];
+        $inv[$no]['curr']      = $p['curr'];
+        $inv[$no]['proj_date'] = (!empty($p['duedate_update']) && $p['duedate_update'] !== '0000-00-00')
+            ? $p['duedate_update'] : '';
+        $inv[$no]['proj_rate'] = (float) $p['rate'];
+        $inv[$no]['proj_idr'] += (float) $p['collection_amount'];
+    }
+
+    // ---- sisi realisasi -------------------------------------------------
+    // Kursnya ikut MASING-MASING alokasi, bukan kurs alokasi pertama: satu
+    // invoice bisa dilunasi beberapa kali dengan kurs berbeda. Yang dipajang
+    // di kolom Rate jadi kurs rata-rata tertimbangnya - hasil baginya pas
+    // dengan Amount Eqv Idr-nya.
+    foreach ($realisasi as $r) {
+        $no = $r['no_ref'];
+        if ($no === '' || $no === '-') { continue; }
+        if (!isset($inv[$no])) {
+            $inv[$no] = $this->baris_invoice_kosong($no);
+            $inv[$no]['customer'] = $r['customer'];
+            $inv[$no]['inv_date'] = $r['ref_date'];
+            $inv[$no]['due_date'] = $r['due_date'];
+            $inv[$no]['curr']     = $r['curr'];
+        }
+
+        $inv[$no]['real_ocy'] += $r['ocy'];
+        $inv[$no]['real_idr'] += $r['idr'];
+        // Tanggal realisasinya tanggal alokasi TERAKHIR - saat tagihan itu
+        // selesai tertagih, bukan saat cicilan pertamanya masuk.
+        if ($inv[$no]['real_date'] === '' || $r['tgl_alk'] > $inv[$no]['real_date']) {
+            $inv[$no]['real_date'] = $r['tgl_alk'];
+        }
+    }
+
+    // ---- kolom hasil & kolom selisih ------------------------------------
+    $tgl_laporan = $header['periode_sampai'];
+    foreach ($inv as $no => $b) {
+        $b['proj_ocy']  = $b['proj_rate'] != 0 ? $b['proj_idr'] / $b['proj_rate'] : 0;
+        $b['real_rate'] = $b['real_ocy'] != 0 ? $b['real_idr'] / $b['real_ocy'] : 0;
+
+        $ada_realisasi = ($b['real_date'] !== '' && $b['real_ocy'] != 0);
+
+        if ($b['proj_date'] === '' && $ada_realisasi) {
+            $b['status'] = 'Unplanned Collection';
+        } elseif (!$ada_realisasi) {
+            $b['status'] = 'Not Collected';
+        } elseif ($b['proj_ocy'] > 0 && $b['real_ocy'] < $b['proj_ocy'] - 0.01) {
+            $b['status'] = 'Partially Collected';
+        } else {
+            $b['status'] = 'Collected';
+        }
+
+        $b['achievement'] = $b['proj_ocy'] > 0 ? $b['real_ocy'] / $b['proj_ocy'] : null;
+
+        $b['date_variance'] = ($b['proj_date'] !== '' && $b['real_date'] !== '')
+            ? $this->selisih_hari($b['proj_date'], $b['real_date']) : null;
+
+        if ($b['real_date'] !== '' && $b['due_date']) {
+            $b['days_past_due'] = $this->selisih_hari($b['due_date'], $b['real_date']);
+        } elseif ($b['due_date'] && $b['due_date'] < $tgl_laporan) {
+            $b['days_past_due'] = $this->selisih_hari($b['due_date'], $tgl_laporan);
+        } else {
+            $b['days_past_due'] = null;
+        }
+
+        // Selisih kurs dihitung atas nilai yang DIPROYEKSIKAN, jadi cuma ada
+        // kalau dua-duanya ada. Sisanya selisih nilai murni.
+        $b['fx_variance'] = ($b['proj_ocy'] != 0 && $b['real_ocy'] != 0)
+            ? ($b['real_rate'] - $b['proj_rate']) * $b['proj_ocy'] : 0;
+        $b['total_variance']   = $b['real_idr'] - $b['proj_idr'];
+        $b['variance_excl_fx'] = $b['total_variance'] - $b['fx_variance'];
+
+        $b['explanation'] = isset($penjelasan[$no]) ? $penjelasan[$no] : '';
+
+        $inv[$no] = $b;
+    }
+
+    // Urutannya: nama buyer, lalu nomor invoice - sama dengan lembar tim AR.
+    $daftar = array_values($inv);
+    usort($daftar, function ($x, $y) {
+        $c = strcasecmp((string) $x['customer'], (string) $y['customer']);
+        return $c !== 0 ? $c : strcmp((string) $x['no_invoice'], (string) $y['no_invoice']);
+    });
+
+    return array(
+        'header'    => $header,
+        'proyeksi'  => $proyeksi,
+        'realisasi' => $realisasi,
+        'invoice'   => $daftar,
+        'ringkas'   => $this->ringkas_realization($daftar, $tgl_laporan),
+    );
+}
+
+private function baris_invoice_kosong($no_invoice)
+{
+    return array(
+        'no_invoice' => $no_invoice, 'customer' => '', 'inv_date' => '',
+        'due_date' => '', 'curr' => '',
+        'proj_date' => '', 'proj_ocy' => 0, 'proj_rate' => 0, 'proj_idr' => 0,
+        'real_date' => '', 'real_ocy' => 0, 'real_rate' => 0, 'real_idr' => 0,
+        'status' => '', 'achievement' => null, 'date_variance' => null,
+        'days_past_due' => null, 'explanation' => '',
+        'variance_excl_fx' => 0, 'fx_variance' => 0, 'total_variance' => 0,
+    );
+}
+
+/** Selisih hari antara dua tanggal, dihitung lurus tanpa jam. */
+private function selisih_hari($dari, $sampai)
+{
+    if (!$dari || !$sampai || $dari === '0000-00-00' || $sampai === '0000-00-00') {
+        return null;
+    }
+    return (int) round((strtotime($sampai) - strtotime($dari)) / 86400);
+}
+
+/**
+ * Executive Summary: indikator kinerja di atas, rekap per buyer di bawah.
+ *
+ * "Reconciliation Check" harus nol. Angka itu penjaga: kalau jumlah selisih
+ * per invoice tidak sama dengan selisih totalnya, berarti ada baris yang
+ * hilang atau terhitung dua kali.
+ */
+private function ringkas_realization($daftar, $tgl_laporan)
+{
+    $r = array(
+        'periode'           => $tgl_laporan,
+        'projected'         => 0, 'actual' => 0,
+        'variance_excl_fx'  => 0, 'fx_variance' => 0, 'total_variance' => 0,
+        'not_collected'     => 0, 'unplanned' => 0,
+        'jml_not_collected' => 0, 'jml_partial' => 0,
+    );
+
+    $buyer = array();
+    foreach ($daftar as $b) {
+        $r['projected']        += $b['proj_idr'];
+        $r['actual']           += $b['real_idr'];
+        $r['variance_excl_fx'] += $b['variance_excl_fx'];
+        $r['fx_variance']      += $b['fx_variance'];
+        $r['total_variance']   += $b['total_variance'];
+
+        if ($b['status'] === 'Not Collected') {
+            $r['not_collected'] += $b['proj_idr'];
+            $r['jml_not_collected']++;
+        }
+        if ($b['status'] === 'Unplanned Collection') { $r['unplanned'] += $b['real_idr']; }
+        if ($b['status'] === 'Partially Collected')  { $r['jml_partial']++; }
+
+        $nama = (string) $b['customer'];
+        if (!isset($buyer[$nama])) {
+            $buyer[$nama] = array('customer' => $nama, 'projected' => 0, 'actual' => 0);
+        }
+        $buyer[$nama]['projected'] += $b['proj_idr'];
+        $buyer[$nama]['actual']    += $b['real_idr'];
+    }
+
+    $r['achievement']  = $r['projected'] != 0 ? $r['actual'] / $r['projected'] : null;
+    $r['rekonsiliasi'] = $r['actual'] - $r['projected'] - $r['total_variance'];
+
+    foreach ($buyer as $nama => $b) {
+        $buyer[$nama]['variance']    = $b['actual'] - $b['projected'];
+        $buyer[$nama]['achievement'] = $b['projected'] != 0 ? $b['actual'] / $b['projected'] : null;
+    }
+    $buyer = array_values($buyer);
+    usort($buyer, function ($x, $y) {
+        if ($x['projected'] == $y['projected']) {
+            return ($y['actual'] < $x['actual']) ? -1 : (($y['actual'] > $x['actual']) ? 1 : 0);
+        }
+        return ($y['projected'] < $x['projected']) ? -1 : 1;
+    });
+    $r['buyer'] = $buyer;
+
+    return $r;
+}
+
 }
