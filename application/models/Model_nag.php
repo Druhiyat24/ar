@@ -3967,14 +3967,32 @@ function report_proforma_invoice($id)
     //ubah september
 function report_proforma_invoice_cbd($id)
 {
+    // Sama persis dengan report_proforma_invoice(): yang dipajang di blok
+    // penerima itu pihak yang DITAGIH, bukan pemilik SO-nya.
+    //
+    // tbl_invoice_proforma_dp_cbd sekarang sebuah VIEW ke tabel gabungan
+    // (20261016_proforma_satu_tabel.sql). Daftar kolom view dikunci MySQL
+    // saat view dibuat, jadi billed_to yang ditambahkan belakangan baru ikut
+    // sesudah view-nya disegarkan - lihat
+    // 20261102_proforma_dp_cbd_view_billed_to.sql. Selama belum, kolomnya
+    // dianggap tidak ada dan yang dipakai customernya, seperti semula.
+    $ada = $this->kolom_ada('tbl_invoice_proforma_dp_cbd', 'billed_to');
+    $billed = $ada ? 'a.billed_to' : "''";
+    $gabung = $ada
+        ? "LEFT JOIN mastersupplier AS e ON e.Id_Supplier = a.billed_to" : '';
+    $nama   = $ada ? "IFNULL(e.supplier, '')" : "''";
+    $alamat = $ada ? "IFNULL(e.alamat, '')" : "''";
+    $telp   = $ada ? "IFNULL(e.Phone, '')" : "''";
     $hasil = $this->db->query("SELECT a.id, a.no_proforma_invoice AS no_pi, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS date_pi, b.supplier AS customer, a.shipp, a.peb,
       UPPER(c.type) AS type, a.status, a.no_faktur_pajak, IFNULL(b.alamat, '-') AS alamat,
       IFNULL(b.Phone, '-') AS phone, d.bank_account AS no_rek, d.bank_name AS nama_bank,
-      d.bank_address AS v_bankaddress, d.curr, d.swift_code AS v_swiftcode
+      d.bank_address AS v_bankaddress, d.curr, d.swift_code AS v_swiftcode,
+      $billed AS billed_to, $nama AS billed_to_nama,
+      $alamat AS billed_to_alamat, $telp AS billed_to_phone
       FROM tbl_invoice_proforma_dp_cbd AS a INNER JOIN
-      mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN 
+      mastersupplier AS b ON a.id_customer = b.Id_Supplier INNER JOIN
       tbl_type AS c ON a.id_type = c.id_type
-      LEFT JOIN b_masterbank AS d ON d.id = a.id_bank
+      LEFT JOIN b_masterbank AS d ON d.id = a.id_bank $gabung
       WHERE a.id = '$id' ");
     return $hasil->row_array();
 }
@@ -4241,10 +4259,13 @@ function report_proforma_invoice_detail($id)
 {
     // Harga satuan dicetak apa adanya - lihat load_so_detail_proforma_temporary().
     $harga = "TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(a.unit_price, 10)))";
-    $hasil = $this->db->query("SELECT b.id, a.no_invoice_proforma, a.no_so, a.produk_detail, a.curr, FORMAT(a.qty, 2) AS qty, 
-      $harga AS unit_price, 
+    // UOM-nya ikut dibaca - satuannya memang tersimpan per baris SO, dan
+    // tanpa ini kolom UOM di cetakannya selalu strip.
+    $hasil = $this->db->query("SELECT b.id, a.no_invoice_proforma, a.no_so, a.produk_detail, a.curr, FORMAT(a.qty, 2) AS qty,
+      IFNULL(NULLIF(a.uom, ''), '-') AS uom,
+      $harga AS unit_price,
       FORMAT(a.total_price, 2) AS total_price
-      FROM tbl_invoice_proforma_detail_so AS a INNER JOIN 
+      FROM tbl_invoice_proforma_detail_so AS a INNER JOIN
       tbl_invoice_proforma AS b ON a.no_invoice_proforma = b.no_proforma_invoice
       WHERE b.id = '$id' ");
     return $hasil->result_array();
@@ -4253,10 +4274,12 @@ function report_proforma_invoice_detail($id)
     //ubah september
 function report_proforma_invoice_detail_cbd($id)
 {
-    $hasil = $this->db->query("SELECT b.id, a.no_invoice_proforma, a.no_so, a.produk_detail, a.curr, FORMAT(a.qty, 2) AS qty, 
-      FORMAT(a.unit_price, 2) AS unit_price, 
+    // UOM-nya ikut dibaca - lihat report_proforma_invoice_detail().
+    $hasil = $this->db->query("SELECT b.id, a.no_invoice_proforma, a.no_so, a.produk_detail, a.curr, FORMAT(a.qty, 2) AS qty,
+      IFNULL(NULLIF(a.uom, ''), '-') AS uom,
+      FORMAT(a.unit_price, 2) AS unit_price,
       FORMAT(a.total_price, 2) AS total_price
-      FROM tbl_invoice_proforma_detail_so_dp_cbd AS a INNER JOIN 
+      FROM tbl_invoice_proforma_detail_so_dp_cbd AS a INNER JOIN
       tbl_invoice_proforma_dp_cbd AS b ON a.no_invoice_proforma = b.no_proforma_invoice
       WHERE b.id = '$id' ");
     return $hasil->result_array();
