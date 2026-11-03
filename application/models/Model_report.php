@@ -838,11 +838,18 @@ private function _rate_dn($type, $end_date = null)
 // tbl_invoice_pot dengan nilai yang berbeda, dan urutan hasil UNION ALL tidak
 // dijamin MySQL. Invoice Manual dari tbl_invoice_nb_pot. Debit Note & saldo
 // awal tidak punya baris potongan - tidak kena PPN/PPh (arahan eksplisit).
-private function _attach_receivable_breakdown($rows)
+/**
+ * Peta potongan per nomor invoice: berapa bagian PPNnya, dan berapa persen
+ * PPh 23nya menurut master pajak.
+ *
+ * Satu pintu untuk sisi proyeksi MAUPUN sisi realisasi. Kolom Income Tax
+ * Art 23 di kedua sisi harus lahir dari angka yang sama - kalau tidak,
+ * kolom variancenya cuma memamerkan selisih buatan sendiri.
+ */
+private function peta_pph_invoice(array $no_invoices)
 {
-    if (empty($rows)) return $rows;
+    if (empty($no_invoices)) { return array(); }
 
-    $no_invoices = array_values(array_unique(array_column($rows, 'no_invoice')));
     $esc = array_map(function ($v) { return "'" . $this->db->escape_str($v) . "'"; }, $no_invoices);
     $in_list = implode(',', $esc);
 
@@ -874,6 +881,42 @@ private function _attach_receivable_breakdown($rows)
     $pctMap = [];
     foreach ($mtax as $m) { $pctMap[$m['idtax']] = (float) $m['percentage']; }
 
+    $peta = array();
+    foreach ($potMap as $no => $p) {
+        $peta[$no] = array(
+            'twot'        => (float) $p['twot'],
+            'vat'         => (float) $p['vat'],
+            'grand_total' => (float) $p['grand_total'],
+            'pct'         => ($p['id_pph'] !== null && isset($pctMap[$p['id_pph']]))
+                                ? $pctMap[$p['id_pph']] : 0,
+        );
+    }
+    return $peta;
+}
+
+/**
+ * PPh 23 satu baris alokasi menurut INVOICEnya sendiri: bagian non-PPN dari
+ * nilai yang dialokasikan, dikali persentase PPh invoice itu. Satuannya ikut
+ * satuan $nilai, jadi tidak ada kurs yang dipakai di sini.
+ */
+private function pph_wajar_baris($peta, $no_invoice, $nilai)
+{
+    if (!isset($peta[$no_invoice])) { return null; }
+
+    $p     = $peta[$no_invoice];
+    $grand = $p['grand_total'];
+    $vat   = ($grand != 0) ? round($nilai * ($p['vat'] / $grand), 2) : 0;
+
+    return round(($nilai - $vat) * $p['pct'] / 100, 2);
+}
+
+private function _attach_receivable_breakdown($rows)
+{
+    if (empty($rows)) return $rows;
+
+    $no_invoices = array_values(array_unique(array_column($rows, 'no_invoice')));
+    $potMap = $this->peta_pph_invoice($no_invoices);
+
     foreach ($rows as &$r) {
         // Receivable Amount ditampilkan dalam IDR, beda dengan kolom Invoice
         // Amount yang tetap pakai mata uang asli invoicenya.
@@ -886,12 +929,12 @@ private function _attach_receivable_breakdown($rows)
 
         if (isset($potMap[$r['no_invoice']])) {
             $p     = $potMap[$r['no_invoice']];
-            $grand = (float) $p['grand_total'];
+            $grand = $p['grand_total'];
 
             if ($grand != 0) {
-                $vat = round($totalInv * ((float) $p['vat'] / $grand), 2);
+                $vat = round($totalInv * ($p['vat'] / $grand), 2);
             }
-            $pct = ($p['id_pph'] !== null && isset($pctMap[$p['id_pph']])) ? $pctMap[$p['id_pph']] : 0;
+            $pct = $p['pct'];
         }
         // Dihitung sebagai SISA, bukan dari twot - supaya penjumlahannya pasti
         // kembali ke Total Invoice berapa pun pembulatannya, dan ongkos lain
@@ -1388,10 +1431,26 @@ private function jenis_potongan_alokasi($coa)
  *
  * Potongan tadi ditempelkan kembali ke baris dokumen begini:
  *
- *   - PPh 23 DIBAGI ke semua baris dokumen di alokasi yang sama, menurut
- *     besar nilainya. PPh memang melekat per invoice - yang tidak tersimpan
- *     cuma rinciannya - jadi membaginya tetap menjaga jumlah per alokasi
- *     sama persis dengan jurnalnya.
+ *   - PPh 23 dihitung dari MASING-MASING INVOICEnya: bagian non-PPN dari
+ *     nilai yang dialokasikan, dikali persentase PPh invoice itu - rumus
+ *     yang sama persis dengan sisi proyeksi, jadi kolom variancenya benar-
+ *     benar membandingkan rencana dengan kenyataan.
+ *
+ *     Jurnalnya tetap jadi ATAP: kalau baris 1.52.02 di alokasinya lebih
+ *     kecil dari jumlah PPh invoicenya, semua baris diturunkan sebanding -
+ *     laporan tidak boleh mengaku memotong PPh yang tidak pernah dipotong.
+ *     Sebaliknya kalau baris 1.52.02nya LEBIH besar, kelebihannya pindah ke
+ *     kolom Others, bukan ditambahkan ke PPh: potongan yang kebetulan
+ *     dibukukan ke COA PPh belum tentu PPh. Kelebihan itu TETAP mengurangi
+ *     angka realisasinya - uangnya memang tidak diterima - jadi kolom
+ *     variancenya tidak berubah sama sekali, cuma kolomnya yang betul.
+ *     Pembagiannya setimbang dengan PPh, karena tidak ada keterangan
+ *     kelebihan itu jatuh ke invoice yang mana.
+ *
+ *     Invoice yang tidak punya baris potongan sama sekali - debit note,
+ *     saldo awal - tidak bisa dihitung begini. Kalau SELURUH dokumen di satu
+ *     alokasi begitu, pembagiannya balik ke cara lama: menurut besar nilai
+ *     barisnya.
  *   - Komisi, biaya bank, dan Others ditempel ke baris dokumen TERAKHIR.
  *     Ketiganya biaya per transaksi bank, bukan per invoice, dan lembar
  *     contoh dari tim AR menaruhnya persis begitu.
@@ -1417,6 +1476,7 @@ public function realisasi_alokasi($dari, $sampai, $id_customer = 'All')
                a.doc_number, IFNULL(d.nama_bank, '-') AS bank,
                IFNULL(a.account, '-') AS account, a.curr,
                IF(IFNULL(a.rate, 0) = 0, 1, a.rate) AS rate,
+               a.amount AS alk_amount, IFNULL(a.sisa, 0) AS alk_sisa,
                b.id AS id_detail, b.coa, b.no_ref, b.ref_date, b.due_date,
                b.total, b.eqp_idr, b.amount, b.keterangan, a.status,
                DATE_FORMAT(e.tanggal_input, '%Y-%m-%d') AS create_date, e.nama AS create_by
@@ -1435,9 +1495,15 @@ public function realisasi_alokasi($dari, $sampai, $id_customer = 'All')
     // Dikelompokkan per nomor alokasi dulu - potongannya baru bisa dibagi
     // kalau seluruh baris satu alokasi sudah di tangan.
     $per_alokasi = array();
+    $no_invoices = array();
     foreach ($hasil->result_array() as $r) {
         $per_alokasi[$r['no_alk']][] = $r;
+        $ref = trim((string) $r['no_ref']);
+        if ($ref !== '' && $ref !== '-') { $no_invoices[$ref] = true; }
     }
+
+    // Satu query untuk seluruh periodenya, bukan per alokasi.
+    $peta_pph = $this->peta_pph_invoice(array_keys($no_invoices));
 
     $baris = array();
     foreach ($per_alokasi as $no_alk => $isi) {
@@ -1460,26 +1526,77 @@ public function realisasi_alokasi($dari, $sampai, $id_customer = 'All')
         $jml_dokumen = 0;
         foreach ($dokumen as $r) { $jml_dokumen += (float) $r['amount']; }
 
-        $sisa_pph = $potong['pph23'];
+        // PPh 23 tiap baris menurut invoicenya sendiri.
+        $wajar     = array();
+        $jml_wajar = 0;
+        foreach ($dokumen as $i => $r) {
+            $w = $this->pph_wajar_baris($peta_pph, trim((string) $r['no_ref']), (float) $r['amount']);
+            $wajar[$i] = ($w === null) ? 0 : $w;
+            $jml_wajar += $wajar[$i];
+        }
+
+        // Baris dokumen dan baris potongannya harus satu satuan dengan
+        // alokasinya. Ada segelintir alokasi yang nilai dokumennya tersimpan
+        // dalam mata uang INVOICE sementara potongannya dalam mata uang
+        // alokasi - di situ PPh invoice dan potongan jurnalnya tidak bisa
+        // dibandingkan sama sekali, jadi pembagiannya balik ke cara lama.
+        $jml_semua = 0;
+        foreach ($isi as $r) { $jml_semua += (float) $r['amount']; }
+        $utuh = abs($jml_semua - ((float) $isi[0]['alk_amount'] - (float) $isi[0]['alk_sisa'])) <= 1;
+
+        // Tidak satu pun invoicenya bisa dihitung - pakai cara lama.
+        $pakai_wajar = ($jml_wajar != 0 && $utuh);
+        if (!$pakai_wajar) {
+            foreach ($dokumen as $i => $r) { $wajar[$i] = (float) $r['amount']; }
+            $jml_wajar = $jml_dokumen;
+        }
+
+        // Jurnalnya jadi atap, bukan sumber pembagiannya.
+        $atap     = $potong['pph23'];
+        $turunkan = (!$pakai_wajar || $atap < $jml_wajar);
+        $sisa_pph = $turunkan ? $atap : $jml_wajar;
+        $lebih    = $turunkan ? 0 : ($atap - $jml_wajar);
         $akhir    = count($dokumen) - 1;
+
+        // Selisih seiprit antara jurnal dan hitungan invoicenya cuma beda
+        // pembulatan - itu tetap PPh, bukan potongan lain. Batasnya dibuat
+        // sebanding dengan potongannya supaya ikut masuk akal di mata uang
+        // mana pun; yang betul-betul salah COA jauh di atas batas ini.
+        if ($lebih > 0 && $lebih <= abs($atap) * 0.001) {
+            $sisa_pph += $lebih;
+            $lebih = 0;
+        }
+        $sisa_lebih = $lebih;
 
         foreach ($dokumen as $i => $r) {
             $kurs  = (float) $r['rate'];
             $nilai = (float) $r['amount'];
 
-            // Bagian PPh baris ini. Baris terakhir mengambil sisanya supaya
-            // jumlah pembagiannya tidak meleset karena pembulatan.
-            if ($i === $akhir || $jml_dokumen == 0) {
+            // Baris terakhir mengambil sisanya supaya jumlahnya tidak meleset
+            // karena pembulatan.
+            if ($i === $akhir || $jml_wajar == 0) {
                 $pph = $sisa_pph;
+            } elseif ($turunkan) {
+                $pph = round($atap * $wajar[$i] / $jml_wajar, 2);
             } else {
-                $pph = round($potong['pph23'] * $nilai / $jml_dokumen, 2);
+                $pph = $wajar[$i];
             }
             $sisa_pph -= $pph;
+
+            // Bagian kelebihan potongan COA PPh untuk baris ini.
+            if ($i === $akhir || $jml_wajar == 0) {
+                $bagi_lebih = $sisa_lebih;
+            } else {
+                $bagi_lebih = round($lebih * $wajar[$i] / $jml_wajar, 2);
+            }
+            $sisa_lebih -= $bagi_lebih;
 
             $ekor   = ($i === $akhir);
             $komisi = $ekor ? $potong['komisi'] : 0;
             $adm    = $ekor ? $potong['bank']   : 0;
-            $lain   = $ekor ? $potong['lain']   : 0;
+            // Kelebihan tadi nebeng di kolom Others - uang yang diterima
+            // tetap pas dengan bank masuk, kolomnya saja yang dibetulkan.
+            $lain   = ($ekor ? $potong['lain'] : 0) + $bagi_lebih;
 
             // Potongannya tersimpan dalam mata uang alokasinya, jadi ikut
             // dikalikan kurs yang sama dengan nilai barisnya.
@@ -1515,8 +1632,10 @@ public function realisasi_alokasi($dari, $sampai, $id_customer = 'All')
                 // Dua ini yang dipakai sisi realisasi di lembar utama: PPh
                 // ikut dipotong (proyeksinya juga sudah dipotong PPh),
                 // sedangkan biaya bank & komisi tidak - persis rumus tim AR.
-                'ocy'         => $nilai - $pph,
-                'idr'         => $eqv - $pph_idr,
+                // Kelebihan potongan di COA PPh ikut dipotong juga: itu uang
+                // yang memang tidak diterima, bukan ongkos bank.
+                'ocy'         => $nilai - $pph - $bagi_lebih,
+                'idr'         => $eqv - $pph_idr - ($bagi_lebih * $kurs),
                 'keterangan'  => $r['keterangan'],
                 'create_date' => $r['create_date'],
                 'create_by'   => $r['create_by'],

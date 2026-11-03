@@ -52,6 +52,25 @@ class Xlsx_ringkas
         'kepala_hijau', // 10 kepala kelompok Projection
         'kepala_biru',  // 11 kepala kelompok Realization
         'kepala_kuning',// 12 kepala kelompok Result
+        // Kepala kelompok yang selnya digabung: yang menyambung cuma
+        // garisnya, teksnya tetap rata kiri supaya terbaca di tepi
+        // kelompoknya - bukan melayang di tengah.
+        'kepala_kiri',          // 13
+        'kepala_hijau_kiri',    // 14
+        'kepala_biru_kiri',     // 15
+        'kepala_kuning_kiri',   // 16
+        // Sel isi bergaris - tanpa ini tabelnya cuma deretan angka
+        // mengambang di lembar kosong.
+        'garis',                // 17 teks
+        'garis_tengah',         // 18
+        'garis_angka',          // 19 #,##0.00
+        'garis_angka0',         // 20 #,##0
+        'garis_persen',         // 21 0.00%
+        'garis_tanggal',        // 22 dd mmm yyyy
+        // Baris TOTAL - tebal, berlatar krem seperti di modal Detail.
+        'garis_total',          // 23 teks
+        'garis_total_angka',    // 24 #,##0.00
+        'garis_total_persen',   // 25 0.00%
     );
 
     private $lembar = array();
@@ -306,7 +325,7 @@ class Xlsx_ringkas
             . '<border><left style="thin"/><right style="thin"/><top style="thin"/><bottom style="thin"/><diagonal/></border>'
             . '</borders>'
             . '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-            . '<cellXfs count="13">'
+            . '<cellXfs count="26">'
             . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'                                                                   // 0 biasa
             . '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>'                                                     // 1 judul
             . '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' // 2 kepala
@@ -320,6 +339,22 @@ class Xlsx_ringkas
             . '<xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' // 10 kepala hijau
             . '<xf numFmtId="0" fontId="1" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' // 11 kepala biru
             . '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' // 12 kepala kuning
+            // 13-16 kepala kelompok rata kiri - dipakai sel yang digabung.
+            . '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'  // 13
+            . '<xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'  // 14
+            . '<xf numFmtId="0" fontId="1" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'  // 15
+            . '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'  // 16
+            // 17-22 sel isi bergaris.
+            . '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>'  // 17
+            . '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>'  // 18
+            . '<xf numFmtId="4" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>'  // 19
+            . '<xf numFmtId="3" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>'  // 20
+            . '<xf numFmtId="10" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>'  // 21
+            . '<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>'  // 22
+            // 23-25 baris TOTAL.
+            . '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>'  // 23
+            . '<xf numFmtId="4" fontId="1" fillId="2" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>'  // 24
+            . '<xf numFmtId="10" fontId="1" fillId="2" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>'  // 25
             . '</cellXfs>'
             . '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
             . '</styleSheet>';

@@ -22193,6 +22193,8 @@ $(document).off('click.umdok').on('click.umdok', '#um-list-area a.um-dok', funct
  * ================================================================== */
 
 var RV_DT = null;
+var RV_DT_PROY = null;
+var RV_DT_REAL = null;
 
 function rv_teks(v) {
 	return $('<div>').text((v === null || v === undefined) ? '' : v).html();
@@ -22230,6 +22232,36 @@ function rv_render_hari(v, tipe) {
 	if (isNaN(n)) { return tipe === 'display' ? '-' : 0; }
 	if (tipe !== 'display') { return n; }
 	return n < 0 ? '<span class="rv-minus">' + n + '</span>' : String(n);
+}
+
+/* Mata uang & status ditulis sebagai keping kecil - bentuknya sama di
+   ketiga tabel, jadi matanya tidak perlu menyesuaikan tiap pindah tab. */
+function rv_kurs(v) {
+	var t = String(v === null || v === undefined ? '' : v).trim();
+	return t === '' ? '-' : '<span class="rv-kurs">' + rv_teks(t) + '</span>';
+}
+
+function rv_post(v) {
+	var t = String(v === null || v === undefined ? '' : v).trim();
+	if (t === '') { return '-'; }
+	return '<span class="rv-post ' + (t.toUpperCase() === 'POST' ? 'is-post' : '') + '">'
+		+ rv_teks(t) + '</span>';
+}
+
+/* "01 Sep 2026 - 30 Sep 2026 - 30 days". Jumlah harinya ikut ditulis karena
+   itu yang membedakan dokumen mingguan dari bulanan sekali lihat. */
+function rv_rentang(dari, sampai) {
+	var a = String(dari || '').slice(0, 10);
+	var b = String(sampai || '').slice(0, 10);
+	if (!a && !b) { return '-'; }
+	var teks = rv_teks(nag_tgl_inggris(a)) + ' &ndash; ' + rv_teks(nag_tgl_inggris(b));
+	var ms = Date.parse(a + 'T00:00:00Z');
+	var ns = Date.parse(b + 'T00:00:00Z');
+	if (!isNaN(ms) && !isNaN(ns) && ns >= ms) {
+		var hari = Math.round((ns - ms) / 86400000) + 1;
+		teks += ' <span class="rv-nilai-ket">&middot; ' + hari + (hari === 1 ? ' day' : ' days') + '</span>';
+	}
+	return teks;
 }
 
 function rv_lencana(status) {
@@ -22294,7 +22326,7 @@ function rv_dt() {
 			infoFiltered: '(filtered from _MAX_)',
 			zeroRecords: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-search"></i></span>'
 				+ '<div class="dn-kosong-judul">No invoice matches the search.</div></div>',
-			emptyTable: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-scale-balanced"></i></span>'
+			emptyTable: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-balance-scale"></i></span>'
 				+ '<div class="dn-kosong-judul">No data yet.</div></div>',
 			paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Prev' }
 		}
@@ -22302,6 +22334,8 @@ function rv_dt() {
 
 	$(window).off('resize.rv').on('resize.rv', function () {
 		if (RV_DT) { RV_DT.columns.adjust(); }
+		if (RV_DT_PROY) { RV_DT_PROY.columns.adjust(); }
+		if (RV_DT_REAL) { RV_DT_REAL.columns.adjust(); }
 		rv_luruskan_total();
 	});
 	setTimeout(function () { if (RV_DT) { RV_DT.columns.adjust(); } }, 300);
@@ -22310,21 +22344,200 @@ function rv_dt() {
 	return RV_DT;
 }
 
-/* Lebar sel baris jumlah disalin dari kolom kepalanya - kaki tabelnya tabel
-   tersendiri waktu scrollX menyala, jadi tanpa ini angkanya meleset. */
-function rv_luruskan_total() {
-	// Sel kepala TIAP KOLOM - bukan baris kepala terakhir. Lima kolom
-	// keterangan di depan memakai rowspan, jadi baris kepala terakhir tidak
-	// sama panjang dengan jumlah kolomnya.
-	var kepala = [];
-	if (RV_DT) {
-		RV_DT.columns().every(function () { kepala.push($(this.header())); });
+/* Setelan yang sama untuk tab Projection & Realization. Keduanya murni
+   memajang: tidak ada kolom yang bisa diklik dan tidak ada baris jumlah -
+   sama seperti lembarnya di unduhan. */
+function rv_setelan_tabel(judulKosong) {
+	return {
+		scrollX: true,
+		autoWidth: false,
+		pageLength: 10,
+		lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+		language: {
+			search: '',
+			searchPlaceholder: 'Search in list...',
+			lengthMenu: 'Show _MENU_ rows',
+			info: 'Showing _START_-_END_ of _TOTAL_',
+			infoEmpty: 'No data',
+			infoFiltered: '(filtered from _MAX_)',
+			zeroRecords: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-search"></i></span>'
+				+ '<div class="dn-kosong-judul">No row matches the search.</div></div>',
+			emptyTable: '<div class="dn-kosong"><span class="dn-kosong-ikon"><i class="fas fa-table"></i></span>'
+				+ '<div class="dn-kosong-judul">' + judulKosong + '</div></div>',
+			paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Prev' }
+		}
+	};
+}
+
+/* Tab Projection - susunan kolomnya SAMA PERSIS dengan modal Detail di
+   History Projection, dan dengan lembar Projection di unduhannya:
+
+     0  No              6  Due Date                  12 Tax Base          \
+     1  Customer        7  Expected Collection Date  13 VAT                |
+     2  Invoice No      8  Payment Term              14 Total Invoice      | Receivable
+     3  Invoice Date    9  Currency                  15 Income Tax Art 23  | Amount
+     4  Destination    10  Invoice Amount            16 Collection Amount /
+     5  Order Type     11  Rate                      17.. satu kolom per tanggal
+
+   Kolom tanggalnya ikut panjang periode dokumennya, jadi kepalanya dirakit
+   di sini - bukan ditulis tetap di view-nya. */
+
+var RV_PROY_TGL = [];           // tanggal yang jadi kolom, buat baris TOTAL
+
+function rv_proy_kepala(tanggal) {
+	var tetap = ['No', 'Customer', 'Invoice No', 'Invoice Date', 'Destination',
+		'Order Type', 'Due Date', 'Expected Collection Date', 'Payment Term',
+		'Currency', 'Invoice Amount', 'Rate'];
+	var recv = ['Tax Base', 'VAT', 'Total Invoice', 'Income Tax Art 23', 'Collection Amount'];
+
+	var b1 = '<tr class="rv-grup">';
+	$.each(tetap, function (i, t) {
+		b1 += '<th rowspan="2" class="is-kosong">' + rv_teks(t) + '</th>';
+	});
+	b1 += '<th colspan="' + recv.length + '" class="g-recv">Receivable Amount</th>';
+	if (tanggal.length) {
+		b1 += '<th colspan="' + tanggal.length + '" class="g-inflow">'
+			+ 'Projected Cash Inflow from Accounts Receivable</th>';
 	}
-	var baris = $('#rv-total tr');
+	b1 += '</tr>';
+
+	var b2 = '<tr>';
+	$.each(recv, function (i, t) {
+		b2 += '<th class="dn-angka' + (i === 0 ? ' rv-batas' : '') + '">' + rv_teks(t) + '</th>';
+	});
+	$.each(tanggal, function (i, t) {
+		b2 += '<th class="dn-angka' + (i === 0 ? ' rv-batas' : '') + '">'
+			+ rv_teks(nag_tgl_inggris(t)) + '</th>';
+	});
+	b2 += '</tr>';
+
+	return b1 + b2;
+}
+
+function rv_dt_proyeksi(tanggal) {
+	tanggal = tanggal || [];
+	// Panjang periodenya bisa berbeda antar dokumen, jadi tabelnya dibongkar
+	// dulu kalau jumlah kolom tanggalnya berubah.
+	if (RV_DT_PROY && RV_PROY_TGL.join('|') === tanggal.join('|')) { return RV_DT_PROY; }
+	if (RV_DT_PROY) { RV_DT_PROY.destroy(); RV_DT_PROY = null; }
+	RV_PROY_TGL = tanggal.slice();
+
+	// Isi tabelnya dibangun ulang dari nol, bukan sekadar diganti
+	// kepalanya: destroy() pada tabel ber-scrollX tidak selalu
+	// mengembalikan <tfoot> kosong ke tempatnya, dan tanpa tfoot baris
+	// TOTAL-nya tidak punya tempat untuk dicetak.
+	$('#table-rv-proyeksi').empty().append(
+		'<thead>' + rv_proy_kepala(tanggal) + '</thead>'
+		+ '<tbody></tbody><tfoot id="rv-proy-total"></tfoot>');
+
+	var o = rv_setelan_tabel('No projection row yet.');
+	o.order = [[0, 'asc']];
+	o.columnDefs = [
+		{ targets: 0, className: 'dn-angka', render: rv_render_hari },
+		{ targets: [3, 4, 5, 6, 7, 9], className: 'dn-tengah' },
+		{ targets: 8, className: 'dn-angka', render: rv_render_hari },
+		{ targets: [10, 11], className: 'dn-angka', render: rv_render_angka },
+		{ targets: [12, 13, 14, 15, 16], className: 'dn-angka g-recv', render: rv_render_angka },
+		{ targets: 12, className: 'dn-angka g-recv rv-batas', render: rv_render_angka }
+	];
+	if (tanggal.length) {
+		o.columnDefs.push({
+			targets: rv_deret(17, tanggal.length),
+			className: 'dn-angka g-inflow', render: rv_render_angka
+		});
+		o.columnDefs.push({ targets: 17, className: 'dn-angka g-inflow rv-batas', render: rv_render_angka });
+	}
+	RV_DT_PROY = $('#table-rv-proyeksi').DataTable(o);
+	return RV_DT_PROY;
+}
+
+/* [mulai, mulai+1, ... ] - targets columnDefs tidak menerima rentang. */
+function rv_deret(mulai, jumlah) {
+	var a = [];
+	for (var i = 0; i < jumlah; i++) { a.push(mulai + i); }
+	return a;
+}
+
+/* Tanggal antara dua batas, satu per kolom. Dibatasi 400 seperti di
+   unduhannya - dokumen dengan periode ngawur tidak boleh membekukan layar. */
+function rv_proy_tanggal(dari, sampai) {
+	var a = Date.parse(String(dari || '').slice(0, 10) + 'T00:00:00Z');
+	var b = Date.parse(String(sampai || '').slice(0, 10) + 'T00:00:00Z');
+	var out = [];
+	if (isNaN(a) || isNaN(b) || b < a) { return out; }
+	for (var t = a; t <= b && out.length < 400; t += 86400000) {
+		out.push(new Date(t).toISOString().slice(0, 10));
+	}
+	return out;
+}
+
+/* Nilai yang jatuh di kolom tanggalnya = Collection Amount, dihitung
+   amount_idr x (collection / total invoice) - rumus yang sama dengan modal
+   Detail dan lembar unduhannya, bukan collection_amount langsung. */
+function rv_proy_nilai(b) {
+	var amt = parseFloat(b.amount_idr || 0);
+	var ti  = parseFloat(b.total_invoice || 0);
+	var col = parseFloat(b.collection_amount || 0);
+	return ti !== 0 ? amt * col / ti : amt;
+}
+
+/* Tab Realization - satu baris per baris alokasi.
+   Peta kolomnya (0-based):
+     0 No Alokasi  1 Alokasi Date  2 Customer  3 Document Number  4 Bank
+     5 Account  6 Curr  7 No Reference  8 Reference Date  9 Total  10 Rate
+     11 Equivalent IDR  12 Amount Alokasi  13 Equivalent IDR
+     14 Income Tax Art 23  15 Comission  16 Bank Adm  17 Others
+     18 Collection Amount  19 Description  20 Create Date  21 Create By
+     22 Status */
+function rv_dt_realisasi() {
+	if (RV_DT_REAL) { return RV_DT_REAL; }
+
+	var o = rv_setelan_tabel('No allocation row yet.');
+	o.order = [[0, 'asc'], [7, 'asc']];
+	o.columnDefs = [
+		{ targets: [1, 5, 6, 8, 20, 22], className: 'dn-tengah' },
+		{ targets: [9, 10, 11, 12, 13, 14, 15, 16, 17, 18], className: 'dn-angka', render: rv_render_angka }
+	];
+	RV_DT_REAL = $('#table-rv-realisasi').DataTable(o);
+	return RV_DT_REAL;
+}
+
+/* Tabel di tab yang masih tersembunyi lebarnya nol - DataTables menghitung
+   kolomnya waktu dibuat, dan hasilnya baru benar sesudah tabnya kelihatan.
+   Jadi tiap kali tabnya berganti, lebarnya dihitung ulang. */
+function rv_tab() {
+	$('#rv-tab a[data-toggle="tab"]').off('shown.bs.tab.rv').on('shown.bs.tab.rv', function (e) {
+		var tujuan = $(e.target).attr('href');
+		if (tujuan === '#rv-pane-utama' && RV_DT) {
+			RV_DT.columns.adjust();
+			rv_luruskan_total();
+		} else if (tujuan === '#rv-pane-proyeksi' && RV_DT_PROY) {
+			RV_DT_PROY.columns.adjust();
+			rv_luruskan(RV_DT_PROY, '#rv-proy-total', '#rv-proy-area');
+		} else if (tujuan === '#rv-pane-realisasi' && RV_DT_REAL) {
+			RV_DT_REAL.columns.adjust();
+		}
+	});
+}
+
+/* Lebar sel baris jumlah disalin dari kolom kepalanya - kaki tabelnya tabel
+   tersendiri waktu scrollX menyala, jadi tanpa ini angkanya meleset.
+
+   Dipakai dua tabel (tab utama & tab Projection), jadi ditulis sekali di
+   sini dengan tabelnya sebagai masukan. */
+function rv_luruskan(dt, selKaki, selArea) {
+	// Sel kepala TIAP KOLOM - bukan baris kepala terakhir. Kolom keterangan
+	// di depan memakai rowspan, jadi baris kepala terakhir tidak sama panjang
+	// dengan jumlah kolomnya.
+	var kepala = [];
+	if (dt) {
+		dt.columns().every(function () { kepala.push($(this.header())); });
+	}
+	var baris = $(selKaki + ' tr');
 	if (!kepala.length || !baris.length) { return; }
 
-	var tabelKepala = $('#rv-list-area .dataTables_scrollHead table').first();
-	var tabelKaki = $('#rv-total').closest('table');
+	var tabelKepala = $(selArea + ' .dataTables_scrollHead table').first();
+	var tabelKaki = $(selKaki).closest('table');
 	if (tabelKepala.length && tabelKaki.length) {
 		tabelKaki.css({ width: tabelKepala.outerWidth() + 'px', tableLayout: 'fixed' });
 	}
@@ -22338,53 +22551,241 @@ function rv_luruskan_total() {
 	});
 }
 
-function rv_gambar_papan(r) {
-	if (!r) { $('#rv-papan').empty(); return; }
-
-	var uang = function (v) {
-		return parseFloat(v || 0).toLocaleString('en-US',
-			{ minimumFractionDigits: 2, maximumFractionDigits: 2 });
-	};
-	var persen = function (v) {
-		if (v === null || v === undefined) { return '-'; }
-		return (parseFloat(v) * 100).toLocaleString('en-US',
-			{ minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
-	};
-
-	// Rekonsiliasi harus nol. Kalau tidak, ada baris yang hilang atau
-	// terhitung dua kali - jadi angkanya diberi warna, bukan cuma dipajang.
-	var selisih = Math.abs(parseFloat(r.rekonsiliasi || 0));
-	var rekon = selisih < 0.01 ? 'is-pas' : 'is-meleset';
-
-	var kartu = [
-		['rv-proj',  'Projected Collection', uang(r.projected), 'Projected IDR at projected rate'],
-		['rv-real',  'Actual Collection', uang(r.actual), 'Actual IDR at actual rate'],
-		['rv-capai', 'Collection Achievement', persen(r.achievement), 'Includes FX impact'],
-		['rv-var',   'Total Collection Variance', uang(r.total_variance), 'Actual minus projected'],
-		['rv-var',   'Variance Excl. FX', uang(r.variance_excl_fx), 'At projected rate'],
-		['rv-fx',    'FX Variance', uang(r.fx_variance), 'On realized OCY'],
-		['rv-belum', 'Not Collected', uang(r.not_collected),
-			rv_teks(r.jml_not_collected) + ' invoice(s) fully unpaid'],
-		['rv-belum', 'Unplanned Collections', uang(r.unplanned), 'Collection without planned date'],
-		['rv-rekon ' + rekon, 'Reconciliation Check', uang(r.rekonsiliasi), 'Should equal zero']
-	];
-
-	var html = '';
-	$.each(kartu, function (i, k) {
-		html += '<div class="rv-kartu ' + k[0] + '">'
-			+ '<span class="rv-k-judul">' + rv_teks(k[1]) + '</span>'
-			+ '<span class="rv-k-nilai">' + rv_teks(k[2]) + '</span>'
-			+ '<span class="rv-k-kaki">' + k[3] + '</span>'
-			+ '</div>';
-	});
-	$('#rv-papan').html(html);
+function rv_luruskan_total() {
+	rv_luruskan(RV_DT, '#rv-total', '#rv-list-area');
+	rv_luruskan(RV_DT_PROY, '#rv-proy-total', '#rv-proy-area');
 }
 
+/* ---------- Papan indikator ----------
+   Delapan kartu, dua kelompok: empat angka yang paling sering ditanya di
+   atas, empat rincian selisih di bawahnya. Reconciliation Check tidak ikut
+   jadi kartu - angka itu cuma punya dua arti (pas / meleset), jadi dipajang
+   sebagai tanda di kepala papannya.
+
+   Angkanya tidak dihitung ulang di sini; semuanya datang jadi dari server.
+   Yang diatur layar cuma cara menulisnya. */
+
+var RV_RINGKAS = null;          // ringkasan terakhir, buat digambar ulang
+var RV_FORMAT  = 'penuh';       // 'penuh' (30,773,027,674.69) atau 'ringkas' (30.77 B)
+
+/* Pilihan Compact/Exact itu selera pembacanya, bukan bagian dari datanya -
+   disimpan per browser supaya tiap orang dapat caranya sendiri. */
+function rv_format_muat() {
+	try {
+		var p = localStorage.getItem('rv_format_angka');
+		if (p === 'penuh' || p === 'ringkas') { RV_FORMAT = p; }
+	} catch (e) {
+		// Mode privat - pakai bawaannya saja.
+	}
+	return RV_FORMAT;
+}
+
+function rv_format_pakai(mode) {
+	RV_FORMAT = (mode === 'ringkas') ? 'ringkas' : 'penuh';
+	try { localStorage.setItem('rv_format_angka', RV_FORMAT); } catch (e) { /* abaikan */ }
+	rv_gambar_papan(RV_RINGKAS);
+}
+
+/* Angka penuh, selalu dua desimal - ini yang dipakai di tabel & tooltip. */
+function rv_uang_penuh(v) {
+	return parseFloat(v || 0).toLocaleString('en-US',
+		{ minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/* Rupiah belasan digit susah dibandingkan sekilas, jadi bisa dipendekkan.
+   Nilai pastinya tetap kelihatan waktu kartunya disorot. */
+function rv_uang_ringkas(v) {
+	var n = parseFloat(v || 0);
+	var besar = Math.abs(n);
+	var satuan = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
+	for (var i = 0; i < satuan.length; i++) {
+		if (besar >= satuan[i][0]) {
+			return (n / satuan[i][0]).toLocaleString('en-US',
+				{ minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + satuan[i][1];
+		}
+	}
+	return rv_uang_penuh(n);
+}
+
+function rv_uang_papan(v) {
+	return RV_FORMAT === 'ringkas' ? rv_uang_ringkas(v) : rv_uang_penuh(v);
+}
+
+function rv_persen_papan(v) {
+	if (v === null || v === undefined) { return '-'; }
+	return (parseFloat(v) * 100).toLocaleString('en-US',
+		{ minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+}
+
+/* Jumlah invoice itu cacah, bukan uang - tidak ikut dipendekkan dan tidak
+   berdesimal. */
+function rv_cacah_papan(v) {
+	var n = parseInt(v, 10);
+	return (isNaN(n) ? 0 : n).toLocaleString('en-US');
+}
+
+/* Satu kotak. `k` = { kelas, judul, nilai, pasti, kaki, ikon, lencana,
+   kelas_lencana, bilah, kelas_bilah } - yang tidak diisi tidak dicetak. */
+function rv_kartu(k) {
+	var h = '<div class="rv-kartu ' + k.kelas + '">'
+		+ '<div class="rv-k-atas">'
+		+ '<span class="rv-k-judul">' + rv_teks(k.judul) + '</span>';
+	if (k.lencana) {
+		h += '<span class="rv-k-lencana ' + (k.kelas_lencana || '') + '">'
+			+ rv_teks(k.lencana) + '</span>';
+	} else if (k.ikon) {
+		h += '<span class="rv-k-ikon"><i class="fas ' + k.ikon + '"></i></span>';
+	}
+	h += '</div>'
+		+ '<span class="rv-k-nilai">' + rv_teks(k.nilai) + '</span>';
+	if (k.bilah !== undefined && k.bilah !== null) {
+		h += '<div class="rv-k-bilah ' + (k.kelas_bilah || '') + '">'
+			+ '<span style="width:' + k.bilah + '%"></span></div>';
+	}
+	h += '<span class="rv-k-kaki">' + rv_teks(k.kaki) + '</span>';
+	if (k.pasti) {
+		h += '<span class="rv-k-pasti">' + rv_teks(k.pasti) + '</span>';
+	}
+	return h + '</div>';
+}
+
+function rv_gambar_papan(r) {
+	RV_RINGKAS = r;
+	if (!r) {
+		$('#rv-papan, #rv-papan-2').empty();
+		$('#rv-rekon').empty().removeClass('is-pas is-meleset');
+		return;
+	}
+
+	$('#rv-format button').each(function () {
+		$(this).toggleClass('is-aktif', $(this).data('format') === RV_FORMAT);
+	});
+	// Di mode Exact angkanya sudah penuh - petunjuk sorotnya tidak ada
+	// gunanya, jadi disembunyikan daripada jadi kalimat yang menyesatkan.
+	$('.rv-papan-petunjuk').toggleClass('is-sembunyi', RV_FORMAT !== 'ringkas');
+
+	// Rekonsiliasi harus nol. Kalau tidak, ada baris yang hilang atau terhitung
+	// dua kali - jadi dibuat kelihatan benar/salahnya, bukan cuma dipajang.
+	// Selisihnya ditulis penuh walaupun angka lain sedang dipendekkan: yang
+	// dicari di sini justru sennya.
+	var meleset = Math.abs(parseFloat(r.rekonsiliasi || 0)) >= 0.01;
+	$('#rv-rekon')
+		.removeClass('is-pas is-meleset')
+		.addClass(meleset ? 'is-meleset' : 'is-pas')
+		.html('<span class="rv-rekon-label">Reconciliation</span>'
+			+ '<i class="fas ' + (meleset ? 'fa-exclamation-circle' : 'fa-check-circle') + '"></i>'
+			+ (meleset ? 'Off by ' + rv_uang_penuh(r.rekonsiliasi) : 'OK (0.00)'));
+
+	// Achievement: bilahnya berhenti di 100% walaupun capaiannya lebih -
+	// lebihnya sudah terbaca dari lencana selisihnya.
+	var capai = (r.achievement === null || r.achievement === undefined)
+		? null : parseFloat(r.achievement);
+	var bilah = capai === null ? 0 : Math.max(0, Math.min(100, capai * 100));
+	var kelas_bilah = capai === null ? '' : (capai >= 1 ? 'is-penuh' : 'is-kurang');
+	var selisih_capai = capai === null ? null : (capai - 1) * 100;
+	var lencana_capai = selisih_capai === null ? '' :
+		(selisih_capai >= 0 ? '+' : '') + selisih_capai.toLocaleString('en-US',
+			{ minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+
+	// Jumlah invoicenya ditempel di kartu Not Collected, bukan jadi kartu
+	// sendiri - dua cacah tidak sebanding duduk di antara angka rupiah.
+	var belum = rv_cacah_papan(r.jml_not_collected);
+	var sebagian = parseInt(r.jml_partial, 10) || 0;
+
+	var utama = [
+		{ kelas: 'rv-proj', ikon: 'fa-bullseye', judul: 'Projected Collection',
+		  nilai: rv_uang_papan(r.projected), pasti: rv_uang_penuh(r.projected),
+		  kaki: 'Projected IDR at projected rate' },
+		{ kelas: 'rv-real', ikon: 'fa-wallet', judul: 'Actual Collection',
+		  nilai: rv_uang_papan(r.actual), pasti: rv_uang_penuh(r.actual),
+		  kaki: 'Actual IDR at actual rate' },
+		{ kelas: 'rv-capai', judul: 'Collection Achievement',
+		  lencana: lencana_capai, kelas_lencana: selisih_capai >= 0 ? 'is-naik' : 'is-turun',
+		  nilai: rv_persen_papan(r.achievement),
+		  bilah: bilah, kelas_bilah: kelas_bilah,
+		  kaki: 'Includes FX impact' },
+		{ kelas: 'rv-belum', judul: 'Not Collected',
+		  lencana: belum + ' unpaid' + (sebagian ? ' / ' + sebagian + ' partial' : ''),
+		  kelas_lencana: parseInt(r.jml_not_collected, 10) ? 'is-turun' : '',
+		  nilai: rv_uang_papan(r.not_collected), pasti: rv_uang_penuh(r.not_collected),
+		  kaki: 'Fully unpaid projected invoices' }
+	];
+
+	var kedua = [
+		{ kelas: 'rv-var', ikon: 'fa-chart-bar', judul: 'Total Collection Variance',
+		  nilai: rv_uang_papan(r.total_variance), pasti: rv_uang_penuh(r.total_variance),
+		  kaki: 'Actual minus projected' },
+		{ kelas: 'rv-var', ikon: 'fa-sliders-h', judul: 'Variance Excl. FX',
+		  nilai: rv_uang_papan(r.variance_excl_fx), pasti: rv_uang_penuh(r.variance_excl_fx),
+		  kaki: 'At projected rate' },
+		{ kelas: 'rv-fx', ikon: 'fa-coins', judul: 'FX Variance',
+		  nilai: rv_uang_papan(r.fx_variance), pasti: rv_uang_penuh(r.fx_variance),
+		  kaki: 'On realized OCY' },
+		{ kelas: 'rv-tak-rencana', ikon: 'fa-star', judul: 'Unplanned Collections',
+		  nilai: rv_uang_papan(r.unplanned), pasti: rv_uang_penuh(r.unplanned),
+		  kaki: 'Collection without planned date' }
+	];
+
+	var gambar = function (daftar) {
+		var h = '';
+		$.each(daftar, function (i, k) { h += rv_kartu(k); });
+		return h;
+	};
+	$('#rv-papan').html(gambar(utama));
+	$('#rv-papan-2').html(gambar(kedua));
+}
+
+$(document).off('click.rvformat').on('click.rvformat', '#rv-format button', function () {
+	rv_format_pakai($(this).data('format'));
+});
+
+/* ---------- Dua bagian di tab pertama, masing-masing bisa ditutup ----------
+   Pilihannya diingat per browser - tidak perlu ditutup lagi tiap buka. */
+
+function rv_lipat_pakai(nama, tutup, diam) {
+	if (!nama) { return; }
+	$('.rv-lipat-kepala[data-lipat="' + nama + '"]').toggleClass('is-tutup', !!tutup);
+	$('#rv-lipat-' + nama).toggleClass('is-tutup', !!tutup);
+	if (diam) { return; }
+	try {
+		var p = JSON.parse(localStorage.getItem('rv_lipat') || '{}');
+		p[nama] = !!tutup;
+		localStorage.setItem('rv_lipat', JSON.stringify(p));
+	} catch (e) { /* mode privat - pilihannya saja yang tidak teringat */ }
+}
+
+function rv_lipat_muat() {
+	var p = null;
+	try { p = JSON.parse(localStorage.getItem('rv_lipat') || '{}'); } catch (e) { p = null; }
+	if (!p) { return; }
+	$.each(p, function (nama, tutup) { rv_lipat_pakai(nama, tutup, true); });
+}
+
+$(document).off('click.rvlipat').on('click.rvlipat',
+	'.rv-lipat-kepala .rv-lipat, .rv-lipat-kepala .rv-papan-judul, .rv-lipat-kepala .table-title',
+	function () {
+		var kepala = $(this).closest('.rv-lipat-kepala');
+		rv_lipat_pakai(kepala.data('lipat'), !kepala.hasClass('is-tutup'));
+	});
+
 /* Rekap per buyer. Papan di atas menjawab "berapa", tabel ini menjawab
-   "siapa" - buyer mana yang tertinggal dari rencananya. */
+   "siapa" - buyer mana yang tertinggal dari rencananya.
+
+   Angkanya tetap apa adanya dari server. Yang ditambahkan layar cuma dua
+   penanda supaya tabel sepanjang ini bisa dibaca sekilas: titik & lencana
+   capaian, dan bilah sebanding nilai realisasi terbesar. */
+
+var RV_BUYER = null;            // ringkasan terakhir, buat digambar ulang
+
 function rv_gambar_buyer(r) {
+	RV_BUYER = r;
+	rv_buyer_gambar();
+}
+
+function rv_buyer_gambar() {
 	var tabel = $('#rv-buyer');
 	if (!tabel.length) { return; }
+	var r = RV_BUYER;
 
 	var uang = function (v) {
 		var n = parseFloat(v || 0);
@@ -22396,35 +22797,119 @@ function rv_gambar_buyer(r) {
 		return (parseFloat(v) * 100).toLocaleString('en-US',
 			{ minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
 	};
+	// Batasnya sengaja longgar: 100% ke atas tercapai, 80% ke atas masih
+	// mepet, di bawah itu yang perlu ditengok duluan.
+	var tingkat = function (v) {
+		if (v === null || v === undefined) { return ''; }
+		var n = parseFloat(v);
+		if (n >= 1) { return 'is-capai'; }
+		return n >= 0.8 ? 'is-hampir' : 'is-jauh';
+	};
 
-	var daftar = (r && r.buyer) || [];
-	if (!daftar.length) {
+	var semua = (r && r.buyer) || [];
+	if (!semua.length) {
 		tabel.find('tbody').html('<tr><td colspan="5" class="rv-kosong">No data yet.</td></tr>');
+		tabel.find('tfoot').empty();
+		return;
+	}
+
+	var cari = $.trim(String($('#rv-buyer-cari').val() || '')).toLowerCase();
+	var daftar = !cari ? semua : $.grep(semua, function (b) {
+		return String(b.customer || '').toLowerCase().indexOf(cari) >= 0;
+	});
+
+	// Bilahnya dibandingkan ke realisasi terbesar dari SELURUH buyer, bukan
+	// yang lolos saringan - supaya panjangnya tidak berubah-ubah sambil
+	// diketik, dan tidak dibandingkan ke totalnya, karena kalau begitu semua
+	// buyer kelihatan sama-sama kecil.
+	var puncak = 0;
+	$.each(semua, function (i, b) {
+		puncak = Math.max(puncak, Math.abs(parseFloat(b.actual || 0)));
+	});
+
+	if (!daftar.length) {
+		tabel.find('tbody').html('<tr><td colspan="5" class="rv-kosong">'
+			+ 'No buyer matches the filter.</td></tr>');
 		tabel.find('tfoot').empty();
 		return;
 	}
 
 	var isi = '';
 	$.each(daftar, function (i, b) {
+		var kelas = tingkat(b.achievement);
+		var lebar = puncak > 0 ? Math.abs(parseFloat(b.actual || 0)) / puncak * 100 : 0;
+		// Bilahnya ditaruh di bawah NAMA, bukan di bawah angkanya: di kolom
+		// yang rata kanan, garis selebar sel terbaca seperti coretan.
 		isi += '<tr>'
-			+ '<td>' + rv_teks(b.customer) + '</td>'
+			+ '<td><span class="rv-b-nama"><i class="rv-b-titik ' + kelas + '"></i>'
+			+ rv_teks(b.customer) + '</span>'
+			+ '<div class="rv-b-bilah"><span style="width:' + lebar.toFixed(2) + '%"></span></div></td>'
 			+ '<td class="dn-angka">' + uang(b.projected) + '</td>'
 			+ '<td class="dn-angka">' + uang(b.actual) + '</td>'
 			+ '<td class="dn-angka">' + uang(b.variance) + '</td>'
-			+ '<td class="dn-angka">' + persen(b.achievement) + '</td>'
+			+ '<td class="dn-angka"><span class="rv-b-capai ' + kelas + '">'
+			+ persen(b.achievement) + '</span></td>'
 			+ '</tr>';
 	});
 	tabel.find('tbody').html(isi);
 
-	// Jumlahnya diambil dari angka ringkasan yang sama dengan papannya -
-	// bukan dijumlah ulang dari barisnya, supaya tidak mungkin berselisih.
+	// Tanpa saringan, jumlahnya diambil dari angka ringkasan yang sama dengan
+	// papannya - bukan dijumlah ulang dari barisnya, supaya tidak mungkin
+	// berselisih. Begitu disaring, yang dijumlah tentu yang kelihatan saja,
+	// dan labelnya diberi tahu supaya tidak disangka total seluruhnya.
+	var jum = { projected: r.projected, actual: r.actual,
+		variance: r.total_variance, achievement: r.achievement };
+	var label = 'TOTAL';
+	if (cari) {
+		jum = { projected: 0, actual: 0, variance: 0, achievement: null };
+		$.each(daftar, function (i, b) {
+			jum.projected += parseFloat(b.projected || 0);
+			jum.actual    += parseFloat(b.actual || 0);
+			jum.variance  += parseFloat(b.variance || 0);
+		});
+		jum.achievement = jum.projected ? jum.actual / jum.projected : null;
+		label = 'TOTAL (' + daftar.length + ' of ' + semua.length + ')';
+	}
 	tabel.find('tfoot').html('<tr>'
-		+ '<td>TOTAL</td>'
-		+ '<td class="dn-angka">' + uang(r.projected) + '</td>'
-		+ '<td class="dn-angka">' + uang(r.actual) + '</td>'
-		+ '<td class="dn-angka">' + uang(r.total_variance) + '</td>'
-		+ '<td class="dn-angka">' + persen(r.achievement) + '</td>'
+		+ '<td>' + label + '</td>'
+		+ '<td class="dn-angka">' + uang(jum.projected) + '</td>'
+		+ '<td class="dn-angka">' + uang(jum.actual) + '</td>'
+		+ '<td class="dn-angka">' + uang(jum.variance) + '</td>'
+		+ '<td class="dn-angka"><span class="rv-b-capai ' + tingkat(jum.achievement) + '">'
+		+ persen(jum.achievement) + '</span></td>'
 		+ '</tr>');
+}
+
+$(document).off('input.rvbuyercari').on('input.rvbuyercari', '#rv-buyer-cari', function () {
+	rv_buyer_gambar();
+});
+
+/* Baris jumlah tab Projection - satu <td> per kolom, bukan colspan, supaya
+   lebarnya bisa diluruskan ke kepala tabelnya waktu scrollX menyala. */
+function rv_gambar_proy_total(jml, jmlTgl, tanggal) {
+	var kaki = $('#rv-proy-total');
+	if (!kaki.length) { return; }
+
+	var uang = function (v) {
+		var n = parseFloat(v || 0);
+		var teks = n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+		return n < 0 ? '<span class="rv-minus">' + teks + '</span>' : teks;
+	};
+
+	var h = '<tr><td><span class="rv-total-label">TOTAL</span></td>';
+	// Sebelas kolom keterangan di depan dikosongkan, bukan digabung.
+	for (var i = 0; i < 11; i++) { h += '<td></td>'; }
+	h += '<td class="dn-angka g-recv rv-batas">' + uang(jml.tax_base) + '</td>'
+		+ '<td class="dn-angka g-recv">' + uang(jml.tax_vat) + '</td>'
+		+ '<td class="dn-angka g-recv">' + uang(jml.total_invoice) + '</td>'
+		+ '<td class="dn-angka g-recv">' + uang(jml.income_tax_23) + '</td>'
+		+ '<td class="dn-angka g-recv">' + uang(jml.collection_amount) + '</td>';
+	$.each(tanggal || [], function (i, t) {
+		h += '<td class="dn-angka g-inflow' + (i === 0 ? ' rv-batas' : '') + '">'
+			+ uang(jmlTgl[t]) + '</td>';
+	});
+	kaki.html(h + '</tr>');
+	rv_luruskan(RV_DT_PROY, '#rv-proy-total', '#rv-proy-area');
 }
 
 /* Baris jumlah di kaki tabel - diambil dari angka ringkasan yang sama
@@ -22471,7 +22956,10 @@ function rv_gambar_total(r) {
 }
 
 function rv_muat() {
+	rv_format_muat();
+	rv_lipat_muat();
 	rv_dt();
+	rv_dt_realisasi();
 	if (!RV_DOC) {
 		nag_pesan('No projection document was selected.', 'Cannot open', 'warning');
 		return;
@@ -22491,10 +22979,24 @@ function rv_muat() {
 
 		var h = j.header || {};
 		$('#rv-doc').text(h.doc_number || '-');
-		$('#rv-periode').text((h.periode_dari || '-') + ' s/d ' + (h.periode_sampai || '-'));
+
+		// Jenis proyeksinya tersimpan di dokumennya tapi selama ini tidak pernah
+		// dipajang - padahal itu yang membedakan dokumen harian, mingguan, dan
+		// bulanan waktu angkanya dibandingkan.
+		var tipe = String(h.type || '').trim().toLowerCase();
+		$('#rv-tipe')
+			.removeClass('is-daily is-weekly is-monthly')
+			.addClass(tipe ? 'is-' + tipe : '')
+			.text(tipe);
+
+		// Tanggalnya ditulis seperti di daftar History Projection, bukan ISO -
+		// layar ini dibukanya memang dari sana.
+		$('#rv-periode').html(rv_rentang(h.periode_dari, h.periode_sampai));
 		$('#rv-customer').text(h.id_customer && String(h.id_customer).toLowerCase() !== 'all'
 			? h.id_customer : 'All Customer');
-		$('#rv-oleh').text((h.created_by || '-') + (h.created_at ? ' - ' + String(h.created_at).slice(0, 10) : ''));
+		$('#rv-oleh').html(rv_teks(h.created_by || '-')
+			+ (h.created_at ? ' <span class="rv-nilai-ket">&middot; '
+				+ rv_teks(nag_tgl_inggris(String(h.created_at).slice(0, 10))) + '</span>' : ''));
 
 		var baris = [];
 		$.each(j.invoice || [], function (i, b) {
@@ -22503,7 +23005,7 @@ function rv_muat() {
 				rv_teks(b.no_invoice),
 				rv_isi(b.inv_date),
 				rv_isi(b.due_date),
-				rv_isi(b.curr),
+				rv_kurs(b.curr),
 				rv_isi(b.proj_date),
 				b.proj_ocy, b.proj_rate, b.proj_idr,
 				rv_isi(b.real_date),
@@ -22522,6 +23024,67 @@ function rv_muat() {
 		rv_gambar_buyer(j.ringkas);
 		rv_gambar_total(j.ringkas);
 		RV_DT.columns.adjust();
+
+		// Tab Projection - susunan kolomnya sama dengan modal Detail di
+		// History Projection, termasuk satu kolom per tanggal periodenya.
+		// Nomornya ikut urutan baris dokumennya dan tetap bisa diurutkan,
+		// supaya urutan aslinya selalu bisa dikembalikan.
+		var tanggal = rv_proy_tanggal(h.periode_dari, h.periode_sampai);
+		rv_dt_proyeksi(tanggal);
+
+		var jmlProy = { tax_base: 0, tax_vat: 0, total_invoice: 0,
+			income_tax_23: 0, collection_amount: 0 };
+		var jmlTgl = {};
+		$.each(tanggal, function (i, t) { jmlTgl[t] = 0; });
+
+		var brsProy = [];
+		$.each(j.proyeksi || [], function (i, b) {
+			jmlProy.tax_base          += parseFloat(b.tax_base || 0);
+			jmlProy.tax_vat           += parseFloat(b.tax_vat || 0);
+			jmlProy.total_invoice     += parseFloat(b.total_invoice || 0);
+			jmlProy.income_tax_23     += parseFloat(b.income_tax_23 || 0);
+			jmlProy.collection_amount += parseFloat(b.collection_amount || 0);
+
+			var baris = [
+				i + 1,
+				rv_teks(b.customer), rv_teks(b.no_invoice), rv_isi(b.inv_date),
+				rv_isi(b.shipp), rv_isi(b.type_so),
+				rv_isi(b.duedate), rv_isi(b.duedate_update),
+				b.top, rv_kurs(b.curr),
+				b.amount, b.rate, b.tax_base, b.tax_vat, b.total_invoice,
+				b.income_tax_23, b.collection_amount
+			];
+			var jatuh = String(b.duedate_update || '').slice(0, 10);
+			var nilai = rv_proy_nilai(b);
+			$.each(tanggal, function (k, t) {
+				var v = (t === jatuh) ? nilai : 0;
+				if (v) { jmlTgl[t] += v; }
+				baris.push(v);
+			});
+			brsProy.push(baris);
+		});
+		RV_DT_PROY.clear();
+		if (brsProy.length) { RV_DT_PROY.rows.add(brsProy); }
+		RV_DT_PROY.draw();
+		rv_gambar_proy_total(jmlProy, jmlTgl, tanggal);
+
+		// Tab Realization - sama dengan lembar Realization di unduhannya.
+		var brsReal = [];
+		$.each(j.realisasi || [], function (i, b) {
+			brsReal.push([
+				rv_teks(b.no_alk), rv_isi(b.tgl_alk), rv_teks(b.customer),
+				rv_teks(b.doc_number), rv_teks(b.bank), rv_isi(b.account),
+				rv_kurs(b.curr), rv_isi(b.no_ref), rv_isi(b.ref_date),
+				b.total, b.rate, b.eqp_idr, b.amount, b.amount_idr,
+				b.income_tax_23, b.comission, b.bank_adm, b.others,
+				b.collection_amount,
+				rv_teks(b.keterangan), rv_isi(b.create_date), rv_teks(b.create_by),
+				rv_post(b.status)
+			]);
+		});
+		RV_DT_REAL.clear();
+		if (brsReal.length) { RV_DT_REAL.rows.add(brsReal); }
+		RV_DT_REAL.draw();
 	}).fail(function () {
 		nag_pesan('The report could not be loaded. Please try again.', 'Load failed', 'error');
 	}).always(function () {

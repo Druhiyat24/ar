@@ -792,14 +792,51 @@ public function export_projection_report($id_customer = '', $from = '', $to = ''
             return;
         }
 
-        // Lembar Projection & Realization hanya dipakai unduhannya - tidak
-        // perlu ikut dikirim ke layar, barisnya bisa ribuan.
+        // Layarnya bertab, isinya sama dengan empat lembar unduhannya. Yang
+        // dikirim cuma ruas yang memang dipajang - baris proyeksinya bisa
+        // ratusan, jadi sisa kolom tabelnya tidak ikut dibawa.
         echo json_encode([
-            'status'  => 'success',
-            'header'  => $hasil['header'],
-            'invoice' => $hasil['invoice'],
-            'ringkas' => $hasil['ringkas'],
+            'status'    => 'success',
+            'header'    => $hasil['header'],
+            'invoice'   => $hasil['invoice'],
+            'ringkas'   => $hasil['ringkas'],
+            'proyeksi'  => $this->ruas_proyeksi($hasil['proyeksi']),
+            'realisasi' => $this->ruas_realisasi($hasil['realisasi']),
         ]);
+    }
+
+    /** Kolom tab Projection - urutannya sama dengan lembar Projection di unduhannya. */
+    private function ruas_proyeksi($baris)
+    {
+        // amount_idr ikut dibawa: nilai kolom per tanggalnya dihitung
+        // amount_idr x (collection / total invoice), sama persis dengan
+        // modal Detail di History Projection dan lembar unduhannya.
+        $ruas = ['customer', 'no_invoice', 'inv_date', 'shipp', 'type_so', 'duedate',
+                 'duedate_update', 'top', 'curr', 'amount', 'rate', 'amount_idr',
+                 'tax_base', 'tax_vat', 'total_invoice', 'income_tax_23',
+                 'collection_amount'];
+        return $this->saring_ruas($baris, $ruas);
+    }
+
+    /** Kolom tab Realization - urutannya sama dengan lembar Realization di unduhannya. */
+    private function ruas_realisasi($baris)
+    {
+        $ruas = ['no_alk', 'tgl_alk', 'customer', 'doc_number', 'bank', 'account',
+                 'curr', 'no_ref', 'ref_date', 'total', 'rate', 'eqp_idr', 'amount',
+                 'amount_idr', 'income_tax_23', 'comission', 'bank_adm', 'others',
+                 'collection_amount', 'keterangan', 'create_date', 'create_by', 'status'];
+        return $this->saring_ruas($baris, $ruas);
+    }
+
+    private function saring_ruas($baris, array $ruas)
+    {
+        $hasil = [];
+        foreach ((array) $baris as $b) {
+            $satu = [];
+            foreach ($ruas as $r) { $satu[$r] = isset($b[$r]) ? $b[$r] : null; }
+            $hasil[] = $satu;
+        }
+        return $hasil;
     }
 
     public function save_variance_explanation()
