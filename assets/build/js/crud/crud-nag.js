@@ -436,6 +436,52 @@ var INV_DETAIL_LAMPIRAN = [];
 var INV_DETAIL_SJ = [];        // PDF Surat Jalan (tautan program lain, bukan lampiran)
 var INV_DETAIL_LOADER_HTML = '';
 
+/**
+ * Daftar uang muka yang memotong invoicenya, di modal detail.
+ *
+ * Invoice yang tidak memakai uang muka - dan invoice lama yang
+ * pemakaiannya belum tercatat per dokumen - bagian ini disembunyikan
+ * seluruhnya, bukan dipajang kosong.
+ */
+function inv_detail_uang_muka(daftar, curr) {
+	daftar = daftar || [];
+	var ada = daftar.length > 0;
+	$('#inv-detail-judul-um').prop('hidden', !ada);
+	$('#inv-detail-um-wrap').prop('hidden', !ada);
+	if (!ada) {
+		$('#inv-detail-um-tabel tbody, #inv-detail-um-tabel tfoot').empty();
+		$('#inv-detail-jml-um').text('');
+		return;
+	}
+
+	var jml = 0;
+	var baris = daftar.map(function (r) {
+		jml += inv_detail_nilai(r.amount);
+		// Bagiannya cuma dua: DP kalau PI-nya memang ber-Down Payment,
+		// selain itu Advance - sama dengan pembagian di Create Invoice.
+		var bagian = String(r.bagian || '').toUpperCase() === 'DP'
+			? 'Down Payment' : 'Advance';
+		// Yang dipilih dari kotak bawah ditandai: nomornya bukan PI yang
+		// SO-nya ikut ditagih invoice ini.
+		var asal = String(r.sumber || 'PI').toUpperCase() === 'OTHER'
+			? '<span class="inv-um-asal">OTHER</span>' : '';
+		return '<tr>'
+			+ '<td><span class="inv-utama">' + inv_detail_isi(r.no_proforma_invoice)
+			+ '</span>' + asal + '</td>'
+			+ '<td class="dn-tengah">' + bagian + '</td>'
+			+ '<td class="dn-tengah">' + inv_detail_isi(r.curr) + '</td>'
+			+ '<td class="dn-angka">' + inv_detail_angka(r.amount) + '</td>'
+			+ '</tr>';
+	}).join('');
+
+	$('#inv-detail-um-tabel tbody').html(baris);
+	$('#inv-detail-um-tabel tfoot').html('<tr><td colspan="3">Total'
+		+ (curr ? ' (' + inv_list_teks(curr) + ')' : '') + '</td>'
+		+ '<td class="dn-angka">' + inv_detail_angka(jml) + '</td></tr>');
+	$('#inv-detail-jml-um').text('(' + daftar.length + ' advance'
+		+ (daftar.length > 1 ? 's' : '') + ')');
+}
+
 function inv_detail_angka(nilai, desimal) {
 	var n = parseFloat(String(nilai === undefined || nilai === null ? '' : nilai).replace(/,/g, ''));
 	if (isNaN(n)) { return desimal === 0 ? '0' : (0).toFixed(desimal === undefined ? 2 : desimal); }
@@ -624,13 +670,21 @@ function inv_detail_render(res) {
 	$('#inv-detail-tabel tfoot').html(tfoot);
 	$('#inv-detail-jml-baris').text(jml ? '(' + jml + ' row' + (jml > 1 ? 's' : '') + ')' : '');
 
+	/* ---- uang muka yang memotong invoice ini ----
+	   Kolom Advance di cetakan cuma angka. Penyetuju kedua perlu tahu
+	   dari Proforma Invoice yang mana - salah pilih uang muka baru
+	   ketahuan sesudah jurnalnya terbentuk. */
+	inv_detail_uang_muka(res.uang_muka, curr);
+
 	/* ---- rekap angka ----
 	   Bawaannya cuma Grand Total; rinciannya dibuka kalau perlu - sama
-	   seperti kartu Summary di layar Create Invoice. */
+	   seperti kartu Summary di layar Create Invoice. Susunannya sama
+	   persis dengan cetakan invoicenya, Advance termasuk. */
 	var rekap = [
 		['Total', pot.total],
 		['Discount', pot.discount],
 		['Down Payment', pot.dp],
+		['Advance', pot.dp_cbd],
 		['Return', pot.retur],
 		['Total Before Value Added Tax', pot.twot],
 		['Value Added Tax', pot.vat]

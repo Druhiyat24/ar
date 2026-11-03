@@ -121,8 +121,8 @@ CSS HEADER
             <th style="background-color: #FFE4C4;" rowspan="2">VAT Date</th>
             <th style="background-color: #FFE4C4;" rowspan="2">Currency</th>
             <th style="background-color: #FFE4C4;" rowspan="2">Rate</th>
-            <th style="background-color: #90EE90;" colspan="5">Billing Invoice</th>
-            <th style="background-color: #87CEFA;" colspan="5">Shipping Invoice</th>
+            <th style="background-color: #90EE90;" colspan="9">Billing Invoice</th>
+            <th style="background-color: #87CEFA;" colspan="9">Shipping Invoice</th>
         </tr>
         <tr>
             <th style="width:150px;background-color: #90EE90;">Qty</th>
@@ -130,12 +130,20 @@ CSS HEADER
             <th style="width:150px;background-color: #90EE90;">Unit Price</th>
             <th style="width:150px;background-color: #90EE90;">Total</th>
             <th style="width:150px;background-color: #90EE90;">Total IDR</th>
+            <th style="width:150px;background-color: #90EE90;">Down Payment</th>
+            <th style="width:150px;background-color: #90EE90;">Down Payment IDR</th>
+            <th style="width:150px;background-color: #90EE90;">Advance</th>
+            <th style="width:150px;background-color: #90EE90;">Advance IDR</th>
 
             <th style="width:150px;background-color: #87CEFA;">Qty</th>
             <th style="width:150px;background-color: #87CEFA;">Uom</th>
             <th style="width:150px;background-color: #87CEFA;">Unit Price</th>
             <th style="width:150px;background-color: #87CEFA;">Total</th>
             <th style="width:150px;background-color: #87CEFA;">Total IDR</th>
+            <th style="width:150px;background-color: #87CEFA;">Down Payment</th>
+            <th style="width:150px;background-color: #87CEFA;">Down Payment IDR</th>
+            <th style="width:150px;background-color: #87CEFA;">Advance</th>
+            <th style="width:150px;background-color: #87CEFA;">Advance IDR</th>
         </tr>
 
 
@@ -164,11 +172,19 @@ CSS HEADER
             <td style="text-align:right"><?= number_format($sr['price_bill'],2); ?></td>
             <td style="text-align:right"><?= number_format($sr['total_bill'],2); ?></td>
             <td style="text-align:right"><?= number_format($sr['total_bill_idr'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['dp_bill'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['dp_bill_idr'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['dp_cbd_bill'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['dp_cbd_bill_idr'],2); ?></td>
             <td style="text-align:right"><?= number_format($sr['qty_ship'],2); ?></td>
             <td><?= $sr['uom_ship']; ?></td>
             <td style="text-align:right"><?= number_format($sr['price_ship'],2); ?></td>
             <td style="text-align:right"><?= number_format($sr['total_ship'],2); ?></td>
             <td style="text-align:right"><?= number_format($sr['total_ship_idr'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['dp_ship'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['dp_ship_idr'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['dp_cbd_ship'],2); ?></td>
+            <td style="text-align:right"><?= number_format($sr['dp_cbd_ship_idr'],2); ?></td>
         </tr>
 
     <?php endforeach; ?>

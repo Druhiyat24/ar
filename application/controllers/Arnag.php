@@ -951,12 +951,15 @@ public function inv_detail_json($id = null)
     }
 
     echo json_encode(array(
-        'status'   => TRUE,
-        'header'   => $header,
-        'baris'    => $this->Model_nag->cari_inv_detail($id),
-        'pot'      => $pot ? $pot[0] : null,
-        'lampiran' => $lampiran,
-        'sj_dok'   => $this->_sj_dokumen($id),
+        'status'    => TRUE,
+        'header'    => $header,
+        'baris'     => $this->Model_nag->cari_inv_detail($id),
+        'pot'       => $pot ? $pot[0] : null,
+        // Uang muka yang memotong invoice ini - dari PI mana, DP atau
+        // Advance, berapa. Penyetuju kedua perlu melihatnya di sini.
+        'uang_muka' => $this->Model_nag->alokasi_pi_invoice($id),
+        'lampiran'  => $lampiran,
+        'sj_dok'    => $this->_sj_dokumen($id),
     ));
 }
 

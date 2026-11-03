@@ -32,6 +32,7 @@ function cari_sales_report(){
             let total_diskon_bill = 0;
             let total_twot_bill = 0;
             let total_dp_bill = 0;
+            let total_dp_cbd_bill = 0;
             let total_vat_bill = 0;
             let total_grand_total_bill = 0;
             let total_total_bill_idr = 0;
@@ -39,6 +40,7 @@ function cari_sales_report(){
             let total_diskon_bill_idr = 0;
             let total_twot_bill_idr = 0;
             let total_dp_bill_idr = 0;
+            let total_dp_cbd_bill_idr = 0;
             let total_vat_bill_idr = 0;
             let total_grand_total_bill_idr = 0;
             let total_qty_ship = 0;
@@ -47,6 +49,7 @@ function cari_sales_report(){
             let total_diskon_ship = 0;
             let total_twot_ship = 0;
             let total_dp_ship = 0;
+            let total_dp_cbd_ship = 0;
             let total_vat_ship = 0;
             let total_grand_total_ship = 0;
             let total_total_ship_idr = 0;
@@ -54,6 +57,7 @@ function cari_sales_report(){
             let total_diskon_ship_idr = 0;
             let total_twot_ship_idr = 0;
             let total_dp_ship_idr = 0;
+            let total_dp_cbd_ship_idr = 0;
             let total_vat_ship_idr = 0;
             let total_grand_total_ship_idr = 0;
             let total_net_sales = 0;
@@ -68,6 +72,7 @@ function cari_sales_report(){
                 total_diskon_bill += parseFloat(item.diskon_bill);
                 total_twot_bill += parseFloat(item.twot_bill);
                 total_dp_bill += parseFloat(item.dp_bill);
+                total_dp_cbd_bill += parseFloat(item.dp_cbd_bill);
                 total_vat_bill += parseFloat(item.vat_bill);
                 total_grand_total_bill += parseFloat(item.grand_total_bill);
                 total_total_bill_idr += parseFloat(item.total_bill_idr);
@@ -75,6 +80,7 @@ function cari_sales_report(){
                 total_diskon_bill_idr += parseFloat(item.diskon_bill_idr);
                 total_twot_bill_idr += parseFloat(item.twot_bill_idr);
                 total_dp_bill_idr += parseFloat(item.dp_bill_idr);
+                total_dp_cbd_bill_idr += parseFloat(item.dp_cbd_bill_idr);
                 total_vat_bill_idr += parseFloat(item.vat_bill_idr);
                 total_grand_total_bill_idr += parseFloat(item.grand_total_bill_idr);
                 total_qty_ship += parseFloat(item.qty_ship);
@@ -83,6 +89,7 @@ function cari_sales_report(){
                 total_diskon_ship += parseFloat(item.diskon_ship);
                 total_twot_ship += parseFloat(item.twot_ship);
                 total_dp_ship += parseFloat(item.dp_ship);
+                total_dp_cbd_ship += parseFloat(item.dp_cbd_ship);
                 total_vat_ship += parseFloat(item.vat_ship);
                 total_grand_total_ship += parseFloat(item.grand_total_ship);
                 total_total_ship_idr += parseFloat(item.total_ship_idr);
@@ -90,6 +97,7 @@ function cari_sales_report(){
                 total_diskon_ship_idr += parseFloat(item.diskon_ship_idr);
                 total_twot_ship_idr += parseFloat(item.twot_ship_idr);
                 total_dp_ship_idr += parseFloat(item.dp_ship_idr);
+                total_dp_cbd_ship_idr += parseFloat(item.dp_cbd_ship_idr);
                 total_vat_ship_idr += parseFloat(item.vat_ship_idr);
                 total_grand_total_ship_idr += parseFloat(item.grand_total_ship_idr);
                 total_net_sales += parseFloat(item.net_sales);
@@ -119,6 +127,7 @@ function cari_sales_report(){
                 trHTML += '<td align="right">' + number_format(item.diskon_bill,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.twot_bill,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.dp_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_cbd_bill,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.vat_bill,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.grand_total_bill,2) + "</td>";
 
@@ -128,6 +137,7 @@ function cari_sales_report(){
                 trHTML += '<td align="right">' + number_format(item.diskon_bill_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.twot_bill_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.dp_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_cbd_bill_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.vat_bill_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.grand_total_bill_idr,2) + "</td>";
 
@@ -137,6 +147,7 @@ function cari_sales_report(){
                 trHTML += '<td align="right">' + number_format(item.diskon_ship,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.twot_ship,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.dp_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_cbd_ship,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.vat_ship,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.grand_total_ship,2) + "</td>";
 
@@ -146,6 +157,7 @@ function cari_sales_report(){
                 trHTML += '<td align="right">' + number_format(item.diskon_ship_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.twot_ship_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.dp_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_cbd_ship_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.vat_ship_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.grand_total_ship_idr,2) + "</td>";
 
@@ -179,6 +191,7 @@ function cari_sales_report(){
                 trHTML += '<td align="right"><b>' + number_format(total_diskon_bill, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_twot_bill, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_dp_bill, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_dp_cbd_bill, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_vat_bill, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_grand_total_bill, 2) + '</b></td>';
 
@@ -188,6 +201,7 @@ function cari_sales_report(){
                 trHTML += '<td align="right"><b>' + number_format(total_diskon_bill_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_twot_bill_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_dp_bill_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_dp_cbd_bill_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_vat_bill_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_grand_total_bill_idr, 2) + '</b></td>';
 
@@ -197,6 +211,7 @@ function cari_sales_report(){
                 trHTML += '<td align="right"><b>' + number_format(total_diskon_ship, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_twot_ship, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_dp_ship, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_dp_cbd_ship, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_vat_ship, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_grand_total_ship, 2) + '</b></td>';
 
@@ -206,6 +221,7 @@ function cari_sales_report(){
                 trHTML += '<td align="right"><b>' + number_format(total_diskon_ship_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_twot_ship_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_dp_ship_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_dp_cbd_ship_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_vat_ship_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_grand_total_ship_idr, 2) + '</b></td>';
                 trHTML += '<td style="width:50px;background-color:#FFFFFF;border-top:1px solid #FFFFFF;border-bottom:1px solid #FFFFFF;">' + '' + '</td>';
@@ -282,11 +298,19 @@ function cari_sales_report_material() {
                 trHTML += '<td align="right">' + number_format(item.price_bill,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.total_bill,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.total_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_cbd_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_cbd_bill_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.qty_ship,2) + "</td>";
                 trHTML += '<td >' + item.uom_ship + "</td>";
                 trHTML += '<td align="right">' + number_format(item.price_ship,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.total_ship,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.total_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_cbd_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.dp_cbd_ship_idr,2) + "</td>";
                 trHTML += '</tr>';
             });
 
@@ -588,10 +612,10 @@ var SRM_KOLOM_TEKS = ['customer', 'no_invoice', 'tgl_inv', 'bppb_number', 'sj_da
                       'styleno', 'produk', 'type_so', 'shipp', 'inv_type', 'no_faktur', 'tgl_faktur', 'curr'];
 var SRM_KOLOM_ANGKA = [
     'rate',
-    'qty_bill', 'uom_bill', 'price_bill', 'gross_bill', 'other_bill', 'diskon_bill', 'net_bill', 'dp_bill', 'vat_bill', 'total_bill',
-    'qty_bill', 'uom_bill', 'price_bill_idr', 'gross_bill_idr', 'other_bill_idr', 'diskon_bill_idr', 'net_bill_idr', 'dp_bill_idr', 'vat_bill_idr', 'total_bill_idr',
-    'qty_ship', 'uom_ship', 'price_ship', 'gross_ship', 'other_ship', 'diskon_ship', 'net_ship', 'dp_ship', 'vat_ship', 'total_ship',
-    'qty_ship', 'uom_ship', 'price_ship_idr', 'gross_ship_idr', 'other_ship_idr', 'diskon_ship_idr', 'net_ship_idr', 'dp_ship_idr', 'vat_ship_idr', 'total_ship_idr'
+    'qty_bill', 'uom_bill', 'price_bill', 'gross_bill', 'other_bill', 'diskon_bill', 'net_bill', 'dp_bill', 'dp_cbd_bill', 'vat_bill', 'total_bill',
+    'qty_bill', 'uom_bill', 'price_bill_idr', 'gross_bill_idr', 'other_bill_idr', 'diskon_bill_idr', 'net_bill_idr', 'dp_bill_idr', 'dp_cbd_bill_idr', 'vat_bill_idr', 'total_bill_idr',
+    'qty_ship', 'uom_ship', 'price_ship', 'gross_ship', 'other_ship', 'diskon_ship', 'net_ship', 'dp_ship', 'dp_cbd_ship', 'vat_ship', 'total_ship',
+    'qty_ship', 'uom_ship', 'price_ship_idr', 'gross_ship_idr', 'other_ship_idr', 'diskon_ship_idr', 'net_ship_idr', 'dp_ship_idr', 'dp_cbd_ship_idr', 'vat_ship_idr', 'total_ship_idr'
 ];
 
 // Filter di form - dipakai Search & Export.
@@ -764,8 +788,8 @@ function srmKolom(map) {
     });
 
     SRM_KOLOM_ANGKA.forEach(function (k, i) {
-        // Kolom pertama tiap kelompok 10 kolom (Billing/Shipping, Original/IDR)
-        var awal = (i > 0 && (i - 1) % 10 === 0) ? ' srm-awal-grup' : '';
+        // Kolom pertama tiap kelompok 11 kolom (Billing/Shipping, Original/IDR)
+        var awal = (i > 0 && (i - 1) % 11 === 0) ? ' srm-awal-grup' : '';
         if (k.indexOf('uom_') === 0) {
             kolom.push({ data: map[k], defaultContent: '', searchable: false, className: 'dn-tengah' + awal });
             return;
@@ -910,7 +934,8 @@ var SRM_EXCEL_KIRI = ['No', 'Customer', 'Invoice', 'Invoice Date', 'Shipp Number
                       'Product Item', 'Order Type', 'Shipp', 'Inv Type', 'VAT Number', 'VAT Date', 'Currency', 'Rate'];
 var SRM_EXCEL_GRUP = [['Billing Invoice (Original Currency)', '#90EE90'], ['Billing Invoice (Equivalent IDR)', '#90EE90'],
                       ['Shipping Invoice (Original Currency)', '#87CEFA'], ['Shipping Invoice (Equivalent IDR)', '#87CEFA']];
-var SRM_EXCEL_SUB = ['Qty', 'UOM', 'Price', 'Gross Sales', 'Others Sales', 'Discount', 'Net Sales', 'Down Payment', 'VAT', 'Total'];
+var SRM_EXCEL_SUB = ['Qty', 'UOM', 'Price', 'Gross Sales', 'Others Sales', 'Discount', 'Net Sales',
+                     'Down Payment', 'Advance', 'VAT', 'Total'];
 
 function srmTeks(v) {
     return v == null ? '' : String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -926,7 +951,7 @@ function srmExcelKepala(f) {
         h += '<th style="background-color: #FFE4C4;" rowspan="2">' + j + '</th>';
     });
     SRM_EXCEL_GRUP.forEach(function (g) {
-        h += '<th style="background-color: ' + g[1] + ';" colspan="10">' + g[0] + '</th>';
+        h += '<th style="background-color: ' + g[1] + ';" colspan="11">' + g[0] + '</th>';
     });
     h += '</tr><tr>';
     SRM_EXCEL_GRUP.forEach(function (g) {

@@ -325,8 +325,8 @@
                                     <th style="width:200px;background-color: #FFE4C4;" rowspan="2">VAT Date</th>
                                     <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Currency</th>
                                     <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Rate</th>
-                                    <th style="background-color: #90EE90;" colspan="5">Billing Invoice</th>
-                                    <th style="background-color: #87CEFA;" colspan="5">Shipping Invoice</th>
+                                    <th style="background-color: #90EE90;" colspan="9">Billing Invoice</th>
+                                    <th style="background-color: #87CEFA;" colspan="9">Shipping Invoice</th>
                                 </tr>
                                 <tr>
                                     <th style="width:150px;background-color: #90EE90;">Qty</th>
@@ -334,12 +334,20 @@
                                     <th style="width:150px;background-color: #90EE90;">Unit Price</th>
                                     <th style="width:150px;background-color: #90EE90;">Total</th>
                                     <th style="width:150px;background-color: #90EE90;">Total IDR</th>
+                                    <th style="width:150px;background-color: #90EE90;">Down Payment</th>
+                                    <th style="width:150px;background-color: #90EE90;">Down Payment IDR</th>
+                                    <th style="width:150px;background-color: #90EE90;">Advance</th>
+                                    <th style="width:150px;background-color: #90EE90;">Advance IDR</th>
 
                                     <th style="width:150px;background-color: #87CEFA;">Qty</th>
                                     <th style="width:150px;background-color: #87CEFA;">Uom</th>
                                     <th style="width:150px;background-color: #87CEFA;">Unit Price</th>
                                     <th style="width:150px;background-color: #87CEFA;">Total</th>
                                     <th style="width:150px;background-color: #87CEFA;">Total IDR</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Down Payment</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Down Payment IDR</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Advance</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Advance IDR</th>
                                 </tr>
                             </thead>
                             <tbody>

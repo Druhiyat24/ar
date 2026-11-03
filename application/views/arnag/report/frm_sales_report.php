@@ -238,10 +238,10 @@
                                     <th style="width:200px;background-color: #FFE4C4;" rowspan="2">VAT Date</th>
                                     <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Currency</th>
                                     <th style="width:200px;background-color: #FFE4C4;" rowspan="2">Rate</th>
-                                    <th style="background-color: #90EE90;" colspan="8">Billing Invoice (Original Currency)</th>
-                                    <th style="background-color: #90EE90;" colspan="8">Billing Invoice (Equivalent IDR)</th>
-                                    <th style="background-color: #87CEFA;" colspan="8">Shipping Invoice (Original Currency)</th>
-                                    <th style="background-color: #87CEFA;" colspan="8">Shipping Invoice (Equivalent IDR)</th>
+                                    <th style="background-color: #90EE90;" colspan="9">Billing Invoice (Original Currency)</th>
+                                    <th style="background-color: #90EE90;" colspan="9">Billing Invoice (Equivalent IDR)</th>
+                                    <th style="background-color: #87CEFA;" colspan="9">Shipping Invoice (Original Currency)</th>
+                                    <th style="background-color: #87CEFA;" colspan="9">Shipping Invoice (Equivalent IDR)</th>
                                     <th style="width:50px;background-color: #FFFFFF;border:1px solid #FFFFFF;" rowspan="2"></th>
                                     <th style="width:200px;background-color: #FFDAB9;" rowspan="2">Net Sales</th>
                                     <th style="width:200px;background-color: #FFDAB9;" rowspan="2">VAT</th>
@@ -254,6 +254,7 @@
                                     <th style="width:150px;background-color: #90EE90;">Discount</th>
                                     <th style="width:150px;background-color: #90EE90;">Net Sales</th>
                                     <th style="width:150px;background-color: #90EE90;">Down Payment</th>
+                                    <th style="width:150px;background-color: #90EE90;">Advance</th>
                                     <th style="width:150px;background-color: #90EE90;">VAT</th>
                                     <th style="width:150px;background-color: #90EE90;">Total</th>
 
@@ -263,6 +264,7 @@
                                     <th style="width:150px;background-color: #90EE90;">Discount</th>
                                     <th style="width:150px;background-color: #90EE90;">Net Sales</th>
                                     <th style="width:150px;background-color: #90EE90;">Down Payment</th>
+                                    <th style="width:150px;background-color: #90EE90;">Advance</th>
                                     <th style="width:150px;background-color: #90EE90;">VAT</th>
                                     <th style="width:150px;background-color: #90EE90;">Total</th>
 
@@ -272,6 +274,7 @@
                                     <th style="width:150px;background-color: #87CEFA;">Discount</th>
                                     <th style="width:150px;background-color: #87CEFA;">Net Sales</th>
                                     <th style="width:150px;background-color: #87CEFA;">Down Payment</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Advance</th>
                                     <th style="width:150px;background-color: #87CEFA;">VAT</th>
                                     <th style="width:150px;background-color: #87CEFA;">Total</th>
 
@@ -281,6 +284,7 @@
                                     <th style="width:150px;background-color: #87CEFA;">Discount</th>
                                     <th style="width:150px;background-color: #87CEFA;">Net Sales</th>
                                     <th style="width:150px;background-color: #87CEFA;">Down Payment</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Advance</th>
                                     <th style="width:150px;background-color: #87CEFA;">VAT</th>
                                     <th style="width:150px;background-color: #87CEFA;">Total</th>
                                 </tr>

@@ -265,7 +265,8 @@
                 array('Shipping Invoice (Original Currency)', 'srm-grup-ship'),
                 array('Shipping Invoice (Equivalent IDR)', 'srm-grup-ship'),
             );
-            $sub = array('Qty', 'UOM', 'Price', 'Gross Sales', 'Others Sales', 'Discount', 'Net Sales', 'Down Payment', 'VAT', 'Total');
+            $sub = array('Qty', 'UOM', 'Price', 'Gross Sales', 'Others Sales', 'Discount', 'Net Sales',
+                         'Down Payment', 'Advance', 'VAT', 'Total');
             ?>
             <table id="table-sales-report-material" class="dn-table text-nowrap">
               <thead>
@@ -274,7 +275,7 @@
                     <th rowspan="2"<?= $i < 5 ? ' class="srm-beku srm-beku-' . $i . '"' : ''; ?>><?= $judul; ?></th>
                   <?php endforeach; ?>
                   <?php foreach ($grup as $g) : ?>
-                    <th colspan="10" class="srm-awal-grup <?= $g[1]; ?>"><?= $g[0]; ?></th>
+                    <th colspan="11" class="srm-awal-grup <?= $g[1]; ?>"><?= $g[0]; ?></th>
                   <?php endforeach; ?>
                 </tr>
                 <tr>

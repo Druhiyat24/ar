@@ -152,6 +152,24 @@
   border-top: 2px solid #e2e8f0;
 }
 
+/* ---- Uang muka yang memotong invoice ----
+   Penanda kecil untuk uang muka yang dipilih dari kotak bawah: nomornya
+   bukan Proforma Invoice yang SO-nya ikut ditagih invoice ini, jadi perlu
+   kelihatan sekilas waktu diperiksa. */
+.nag-skin #inv-detail-um-tabel .inv-um-asal {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  vertical-align: middle;
+}
+.nag-skin #inv-detail-um-tabel tfoot td { font-weight: 700; }
+
 /* ---- Rekap angka ---- */
 .nag-skin .inv-detail-rekap-baris { display: flex; justify-content: flex-end; margin-top: 14px; }
 .nag-skin .inv-detail-rekap {
@@ -798,6 +816,29 @@
           <div class="inv-detail-tabel-wrap">
             <table class="dn-table inv-detail-tabel" id="inv-detail-tabel">
               <thead></thead>
+              <tbody></tbody>
+              <tfoot></tfoot>
+            </table>
+          </div>
+
+          <!-- Uang muka yang memotong invoice ini. Kolom Advance di cetakan
+               cuma angka; di sini kelihatan dari Proforma Invoice yang mana,
+               bagiannya DP atau Advance, dan berapa. Disembunyikan kalau
+               invoicenya memang tidak memakai uang muka. -->
+          <div class="inv-detail-judul-bagian" id="inv-detail-judul-um" hidden>
+            <i class="fas fa-hand-holding-usd"></i> Advance / Down Payment
+            <span class="inv-detail-jumlah" id="inv-detail-jml-um"></span>
+          </div>
+          <div class="inv-detail-tabel-wrap" id="inv-detail-um-wrap" hidden>
+            <table class="dn-table inv-detail-tabel" id="inv-detail-um-tabel">
+              <thead>
+                <tr>
+                  <th>Proforma Invoice</th>
+                  <th class="dn-tengah">Part</th>
+                  <th class="dn-tengah">Curr</th>
+                  <th class="dn-angka">Amount</th>
+                </tr>
+              </thead>
               <tbody></tbody>
               <tfoot></tfoot>
             </table>

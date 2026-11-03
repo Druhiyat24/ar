@@ -2222,11 +2222,18 @@ function cari_inv_detail($id)
 
 function cari_inv_pot($id)
 {
-    $hasil = $this->db->query("SELECT id_book_invoice, FORMAT(total,2) AS total, FORMAT(discount,2) AS discount, FORMAT(dp,2) AS dp, FORMAT(retur,2) AS retur, FORMAT(twot,2) AS twot, FORMAT(vat,2) AS vat, FORMAT(grand_total,2) AS grand_total
+    // Advance (uang muka dari PI CBD / PI NON SO tanpa DP) ikut dibaca -
+    // cetakan invoicenya sudah memajangnya sejak dulu, cuma pembaca ini
+    // yang tertinggal. Invoice lama belum punya kolomnya, jadi dikembalikan
+    // nol supaya susunan rekapnya tidak berubah-ubah.
+    $dp_cbd = $this->kolom_ada('tbl_invoice_pot', 'dp_cbd')
+        ? 'FORMAT(dp_cbd,2)' : "'0.00'";
+    $hasil = $this->db->query("SELECT id_book_invoice, FORMAT(total,2) AS total, FORMAT(discount,2) AS discount, FORMAT(dp,2) AS dp, $dp_cbd AS dp_cbd, FORMAT(retur,2) AS retur, FORMAT(twot,2) AS twot, FORMAT(vat,2) AS vat, FORMAT(grand_total,2) AS grand_total
        FROM tbl_invoice_pot
        WHERE id_book_invoice = '$id' ");
     return $hasil->result_array();
 }
+
 
 function report_invoice($id)
 {
@@ -12840,9 +12847,15 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         if (!$this->db->table_exists('tbl_invoice_proforma_alokasi')) {
             return array();
         }
+        // Kotak asalnya ikut dibaca: yang dari kotak bawah (OTHER) nomornya
+        // BUKAN Proforma Invoice yang SO-nya ikut ditagih invoice ini, jadi
+        // perlu kelihatan waktu invoicenya diperiksa. Kolomnya baru ada
+        // sesudah migrations/20261020 - sebelum itu semuanya dari daftar PI.
+        $sumber = $this->kolom_ada('tbl_invoice_proforma_alokasi', 'sumber')
+            ? "IFNULL(NULLIF(TRIM(sumber), ''), 'PI')" : "'PI'";
         return $this->db->query("
             SELECT id, id_proforma, no_proforma_invoice, type_pi, curr,
-                   nilai_pi, amount, bagian
+                   nilai_pi, amount, bagian, $sumber AS sumber
               FROM tbl_invoice_proforma_alokasi
              WHERE id_book_invoice = ?
           ORDER BY id
