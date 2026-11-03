@@ -469,31 +469,32 @@
                         </p>
                     </a>
                     <?php
-                    // Unearned Revenue duduk paling atas, di atas Projection, dan
-                    // langsung satu baris - tanpa induk "Sub Ledger" lagi. Urutan
-                    // $user_access_3 datang dari database tanpa ORDER BY, jadi
-                    // tempatnya dipastikan di sini, bukan diserahkan ke urutan baris.
-                    $ua_um = null;
+                    // Unearned Revenue duduk tepat DI ATAS Projection - di bawah
+                    // laporan mendatar lainnya. Tempatnya dipastikan di sini, bukan
+                    // diserahkan ke urutan baris database: query menunya memang
+                    // tidak memakai ORDER BY, jadi urutannya tidak bisa dipegang.
+                    //
+                    // Markupnya dirakit sekali di sini lalu dicetak di tempatnya;
+                    // begitu tercetak isinya dikosongkan, supaya tidak muncul dua
+                    // kali kalau nanti ada cabang lain yang ikut mencetaknya.
+                    $um_html = '';
                     foreach ($user_access_3 as $ua_cari) {
                         if (strpos($ua_cari['base_url'], 'frm_report_uang_muka') !== false) {
-                            $ua_um = $ua_cari;
+                            $um_html = '<ul class="nav nav-treeview" style="margin-left: 8px;">'
+                                . '<li class="nav-item">'
+                                . '<a href="' . base_url($ua_cari['base_url']) . '" class="nav-link">'
+                                . '<i class="far fa-circle nav-icon" style="font-size:8px;"></i>'
+                                . '<p>Unearned Revenue</p>'
+                                . '</a></li></ul>';
                             break;
                         }
                     }
                     ?>
-                    <?php if ($ua_um) : ?>
-                        <ul class="nav nav-treeview" style="margin-left: 8px;">
-                            <li class="nav-item">
-                                <a href="<?= base_url($ua_um['base_url']); ?>" class="nav-link">
-                                    <i class="far fa-circle nav-icon" style="font-size:8px;"></i>
-                                    <p>Unearned Revenue</p>
-                                </a>
-                            </li>
-                        </ul>
-                    <?php endif; ?>
 
                     <?php foreach ($user_access_3 as $ua_3) : ?>
                         <?php if (strpos($ua_3['base_url'], 'projection_report') !== false && strpos($ua_3['base_url'], 'history') === false) : ?>
+
+                        <?= $um_html; ?><?php $um_html = ''; ?>
 
                         <!-- Projection → 2 sub-menu -->
                         <ul class="nav nav-treeview" style="margin-left: 8px;">
@@ -526,7 +527,7 @@
                         <?php // sudah ditampilkan di bawah Projection, skip ?>
 
                         <?php elseif (strpos($ua_3['base_url'], 'frm_report_uang_muka') !== false) : ?>
-                        <?php // sudah dicetak paling atas, sebelum Projection - skip ?>
+                        <?php // sudah dicetak tepat di atas Projection - skip ?>
 
                         <?php else : ?>
                         <ul class="nav nav-treeview" style="margin-left: 8px;">
@@ -539,6 +540,9 @@
                         </ul>
                         <?php endif; ?>
                     <?php endforeach; ?>
+                    <?php // Kalau user-nya tidak punya menu Projection, belum sempat
+                          // tercetak di atas - jadi ditaruh di ujung daftarnya. ?>
+                    <?= $um_html; ?>
                 </li>
 
                 <li class="nav-item">

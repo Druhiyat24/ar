@@ -389,6 +389,14 @@
 let _activeDocNumber = '';
 var histDT = null;
 
+/* SAKLAR TOMBOL REALIZATION.
+   Laporan AR Collection Realization & Variance sudah terpasang di program,
+   tapi belum dibuka untuk user - jadi tombolnya disembunyikan dulu supaya
+   layar ini kelihatan sama persis seperti sebelumnya. Kalau sudah siap
+   dipakai, ubah satu baris di bawah ini jadi true; tidak ada lagi yang
+   perlu disentuh. */
+var RV_TOMBOL_TAMPIL = false;
+
 /* ── DataTables 2.x dimuat dinamis agar tidak konflik dengan load order ── */
 document.addEventListener('DOMContentLoaded', function () {
     var css = document.createElement('link');
@@ -451,7 +459,10 @@ function _initHistDT(url) {
                         // Realisasi AR-nya dibandingkan dengan dokumen proyeksi INI -
                         // tidak ada menu tersendiri, karena laporannya memang selalu
                         // mengacu ke satu dokumen yang sudah tersimpan.
-                        '<button class="btn btn-success btn-xs" onclick="view_realization(\'' + r.doc_number + '\')"><i class="fa fa-scale-balanced"></i> Realization</button> ' +
+                        // Masih disembunyikan - lihat RV_TOMBOL_TAMPIL di atas.
+                        (RV_TOMBOL_TAMPIL
+                            ? '<button class="btn btn-success btn-xs" onclick="view_realization(\'' + r.doc_number + '\')"><i class="fa fa-scale-balanced"></i> Realization</button> '
+                            : '') +
                         '<button class="btn btn-danger btn-xs" onclick="cancel_history_projection(\'' + r.doc_number + '\')"><i class="fa fa-times"></i> Cancel</button>' +
                         '</span>';
                 }
