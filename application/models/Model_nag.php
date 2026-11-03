@@ -5867,6 +5867,56 @@ private function _sql_kurs_uang_muka()
            GROUP BY u.no_pi)";
 }
 
+/**
+ * Tanggal sebuah invoice, menurut SURAT JALANnya.
+ *
+ * Seluruh modul AR memakai tanggal SJ sebagai tanggal invoice, bukan
+ * tgl_inv: laporan aging membacanya "a.sj_date inv_date, a.sj_date tgl_inv",
+ * dan jurnal invoicenya "DATE_FORMAT(b.sj_date,'%Y-%m-%d') tgl_invoice".
+ * tgl_inv sendiri baru terisi waktu invoicenya disetujui - selama masih
+ * draft kolomnya NULL (5.027 dari 5.028 invoice draft di salinan terakhir),
+ * sehingga saringan periode yang bersandar padanya membuang barisnya diam-
+ * diam, padahal uang mukanya sudah terpakai.
+ *
+ * Dicari berurutan, karena satu kolom saja tidak pernah cukup:
+ *
+ *   1. kepala invoicenya        - terisi untuk invoice lokal yang sudah
+ *                                 disetujui, dan cocok dengan rincinya di
+ *                                 20.181 dari 20.200 invoice;
+ *   2. rincian EKSPOR           - invoice ekspor TIDAK pernah mengisi kolom
+ *                                 di kepalanya, SJ-nya cuma ada di sini -
+ *                                 dan ini pula satu-satunya yang terisi
+ *                                 selagi invoicenya masih draft;
+ *   3. rincian lokal & knitting - jalur biasa;
+ *   4. tgl_inv                  - kalau SJ-nya memang tidak ada di mana pun;
+ *   5. tanggal potongannya dicatat - penjaga terakhir, supaya barisnya tidak
+ *                                 pernah hilang tanpa suara seperti dulu.
+ *
+ * @param string $inv   alias tabel tbl_book_invoice
+ * @param string $pakai alias tbl_invoice_proforma_alokasi, '' kalau tidak ada
+ */
+private function _sql_tgl_sj_invoice($inv, $pakai = '')
+{
+    $urut = array();
+    if ($this->kolom_ada('tbl_book_invoice', 'sj_date')) {
+        $urut[] = "$inv.sj_date";
+    }
+    foreach (array('tbl_book_invoice_exim_det', 'tbl_invoice_detail',
+                   'tbl_invoice_detail_knitting') as $tabel) {
+        if ($this->kolom_ada($tabel, 'sj_date')
+            && $this->kolom_ada($tabel, 'id_book_invoice')) {
+            $urut[] = "(SELECT MIN(sj.sj_date) FROM $tabel AS sj
+                         WHERE sj.id_book_invoice = $inv.id)";
+        }
+    }
+    $urut[] = "$inv.tgl_inv";
+    if ($pakai !== '' && $this->kolom_ada('tbl_invoice_proforma_alokasi', 'created_at')) {
+        $urut[] = "$pakai.created_at";
+    }
+
+    return count($urut) === 1 ? $urut[0] : 'COALESCE(' . implode(', ', $urut) . ')';
+}
+
 function subledger_uang_muka($dt_dari = '', $dt_sampai = '', $no_coa = '', $id_customer = '')
 {
     foreach (array('tbl_alokasi', 'tbl_alokasi_detail', 'mastercoa_v2') as $tabel) {
@@ -5986,13 +6036,25 @@ function subledger_uang_muka($dt_dari = '', $dt_sampai = '', $no_coa = '', $id_c
     /* ---------- 2. uang muka dipakai memotong invoice ---------- */
     $adaPakai = $this->db->table_exists('tbl_invoice_proforma_alokasi')
              && $this->db->table_exists('tbl_book_invoice');
+    // Tanggal mutasinya = tanggal surat jalan invoicenya.
+    //
+    // Ditarik ke tanggal mulai laporan kalau surat jalannya lebih tua.
+    // Catatan pemakaian uang muka baru ada sejak Oktober 2026, jadi tidak
+    // satu pun barisnya sudah terhitung di saldo awal yang disusun tim AR
+    // per 30 September - sementara surat jalannya bisa jauh lebih tua
+    // (0004/E/NAG/1026 dikirim 2 Februari, invoicenya baru 20 Oktober).
+    // Dibiarkan apa adanya, mutasi itu jatuh sebelum titik berangkat
+    // laporannya dan hilang dari semua periode: saldo uang mukanya jadi
+    // kelihatan lebih besar daripada yang sebenarnya - persis keluhan yang
+    // bikin perbaikan ini ada.
+    $tglInv = "GREATEST(IFNULL(" . $this->_sql_tgl_sj_invoice('bi', 'pa') . ", '$mulai'), '$mulai')";
     if ($adaPakai) {
         $sumber[] = "
         SELECT p.no_coa,
                pa.no_proforma_invoice AS no_dokumen,
                UPPER(IFNULL(NULLIF(TRIM(s2.supplier), ''), bi.id_customer)) AS customer,
                IFNULL(NULLIF(TRIM(pa.curr), ''), 'IDR') AS curr,
-               bi.tgl_inv AS tgl,
+               $tglInv AS tgl,
                'DED_INV' AS jenis,
                ROUND(pa.amount * " . $rasioDpp('pp') . ", 4) AS nilai,
                ROUND(pa.amount * " . $rasioDpp('pp') . "
@@ -6013,7 +6075,7 @@ function subledger_uang_muka($dt_dari = '', $dt_sampai = '', $no_coa = '', $id_c
      " . ($adaDpp ? 'LEFT JOIN tbl_invoice_proforma AS pp
             ON pp.no_proforma_invoice = pa.no_proforma_invoice' : '') . "
          WHERE pa.amount <> 0
-           AND bi.tgl_inv BETWEEN '$mulai' AND '$batas'
+           AND $tglInv BETWEEN '$mulai' AND '$batas'
            AND IFNULL(bi.status, '') NOT LIKE 'CANCEL%'";
     }
 
@@ -6419,9 +6481,11 @@ function dokumen_uang_muka($no_dok)
 
     if ($this->db->table_exists('tbl_invoice_proforma_alokasi')
         && $this->db->table_exists('tbl_book_invoice')) {
+        // Tanggalnya pakai aturan yang sama dengan laporannya.
+        $tglInv = $this->_sql_tgl_sj_invoice('bi', 'pa');
         $hasil['pemakaian'] = $this->db->query("
             SELECT IFNULL(NULLIF(TRIM(pa.no_invoice), ''), bi.no_invoice) AS no_invoice,
-                   DATE_FORMAT(bi.tgl_inv, '%Y-%m-%d') AS tgl_inv,
+                   DATE_FORMAT($tglInv, '%Y-%m-%d') AS tgl_inv,
                    pa.no_proforma_invoice,
                    IFNULL(pa.type_pi, '-') AS type_pi,
                    IFNULL(NULLIF(TRIM(pa.curr), ''), 'IDR') AS curr,
@@ -6434,7 +6498,7 @@ function dokumen_uang_muka($no_dok)
              WHERE pa.no_proforma_invoice = ?
                 OR pa.no_invoice = ?
                 OR bi.no_invoice = ?
-          ORDER BY bi.tgl_inv, pa.id
+          ORDER BY $tglInv, pa.id
         ", array($no, $no, $no))->result_array();
     }
 

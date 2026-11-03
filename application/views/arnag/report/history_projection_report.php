@@ -390,12 +390,64 @@ let _activeDocNumber = '';
 var histDT = null;
 
 /* SAKLAR TOMBOL REALIZATION.
-   Laporan AR Collection Realization & Variance sudah terpasang di program,
-   tapi belum dibuka untuk user - jadi tombolnya disembunyikan dulu supaya
-   layar ini kelihatan sama persis seperti sebelumnya. Kalau sudah siap
-   dipakai, ubah satu baris di bawah ini jadi true; tidak ada lagi yang
-   perlu disentuh. */
-var RV_TOMBOL_TAMPIL = false;
+   Tombol Realization di kolom Action dibuka lewat satu baris ini. Dibiarkan
+   berupa saklar supaya gampang ditutup lagi kalau laporannya sewaktu-waktu
+   perlu disembunyikan dari user. */
+var RV_TOMBOL_TAMPIL = true;
+
+/* ===== Filter diingat selama tab-nya masih terbuka =====
+   Membuka laporan realisasi itu berpindah halaman, jadi waktu user kembali
+   ke sini halamannya dimuat dari awal - tanpa ini filternya balik ke bawaan
+   dan nomor dokumennya harus dicari lagi.
+
+   Yang disimpan cuma isi filternya dan halaman tabel yang sedang dibuka;
+   datanya tidak ikut. Dipakai sessionStorage, bukan localStorage, supaya
+   ingatannya hilang sendiri begitu tab-nya ditutup. */
+var HIST_KUNCI   = 'hist_proj_filter';
+var HIST_HALAMAN = 0;
+
+function hist_simpan_filter() {
+    try {
+        sessionStorage.setItem(HIST_KUNCI, JSON.stringify({
+            from: $('#hist_from').val(),
+            to  : $('#hist_to').val(),
+            type: $('#hist_type').val(),
+            doc : $('#hist_doc_filter').val(),
+            page: histDT ? histDT.page() : 0
+        }));
+    } catch (e) {
+        // Mode privat atau penyimpanannya penuh - filternya saja yang tidak
+        // terbawa, layarnya tetap jalan seperti biasa.
+    }
+}
+
+function hist_pulihkan_filter() {
+    var f = null;
+    try {
+        var isi = sessionStorage.getItem(HIST_KUNCI);
+        f = isi ? JSON.parse(isi) : null;
+    } catch (e) { f = null; }
+    if (!f) { return; }
+
+    if (f.from) { $('#hist_from').val(f.from); }
+    if (f.to)   { $('#hist_to').val(f.to); }
+    // Type-nya dibungkus select2 - tanpa change, yang kelihatan user masih
+    // pilihan lama walaupun nilainya sudah benar.
+    $('#hist_type').val(f.type || '').trigger('change');
+    $('#hist_doc_filter').val(f.doc || '');
+    HIST_HALAMAN = f.page || 0;
+    load_history_list();
+}
+
+// Balik ke halaman tabel yang tadi dibuka. Kalau datanya menyusut sampai
+// halaman itu tidak ada lagi, dibiarkan di halaman pertama - lebih baik
+// daripada tabelnya kelihatan kosong.
+function hist_pulihkan_halaman() {
+    if (!histDT || !HIST_HALAMAN) { return; }
+    var h = HIST_HALAMAN;
+    HIST_HALAMAN = 0;
+    if (h < histDT.page.info().pages) { histDT.page(h).draw(false); }
+}
 
 /* ── DataTables 2.x dimuat dinamis agar tidak konflik dengan load order ── */
 document.addEventListener('DOMContentLoaded', function () {
@@ -409,6 +461,9 @@ document.addEventListener('DOMContentLoaded', function () {
     s.onload = function () {
         var s2 = document.createElement('script');
         s2.src = '<?= base_url('assets/plugins/datatables2/js/dataTables.bootstrap4.min.js'); ?>';
+        // Baru di sini DataTables benar-benar siap dipakai - jadi di sinilah
+        // filter yang tadi ditinggalkan dipulihkan.
+        s2.onload = hist_pulihkan_filter;
         document.head.appendChild(s2);
     };
     document.head.appendChild(s);
@@ -461,7 +516,7 @@ function _initHistDT(url) {
                         // mengacu ke satu dokumen yang sudah tersimpan.
                         // Masih disembunyikan - lihat RV_TOMBOL_TAMPIL di atas.
                         (RV_TOMBOL_TAMPIL
-                            ? '<button class="btn btn-success btn-xs" onclick="view_realization(\'' + r.doc_number + '\')"><i class="fa fa-scale-balanced"></i> Realization</button> '
+                            ? '<button class="btn btn-success btn-xs" onclick="view_realization(\'' + r.doc_number + '\')"><i class="fa fa-balance-scale"></i> Realization</button> '
                             : '') +
                         '<button class="btn btn-danger btn-xs" onclick="cancel_history_projection(\'' + r.doc_number + '\')"><i class="fa fa-times"></i> Cancel</button>' +
                         '</span>';
@@ -483,6 +538,12 @@ function _initHistDT(url) {
         },
         dom: '<"row align-items-center mb-2"<"col-sm-4"l><"col-sm-8 text-right"f>>rt<"row mt-2 align-items-center"<"col-sm-5"i><"col-sm-7 d-flex justify-content-end"p>>',
         initComplete: function () {
+            // histDT baru terisi sesudah konstruktor di atas selesai; di sini
+            // diambil langsung dari API-nya supaya filter & halamannya bisa
+            // dipulihkan sekarang juga, tidak menunggu baris itu.
+            histDT = this.api();
+            _applyHistFilter();
+            hist_pulihkan_halaman();
             document.getElementById('hist-loader').classList.remove('show');
         }
     });
@@ -505,6 +566,8 @@ function load_history_list() {
     let to   = $('#hist_to').val();
     if (!from || !to) { Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Tanggal harus diisi!' }); return; }
 
+    hist_simpan_filter();
+
     let url = 'get_history_projection_list/' + from + '/' + to + '/';
 
     document.getElementById('hist-loader').classList.add('show');
@@ -515,6 +578,7 @@ function load_history_list() {
         // nge-filter, bukan menghapus filter yang sudah dipilih.
         histDT.ajax.url(url).load(function () {
             _applyHistFilter();
+            hist_pulihkan_halaman();
             document.getElementById('hist-loader').classList.remove('show');
         });
     } else {
@@ -715,6 +779,9 @@ function formatDate(ymd) {
    dipasang. */
 function view_realization(doc_number) {
     if (!doc_number) { return; }
+    // Disimpan tepat sebelum pindah halaman, supaya halaman tabel yang
+    // sedang dibuka ikut tercatat - bukan cuma isi filternya.
+    hist_simpan_filter();
     window.location.href = window.location.pathname.replace(/[^\/]*$/, 'realization_report')
         + '?doc_number=' + encodeURIComponent(doc_number);
 }
