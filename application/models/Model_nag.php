@@ -12,7 +12,7 @@ class Model_nag extends CI_Model
      * uang muka lama TIDAK bisa dihitung dari catatan pemakaian; yang
      * berlaku saldo awal yang sudah diperiksa tim AR (tbl_uang_muka_awal).
      *
-     * Dipakai laporan Sub Ledger maupun daftar PI di Create Invoice, supaya
+     * Dipakai laporan Unearned Revenue maupun daftar PI di Create Invoice, supaya
      * keduanya tidak pernah berbeda pendapat soal uang muka mana yang masih
      * ada sisanya.
      */
@@ -1451,7 +1451,7 @@ class Model_nag extends CI_Model
      * dan delete_detail(): catatan pemakaian uang muka itu bagian dari isi
      * invoicenya, jadi ikut dihapus waktu isinya dihapus. Tanpa ini uangnya
      * tertahan selamanya di invoice yang sudah kosong - Create Invoice masih
-     * menghitungnya terpakai, padahal laporan Sub Ledger sudah melepasnya.
+     * menghitungnya terpakai, padahal laporan Unearned Revenue sudah melepasnya.
      *
      * Tidak perlu diarsipkan: riwayat pembatalannya sudah tercatat di tbl_log,
      * dan baris ini memang ditulis ulang tiap kali invoicenya disimpan.
@@ -5716,7 +5716,7 @@ private function _gabung_pi_alokasi($lama, $pi, $kunci = 'no_invoice')
  * PI yang ketiga angkanya nol tidak ikut - tidak ada mutasinya di periode itu.
  */
 /**
- * COA uang muka penjualan - dipakai saringan Sub Ledger Uang Muka.
+ * COA uang muka penjualan - dipakai saringan Unearned Revenue.
  *
  * Penandanya sama dengan yang dipakai jurnal DP/CBD (mastercoa_v2.inv_type),
  * jadi daftarnya tidak mungkin berbeda dengan COA yang benar-benar dipakai
@@ -5735,7 +5735,7 @@ function coa_uang_muka()
 }
 
 /**
- * Sub Ledger - Uang Muka Penjualan.
+ * Unearned Revenue (uang muka penjualan).
  *
  * Satu baris = satu uang muka: per COA, per dokumen (nomor Proforma Invoice
  * yang menerbitkannya), per customer. Isinya mutasi di periode yang dipilih:
@@ -5803,7 +5803,7 @@ private function _sql_coa_uang_muka()
  * Kalau satu nomor didanai beberapa sumber berkurs beda, dipakai rata-rata
  * tertimbangnya, supaya pemakaiannya tidak menyisakan selisih kurs.
  *
- * Dipakai bersama oleh laporan Sub Ledger Uang Muka (menempatkan pemakaian
+ * Dipakai bersama oleh laporan Unearned Revenue (menempatkan pemakaian
  * di COA yang benar) dan jurnal approval invoice (menghitung selisih kurs
  * yang sudah terealisasi).
  */
@@ -6355,7 +6355,7 @@ function subledger_uang_muka($dt_dari = '', $dt_sampai = '', $no_coa = '', $id_c
 }
 
 /**
- * Rincian satu dokumen di Sub Ledger Uang Muka.
+ * Rincian satu dokumen di Unearned Revenue.
  *
  * Nomor apa pun yang dipajang laporannya bisa ditelusuri di sini - nomor PI,
  * nomor bank masuk/memorial, nomor alokasi, nomor invoice, atau nomor jurnal.
@@ -12318,7 +12318,7 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         // baris alokasinya sengaja tidak dihapus supaya riwayatnya tetap
         // terbaca. Jadi penjumlahannya yang harus menyaring - tanpa ini
         // uangnya tertahan selamanya di invoice yang sudah batal, padahal
-        // laporan Sub Ledger sudah melepasnya. Yang bookingnya tidak ketemu
+        // laporan Unearned Revenue sudah melepasnya. Yang bookingnya tidak ketemu
         // sama sekali tetap dihitung: lebih baik tertahan daripada terpakai
         // dua kali.
         $batal_inv = ($ada_alokasi && $this->db->table_exists('tbl_book_invoice'))
@@ -12354,7 +12354,7 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         // invoice 0002/L/NAG/0523 pada Mei 2023, tapi tetap muncul dengan
         // sisa penuh.
         //
-        // Jadi aturannya disamakan dengan laporan Sub Ledger: yang boleh
+        // Jadi aturannya disamakan dengan laporan Unearned Revenue: yang boleh
         // ditawarkan cuma uang muka yang alokasinya terjadi sejak batas itu,
         // ATAU yang sisanya memang sudah diperiksa tim AR dan dimasukkan ke
         // tbl_uang_muka_awal.
@@ -12376,7 +12376,7 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         //
         // Nilai PI itu batas atasnya - yang bisa dipotong cuma sebanyak uang
         // yang sudah diterima. Uang itu datang dari dua arah, persis seperti
-        // di laporan Sub Ledger: saldo awal yang sudah diperiksa tim AR, dan
+        // di laporan Unearned Revenue: saldo awal yang sudah diperiksa tim AR, dan
         // alokasi sejak 1 Oktober 2026. Dijumlah, lalu dibatasi nilai PI-nya
         // sendiri supaya tidak pernah melebihi tagihan yang boleh dipotong.
         $saldo_awal_nilai = $this->db->table_exists('tbl_uang_muka_awal')
@@ -12399,7 +12399,7 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
 
         // Nomor bank masuk / memorial yang mendanai PI ini - dibaca dari
         // alokasinya. Satu PI bisa didanai lebih dari satu dokumen, jadi
-        // semuanya ditulis dipisah koma, sama seperti di laporan Sub Ledger.
+        // semuanya ditulis dipisah koma, sama seperti di laporan Unearned Revenue.
         $no_bm = ($this->db->table_exists('tbl_alokasi_detail')
                   && $this->db->table_exists('tbl_alokasi'))
             ? "IFNULL((SELECT GROUP_CONCAT(DISTINCT az.doc_number
@@ -12507,7 +12507,7 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         // yang ada PI-nya sudah terbawa query di atas, kalau dibaca lagi
         // barisnya dobel dan saldonya kelihatan dua kali lipat.
         //
-        // Kuncinya no_dokumen - sama dengan kunci baris di laporan Sub Ledger.
+        // Kuncinya no_dokumen - sama dengan kunci baris di laporan Unearned Revenue.
         // Dengan begitu potongan invoicenya pasti jatuh ke baris yang sama di
         // laporan, tidak bikin baris sendiri.
         //
@@ -12584,7 +12584,7 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         //
         // Uangnya sudah diterima dan sudah mengkredit COA uang muka, tapi
         // belum pernah lewat menu Alokasi - jadi belum punya nomor PI. Di
-        // laporan Sub Ledger barisnya sudah muncul sebagai Addition sejak
+        // laporan Unearned Revenue barisnya sudah muncul sebagai Addition sejak
         // 28-10-2026; kalau di sini tidak ditawarkan, uangnya kelihatan di
         // laporan tapi tidak bisa dipakai memotong apa pun.
         //
@@ -12977,7 +12977,7 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
      * Profit center sebuah uang muka, dari nomor dokumennya.
      *
      * Satu nomor bisa datang dari tiga tempat, dan urutannya sama dengan yang
-     * dipakai laporan Sub Ledger supaya keduanya tidak pernah berbeda pendapat:
+     * dipakai laporan Unearned Revenue supaya keduanya tidak pernah berbeda pendapat:
      * baris alokasinya, catatan saldo awalnya, lalu jurnal dokumen BM/GM-nya.
      * Kosong berarti belum diisi - pemanggilnya yang memutuskan bawaannya.
      */

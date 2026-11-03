@@ -103,7 +103,7 @@
 #rv-list-area .dataTables_scrollBody > table { min-width: 100% !important; }
 
 /* Tiga kelompok kolom - Projection, Realization, Result - dibedakan garis
-   aksen di kepalanya dan rona isi yang sangat muda, sama seperti Sub Ledger
+   aksen di kepalanya dan rona isi yang sangat muda, sama seperti Unearned Revenue
    Uang Muka. Tabel selebar ini susah dibaca tanpa penanda kelompok. */
 #rv-list-area .dn-table thead .rv-grup th { background: #16304d; border-left: 1px solid rgba(255,255,255,.14); font-size: 10.5px; letter-spacing: .4px; }
 #rv-list-area .dn-table thead .rv-grup th.is-kosong { background: #1e3a5f; border-left: 0; }

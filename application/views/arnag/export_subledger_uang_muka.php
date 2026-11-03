@@ -1,5 +1,5 @@
 <?php
-// Unduhan Sub Ledger - Uang Muka Penjualan.
+// Unduhan Unearned Revenue (uang muka penjualan).
 //
 // Isinya dari Model_nag::subledger_uang_muka() - sumber yang sama dengan
 // layarnya, jadi angka di layar dan di berkas ini tidak mungkin berbeda.
@@ -17,7 +17,7 @@
 //   2. Sel teks diberi format "@" supaya nomor dokumen dan tanggalnya tidak
 //      ditafsirkan jadi tanggal atau pecahan (0003/D/E/NAG/0926).
 header('Content-type: application/vnd.ms-excel');
-header('Content-Disposition: attachment; filename=subledger-uang-muka-penjualan-' . date('Ymd') . '.xls');
+header('Content-Disposition: attachment; filename=unearned-revenue-' . date('Ymd') . '.xls');
 
 // Keterangan filternya boleh tidak dikirim - berkasnya tetap terbentuk.
 $f_coa      = isset($filter_coa) ? (array) $filter_coa : array();
@@ -116,12 +116,12 @@ $cust      = $f_customer === '' ? 'All' : $f_customer;
       xmlns:x="urn:schemas-microsoft-com:office:excel">
 <head>
     <meta charset="UTF-8">
-    <title>SUB LEDGER - UANG MUKA PENJUALAN</title>
+    <title>UNEARNED REVENUE</title>
     <!-- Hanya dibaca Excel: nama lembarnya & kepala tabel yang ikut
          tertahan waktu digulung ke bawah. Program lain mengabaikannya. -->
     <!--[if gte mso 9]><xml>
      <x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
-      <x:Name>Uang Muka Penjualan</x:Name>
+      <x:Name>Unearned Revenue</x:Name>
       <x:WorksheetOptions>
        <x:FreezePanes/>
        <x:FrozenNoSplit/>

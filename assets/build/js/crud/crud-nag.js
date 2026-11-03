@@ -21780,7 +21780,7 @@ function mpi_deduction_isi(j) {
 		: '');
 }
 
-/* ===================== Sub Ledger - Uang Muka Penjualan =====================
+/* ========================== Unearned Revenue ================================
    Satu baris = satu uang muka (per COA, per dokumen, per customer). Angkanya
    dibaca dari buku besar lewat arnag/subledger_uang_muka_json, jadi di sini
    tinggal memajang. */

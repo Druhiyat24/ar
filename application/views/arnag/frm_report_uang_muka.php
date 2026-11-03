@@ -1,5 +1,5 @@
 <!-- ==========================================================================
-     Sub Ledger - Uang Muka Penjualan
+     Unearned Revenue (uang muka penjualan)
      Satu baris = satu uang muka (per COA, per dokumen, per customer), dengan
      mutasinya di periode yang dipilih dan umurnya.
 
@@ -186,7 +186,7 @@
       <div class="card">
         <div class="card-body">
           <div class="table-header">
-            <span class="table-title"><i class="fas fa-table"></i>Data Uang Muka Penjualan</span>
+            <span class="table-title"><i class="fas fa-table"></i>Unearned Revenue Data</span>
           </div>
           <div class="dn-list-area" id="um-list-area">
             <div class="nag-loader-overlay" id="um-list-loader">

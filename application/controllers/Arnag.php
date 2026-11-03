@@ -5860,7 +5860,7 @@ public function kartu_ar_detail()
 }
 
     //ubah september
-// Sub Ledger - Uang Muka Penjualan. Saldo uang muka per dokumen, beserta
+// Unearned Revenue. Saldo uang muka penjualan per dokumen, beserta
 // mutasinya di periode yang dipilih dan umurnya (aging).
 public function frm_report_uang_muka()
 {
@@ -5868,7 +5868,7 @@ public function frm_report_uang_muka()
         redirect('auth');
     }
 
-    $data['title'] = 'Sub Ledger - Uang Muka Penjualan';
+    $data['title'] = 'Unearned Revenue';
     $data['user'] = $this->db->get_where('userpassword', ['username' => $this->session->userdata('username')])->row_array();
     $data['customer'] = $this->Model_nag->cari_customer();
     $data['coa_um']   = $this->Model_nag->coa_uang_muka();
@@ -5977,7 +5977,7 @@ public function export_subledger_uang_muka($dt_dari = null, $dt_sampai = null,
 }
 
 // Rincian satu dokumen: jurnal, alokasi & pemakaiannya. Dipakai modal di
-// layar Sub Ledger Uang Muka - supaya user tidak perlu membuka menu lain.
+// layar Unearned Revenue - supaya user tidak perlu membuka menu lain.
 public function dokumen_uang_muka_json($no_dok = null)
 {
     if (!$this->session->userdata('username')) {
