@@ -252,9 +252,9 @@
                                     <th style="width:150px;background-color: #90EE90;">Gross Sales</th>
                                     <th style="width:150px;background-color: #90EE90;">Others Sales</th>
                                     <th style="width:150px;background-color: #90EE90;">Discount</th>
-                                    <th style="width:150px;background-color: #90EE90;">Net Sales</th>
                                     <th style="width:150px;background-color: #90EE90;">Down Payment</th>
                                     <th style="width:150px;background-color: #90EE90;">Advance</th>
+                                    <th style="width:150px;background-color: #90EE90;">Net Sales</th>
                                     <th style="width:150px;background-color: #90EE90;">VAT</th>
                                     <th style="width:150px;background-color: #90EE90;">Total</th>
 
@@ -262,9 +262,9 @@
                                     <th style="width:150px;background-color: #90EE90;">Gross Sales</th>
                                     <th style="width:150px;background-color: #90EE90;">Others Sales</th>
                                     <th style="width:150px;background-color: #90EE90;">Discount</th>
-                                    <th style="width:150px;background-color: #90EE90;">Net Sales</th>
                                     <th style="width:150px;background-color: #90EE90;">Down Payment</th>
                                     <th style="width:150px;background-color: #90EE90;">Advance</th>
+                                    <th style="width:150px;background-color: #90EE90;">Net Sales</th>
                                     <th style="width:150px;background-color: #90EE90;">VAT</th>
                                     <th style="width:150px;background-color: #90EE90;">Total</th>
 
@@ -272,9 +272,9 @@
                                     <th style="width:150px;background-color: #87CEFA;">Gross Sales</th>
                                     <th style="width:150px;background-color: #87CEFA;">Others Sales</th>
                                     <th style="width:150px;background-color: #87CEFA;">Discount</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Net Sales</th>
                                     <th style="width:150px;background-color: #87CEFA;">Down Payment</th>
                                     <th style="width:150px;background-color: #87CEFA;">Advance</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Net Sales</th>
                                     <th style="width:150px;background-color: #87CEFA;">VAT</th>
                                     <th style="width:150px;background-color: #87CEFA;">Total</th>
 
@@ -282,9 +282,9 @@
                                     <th style="width:150px;background-color: #87CEFA;">Gross Sales</th>
                                     <th style="width:150px;background-color: #87CEFA;">Others Sales</th>
                                     <th style="width:150px;background-color: #87CEFA;">Discount</th>
-                                    <th style="width:150px;background-color: #87CEFA;">Net Sales</th>
                                     <th style="width:150px;background-color: #87CEFA;">Down Payment</th>
                                     <th style="width:150px;background-color: #87CEFA;">Advance</th>
+                                    <th style="width:150px;background-color: #87CEFA;">Net Sales</th>
                                     <th style="width:150px;background-color: #87CEFA;">VAT</th>
                                     <th style="width:150px;background-color: #87CEFA;">Total</th>
                                 </tr>

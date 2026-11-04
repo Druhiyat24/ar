@@ -265,8 +265,8 @@
                 array('Shipping Invoice (Original Currency)', 'srm-grup-ship'),
                 array('Shipping Invoice (Equivalent IDR)', 'srm-grup-ship'),
             );
-            $sub = array('Qty', 'UOM', 'Price', 'Gross Sales', 'Others Sales', 'Discount', 'Net Sales',
-                         'Down Payment', 'Advance', 'VAT', 'Total');
+            $sub = array('Qty', 'UOM', 'Price', 'Gross Sales', 'Others Sales', 'Discount',
+                         'Down Payment', 'Advance', 'Net Sales', 'VAT', 'Total');
             ?>
             <table id="table-sales-report-material" class="dn-table text-nowrap">
               <thead>

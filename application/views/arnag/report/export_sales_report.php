@@ -133,9 +133,9 @@ CSS HEADER
             <th style="width:120px;background-color: #90EE90;">Gross Sales</th>
             <th style="width:120px;background-color: #90EE90;">Others Sales</th>
             <th style="width:120px;background-color: #90EE90;">Discount</th>
-            <th style="width:120px;background-color: #90EE90;">Net Sales</th>
             <th style="width:120px;background-color: #90EE90;">Down Payment</th>
             <th style="width:120px;background-color: #90EE90;">Advance</th>
+            <th style="width:120px;background-color: #90EE90;">Net Sales</th>
             <th style="width:120px;background-color: #90EE90;">VAT</th>
             <th style="width:120px;background-color: #90EE90;">Total</th>
 
@@ -143,9 +143,9 @@ CSS HEADER
             <th style="width:120px;background-color: #90EE90;">Gross Sales</th>
             <th style="width:120px;background-color: #90EE90;">Others Sales</th>
             <th style="width:120px;background-color: #90EE90;">Discount</th>
-            <th style="width:120px;background-color: #90EE90;">Net Sales</th>
             <th style="width:120px;background-color: #90EE90;">Down Payment</th>
             <th style="width:120px;background-color: #90EE90;">Advance</th>
+            <th style="width:120px;background-color: #90EE90;">Net Sales</th>
             <th style="width:120px;background-color: #90EE90;">VAT</th>
             <th style="width:120px;background-color: #90EE90;">Total</th>
 
@@ -153,9 +153,9 @@ CSS HEADER
             <th style="width:120px;background-color: #87CEFA;">Gross Sales</th>
             <th style="width:120px;background-color: #87CEFA;">Others Sales</th>
             <th style="width:120px;background-color: #87CEFA;">Discount</th>
-            <th style="width:120px;background-color: #87CEFA;">Net Sales</th>
             <th style="width:120px;background-color: #87CEFA;">Down Payment</th>
             <th style="width:120px;background-color: #87CEFA;">Advance</th>
+            <th style="width:120px;background-color: #87CEFA;">Net Sales</th>
             <th style="width:120px;background-color: #87CEFA;">VAT</th>
             <th style="width:120px;background-color: #87CEFA;">Total</th>
 
@@ -163,9 +163,9 @@ CSS HEADER
             <th style="width:120px;background-color: #87CEFA;">Gross Sales</th>
             <th style="width:120px;background-color: #87CEFA;">Others Sales</th>
             <th style="width:120px;background-color: #87CEFA;">Discount</th>
-            <th style="width:120px;background-color: #87CEFA;">Net Sales</th>
             <th style="width:120px;background-color: #87CEFA;">Down Payment</th>
             <th style="width:120px;background-color: #87CEFA;">Advance</th>
+            <th style="width:120px;background-color: #87CEFA;">Net Sales</th>
             <th style="width:120px;background-color: #87CEFA;">VAT</th>
             <th style="width:120px;background-color: #87CEFA;">Total</th>
         </tr>
@@ -191,36 +191,36 @@ CSS HEADER
                 <td style="text-align:right"><?= number_format($sr['total_bill'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['other_bill'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['diskon_bill'],2); ?></td>
-                <td style="text-align:right"><?= number_format($sr['twot_bill'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['dp_bill'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['dp_cbd_bill'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['twot_bill'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['vat_bill'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['grand_total_bill'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['qty_bill'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['total_bill_idr'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['other_bill_idr'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['diskon_bill_idr'],2); ?></td>
-                <td style="text-align:right"><?= number_format($sr['twot_bill_idr'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['dp_bill_idr'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['dp_cbd_bill_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['twot_bill_idr'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['vat_bill_idr'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['grand_total_bill_idr'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['qty_ship'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['total_ship'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['other_ship'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['diskon_ship'],2); ?></td>
-                <td style="text-align:right"><?= number_format($sr['twot_ship'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['dp_ship'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['dp_cbd_ship'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['twot_ship'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['vat_ship'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['grand_total_ship'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['qty_ship'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['total_ship_idr'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['other_ship_idr'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['diskon_ship_idr'],2); ?></td>
-                <td style="text-align:right"><?= number_format($sr['twot_ship_idr'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['dp_ship_idr'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['dp_cbd_ship_idr'],2); ?></td>
+                <td style="text-align:right"><?= number_format($sr['twot_ship_idr'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['vat_ship_idr'],2); ?></td>
                 <td style="text-align:right"><?= number_format($sr['grand_total_ship_idr'],2); ?></td>
                 <td style="width:50px;background-color:#FFFFFF;border-top:1px solid #FFFFFF;border-bottom:1px solid #FFFFFF;"></td>
@@ -230,11 +230,5 @@ CSS HEADER
 
             </tr>
         <?php endforeach; ?>
-
-        <!-- <tr>
-            <td colspan='10'></td>
-            <td align='right'><?= $tot_unit['qty']; ?></td>
-            <td colspan="5"></td>
-        </tr> -->
 
     </table>

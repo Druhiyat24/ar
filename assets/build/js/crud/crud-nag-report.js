@@ -125,9 +125,9 @@ function cari_sales_report(){
                 trHTML += '<td align="right">' + number_format(item.total_bill,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.other_bill,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.diskon_bill,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.twot_bill,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.dp_bill,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.dp_cbd_bill,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.twot_bill,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.vat_bill,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.grand_total_bill,2) + "</td>";
 
@@ -135,9 +135,9 @@ function cari_sales_report(){
                 trHTML += '<td align="right">' + number_format(item.total_bill_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.other_bill_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.diskon_bill_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.twot_bill_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.dp_bill_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.dp_cbd_bill_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.twot_bill_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.vat_bill_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.grand_total_bill_idr,2) + "</td>";
 
@@ -145,9 +145,9 @@ function cari_sales_report(){
                 trHTML += '<td align="right">' + number_format(item.total_ship,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.other_ship,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.diskon_ship,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.twot_ship,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.dp_ship,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.dp_cbd_ship,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.twot_ship,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.vat_ship,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.grand_total_ship,2) + "</td>";
 
@@ -155,9 +155,9 @@ function cari_sales_report(){
                 trHTML += '<td align="right">' + number_format(item.total_ship_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.other_ship_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.diskon_ship_idr,2) + "</td>";
-                trHTML += '<td align="right">' + number_format(item.twot_ship_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.dp_ship_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.dp_cbd_ship_idr,2) + "</td>";
+                trHTML += '<td align="right">' + number_format(item.twot_ship_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.vat_ship_idr,2) + "</td>";
                 trHTML += '<td align="right">' + number_format(item.grand_total_ship_idr,2) + "</td>";
 
@@ -189,9 +189,9 @@ function cari_sales_report(){
                 trHTML += '<td align="right"><b>' + number_format(total_total_bill, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_other_bill, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_diskon_bill, 2) + '</b></td>';
-                trHTML += '<td align="right"><b>' + number_format(total_twot_bill, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_dp_bill, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_dp_cbd_bill, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_twot_bill, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_vat_bill, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_grand_total_bill, 2) + '</b></td>';
 
@@ -199,9 +199,9 @@ function cari_sales_report(){
                 trHTML += '<td align="right"><b>' + number_format(total_total_bill_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_other_bill_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_diskon_bill_idr, 2) + '</b></td>';
-                trHTML += '<td align="right"><b>' + number_format(total_twot_bill_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_dp_bill_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_dp_cbd_bill_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_twot_bill_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_vat_bill_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_grand_total_bill_idr, 2) + '</b></td>';
 
@@ -209,9 +209,9 @@ function cari_sales_report(){
                 trHTML += '<td align="right"><b>' + number_format(total_total_ship, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_other_ship, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_diskon_ship, 2) + '</b></td>';
-                trHTML += '<td align="right"><b>' + number_format(total_twot_ship, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_dp_ship, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_dp_cbd_ship, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_twot_ship, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_vat_ship, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_grand_total_ship, 2) + '</b></td>';
 
@@ -219,9 +219,9 @@ function cari_sales_report(){
                 trHTML += '<td align="right"><b>' + number_format(total_total_ship_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_other_ship_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_diskon_ship_idr, 2) + '</b></td>';
-                trHTML += '<td align="right"><b>' + number_format(total_twot_ship_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_dp_ship_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_dp_cbd_ship_idr, 2) + '</b></td>';
+                trHTML += '<td align="right"><b>' + number_format(total_twot_ship_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_vat_ship_idr, 2) + '</b></td>';
                 trHTML += '<td align="right"><b>' + number_format(total_grand_total_ship_idr, 2) + '</b></td>';
                 trHTML += '<td style="width:50px;background-color:#FFFFFF;border-top:1px solid #FFFFFF;border-bottom:1px solid #FFFFFF;">' + '' + '</td>';
@@ -612,10 +612,10 @@ var SRM_KOLOM_TEKS = ['customer', 'no_invoice', 'tgl_inv', 'bppb_number', 'sj_da
                       'styleno', 'produk', 'type_so', 'shipp', 'inv_type', 'no_faktur', 'tgl_faktur', 'curr'];
 var SRM_KOLOM_ANGKA = [
     'rate',
-    'qty_bill', 'uom_bill', 'price_bill', 'gross_bill', 'other_bill', 'diskon_bill', 'net_bill', 'dp_bill', 'dp_cbd_bill', 'vat_bill', 'total_bill',
-    'qty_bill', 'uom_bill', 'price_bill_idr', 'gross_bill_idr', 'other_bill_idr', 'diskon_bill_idr', 'net_bill_idr', 'dp_bill_idr', 'dp_cbd_bill_idr', 'vat_bill_idr', 'total_bill_idr',
-    'qty_ship', 'uom_ship', 'price_ship', 'gross_ship', 'other_ship', 'diskon_ship', 'net_ship', 'dp_ship', 'dp_cbd_ship', 'vat_ship', 'total_ship',
-    'qty_ship', 'uom_ship', 'price_ship_idr', 'gross_ship_idr', 'other_ship_idr', 'diskon_ship_idr', 'net_ship_idr', 'dp_ship_idr', 'dp_cbd_ship_idr', 'vat_ship_idr', 'total_ship_idr'
+    'qty_bill', 'uom_bill', 'price_bill', 'gross_bill', 'other_bill', 'diskon_bill', 'dp_bill', 'dp_cbd_bill', 'net_bill', 'vat_bill', 'total_bill',
+    'qty_bill', 'uom_bill', 'price_bill_idr', 'gross_bill_idr', 'other_bill_idr', 'diskon_bill_idr', 'dp_bill_idr', 'dp_cbd_bill_idr', 'net_bill_idr', 'vat_bill_idr', 'total_bill_idr',
+    'qty_ship', 'uom_ship', 'price_ship', 'gross_ship', 'other_ship', 'diskon_ship', 'dp_ship', 'dp_cbd_ship', 'net_ship', 'vat_ship', 'total_ship',
+    'qty_ship', 'uom_ship', 'price_ship_idr', 'gross_ship_idr', 'other_ship_idr', 'diskon_ship_idr', 'dp_ship_idr', 'dp_cbd_ship_idr', 'net_ship_idr', 'vat_ship_idr', 'total_ship_idr'
 ];
 
 // Filter di form - dipakai Search & Export.
@@ -934,8 +934,8 @@ var SRM_EXCEL_KIRI = ['No', 'Customer', 'Invoice', 'Invoice Date', 'Shipp Number
                       'Product Item', 'Order Type', 'Shipp', 'Inv Type', 'VAT Number', 'VAT Date', 'Currency', 'Rate'];
 var SRM_EXCEL_GRUP = [['Billing Invoice (Original Currency)', '#90EE90'], ['Billing Invoice (Equivalent IDR)', '#90EE90'],
                       ['Shipping Invoice (Original Currency)', '#87CEFA'], ['Shipping Invoice (Equivalent IDR)', '#87CEFA']];
-var SRM_EXCEL_SUB = ['Qty', 'UOM', 'Price', 'Gross Sales', 'Others Sales', 'Discount', 'Net Sales',
-                     'Down Payment', 'Advance', 'VAT', 'Total'];
+var SRM_EXCEL_SUB = ['Qty', 'UOM', 'Price', 'Gross Sales', 'Others Sales', 'Discount',
+                     'Down Payment', 'Advance', 'Net Sales', 'VAT', 'Total'];
 
 function srmTeks(v) {
     return v == null ? '' : String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
