@@ -5174,19 +5174,26 @@ public function report_invoice4($id)
     if (!$this->session->userdata('username')) {
         redirect('auth');
     }
-        //   
-    $mpdf = new \Mpdf\Mpdf();
     $data['data_invoice'] = $this->Model_nag->report_invoice_nb($id);
+    if (!$data['data_invoice']) {
+        show_404();
+    }
     $data['data_invoice_detail'] = $this->Model_nag->report_invoice_detail_nb($id);
     $data['data_invoice_pot'] = $this->Model_nag->report_invoice_pot_nb($id);
     $data['group_bppb_number'] = $this->Model_nag->group_bppb_number_nb($id);
     $data['group_so_number'] = $this->Model_nag->group_so_number_nb($id);
     $data['group_curr'] = $this->Model_nag->group_curr_nb($id);
     $data['group_user'] = $this->Model_nag->group_user_nb($id);
-        //
-    $html = $this->load->view('arnag/reportinvoice4', $data, true);
-    $mpdf->setFooter('{PAGENO} / {nbpg}');
-    $mpdf->WriteHTML($html);
+    // Status dipakai untuk stempel APPROVED di cetakan - sama aturannya
+    // dengan invoice biasa: stempelnya cuma dicetak kalau invoicenya sudah
+    // disetujui penuh.
+    $data['status_invoice'] = $data['data_invoice']['status'];
+
+    // mPDF yang sama dengan invoice biasa: huruf Dancing Script untuk kaki
+    // halaman, dan margin bawah yang muat pita bergelombangnya. Kaki
+    // halamannya datang dari view (htmlpagefooter), bukan setFooter().
+    $mpdf = $this->_dn_mpdf_baru();
+    $mpdf->WriteHTML($this->load->view('arnag/reportinvoice4', $data, true));
     $mpdf->Output();
 }
 

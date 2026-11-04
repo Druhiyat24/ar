@@ -5179,6 +5179,7 @@ function report_invoice_nb($id)
     $hasil = $this->db->query("SELECT distinct a.no_inv as no_invoice, b.Supplier AS customer,
       IFNULL(b.alamat, '-') AS alamat, IFNULL(b.Phone, '-') AS phone, IFNULL(b.Email, '-') AS email,
       DATE_FORMAT(f.sj_date,'%d-%m-%Y') AS tgl_inv, UPPER(a.type) AS type, a.shipp, a.top_type AS type_top, a.top,
+      a.status,
       e.no_rek, e.nama_bank,e.v_company, e.v_bankaddress, e.curr
       FROM tbl_invoice_nb AS a INNER JOIN 
       mastersupplier AS b ON a.customer = b.Id_Supplier INNER JOIN
@@ -5235,7 +5236,7 @@ function group_curr_nb($id)
     $hasil = $this->db->query("SELECT DISTINCT a.curr as curr
        FROM tbl_invoice_nb_detail a inner join 
        tbl_invoice_nb b on b.no_inv = a.no_inv
-       WHERE a.id = '$id' ");
+       WHERE b.id = '$id' ");
     return $hasil->row_array();
 }
 
