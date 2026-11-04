@@ -570,13 +570,135 @@ function cari_mut_ar($id_customer, $start_date, $end_date)
         select 'NAG' profit_center, no_invoice, customer, UPPER(b.supplier_code) kode_customer, inv_date, sj_date as tgl_inv,id_customer, curr, top, FORMAT((grand_total), 2) AS amount, if(curr = 'IDR',round((grand_total),0),round((grand_total), 2)) AS amount1, due_date,shipp from saldoawal_ar a INNER JOIN mastersupplier AS b ON a.id_customer = b.id_supplier where no_invoice not like '%DN/%') inv LEFT JOIN
         (select a.no_ref as no_invoice1, sum(a.amount) as bayar from tbl_alokasi_detail a inner join tbl_alokasi b on b.no_alk = a.no_alk where a.status != 'CANCEL' and b.tgl_alk between '$start_date' and '$end_date' and a.total != '0' group by a.no_ref) byr on byr.no_invoice1 = inv.no_invoice LEFT JOIN
         (select a.no_ref as no_invoice2, sum(a.amount) as bayar2 from tbl_alokasi_detail a inner join tbl_alokasi b on b.no_alk = a.no_alk where a.status != 'CANCEL' and b.tgl_alk < '$start_date' and a.total != '0' group by a.no_ref) byr2 on byr2.no_invoice2 = inv.no_invoice JOIN
-        (select IF((select id from tbl_tgl_tb where tgl_akhir = '$end_date') != '',(SELECT rate FROM masterrate WHERE v_codecurr = (SELECT IF((SELECT tanggal FROM masterrate WHERE tanggal = '$end_date' AND v_codecurr = 'HARIAN' AND curr = 'USD') is null,'PAJAK','HARIAN')) AND tanggal = (SELECT IFNULL((SELECT tanggal FROM masterrate WHERE tanggal = '$end_date' AND v_codecurr = 'HARIAN' AND curr = 'USD'),(SELECT MAX(tanggal) FROM masterrate WHERE v_codecurr = 'PAJAK' AND curr = 'USD')))),(SELECT rate FROM masterrate WHERE v_codecurr = 'PAJAK' AND curr = 'USD' AND tanggal = (SELECT IFNULL((SELECT tanggal FROM masterrate WHERE tanggal = '$end_date' AND v_codecurr = 'PAJAK' AND curr = 'USD'),(SELECT MAX(tanggal) FROM masterrate WHERE v_codecurr = 'PAJAK' AND curr = 'USD'))))) rate) rt) a) a) a) a) a) a WHERE sal_awl > 0 OR tambah > 0 OR bayar > 0 OR total > 0) a  GROUP BY customer, top order by customer asc) b on b.id_customer = a.id_customer LEFT JOIN
+        (select IF((select id from tbl_tgl_tb where tgl_akhir = '$end_date') != '',(SELECT rate FROM masterrate WHERE v_codecurr = (SELECT IF((SELECT tanggal FROM masterrate WHERE tanggal = '$end_date' AND v_codecurr = 'HARIAN' AND curr = 'USD') is null,'PAJAK','HARIAN')) AND tanggal = (SELECT IFNULL((SELECT tanggal FROM masterrate WHERE tanggal = '$end_date' AND v_codecurr = 'HARIAN' AND curr = 'USD'),(SELECT MAX(tanggal) FROM masterrate WHERE v_codecurr = 'PAJAK' AND curr = 'USD')))),(SELECT rate FROM masterrate WHERE v_codecurr = 'PAJAK' AND curr = 'USD' AND tanggal = (SELECT IFNULL((SELECT tanggal FROM masterrate WHERE tanggal = '$end_date' AND v_codecurr = 'PAJAK' AND curr = 'USD'),(SELECT MAX(tanggal) FROM masterrate WHERE v_codecurr = 'PAJAK' AND curr = 'USD'))))) rate) rt) a) a) a) a) a) a WHERE sal_awl > 0 OR tambah > 0 OR bayar > 0 OR total > 0) a  GROUP BY customer, top order by customer asc) b on b.id_customer = a.id_customer and b.top = a.top LEFT JOIN
         (select id_supplier, buyer, sum(debit_idr - credit_idr) pph_23 from tbl_list_journal a INNER JOIN (select * from mastersupplier where tipe_sup = 'C') b on b.supplier = a.buyer where tgl_journal BETWEEN '$start_date' and '$end_date' and type_journal = 'Alokasi' and no_coa = '1.52.02' GROUP BY buyer) c on c.id_supplier = a.id_customer LEFT JOIN
         (select id_supplier, supplier, SUM(amount_idr) pelunasan from (select d.id_supplier,d.supplier, c.no_coa, c.nama_coa, b.no_ref, a.curr, a.rate, b.amount, (b.amount * a.rate) amount_idr from tbl_alokasi a INNER JOIN tbl_alokasi_detail b on b.no_alk = a.no_alk INNER JOIN mastercoa_v2 c on c.no_coa  = b.coa INNER JOIN mastersupplier d on d.id_supplier = a.customer where a.tgl_alk BETWEEN '$start_date' and '$end_date' and (nama_coa like '%UTANG USAHA%' OR nama_coa like '%PPH PASAL 23%')
         UNION
         select d.id_supplier,d.supplier, c.no_coa, c.nama_coa, b.no_ref, a.curr, a.rate, b.amount, (b.amount * a.rate) amount_idr from tbl_alokasi a INNER JOIN tbl_alokasi_detail b on b.no_alk = a.no_alk INNER JOIN mastercoa_v2 c on c.no_coa  = b.coa INNER JOIN mastersupplier d on d.id_supplier = a.customer where a.tgl_alk BETWEEN '$start_date' and '$end_date' and no_ref like '%INM/%') a GROUP BY id_supplier ORDER BY supplier asc) d on d.id_supplier = a.id_customer $where
         ");
-return $hasil->result_array();
+
+    // Pelunasan & PPh 23 datang dari jurnal alokasi yang tidak mengenal Top,
+    // jadi customer yang punya dua Top menerima angka yang sama di kedua
+    // barisnya dan kolomnya terhitung dobel di baris TOTAL.
+    return $this->pilah_mut_ar_per_top($hasil->result_array(), $start_date, $end_date);
+}
+
+/**
+ * Pelunasan & PPh 23 satu customer dibagi ke baris-baris Top-nya menurut
+ * porsi pelunasan invoice di tiap Top. Baris alokasi tanpa nomor invoice
+ * (baris PPh, misalnya) ikut porsi yang sama, dan sisa pembulatan ditaruh di
+ * baris berporsi terbesar - jadi jumlah per customer tetap sama persis.
+ * Customer dengan satu Top tidak tersentuh sama sekali.
+ */
+function pilah_mut_ar_per_top($baris, $start_date, $end_date)
+{
+    $per_customer = array();
+    foreach ($baris as $i => $r) {
+        $per_customer[$r['id_customer']][] = $i;
+    }
+    $jamak = array();
+    foreach ($per_customer as $id => $idx) {
+        if (count($idx) > 1) {
+            $jamak[$id] = $idx;
+        }
+    }
+    if (!$jamak) {
+        return $baris;
+    }
+
+    $bobot = $this->bobot_pelunasan_top($start_date, $end_date);
+
+    foreach ($jamak as $id => $idx) {
+        $b = array();
+        $jml_bobot = 0;
+        foreach ($idx as $i) {
+            $kunci = $id . '|' . $baris[$i]['top'];
+            $b[$i] = isset($bobot[$kunci]) ? (float) $bobot[$kunci] : 0;
+            $jml_bobot += $b[$i];
+        }
+
+        if ($jml_bobot <= 0) {
+            // Tidak ada alokasi yang bisa dirujuk ke invoice: seluruhnya
+            // ditaruh di baris bersaldo akhir terbesar supaya tidak hilang.
+            $pilih = $idx[0];
+            foreach ($idx as $i) {
+                if (abs((float) $baris[$i]['sal_akhir']) > abs((float) $baris[$pilih]['sal_akhir'])) {
+                    $pilih = $i;
+                }
+            }
+            foreach ($idx as $i) {
+                $b[$i] = ($i === $pilih) ? 1 : 0;
+            }
+            $jml_bobot = 1;
+        }
+
+        // Baris berporsi terbesar dikerjakan terakhir supaya menampung sisa.
+        $urut = array();
+        foreach ($idx as $i) {
+            $urut[] = array($b[$i], $i);
+        }
+        sort($urut);
+        foreach ($urut as $n => $t) {
+            $urut[$n] = $t[1];
+        }
+
+        foreach (array('pelunasan', 'pph_23') as $kol) {
+            $jml = (float) $baris[$idx[0]][$kol];   // nilainya sama di tiap baris
+            $sisa = $jml;
+            $akhir = count($urut) - 1;
+            foreach ($urut as $n => $i) {
+                $bagian = ($n === $akhir) ? $sisa : round($jml * $b[$i] / $jml_bobot, 2);
+                $sisa = round($sisa - $bagian, 2);
+                $baris[$i]['other'] = round((float) $baris[$i]['other'] + ($jml - $bagian), 4);
+                $baris[$i][$kol] = $bagian;
+            }
+        }
+    }
+
+    return $baris;
+}
+
+/**
+ * Porsi pelunasan per customer + Top: nilai alokasi yang nomor rujukannya
+ * ketemu invoice, dikelompokkan menurut Top invoice itu. Daftar invoice-nya
+ * memakai penyaring yang sama dengan laporan induknya supaya satu nomor
+ * invoice hanya punya satu Top.
+ */
+function bobot_pelunasan_top($start_date, $end_date)
+{
+    $peta = "(select no_invoice, MIN(top) top from (
+                select x.no_invoice no_invoice, f.top top from tbl_book_invoice x
+                  inner join tbl_master_top f on f.id = x.id_top
+                 where x.sj_date between '2022-05-01' and '{END}'
+                union
+                select x.no_invoice, x.top from saldoawal_ar x where x.no_invoice not like '{P}DN/{P}'
+                union
+                select x.no_inv, x.top from tbl_invoice_nb x where x.status != 'CANCEL'
+             ) z group by no_invoice)";
+
+    $per_baris = "select d.id_supplier, d.supplier, c.no_coa, c.nama_coa, b.no_ref, a.curr,
+                     a.rate, b.amount, (b.amount * a.rate) amount_idr, t.top
+                from tbl_alokasi a
+               inner join tbl_alokasi_detail b on b.no_alk = a.no_alk
+               inner join mastercoa_v2 c on c.no_coa = b.coa
+               inner join mastersupplier d on d.id_supplier = a.customer
+               inner join {PETA} t on t.no_invoice = b.no_ref
+               where a.tgl_alk BETWEEN '{AWAL}' and '{END}' and ";
+
+    $sql = "select id_supplier, top, SUM(amount_idr) bobot from (
+                " . $per_baris . "(nama_coa like '{P}UTANG USAHA{P}' OR nama_coa like '{P}PPH PASAL 23{P}')
+                UNION
+                " . $per_baris . "no_ref like '{P}INM/{P}'
+            ) a GROUP BY id_supplier, top";
+
+    $sql = str_replace(array('{PETA}', '{AWAL}', '{END}', '{P}'),
+                       array($peta, $start_date, $end_date, '%'), $sql);
+
+    $keluar = array();
+    foreach ($this->db->query($sql)->result_array() as $r) {
+        $keluar[$r['id_supplier'] . '|' . $r['top']] = $r['bobot'];
+    }
+    return $keluar;
 }
 
 
@@ -1478,7 +1600,7 @@ public function realisasi_alokasi($dari, $sampai, $id_customer = 'All')
                IF(IFNULL(a.rate, 0) = 0, 1, a.rate) AS rate,
                a.amount AS alk_amount, IFNULL(a.sisa, 0) AS alk_sisa,
                b.id AS id_detail, b.coa, b.no_ref, b.ref_date, b.due_date,
-               b.total, b.eqp_idr, b.amount, b.keterangan, a.status,
+               b.total, b.amount, b.keterangan, a.status,
                DATE_FORMAT(e.tanggal_input, '%Y-%m-%d') AS create_date, e.nama AS create_by
           FROM tbl_alokasi AS a
           INNER JOIN tbl_alokasi_detail AS b ON b.no_alk = a.no_alk
@@ -1620,7 +1742,9 @@ public function realisasi_alokasi($dari, $sampai, $id_customer = 'All')
                 'due_date'    => $r['due_date'],
                 'total'       => (float) $r['total'],
                 'rate'        => $kurs,
-                'eqp_idr'     => (float) $r['eqp_idr'],
+                // Dihitung dari kursnya, bukan kolom eqp_idr barisnya: baris DN
+                // menyimpan kolom itu dalam mata uang alokasi, tanpa dikali kurs.
+                'eqp_idr'     => (float) $r['total'] * $kurs,
                 'amount'      => $nilai,
                 'amount_idr'  => $eqv,
                 'income_tax_23' => $pph_idr,
