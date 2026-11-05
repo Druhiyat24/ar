@@ -654,6 +654,8 @@ function render_detail_table(res) {
         <th ${th1(hdrBg)} rowspan="2">Rate</th>
         <th ${th1(recvBg, 'text-align:left;vertical-align:top;')} colspan="5">Receivable Amount</th>
         <th ${th1(projBg)} colspan="${dates.length}">Projected Cash Inflow from Accounts Receivable</th>
+        <th ${th1(hdrBg)} rowspan="2">Type</th>
+        <th ${th1(hdrBg)} rowspan="2">Bank &amp; Acc No</th>
     </tr><tr>`;
     thead += `<th ${th2(subBg)}>Tax Base</th>`;
     thead += `<th ${th2(subBg)}>VAT</th>`;
@@ -722,6 +724,12 @@ function render_detail_table(res) {
             if (val !== 0) dateTotals[d] += val;
             tbody += `<td ${tdStyle} text-align:right;">${val !== 0 ? fmt(val) : 0.00}</td>`;
         });
+        // Dokumen yang dibuat SEBELUM kedua kolom ini ada menyimpannya NULL -
+        // di situ yang tampil strip, bukan "null". Migrasinya mengisi yang
+        // lama sekali jalan; strip ini penjaga untuk basis data yang
+        // migrasinya belum dijalankan.
+        tbody += `<td ${tdStyle} text-align:center;">${r.doc_type || '-'}</td>`;
+        tbody += `<td ${tdStyle}">${r.bank_acc || '-'}</td>`;
         tbody += '</tr>';
     });
     $('#tbody-history-detail').html(tbody);
@@ -737,6 +745,9 @@ function render_detail_table(res) {
     dates.forEach(function(d) {
         tfoot += `<td ${tdStyle} background-color:#90EE90; text-align:right;">${dateTotals[d] !== 0 ? fmt(dateTotals[d]) : 0}</td>`;
     });
+    // Dua sel kosong penutup - lihat alasannya di baris TOTAL layar
+    // Projection Report (crud-nag-report.js).
+    tfoot += `<td ${tdStyle}"></td><td ${tdStyle}"></td>`;
     tfoot += '</tr>';
     $('#tfoot-history-detail').html(tfoot);
 }

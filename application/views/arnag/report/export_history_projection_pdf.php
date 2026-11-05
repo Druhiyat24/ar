@@ -80,6 +80,11 @@ $netAmount = function ($r) {
             <?php if (!empty($show_dates)): ?>
             <th class="bg-proj" colspan="<?= count($show_dates); ?>">Projected Cash Inflow from Accounts Receivable</th>
             <?php endif; ?>
+            <!-- Diminta tim AR 5 Nov 2026. Lebarnya ditekan - halaman ini
+                 sudah penuh, dan nama bank memang panjang; dibiarkan
+                 membungkus dua baris daripada menggeser kolom angka. -->
+            <th class="bg-header" rowspan="2" style="width:35pt;">Type</th>
+            <th class="bg-header" rowspan="2" style="width:70pt;">Bank &amp; Acc No</th>
         </tr>
         <tr>
             <th class="bg-header" style="width:40pt;">Tax Base</th>
@@ -127,6 +132,9 @@ $netAmount = function ($r) {
             ?>
             <td class="text-right"><?= $val != 0 ? number_format($val, 2) : ''; ?></td>
             <?php endforeach; ?>
+
+            <td class="text-center"><?= htmlspecialchars(!empty($r['doc_type']) ? $r['doc_type'] : '-'); ?></td>
+            <td><?= htmlspecialchars(!empty($r['bank_acc']) ? $r['bank_acc'] : '-'); ?></td>
         </tr>
     <?php endforeach; ?>
     </tbody>
@@ -161,6 +169,8 @@ $netAmount = function ($r) {
             ?>
             <td class="bg-proj text-right" style="font-weight:bold;"><?= $sub != 0 ? number_format($sub, 2) : ''; ?></td>
             <?php endforeach; ?>
+            <td class="bg-header"></td>
+            <td class="bg-header"></td>
         </tr>
     </tfoot>
 </table>

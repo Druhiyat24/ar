@@ -1032,12 +1032,149 @@ private function pph_wajar_baris($peta, $no_invoice, $nilai)
     return round(($nilai - $vat) * $p['pct'] / 100, 2);
 }
 
+/**
+ * Peta Type + Bank & Acc No per nomor dokumen.
+ *
+ * DUA PERTANYAAN, SATU JAWABAN. Keduanya dijawab dari TABEL ASAL dokumen
+ * itu, bukan dari pola nomornya: barisnya ada di tbl_debitnote_h berarti
+ * Debit Note, ada di tbl_book_invoice / tbl_invoice_nb berarti Invoice.
+ * Pola nomor ('%DN/%') cuma dipakai untuk saldo awal, yang memang tidak
+ * punya tabel asal lain.
+ *
+ * Rekeningnya disimpan di tempat yang berbeda-beda - itu keadaan datanya,
+ * bukan pilihan di sini:
+ *   tbl_book_invoice.id_bank -> masterbank.id      (invoice booking)
+ *   tbl_invoice_nb.bank      -> masterbank.id      (invoice manual, teks)
+ *   tbl_debitnote_h.akun     -> masterbank.no_rek  (debit note)
+ *   saldoawal_ar             -> tidak ada sama sekali
+ *
+ * Yang dikembalikan sudah berbentuk tampilan ("BANK CENTRAL ASIA -
+ * 008-751-5757"), sebab tiga sumber di atas tidak punya satu kunci bersama
+ * yang bisa dibawa ke mana-mana.
+ *
+ * Dipakai sisi PROYEKSI (dihitung saat laporan dibuka) dan sisi REALISASI
+ * (untuk invoice yang alokasinya ada tapi tidak ikut terjaring dokumen
+ * proyeksinya) - satu pintu, supaya dua layar tidak bisa menjawab beda.
+ */
+/**
+ * Nama bank yang dipendekkan - "BANK CENTRAL ASIA" jadi "BCA".
+ *
+ * Diminta tim AR 5 Nov 2026: nama panjangnya memakan satu kolom penuh di
+ * laporan yang kolomnya sudah banyak, dan yang dibaca orang memang
+ * singkatannya.
+ *
+ * DUA LAPIS, sengaja:
+ *   1. Daftar singkatan yang sudah baku. BCA/BNI/BRI kebetulan memang
+ *      huruf depan tiap katanya, tapi CIMB Niaga tidak ("BCN" bukan nama
+ *      yang dikenal siapa pun) - jadi tidak bisa diserahkan ke aturan.
+ *   2. Baru kalau tidak ada di daftar: huruf depan tiap kata. Angka di
+ *      belakang nama dibuang dulu - di master ada baris bernama
+ *      "MANDIRI 130-0002077777", dan nomor rekening sudah punya kolomnya
+ *      sendiri di sebelahnya.
+ *
+ * Nama yang tinggal SATU kata dikembalikan apa adanya: "MANDIRI" sudah
+ * sependek yang bisa, dan "M" tidak memberi tahu apa pun.
+ */
+private function singkat_bank($nama)
+{
+    $nama = trim((string) $nama);
+    if ($nama === '') { return ''; }
+
+    $besar = strtoupper($nama);
+    $baku = array(
+        'CENTRAL ASIA' => 'BCA',   'NEGARA INDONESIA' => 'BNI',
+        'RAKYAT INDONESIA' => 'BRI', 'TABUNGAN NEGARA' => 'BTN',
+        'SYARIAH INDONESIA' => 'BSI', 'CIMB' => 'CIMB', 'MANDIRI' => 'MANDIRI',
+        'PERMATA' => 'PERMATA', 'DANAMON' => 'DANAMON', 'MAYBANK' => 'MAYBANK',
+        'BUKOPIN' => 'BUKOPIN', 'OCBC' => 'OCBC', 'PANIN' => 'PANIN',
+        'HSBC' => 'HSBC', 'DBS' => 'DBS', 'UOB' => 'UOB',
+    );
+    foreach ($baku as $kunci => $singkat) {
+        if (strpos($besar, $kunci) !== false) { return $singkat; }
+    }
+
+    // Kata yang bukan nama: bentuk badan usaha, dan potongan nomor rekening
+    // yang terlanjur ikut tertulis di nama banknya.
+    $buang = array('PT', 'TBK', '(PERSERO)', 'PERSERO');
+    $kata = array();
+    foreach (preg_split('/[\s,.]+/', $besar) as $k) {
+        $k = trim($k);
+        if ($k === '' || in_array($k, $buang, true)) { continue; }
+        if (preg_match('/^[0-9\-]+$/', $k)) { continue; }
+        $kata[] = $k;
+    }
+    if (!$kata) { return $besar; }
+    if (count($kata) === 1) { return $kata[0]; }
+
+    $singkat = '';
+    foreach ($kata as $k) { $singkat .= substr($k, 0, 1); }
+    return $singkat;
+}
+
+private function peta_bank_invoice(array $no_invoices)
+{
+    if (empty($no_invoices)) { return array(); }
+
+    $esc = array_map(function ($v) { return "'" . $this->db->escape_str($v) . "'"; }, $no_invoices);
+    $in_list = implode(',', $esc);
+
+    // urut_sumber menentukan siapa yang menang kalau satu nomor kebetulan
+    // ada di dua tabel - bukan urutan baris hasil, yang tidak dijamin MySQL.
+    $baris = $this->db->query("
+        SELECT bi.no_invoice, 'Invoice' AS doc_type, 1 AS urut_sumber,
+               mb.nama_bank, mb.no_rek
+        FROM tbl_book_invoice bi
+        LEFT JOIN masterbank mb ON mb.id = bi.id_bank
+        WHERE bi.no_invoice IN ($in_list)
+        UNION ALL
+        SELECT nb.no_inv, 'Invoice', 2, mb.nama_bank, mb.no_rek
+        FROM tbl_invoice_nb nb
+        LEFT JOIN masterbank mb ON mb.id = nb.bank
+        WHERE nb.no_inv IN ($in_list)
+        UNION ALL
+        SELECT dn.no_dn, 'Debit Note', 3, mb.nama_bank, mb.no_rek
+        FROM tbl_debitnote_h dn
+        LEFT JOIN masterbank mb ON mb.no_rek = dn.akun
+        WHERE dn.no_dn IN ($in_list)
+    ")->result_array();
+
+    $peta = array();
+    foreach ($baris as $b) {
+        $no = $b['no_invoice'];
+        if (isset($peta[$no]) && $peta[$no]['_urut'] <= (int) $b['urut_sumber']) { continue; }
+
+        $bank = '-';
+        if ($b['nama_bank'] !== null && trim((string) $b['nama_bank']) !== '') {
+            $bank = $this->singkat_bank($b['nama_bank']);
+            if (trim((string) $b['no_rek']) !== '') { $bank .= ' - ' . trim($b['no_rek']); }
+        }
+        $peta[$no] = array('doc_type' => $b['doc_type'], 'bank_acc' => $bank,
+                           '_urut' => (int) $b['urut_sumber']);
+    }
+    return $peta;
+}
+
+/**
+ * Type & Bank satu baris, lengkap dengan cadangannya untuk dokumen yang
+ * tidak ketemu di tabel mana pun - yaitu saldo awal. Di situ satu-satunya
+ * penanda jenisnya ya nomor dokumennya sendiri, dan banknya memang tidak
+ * pernah ada.
+ */
+private function jenis_bank_baris($peta, $no_invoice)
+{
+    if (isset($peta[$no_invoice])) {
+        return array($peta[$no_invoice]['doc_type'], $peta[$no_invoice]['bank_acc']);
+    }
+    return array((strpos((string) $no_invoice, 'DN/') !== false) ? 'Debit Note' : 'Invoice', '-');
+}
+
 private function _attach_receivable_breakdown($rows)
 {
     if (empty($rows)) return $rows;
 
     $no_invoices = array_values(array_unique(array_column($rows, 'no_invoice')));
     $potMap = $this->peta_pph_invoice($no_invoices);
+    $bankMap = $this->peta_bank_invoice($no_invoices);
 
     foreach ($rows as &$r) {
         // Receivable Amount ditampilkan dalam IDR, beda dengan kolom Invoice
@@ -1069,6 +1206,14 @@ private function _attach_receivable_breakdown($rows)
         $r['total_invoice']     = $totalInv;
         $r['income_tax_23']     = $pph23;
         $r['collection_amount'] = $totalInv - $pph23;
+
+        // Type (Invoice / Debit Note) & Bank & Acc No - diminta tim AR
+        // 5 Nov 2026. Ditempel DI SINI, bukan di query utamanya: query itu
+        // satu string CONCAT berlapis yang dirakit jadi prepared statement,
+        // dan menyisipkan dua kolom di tengahnya berarti menyentuh tiap
+        // cabang UNION-nya. Di sini satu tempat, dan dua-duanya ikut
+        // terpakai oleh layar MAUPUN unduhannya sekaligus.
+        list($r['doc_type'], $r['bank_acc']) = $this->jenis_bank_baris($bankMap, $r['no_invoice']);
 
         // Kolom "Projected Cash Inflow" per tanggal (data1..dataN) disesuaikan
         // proporsional ke Collection Amount (sudah dipotong PPh), bukan lagi
@@ -1423,6 +1568,14 @@ public function save_history_projection_report($id_customer, $from, $to, $create
     $rows = $this->cari_projection_report_export($id_customer, $from, $to, $type);
 
     if (!empty($rows)) {
+        // Kolom doc_type & bank_acc baru ada sesudah
+        // migrations/20261105_projection_type_bank.sql dijalankan. Selama
+        // belum, keduanya DILEWATI - menyimpan dokumen proyeksi tetap
+        // jalan, dua kolomnya saja yang kosong. Tanpa penjaga ini, kode
+        // yang sudah ter-pull tapi migrasinya belum jalan akan membuat
+        // tombol Save mati total.
+        $punya_kolom_baru = $this->db->field_exists('doc_type', 'tbl_history_projection_det');
+
         $batch = [];
         foreach ($rows as $r) {
             $batch[] = [
@@ -1433,6 +1586,12 @@ public function save_history_projection_report($id_customer, $from, $to, $create
                 'inv_date'       => $r['inv_date'],
                 'shipp'          => $r['shipp'],
                 'type_so'        => $r['type_so'],
+                // Type & Bank ikut DISALIN, bukan dibaca ulang waktu
+                // dokumennya dibuka: isi tabel ini potret, dan rekening
+                // tujuan sebuah invoice bisa diganti belakangan. Lihat
+                // migrations/20261105_projection_type_bank.sql.
+                'doc_type'       => isset($r['doc_type']) ? $r['doc_type'] : null,
+                'bank_acc'       => isset($r['bank_acc']) ? $r['bank_acc'] : null,
                 'duedate'        => $r['duedate'],
                 'duedate_update' => $r['duedate_update'],
                 'top'            => $r['top'],
@@ -1446,6 +1605,10 @@ public function save_history_projection_report($id_customer, $from, $to, $create
                 'income_tax_23'     => $r['income_tax_23'],
                 'collection_amount' => $r['collection_amount'],
             ];
+        }
+        if (!$punya_kolom_baru) {
+            foreach ($batch as &$b) { unset($b['doc_type'], $b['bank_acc']); }
+            unset($b);
         }
         $this->db->insert_batch('tbl_history_projection_det', $batch);
     }
@@ -1853,6 +2016,11 @@ public function realization_report($doc_number)
         $inv[$no]['inv_date']  = $p['inv_date'];
         $inv[$no]['due_date']  = $p['duedate'];
         $inv[$no]['curr']      = $p['curr'];
+        // Dari POTRETnya, bukan dibaca ulang - sama seperti nilai & kursnya.
+        // Kosong di sini berarti dokumennya dibuat sebelum kolomnya ada;
+        // yang begitu ditambal di bawah, sesudah kedua sisi terkumpul.
+        $inv[$no]['doc_type']  = isset($p['doc_type']) ? (string) $p['doc_type'] : '';
+        $inv[$no]['bank_acc']  = isset($p['bank_acc']) ? (string) $p['bank_acc'] : '';
         $inv[$no]['proj_date'] = (!empty($p['duedate_update']) && $p['duedate_update'] !== '0000-00-00')
             ? $p['duedate_update'] : '';
         $inv[$no]['proj_rate'] = (float) $p['rate'];
@@ -1881,6 +2049,25 @@ public function realization_report($doc_number)
         // selesai tertagih, bukan saat cicilan pertamanya masuk.
         if ($inv[$no]['real_date'] === '' || $r['tgl_alk'] > $inv[$no]['real_date']) {
             $inv[$no]['real_date'] = $r['tgl_alk'];
+        }
+    }
+
+    // ---- Type & Bank yang belum terisi ----------------------------------
+    // Dua golongan jatuh ke sini: invoice yang alokasinya ada tapi tidak
+    // ikut terjaring dokumen proyeksinya (Unplanned Collection), dan
+    // dokumen lama yang dibuat sebelum kedua kolom ini ada. Dua-duanya
+    // dibacakan dari tabel dokumennya SEKARANG - itu satu-satunya sumber
+    // yang tersedia, dan sengaja tidak ditulis balik ke potretnya.
+    $belum = array();
+    foreach ($inv as $no => $b) {
+        if ($b['doc_type'] === '' || $b['bank_acc'] === '') { $belum[] = $no; }
+    }
+    if ($belum) {
+        $petaBank = $this->peta_bank_invoice($belum);
+        foreach ($belum as $no) {
+            list($jenis, $bank) = $this->jenis_bank_baris($petaBank, $no);
+            if ($inv[$no]['doc_type'] === '') { $inv[$no]['doc_type'] = $jenis; }
+            if ($inv[$no]['bank_acc'] === '') { $inv[$no]['bank_acc'] = $bank; }
         }
     }
 
@@ -1947,7 +2134,7 @@ private function baris_invoice_kosong($no_invoice)
 {
     return array(
         'no_invoice' => $no_invoice, 'customer' => '', 'inv_date' => '',
-        'due_date' => '', 'curr' => '',
+        'due_date' => '', 'curr' => '', 'doc_type' => '', 'bank_acc' => '',
         'proj_date' => '', 'proj_ocy' => 0, 'proj_rate' => 0, 'proj_idr' => 0,
         'real_date' => '', 'real_ocy' => 0, 'real_rate' => 0, 'real_idr' => 0,
         'status' => '', 'achievement' => null, 'date_variance' => null,
