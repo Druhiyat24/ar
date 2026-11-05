@@ -619,6 +619,13 @@
                                         <th style="width:200px;" rowspan="2">Rate</th>
                                         <th class="grp-recv" colspan="5"><span>Receivable Amount</span></th>
                                         <th class="grp-proj" colspan=""><span>Projected Cash Inflow from Accounts Receivable</span></th>
+                                        <!-- Dua kolom terakhir, diminta tim AR 5 Nov 2026. Ditaruh di
+                                             UJUNG, bukan disisipkan di antara kolom keterangan di depan:
+                                             empat kolom pertama dibekukan lewat CSS yang menghitung
+                                             posisi kiri tiap kolom (--fz1..--fz4), dan menyisipkan
+                                             kolom di depan menggeser hitungan itu semua. -->
+                                        <th style="width:110px;" rowspan="2">Type</th>
+                                        <th style="width:220px;" rowspan="2">Bank &amp; Acc No</th>
                                     </tr>
                                     <tr>
                                         <th class="sub-recv" style="width:150px;">Tax Base</th>

@@ -153,6 +153,16 @@ foreach ($period as $dt) {
                 colspan="<?= count($dates); ?>">
                 Projected Cash Inflow from Accounts Receivable
             </th>
+
+            <!-- Diminta tim AR 5 Nov 2026. Urutannya disamakan dengan layar
+                 Projection Report: dua kolom terakhir, sesudah kolom tanggal. -->
+            <th class="bg-header" rowspan="2" style="width: 110px;">
+                Type
+            </th>
+
+            <th class="bg-header" rowspan="2" style="width: 220px;">
+                Bank &amp; Acc No
+            </th>
         </tr>
 
         <tr>
@@ -282,25 +292,54 @@ foreach ($period as $dt) {
 
             <?php endforeach; ?>
 
+            <td class="text-center">
+                <?= $sr['doc_type'] ?: '-'; ?>
+            </td>
+
+            <td>
+                <?= $sr['bank_acc'] ?: '-'; ?>
+            </td>
+
         </tr>
 
     <?php endforeach; ?>
 
     </tbody>
 
-    <!-- <tfoot>
+    <!-- Baris TOTAL. Dulu dimatikan dan susunannya pun sudah ketinggalan
+         (colspan 11, lalu satu angka) - itu susunan sebelum kelompok
+         Receivable Amount ada. Dihidupkan lagi dan ditulis ulang atas
+         permintaan tim AR 5 Nov 2026, sama persis dengan baris TOTAL di
+         layar Projection Report.
+
+         Dua belas kolom keterangan di depan disatukan jadi label TOTAL -
+         Invoice Amount & Rate sengaja TIDAK dijumlahkan: isinya campur mata
+         uang asli (IDR dan USD), jadi jumlahnya tidak berarti apa pun.
+         Yang dijumlahkan hanya kolom yang sudah dalam IDR. -->
+    <tfoot>
 
         <tr>
 
-            <td class="bg-header" colspan="11"
+            <td class="bg-header" colspan="12"
                 style="text-align:center; font-weight:bold;">
                 TOTAL
             </td>
 
-            <td class="bg-header number"
-                style="font-weight:bold;">
-                <?= number_format($grand_total, 2); ?>
-            </td>
+            <?php
+            $jml = array('tax_base' => 0, 'tax_vat' => 0, 'total_invoice' => 0,
+                         'income_tax_23' => 0, 'collection_amount' => 0);
+            foreach($projection as $row){
+                foreach($jml as $k => $v){
+                    $jml[$k] = $v + (isset($row[$k]) ? (float)$row[$k] : 0);
+                }
+            }
+            ?>
+
+            <?php foreach($jml as $v): ?>
+                <td class="bg-header number" style="font-weight:bold;">
+                    <?= number_format($v, 2); ?>
+                </td>
+            <?php endforeach; ?>
 
             <?php foreach($dates as $key => $dt): ?>
 
@@ -314,14 +353,19 @@ foreach ($period as $dt) {
 
                 <td class="bg-projection number"
                     style="font-weight:bold;">
-                    <?= $subtotal != 0 ? number_format($subtotal, 2) : ''; ?>
+                    <?= number_format($subtotal, 2); ?>
                 </td>
 
             <?php endforeach; ?>
 
+            <!-- Type & Bank & Acc No tidak ada yang bisa dijumlahkan, tapi
+                 selnya tetap ada supaya garis tabelnya tidak putus. -->
+            <td class="bg-header"></td>
+            <td class="bg-header"></td>
+
         </tr>
 
-    </tfoot> -->
+    </tfoot>
 
 </table>
 

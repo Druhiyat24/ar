@@ -39,6 +39,16 @@ class Ar_realization_xlsx
         'Tax Base', 'VAT', 'Total Invoice', 'Income Tax Art 23', 'Collection Amount',
     );
 
+    /**
+     * Dua kolom penutup lembar Projection (diminta tim AR 5 Nov 2026).
+     *
+     * Di UJUNG, sesudah kolom tanggal - bukan diselipkan di antara dua belas
+     * kolom keterangan di depan. Alasannya satu: susunan lembar ini sengaja
+     * sama persis dengan modal Detail di layar History Projection, dan di
+     * layar itu keduanya juga di ujung.
+     */
+    private static $KOLOM_EKOR = array('Type', 'Bank & Acc No');
+
     private static $KOLOM_REALISASI = array(
         'No Alokasi', 'Alokasi Date', 'Customer', 'Document Number', 'Bank', 'Account',
         'Curr', 'No Reference', 'Reference Date', 'Total', 'Rate', 'Equivalent IDR',
@@ -52,15 +62,27 @@ class Ar_realization_xlsx
         $x = new Xlsx_ringkas();
         $x->lembar('Executive Summary', $this->lembar_ringkas($hasil),
             array(36, 22, 46, 20, 16), 0, array('A1:C1'));
+        // Type & Bank & Acc No disisipkan sesudah Currency - menemani empat
+        // kolom keterangan lain di depan, bukan di ujung seperti di lembar
+        // Projection. Di lembar ini tidak ada kolom tanggal, jadi "ujung"
+        // berarti di belakang kolom selisih; keterangan dokumen tidak ada
+        // urusannya di sana. Kolom kelompoknya ikut bergeser dua: Projection
+        // H5:K5, Realization L5:O5, Result P5:W5.
         $x->lembar('AR Collection Realization & Variance Report',
             $this->lembar_utama($hasil),
-            array(38, 20, 13, 13, 8, 14, 15, 11, 18, 14, 15, 11, 18, 20, 12, 11, 11, 32, 19, 16, 19),
-            6, array('A5:A6', 'B5:B6', 'C5:C6', 'D5:D6', 'E5:E6',
-                     'F5:I5', 'J5:M5', 'N5:U5'));
+            array(38, 20, 13, 13, 8, 12, 26, 14, 15, 11, 18, 14, 15, 11, 18, 20, 12, 11, 11, 32, 19, 16, 19),
+            6, array('A5:A6', 'B5:B6', 'C5:C6', 'D5:D6', 'E5:E6', 'F5:F6', 'G5:G6',
+                     'H5:K5', 'L5:O5', 'P5:W5'));
         // Lebar kolomnya diisi - dengan lebar bawaan, nama customer dan nomor
         // dokumen terpotong dan harus dilebarkan satu-satu tiap kali dibuka.
+        // Dirakit, bukan ditulis tetap: jumlah kolom tanggalnya ikut periode,
+        // dan dua kolom penutupnya duduk SESUDAH tanggal-tanggal itu.
         $x->lembar('Projection', $this->lembar_proyeksi($hasil),
-            array(5, 38, 20, 13, 12, 12, 13, 15, 8, 9, 16, 11, 16, 14, 16, 15, 17),
+            array_merge(
+                array(5, 38, 20, 13, 12, 12, 13, 15, 8, 9, 16, 11, 16, 14, 16, 15, 17),
+                array_fill(0, count($this->tanggal_periode($hasil['header'])), 14),
+                array(12, 26)
+            ),
             self::PROY_JUDUL + 2, $this->gabung_proyeksi($hasil));
         $x->lembar('Realization', $this->lembar_realisasi($hasil),
             array(20, 13, 38, 28, 24, 18, 7, 22, 13, 16, 11, 16, 16, 16, 15, 12, 12, 12, 17, 36, 13, 12, 9), 4);
@@ -171,6 +193,7 @@ class Ar_realization_xlsx
         // rentangnya digabung menurun, dan Excel membaca sel paling atas.
         $b[] = array($this->h('Customer Name'), $this->h('Invoice No'),
                      $this->h('Invoice Date'), $this->h('Due Date'), $this->h('Currency'),
+                     $this->h('Type'), $this->h('Bank & Acc No'),
                      $this->h('Projection', 'kepala_hijau_kiri'),
                      $this->h('', 'kepala_hijau_kiri'), $this->h('', 'kepala_hijau_kiri'),
                      $this->h('', 'kepala_hijau_kiri'),
@@ -185,6 +208,7 @@ class Ar_realization_xlsx
         $kepala_kosong = $this->h('');
         $b[] = array(
             $kepala_kosong, $kepala_kosong, $kepala_kosong, $kepala_kosong, $kepala_kosong,
+            $kepala_kosong, $kepala_kosong,
             $this->h('Collection Date', 'kepala_hijau'), $this->h('Amount in OCY', 'kepala_hijau'),
             $this->h('Rate', 'kepala_hijau'), $this->h('Amount Eqv Idr', 'kepala_hijau'),
             $this->h('Collection Date', 'kepala_biru'), $this->h('Amount in OCY', 'kepala_biru'),
@@ -210,6 +234,8 @@ class Ar_realization_xlsx
             $b[] = array(
                 $this->t($r['customer']), $this->t($r['no_invoice']),
                 $this->d($r['inv_date']), $this->d($r['due_date']), $this->t($r['curr'], 'garis_tengah'),
+                $this->t($r['doc_type'] !== '' ? $r['doc_type'] : '-', 'garis_tengah'),
+                $this->t($r['bank_acc'] !== '' ? $r['bank_acc'] : '-'),
                 $this->d($r['proj_date']), $this->n($r['proj_ocy']), $this->n($r['proj_rate']),
                 $this->n($r['proj_idr']),
                 $this->d($r['real_date']), $this->n($r['real_ocy']), $this->n($r['real_rate']),
@@ -224,13 +250,23 @@ class Ar_realization_xlsx
             );
         }
 
+        // Sel kosongnya DIHITUNG, bukan ditulis satu-satu: dua kolom
+        // keterangan baru menggeser semua kolom angka dua langkah ke kanan,
+        // dan deretan $k yang ditulis tangan adalah tempat kesalahan itu
+        // paling mudah lolos - hasilnya angka total mendarat di bawah kolom
+        // yang salah tanpa ada yang error.
         $k = $this->t('', 'garis_total');
-        $b[] = array($this->t('TOTAL', 'garis_total'), $k, $k, $k, $k, $k, $k, $k,
-                     $this->n($jml['proj'], 'garis_total_angka'), $k, $k, $k,
-                     $this->n($jml['real'], 'garis_total_angka'), $k, $k, $k, $k, $k,
-                     $this->n($jml['excl'], 'garis_total_angka'),
-                     $this->n($jml['fx'], 'garis_total_angka'),
-                     $this->n($jml['total'], 'garis_total_angka'));
+        $b[] = array_merge(
+                     array($this->t('TOTAL', 'garis_total')),
+                     array_fill(0, 9, $k),
+                     array($this->n($jml['proj'], 'garis_total_angka')),
+                     array_fill(0, 3, $k),
+                     array($this->n($jml['real'], 'garis_total_angka')),
+                     array_fill(0, 5, $k),
+                     array($this->n($jml['excl'], 'garis_total_angka'),
+                           $this->n($jml['fx'], 'garis_total_angka'),
+                           $this->n($jml['total'], 'garis_total_angka'))
+                 );
 
         return $b;
     }
@@ -281,6 +317,14 @@ class Ar_realization_xlsx
             $gabung[] = Xlsx_ringkas::huruf_kolom($a) . $r1 . ':'
                 . Xlsx_ringkas::huruf_kolom($a + $jml_tgl - 1) . $r1;
         }
+        // Dua kolom penutup menembus dua baris kepalanya, sama seperti kolom
+        // keterangan di depan. Letaknya dihitung dari tiga hitungan di atas,
+        // jadi periode sepanjang apa pun tetap ketemu.
+        $ekor = $tetap + $recv + $jml_tgl;
+        for ($i = 1; $i <= count(self::$KOLOM_EKOR); $i++) {
+            $huruf = Xlsx_ringkas::huruf_kolom($ekor + $i);
+            $gabung[] = $huruf . $r1 . ':' . $huruf . $r2;
+        }
         return $gabung;
     }
 
@@ -311,12 +355,14 @@ class Ar_realization_xlsx
             $atas[] = $this->h('Projected Cash Inflow from Accounts Receivable', 'kepala_hijau_kiri');
             for ($i = 1; $i < count($tanggal); $i++) { $atas[] = $this->h('', 'kepala_hijau_kiri'); }
         }
+        foreach (self::$KOLOM_EKOR as $k) { $atas[] = $this->h($k); }
 
         // Baris 2 - nama kolom di dalam kelompoknya.
         $bawah = array();
         foreach (self::$KOLOM_PROYEKSI as $k) { $bawah[] = $this->h(''); }
         foreach (self::$KOLOM_RECV as $k) { $bawah[] = $this->h($k, 'kepala_biru'); }
         foreach ($tanggal as $t) { $bawah[] = $this->h($t, 'kepala_hijau'); }
+        foreach (self::$KOLOM_EKOR as $k) { $bawah[] = $this->h(''); }
 
         $b[] = $atas;
         $b[] = $bawah;
@@ -356,6 +402,10 @@ class Ar_realization_xlsx
                 $jml_tgl[$t] += $nilai;
                 $baris[] = $this->n($nilai);
             }
+            // Dari potret dokumennya. Dokumen yang dibuat sebelum kedua kolom
+            // ini ada menyimpannya NULL - di situ yang tampil strip.
+            $baris[] = $this->t(!empty($r['doc_type']) ? $r['doc_type'] : '-', 'garis_tengah');
+            $baris[] = $this->t(!empty($r['bank_acc']) ? $r['bank_acc'] : '-');
             $b[] = $baris;
         }
 
@@ -368,6 +418,7 @@ class Ar_realization_xlsx
         $total[] = $this->n($jml['income_tax_23'], 'garis_total_angka');
         $total[] = $this->n($jml['collection_amount'], 'garis_total_angka');
         foreach ($tanggal as $t) { $total[] = $this->n($jml_tgl[$t], 'garis_total_angka'); }
+        foreach (self::$KOLOM_EKOR as $k) { $total[] = $this->t('', 'garis_total'); }
         $b[] = $total;
 
         return $b;

@@ -70,6 +70,9 @@ $netAmount = function ($r) {
             <th class="bg-header" rowspan="2" style="width:130px;">Rate</th>
             <th class="bg-header" colspan="5" style="width:130px; text-align:left; vertical-align:top;">Receivable Amount</th>
             <th class="bg-proj" colspan="<?= count($dates); ?>">Projected Cash Inflow from Accounts Receivable</th>
+            <!-- Diminta tim AR 5 Nov 2026, urutannya sama dengan modal Detail. -->
+            <th class="bg-header" rowspan="2" style="width:110px;">Type</th>
+            <th class="bg-header" rowspan="2" style="width:220px;">Bank &amp; Acc No</th>
         </tr>
         <tr>
             <th class="bg-header" style="width:130px;">Tax Base</th>
@@ -118,24 +121,45 @@ $netAmount = function ($r) {
             ?>
             <td class="number"><?= $val != 0 ? number_format($val, 2) : 0; ?></td>
             <?php endforeach; ?>
+
+            <td class="text-center"><?= htmlspecialchars(!empty($r['doc_type']) ? $r['doc_type'] : '-'); ?></td>
+            <td><?= htmlspecialchars(!empty($r['bank_acc']) ? $r['bank_acc'] : '-'); ?></td>
         </tr>
     <?php endforeach; ?>
     </tbody>
 
-   <!--  <tfoot>
+    <!-- Baris TOTAL. Dulu dimatikan dan susunannya ketinggalan - colspan 11
+         lalu satu angka, susunan sebelum kelompok Receivable Amount ada.
+         Dihidupkan lagi & ditulis ulang atas permintaan tim AR 5 Nov 2026,
+         susunannya sama dengan baris TOTAL di modal Detail.
+
+         Invoice Amount & Rate sengaja TIDAK dijumlahkan: isinya campur mata
+         uang asli, jadi jumlahnya tidak berarti apa pun. -->
+    <tfoot>
         <tr>
-            <td class="bg-header" colspan="11" style="text-align:center; font-weight:bold;">TOTAL</td>
-            <td class="bg-header number" style="font-weight:bold;"><?= number_format($grand_total, 2); ?></td>
+            <td class="bg-header" colspan="12" style="text-align:center; font-weight:bold;">TOTAL</td>
+            <?php
+            $jml = array('tax_base' => 0, 'tax_vat' => 0, 'total_invoice' => 0,
+                         'income_tax_23' => 0, 'collection_amount' => 0);
+            foreach ($detail as $r) {
+                foreach ($jml as $k => $v) { $jml[$k] = $v + (float) $r[$k]; }
+            }
+            ?>
+            <?php foreach ($jml as $v): ?>
+            <td class="bg-header number" style="font-weight:bold;"><?= number_format($v, 2); ?></td>
+            <?php endforeach; ?>
             <?php foreach ($dates as $dt):
                 $sub = 0;
                 foreach ($detail as $r) {
                     if ($r['duedate_update'] === $dt) $sub += $netAmount($r);
                 }
             ?>
-            <td class="bg-proj number" style="font-weight:bold;"><?= $sub != 0 ? number_format($sub, 2) : 0; ?></td>
+            <td class="bg-proj number" style="font-weight:bold;"><?= number_format($sub, 2); ?></td>
             <?php endforeach; ?>
+            <td class="bg-header"></td>
+            <td class="bg-header"></td>
         </tr>
-    </tfoot> -->
+    </tfoot>
 </table>
 
 </body>

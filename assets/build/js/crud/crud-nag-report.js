@@ -1131,6 +1131,10 @@ while(start <= end){
             <th style="width:200px;" rowspan="2">Rate</th>
             <th class="grp-recv" colspan="5">Receivable Amount</th>
             <th class="grp-proj" colspan="${colCount}">Projected Cash Inflow from Accounts Receivable</th>
+            <!-- Type & Bank & Acc No - diminta tim AR 5 Nov 2026. Di UJUNG,
+                 alasannya ada di thead statis projection_report.php. -->
+            <th style="width:110px;" rowspan="2">Type</th>
+            <th style="width:220px;" rowspan="2">Bank &amp; Acc No</th>
         </tr>
         <tr>
             <th class="sub-recv" style="width:150px;">Tax Base</th>
@@ -1312,6 +1316,13 @@ function cari_projection_report(){
                     totals[key] += val;
                 }
 
+                // Dua kolom terakhir. Keduanya datang dari server (doc_type &
+                // bank_acc di Model_report), bukan ditebak dari nomor
+                // invoicenya di sini - yang menentukan tabel asalnya, dan itu
+                // cuma terbaca di sisi sana.
+                trHTML += '<td>' + (item.doc_type || '-') + "</td>";
+                trHTML += '<td>' + (item.bank_acc || '-') + "</td>";
+
                 trHTML += '</tr>';
             });
 
@@ -1346,6 +1357,11 @@ function cari_projection_report(){
 
                     tfHTML += '<td align="right">' + number_format(val, 2) + '</td>';
                 }
+
+                // Type & Bank & Acc No - tidak ada yang bisa dijumlahkan,
+                // tapi selnya tetap harus ada: tanpa ini baris TOTAL lebih
+                // pendek dua sel dan garis tabelnya putus di ujung kanan.
+                tfHTML += '<td></td><td></td>';
 
                 tfHTML += '</tr>';
             }
