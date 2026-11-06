@@ -13036,6 +13036,40 @@ function alo_konfirmasi_simpan() {
 	});
 }
 
+// Jurnal alokasi dibentuk dua kiriman terpisah (debit & kredit), jadi
+// separuhnya bisa hilang tanpa ada yang melapor gagal. Servernya ditanya
+// sekali: barisnya ada, dua sisinya ada, dan debit = kredit?
+// Jawaban yang tidak terbaca dianggap "tidak bisa dipastikan", BUKAN "hilang" -
+// kalau yang bermasalah cuma pemeriksanya, halamannya tidak usah ditahan.
+function alo_periksa_jurnal(no_alk) {
+	return new Promise(function (selesai) {
+		$.ajax({
+			url: 'cek_jurnal_alokasi/',
+			type: 'GET',
+			data: { no_alk: no_alk },
+			dataType: 'JSON'
+		}).done(function (j) {
+			selesai(j && typeof j.ok !== 'undefined' ? j : null);
+		}).fail(function () {
+			selesai(null);
+		});
+	});
+}
+
+// Sama dengan delete_kwt_detail_temporary(), tapi bisa ditunggu - dipakai di
+// akhir save_alokasi(), sesudah barisnya tidak dibaca lagi. Gagalnya tidak
+// dipersoalkan: tabel sementara yang tidak terhapus paling-paling ikut terbawa
+// ke alokasi berikutnya, bukan salah angka di buku besar.
+function alo_bersihkan_temp() {
+	return new Promise(function (selesai) {
+		$.ajax({
+			url: 'delete_kwt_detail_temporary/',
+			type: 'GET',
+			dataType: 'JSON'
+		}).always(function () { selesai(); });
+	});
+}
+
 async function save_alokasi() {
 	var nomor = $('[name="alk_number"]').val();
 
@@ -13072,12 +13106,32 @@ async function save_alokasi() {
 		return;
 	}
 
+	// Jurnalnya diperiksa sekali lagi dari sisi server sebelum halaman ini
+	// dilepas. Debit & kreditnya dikirim dua kiriman terpisah, jadi separuhnya
+	// masih bisa hilang walaupun tidak ada langkah yang melapor gagal (mis.
+	// jaringan terputus sesudah permintaannya sampai). Lebih baik ketahuan
+	// sekarang daripada ketemu nanti waktu tutup buku.
+	var jurnal = await alo_periksa_jurnal(nomor);
+	if (jurnal && jurnal.ok === false) {
+		nag_pesan(jurnal.pesan
+			+ '<br>Please check the journal of this allocation before leaving this page.',
+			'Journal incomplete', 'warning');
+		return;
+	}
+
+	// Tabel sementaranya dibersihkan DI SINI, bukan di dalam simpanalokasi():
+	// barisnya masih dibaca langkah-langkah sesudahnya.
+	await alo_bersihkan_temp();
+
 	var tujuan = alo_tujuan_daftar();
 	if (!tujuan) {
 		// Layar lama yang ikut memakai fungsi ini (update due date, reverse)
-		// tidak mengirim alamat daftar - di sana perilakunya tetap seperti
-		// dulu: modalnya ditutup, halamannya tidak pindah.
+		// tidak mengirim alamat daftar. Di sana perilakunya dikembalikan
+		// seperti dulu: modalnya ditutup lalu halamannya dimuat ulang -
+		// pemuatan ulang itu tadinya dilakukan simpanalokasi(), dipindah ke
+		// sini supaya tidak lagi membatalkan langkah yang belum selesai.
 		$('#modal-simpan-alokasi').modal('hide');
+		window.location.href = window.location.href;
 		return;
 	}
 
@@ -13609,35 +13663,34 @@ function simpanalokasi() {
 				'data_table': data,
 				'no_alk': no_alk
 			}
-			$.ajax({				
+			// Kirimannya DIBALIKAN, bukan cuma dilepas - sama dengan tiga langkah
+			// lainnya di save_alokasi(). Dulu di sini ada DUA hal yang membuat
+			// jurnalnya hilang:
+			//   1. resolve() dipanggil tepat sesudah $.ajax() dikirim, jadi
+			//      save_alokasi() lanjut sebelum kepalanya betul-betul tersimpan;
+			//   2. success-nya memuat ulang halaman ini sendiri
+			//      (window.location.href = window.location.href). Begitu simpan
+			//      kepala dijawab server, browser pindah halaman dan MEMBATALKAN
+			//      semua kiriman yang masih di jalan - yang berangkat paling akhir,
+			//      yaitu jurnal debit & kredit, yang paling sering kena.
+			// Sesudah keempat langkahnya dibuat menunggu jawaban server (29 Okt
+			// 2026), urutannya jadi lebih panjang dan pemuatan ulang itu hampir
+			// selalu mendahului jurnalnya - dokumen alokasinya tersimpan tanpa
+			// jurnal sama sekali.
+			// Pembersihan tabel sementara & perpindahan halaman dipindah ke
+			// save_alokasi(), dijalankan sesudah SEMUA langkahnya selesai.
+			resolve($.ajax({
 				url: "simpanalokasi/",
 				type: "POST",
 				data: fdata,
 				dataType: "JSON",
 				success: function (data) {
-					
-					if (data.status) //if success close modal and reload ajax table
-					{
-						msg = 'Success Input Detail'
-					} else {
-						msg = 'Error Input Detail'
-					}
-					// Delete Table Invoice Detail Temporary
-					delete_kwt_detail_temporary();
-					// Print Preview Invoice
-					// let no_kwt= $('[name="kwt_no"]').val();
-					// print_kwitansi(no_kwt);
-     //                // Reload Page
-     window.location.href = window.location.href;
-
- },
- error: function (jqXHR, textStatus, errorThrown) {
- 	msg = 'Error Input Detail' + jqXHR.text
- }
-});
-			resolve({
-				msg: msg,
-			});
+					msg = data.status ? 'Success Input Detail' : 'Error Input Detail';
+				},
+				error: function (jqXHR, textStatus, errorThrown) {
+					msg = 'Error Input Detail' + jqXHR.text
+				}
+			}));
 
 		}, 100);
 	});

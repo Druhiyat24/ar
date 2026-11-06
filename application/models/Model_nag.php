@@ -7230,6 +7230,82 @@ function alokasi_jurnal($id)
     return $this->db->query($sql, array($id))->result_array();
 }
 
+/**
+ * Jurnal satu dokumen alokasi: barisnya ada, DUA sisinya ada, dan debit = kredit?
+ *
+ * Jurnal alokasi dibentuk dua kiriman terpisah dari layar - debit lewat
+ * at_debit_inv, kredit lewat at_credit_inv - jadi separuhnya bisa hilang kalau
+ * satu kiriman tidak sampai. Layar Alokasi memanggil ini tepat sesudah
+ * menyimpan supaya kehilangannya kelihatan saat itu juga, bukan ketemu nanti
+ * waktu tutup buku.
+ *
+ * Yang dibandingkan nilai RUPIAHnya, dibulatkan ke rupiah terdekat: selisih
+ * pembulatan sen antar baris bukan ketidakseimbangan.
+ *
+ * Kalau pemeriksaannya sendiri tidak bisa dijalankan (nomornya kosong, tabelnya
+ * tidak ada, querynya gagal) hasilnya ok - tidak bisa diperiksa bukan berarti
+ * hilang, dan layarnya tidak usah ditahan karena itu.
+ */
+function cek_jurnal_alokasi($no_alk)
+{
+    $no_alk = trim((string) $no_alk);
+    $hasil  = array('ok' => TRUE, 'baris' => 0, 'debit' => 0, 'credit' => 0, 'pesan' => '');
+
+    if ($no_alk === '' || !$this->db->table_exists('tbl_list_journal')) {
+        return $hasil;
+    }
+
+    $q = $this->db->query(
+        "SELECT COUNT(*)                   AS baris,
+                SUM(IF(debit  <> 0, 1, 0)) AS baris_debit,
+                SUM(IF(credit <> 0, 1, 0)) AS baris_credit,
+                ROUND(SUM(debit_idr))      AS debit_idr,
+                ROUND(SUM(credit_idr))     AS credit_idr
+           FROM tbl_list_journal
+          WHERE no_journal = ?",
+        array($no_alk)
+    );
+    if (!$q || !is_object($q)) {
+        return $hasil;
+    }
+    $b = $q->row_array();
+    if (!$b) {
+        return $hasil;
+    }
+
+    $baris  = (int) $b['baris'];
+    $debit  = (float) $b['debit_idr'];
+    $kredit = (float) $b['credit_idr'];
+
+    $hasil['baris']  = $baris;
+    $hasil['debit']  = $debit;
+    $hasil['credit'] = $kredit;
+
+    if ($baris === 0) {
+        $hasil['ok']    = FALSE;
+        $hasil['pesan'] = 'No journal was recorded for this allocation.';
+        return $hasil;
+    }
+    if ((int) $b['baris_debit'] === 0) {
+        $hasil['ok']    = FALSE;
+        $hasil['pesan'] = 'Only the credit side of the journal was recorded.';
+        return $hasil;
+    }
+    if ((int) $b['baris_credit'] === 0) {
+        $hasil['ok']    = FALSE;
+        $hasil['pesan'] = 'Only the debit side of the journal was recorded.';
+        return $hasil;
+    }
+    if (round($debit) != round($kredit)) {
+        $hasil['ok']    = FALSE;
+        $hasil['pesan'] = 'The journal is out of balance: debit '
+            . number_format($debit, 0) . ' vs credit ' . number_format($kredit, 0) . '.';
+        return $hasil;
+    }
+
+    return $hasil;
+}
+
 function report_alokasi_detail($id)
 {
     // $hasil = $this->db->query("SELECT a.no_alk, a.coa,IFNULL(c.nama_coa,'-') as coa_name, a.cost_center, IFNULL(d.cost_name,'-') as cost_name, a.no_ref, a.ref_date, a.due_date, b.curr, if(b.curr = 'IDR',format(a.total, 2), format(a.total, 2)) as total, format(a.eqp_idr,2) as eqp_idr,format(a.amount, 2) as amount,format(round(a.total,2) - round(a.amount, 2),2) as ost, a.keterangan,e.supplier,if(b.rate = '0','-',b.rate) as rate from tbl_alokasi_detail a left join 

@@ -5466,6 +5466,15 @@ public function simpanalokasi()
     echo json_encode(array("status" => TRUE));
 }
 
+// Dipanggil layar Alokasi tepat sesudah menyimpan, sebelum pindah halaman -
+// lihat alo_periksa_jurnal() di crud-nag.js. Cuma membaca, tidak mengubah apa
+// pun: jurnalnya lengkap atau tidak.
+public function cek_jurnal_alokasi()
+{
+    $no_alk = (string) $this->input->get('no_alk');
+    echo json_encode($this->Model_nag->cek_jurnal_alokasi($no_alk));
+}
+
     //ubah september
 // Header + detail dikirim bareng dari client (lihat simpandn_h() di crud-nag.js)
 // dan di-insert dalam SATU transaksi lewat Model_nag->simpandn_h() - kalau salah
