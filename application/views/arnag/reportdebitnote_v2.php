@@ -47,6 +47,54 @@ $tanpa_putus = function ($nilai) {
     return preg_replace('/\s+/', '&nbsp;', $nilai);
 };
 
+// Kebalikannya: KATA YANG KEPANJANGAN justru diberi izin patah.
+//
+// mPDF punya dua ukuran yang tidak sejalan. Waktu MENCETAK ia mau mematahkan
+// baris di tanda hubung (Mpdf.php:8096, "Break at Hard HYPHEN"). Tapi waktu
+// MENGHITUNG LEBAR MINIMUM TABEL ia cuma memecah di spasi dan U+200B:
+//     Mpdf.php:19190  $words = preg_split('/(\xe2\x80\x8b| )/', $line);
+// Jadi bagi penghitung itu "XM8490-AL5485-...-AP0861" adalah SATU kata
+// sepanjang 118 huruf. Lebar minimum tabelnya langsung melebihi kertas, dan
+// jawaban mPDF atas itu MENGECILKAN HURUF SELURUH TABEL
+// (shrink_tables_to_fit) - padahal kalau dicetak apa adanya sebenarnya muat.
+// Itulah DN/NAG/1126/1026: seluruh tabelnya tercetak 4,36pt, 53% dari 8,25pt.
+//
+// U+200B (zero-width space) mendamaikan keduanya: penghitung lebar mengakui
+// kata itu bisa dipatah, perender memakainya sebagai tempat patah
+// (Mpdf.php:8091), dan hurufnya sendiri tidak memakan tempat dan tidak
+// tercetak. Ini IZIN untuk patah, bukan perintah - selama kolomnya cukup
+// lebar, katanya tetap utuh satu baris.
+//
+// AMBANGNYA 24 huruf, dan itu dari data: dari 16.347 isi kolom tambahan di
+// basis data, 99,8% kata terpanjangnya <= 24. Angka 24 persis tempat nomor
+// referensi tunggal berhenti ("PVH-EXP-NIR-DAMCO-23-003") lalu daftar yang
+// disambung dimulai ("255K0065-67-70-71-72-76-77-78-79"). Jadi nomor yang
+// memang satu kesatuan tidak tersentuh sama sekali.
+//
+// Dipakai pada nilai MENTAH, sebelum $esc - supaya tidak ada entitas HTML
+// yang bisa terbelah di tengah.
+$ambang_kata = 24;
+$zwsp = "\xe2\x80\x8b";
+$beri_titik_putus = function ($teks) use ($ambang_kata, $zwsp) {
+    return preg_replace_callback('/\S+/u', function ($m) use ($ambang_kata, $zwsp) {
+        $kata = $m[0];
+        if (mb_strlen($kata, 'UTF-8') <= $ambang_kata) {
+            return $kata;
+        }
+        // Titik putusnya SESUDAH pemisah, supaya tanda pemisah ikut tertinggal
+        // di baris atas dan pembaca tahu tulisannya masih bersambung.
+        $pecah = preg_replace('~([/\-_])~', '$1' . $zwsp, $kata);
+        if ($pecah !== $kata) {
+            return $pecah;
+        }
+        // Tidak ada pemisah sama sekali. Dipatah per sekian huruf sebagai
+        // jalan terakhir: satu kata terbelah masih jauh lebih baik daripada
+        // seluruh tabel mengecil.
+        return implode($zwsp, preg_split('/(.{' . $ambang_kata . '})/u', $kata, -1,
+            PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY));
+    }, $teks);
+};
+
 $isi_header = array();
 foreach ($data_debit_note_det as $baris_det) {
     foreach ($kolom_header as $h => $nama_kolom) {
@@ -55,8 +103,9 @@ foreach ($data_debit_note_det as $baris_det) {
             continue;
         }
         // Di-escape dulu, baru spasinya diganti - supaya &nbsp; tidak ikut
-        // ter-escape jadi tulisan "&amp;nbsp;".
-        $isi_header[$baris_det['id_det']][$h][] = $tanpa_putus($esc($nilai));
+        // ter-escape jadi tulisan "&amp;nbsp;". Titik putusnya dipasang paling
+        // awal, selagi tulisannya masih mentah.
+        $isi_header[$baris_det['id_det']][$h][] = $tanpa_putus($esc($beri_titik_putus($nilai)));
     }
 }
 
@@ -67,95 +116,34 @@ $sudah_second_approve = strtoupper(trim((string) (isset($dn['status']) ? $dn['st
 // langsung kolom tambahan.
 $jml_kolom = 4 + count($kolom_header);
 
-// Lebar kolom dipatok semua (persen). Kalau kolom tambahan dibiarkan auto,
-// mPDF memberi sisa ruang yang terlalu sempit sehingga isinya patah di
-// tengah kata.
-// Kolom Description dipersempit kalau kolom tambahannya banyak, supaya yang
-// tambahan tidak jadi terlalu sempit dan isinya patah di tengah kata.
-// Kolom tetap dirapatkan kalau kolom tambahannya banyak. Value & Rate isinya
-// angka pendek ("1,248.50", "1.00"), jadi ruang lebihnya lebih berguna di
-// kolom tambahan - di situlah isinya patah kalau kesempitan. Description boleh
-// turun baris: kalimat memang wajar dibaca beberapa baris, nomor tidak.
-if (count($kolom_header) >= 5) {
-    $lebar_deskripsi = 15;
-    $lebar_nilai = 11;
-    $lebar_rate = 7;
-} elseif (count($kolom_header) >= 4) {
-    $lebar_deskripsi = 17;
-    $lebar_nilai = 12;
-    $lebar_rate = 8;
-} else {
-    $lebar_deskripsi = 22;
-    $lebar_nilai = 12;
-    $lebar_rate = 9;
-}
-
-// Lebar kolom tambahan dibagi menurut PANJANG ISINYA, bukan rata.
+// Lebar kolom TIDAK dipatok - mPDF yang membaginya dari isi tabel.
 //
-// Dibagi rata, kolom berisi pendek (Price "0.05") kebagian ruang sama dengan
-// yang panjang (Invoice Number "0001ENAG1026") - yang panjang lalu patah di
-// tengah angka, dan nomor invoice yang terbaca jadi dua baris.
+// Dulu di sini ada pembagian persen buatan sendiri. Ternyata justru itu salah
+// satu sebab tabel tercetak kecil, bukan obatnya. Biangnya
+// keep_table_proportions (bawaan mPDF, true): lebar persen pada sebuah kolom
+// diperlakukan sebagai JANJI - kolom itu harus TEPAT sekian persen dari
+// tabel. Begitu isi satu kolom butuh lebih dari jatah persennya, mPDF tidak
+// melebarkan kolom itu saja, melainkan menyimpulkan seluruh TABELnya yang
+// harus lebih lebar:
+//     Mpdf.php:19861  $maxcalcmiw = max($maxcalcmiw, ($wc[$i]['miw'] * $sumpc / $wc[$i]['wpercent']));
+//     Mpdf.php:19879  if (... $maxcalcmiw > $checkminwidth) && $this->keep_table_proportions)
+// dan karena tabel selebar itu tidak muat di kertas, jawabannya MENGECILKAN
+// HURUF SELURUH TABEL. Satu kolom yang jatahnya kurang sedikit sudah cukup
+// untuk mengecilkan semuanya.
 //
-// Yang dihitung baris terpanjangnya, bukan seluruh isi sel: satu sel bisa
-// memuat beberapa nilai yang memang sengaja ditumpuk ke bawah dengan <br>.
+// Diukur pada isi DN/NAG/1126/1026 (uji_dn_tabel_kecil mengunci angkanya):
+//     persen dipatok, tanpa titik putus :  52% ukuran huruf
+//     persen dipatok, dengan titik putus:  94%
+//     persen dibuang, tanpa titik putus :  55%
+//     persen dibuang, dengan titik putus: 100%   <- yang dipakai sekarang
+// Jadi dua-duanya perlu, dan sendiri-sendiri tidak cukup.
 //
-// ISI SEL DIUKUR DARI KATA TERPANJANGNYA, bukan dari panjang seluruhnya.
-// Yang tidak bisa dipatah mPDF cuma kata - baris boleh putus di spasi. Jadi
-// kolom berisi kalimat ("BULK FABRIC - FLAT KNIT AND ACCESSORIES ...") tidak
-// perlu selebar kalimatnya; kalau diukur utuh, dia memakan jatah kolom
-// sebelahnya yang berisi nomor panjang tanpa spasi
-// ("26100876/TWN-FCL/IMP"). Nomor itu lalu tidak muat, mPDF melebarkan
-// kolomnya sendiri sampai tabelnya lebih lebar dari kertas, dan jawabannya
-// MENGECILKAN HURUF SELURUH TABEL - itulah sebabnya sebagian DN tabelnya
-// tercetak kecil sendiri.
-//
-// Nama kolomnya tetap dihitung utuh: judul memang pendek, dan lebih enak
-// dibaca satu baris.
-$kata_terpanjang = function ($teks) {
-    // Spasi-tanpa-putus sengaja BUKAN pemisah kata - angka seperti
-    // "4&nbsp;656" memang harus utuh. \s di PCRE hanya spasi ASCII, jadi
-    // U+00A0 tidak ikut memisah dengan sendirinya.
-    $n = 0;
-    foreach (preg_split('/\s+/u', trim($teks)) as $kata) {
-        $p = mb_strlen($kata, 'UTF-8');
-        if ($p > $n) {
-            $n = $p;
-        }
-    }
-    return $n;
-};
-
-$panjang_kolom = array();
-foreach ($kolom_header as $h => $nama_kolom) {
-    $panjang_kolom[$h] = mb_strlen($nama_kolom, 'UTF-8');
-}
-foreach ($isi_header as $per_baris) {
-    foreach ($per_baris as $h => $nilai) {
-        foreach ($nilai as $satu) {
-            // $satu sudah di-escape; &amp; & &nbsp; jangan ikut terhitung
-            // panjang. mb_strlen di dalam $kata_terpanjang supaya
-            // spasi-tanpa-putus (2 byte) tetap dihitung satu huruf.
-            $n = $kata_terpanjang(html_entity_decode($satu, ENT_QUOTES, 'UTF-8'));
-            if ($n > $panjang_kolom[$h]) {
-                $panjang_kolom[$h] = $n;
-            }
-        }
-    }
-}
-
-$sisa_lebar = 100 - $lebar_deskripsi - (2 * $lebar_nilai) - $lebar_rate;
-$lebar_kolom = array();
-$jumlah_panjang = array_sum($panjang_kolom);
-if ($jumlah_panjang > 0) {
-    // Batas bawah supaya kolom berisi pendek tetap terbaca judulnya. Dibuat
-    // kecil: batas yang terlalu besar memakan jatah kolom panjang, dan justru
-    // kolom panjang itulah yang isinya patah.
-    $minimum = min(5, $sisa_lebar / max(count($panjang_kolom), 1));
-    $sisa_bagi = $sisa_lebar - ($minimum * count($panjang_kolom));
-    foreach ($panjang_kolom as $h => $n) {
-        $lebar_kolom[$h] = round($minimum + ($sisa_bagi * ($n / $jumlah_panjang)), 2);
-    }
-}
+// Tanpa persen, mPDF memberi tiap kolom setidaknya selebar KATA TERPANJANGnya
+// lalu membagi sisanya menurut panjang isi - persis yang dulu ditiru dengan
+// tangan di sini, bedanya diukur dengan lebar huruf yang sebenarnya, bukan
+// dikira-kira dari jumlah huruf. Yang masih jadi tugas kita tinggal satu:
+// memastikan tidak ada kata yang panjangnya di luar akal. Itu urusan
+// $beri_titik_putus di atas.
 
 // Keterangan cukup diisi di baris pertama satu kelompok: baris di bawahnya yang
 // keterangannya dikosongkan ikut keterangan di atasnya. Selnya disambung dengan
@@ -315,13 +303,13 @@ foreach ($baris_rincian as $i => $baris) {
     <table class="rincian">
         <thead>
             <tr>
-                <th width="<?= $lebar_deskripsi; ?>%">Description</th>
+                <th>Description</th>
                 <?php foreach ($kolom_header as $h => $nama_kolom) : ?>
-                    <th class="kolom-header" width="<?= $lebar_kolom[$h]; ?>%"><?= $esc($nama_kolom); ?></th>
+                    <th class="kolom-header"><?= $esc($nama_kolom); ?></th>
                 <?php endforeach; ?>
-                <th width="<?= $lebar_nilai; ?>%">Value <?= $esc($dn['from_curr']); ?></th>
-                <th width="<?= $lebar_rate; ?>%">Rate</th>
-                <th width="<?= $lebar_nilai; ?>%">Value <?= $esc($dn['to_curr']); ?></th>
+                <th>Value <?= $esc($dn['from_curr']); ?></th>
+                <th>Rate</th>
+                <th>Value <?= $esc($dn['to_curr']); ?></th>
             </tr>
         </thead>
         <tbody>
@@ -329,7 +317,7 @@ foreach ($baris_rincian as $i => $baris) {
                 $kelas_ket = trim(($lanjutan[$i] ? 'sambung-atas' : '') . ' ' . (!empty($lanjutan[$i + 1]) ? 'sambung-bawah' : ''));
             ?>
                 <tr>
-                    <td<?= $kelas_ket !== '' ? ' class="' . $kelas_ket . '"' : ''; ?>><?= $lanjutan[$i] ? '' : $esc($baris['deskripsi']); ?></td>
+                    <td<?= $kelas_ket !== '' ? ' class="' . $kelas_ket . '"' : ''; ?>><?= $lanjutan[$i] ? '' : $esc($beri_titik_putus($baris['deskripsi'])); ?></td>
                     <?php foreach ($kolom_header as $h => $nama_kolom) : ?>
                         <td class="kolom-header"><?= isset($isi_header[$baris['id_det']][$h]) ? implode('<br>', $isi_header[$baris['id_det']][$h]) : ''; ?></td>
                     <?php endforeach; ?>

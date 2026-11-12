@@ -185,7 +185,24 @@
              </div>
              <div class="card-body">
                <div class="row">
-                 <div class="form-group col-sm-6">
+                 <div class="form-group col-sm-4">
+                   <label for="prof_profit_center">Profit Center</label>
+                   <!-- Sumber SO-nya ikut pilihan ini:
+                          NAG - SO garment, dari MySQL signalbit (so + so_det)
+                          NAK - SO knitting, dari PostgreSQL aplikasi knitting
+                                (sales_orders + detail_so), nomornya seperti
+                                SO/NAK/1126/00019
+                        Ikut tersimpan di kepala proforma. Tiga hal bergantung
+                        padanya: bentuk nomor PI-nya, penanda "SO ini sudah
+                        dipakai PI", dan penolakan uang muka lintas profit
+                        center di Create Invoice. Letaknya paling depan karena
+                        dia yang menentukan isi dua kotak di sebelahnya. -->
+                   <select class="form-control select2bs4" id="prof_profit_center" name="prof_profit_center" required>
+                     <option value="NAG">NAG - Garment</option>
+                     <option value="NAK">NAK - Knitting</option>
+                   </select>
+                 </div>
+                 <div class="form-group col-sm-4">
                    <label for="prof_type_pi">Proforma Type</label>
                    <!-- Satu layar untuk empat jenis proforma. Dulu DP & CBD
                         punya menu sendiri padahal isiannya sama persis.
@@ -202,7 +219,7 @@
                      <?php endforeach; ?>
                    </select>
                  </div>
-                 <div class="form-group col-sm-6">
+                 <div class="form-group col-sm-4">
                    <label for="prof_inv_number">Proforma Number</label>
                    <!-- Nomornya baru lengkap sesudah Local / Export dipilih -
                         bagiannya memang diisi dari situ. Sebelum itu kotaknya

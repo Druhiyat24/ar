@@ -6178,10 +6178,21 @@ function reload_page_duedate() {
 }
 
 //Proforma Invoice
+// Profit center layar Proforma Invoice - 'NAG' atau 'NAK'.
+//
+// Dibaca langsung dari kotaknya, BUKAN lewat window.pi_profit_center:
+// crud-proforma-invoice.js dimuat dengan defer, jadi dia belum tentu
+// sudah ada waktu berkas ini dijalankan. Layar lain tidak punya kotak
+// ini sama sekali - jatuh ke NAG, sama seperti sebelumnya.
+function pi_pc_layar() {
+	return $.trim(String($('#prof_profit_center').val() || 'NAG')).toUpperCase() === 'NAK'
+		? 'NAK' : 'NAG';
+}
+
 function get_kode_proforma_invoice(kode) 
 {	
 	$.ajax({
-		url: "get_kode_proforma_invoice/" + kode,		
+		url: "get_kode_proforma_invoice/" + kode + "/" + pi_pc_layar() + "/",		
 		type: "GET",
 		dataType: "JSON",
 		success: function (id) {
@@ -6201,7 +6212,7 @@ function get_kode_proforma_invoice_cbd(kode)
 	var type_pi  = $('[name="prof_type_pi"]').val();
 	if (type_pi != '') {
 		$.ajax({
-			url: "get_kode_proforma_invoice_cbd/" + kode + "/" + type_pi + "/",		
+			url: "get_kode_proforma_invoice_cbd/" + kode + "/" + type_pi + "/" + pi_pc_layar() + "/",		
 			type: "GET",
 			dataType: "JSON",
 			success: function (id) {
@@ -7134,6 +7145,14 @@ function simpan_proforma_invoice_header() {
             // Jenis proformanya (PI, PI NON SO, DP, CBD) ikut tersimpan -
             // menu Create Invoice yang akan membacanya nanti.
             var type_pi            = $('#prof_type_pi').val() || 'PI';
+            // Profit centernya juga. Tiga hal bergantung padanya: bentuk
+            // nomor PI, penanda "SO ini sudah dipakai PI" untuk knitting
+            // (Model_nag::_pi_knitting_terpakai), dan penolakan uang muka
+            // lintas profit center di Create Invoice. Selama kolomnya belum
+            // ada - migrations/20261112 belum dijalankan - nilainya terbuang
+            // sendiri oleh Model_nag::_saring_kolom(), dan layarnya sudah
+            // menolak menarik SO knitting jauh sebelum sampai sini.
+            var profit_center      = pi_pc_layar();
             // Mode edit: proforma lamanya dilepas dulu - baris SO-nya
             // dibebaskan dan barisnya dihapus - lalu isi layar ditulis
             // ulang dengan NOMOR YANG SAMA. Dikerjakan serentak supaya
@@ -7160,6 +7179,7 @@ function simpan_proforma_invoice_header() {
 			//			
 			data.push({		
 				"type_pi": type_pi,
+				"profit_center": profit_center,
 				"grouping": grouping,
 				"no_proforma_invoice": no_proforma_inv,
 				"id_customer": id_customer,
@@ -7411,6 +7431,14 @@ function simpan_proforma_invoice_header_cbd() {
             // Jenis proformanya (DP / CBD) ikut tersimpan - dibaca menu
             // Create Invoice nanti. Bentuk baris SO-nya juga.
             var type_pi            = $('#prof_type_pi').val() || 'CBD';
+            // Profit centernya juga. Tiga hal bergantung padanya: bentuk
+            // nomor PI, penanda "SO ini sudah dipakai PI" untuk knitting
+            // (Model_nag::_pi_knitting_terpakai), dan penolakan uang muka
+            // lintas profit center di Create Invoice. Selama kolomnya belum
+            // ada - migrations/20261112 belum dijalankan - nilainya terbuang
+            // sendiri oleh Model_nag::_saring_kolom(), dan layarnya sudah
+            // menolak menarik SO knitting jauh sebelum sampai sini.
+            var profit_center      = pi_pc_layar();
             var grouping           = $('#pi-grouping').val() || 'PRODUCT_COLOR_SIZE';
 			//					
 			//Set Now Date Proforma Invoice
@@ -7443,6 +7471,7 @@ function simpan_proforma_invoice_header_cbd() {
 				"tipe_dp": tipe_dp,		
 				"value_dp": value_dp,
 				"type_pi": type_pi,
+				"profit_center": profit_center,
 				"grouping": grouping,												
 			})	
 			
@@ -7662,6 +7691,15 @@ function simpan_proforma_invoice_detail_so(){
 //ubah september
 function update_proforma_invoice_sodet() { 
 
+	// Proforma KNITTING tidak menandai apa pun di so_det: id barisnya itu
+	// id detail_so PostgreSQL, dan tabel itu punya urutan id SENDIRI -
+	// id 31 di sana dan id 31 di so_det garment dua baris yang sama sekali
+	// tidak berhubungan. Penandanya dibaca dari sisi AR; lihat
+	// Model_nag::_pi_knitting_terpakai(). Modelnya menolak sekali lagi di
+	// sana, jadi JS lama yang masih tersimpan di cache browser pun tidak
+	// bisa merusak data garment.
+	if (pi_pc_layar() === 'NAK') { return $.when(); }
+
 	var table = document.getElementById("table-proforma-sodet");
 	// Satu permintaan per baris - dikumpulkan dulu, supaya pemanggilnya
 	// bisa menunggu semuanya selesai sebelum halaman dimuat ulang.
@@ -7708,6 +7746,15 @@ function update_proforma_invoice_sodet() {
 
 //ubah september
 function update_proforma_invoice_sodet_cbd() { 
+
+	// Proforma KNITTING tidak menandai apa pun di so_det: id barisnya itu
+	// id detail_so PostgreSQL, dan tabel itu punya urutan id SENDIRI -
+	// id 31 di sana dan id 31 di so_det garment dua baris yang sama sekali
+	// tidak berhubungan. Penandanya dibaca dari sisi AR; lihat
+	// Model_nag::_pi_knitting_terpakai(). Modelnya menolak sekali lagi di
+	// sana, jadi JS lama yang masih tersimpan di cache browser pun tidak
+	// bisa merusak data garment.
+	if (pi_pc_layar() === 'NAK') { return $.when(); }
 
 	var table = document.getElementById("table-proforma-sodet");
 	// Satu permintaan per baris - dikumpulkan dulu, supaya pemanggilnya
@@ -8028,6 +8075,9 @@ function pi_isi_edit(d) {
 
 	$('#prof_id_edit').val(d.id);
 	isi('#prof_type_pi', d.type_pi || 'PI');
+	// Kosong dibaca NAG - proforma yang dibuat sebelum kolomnya ada
+	// memang semuanya garment.
+	isi('#prof_profit_center', d.profit_center || 'NAG');
 	isi('#prof_inv_number', d.no_proforma_invoice);
 	isi('#prof_customer', d.id_customer);
 	isi('#prof_billed_to', d.billed_to || '');
@@ -8050,6 +8100,11 @@ function pi_isi_edit(d) {
 	if (typeof $.fn !== 'undefined' && $.fn.select2) {
 		$('#prof_customer, #prof_billed_to, #prof_type, #prof_material_type,'
 			+ ' #id_bank_prof, #type_so_prof, #id_ppn_prof, #pi-grouping').trigger('change');
+		// Profit center cuma disegarkan TAMPILANnya - 'change' biasa akan
+		// menjalankan piGantiPc(), dan fungsi itu menawarkan "start over"
+		// lalu melepas baris SO yang baru saja dimuat. #prof_type_pi pun
+		// sengaja tidak ada di daftar di atas, alasannya sama.
+		$('#prof_profit_center').trigger('change.select2');
 	}
 	if (typeof window.pi_atur_tipe === 'function') { window.pi_atur_tipe(); }
 	if (typeof hitung_total_proforma === 'function') { hitung_total_proforma(); }

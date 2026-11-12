@@ -481,6 +481,12 @@ class Model_nag extends CI_Model
 
         $no_pi = (string) $h['no_proforma_invoice'];
 
+        // Proforma KNITTING tidak punya penanda di so_det yang perlu
+        // dilepas: id barisnya milik detail_so PostgreSQL, dan penandanya
+        // dibaca dari sisi AR (lihat _pi_knitting_terpakai()). Status
+        // CANCEL di bawah sudah membebaskan SO-nya dengan sendirinya.
+        $knitting = $this->pi_profit_center($no_pi) === 'NAK';
+
         // Baris SO-nya dilepas lebih dulu. Kalau langkah ini gagal, PI-nya
         // belum berubah status - lebih baik batalnya diulang daripada ada baris
         // SO yang terkunci tanpa PI yang memegangnya.
@@ -494,7 +500,7 @@ class Model_nag extends CI_Model
         }
 
         $lepas = 0;
-        if ($id_sodet) {
+        if ($id_sodet && !$knitting) {
             $db_nag = $this->load->database('db_nag', TRUE);
             // Nomor PI-nya ikut jadi syarat: kalau baris SO itu sementara ini
             // sudah dipegang PI LAIN, jangan ikut dilepas.
@@ -2011,6 +2017,19 @@ function update_currency($curr, $shipp)
  */
 function update_pi_sodet($id_sodet, $no_pi)
 {
+    // Proforma KNITTING tidak menandai apa pun di so_det. Yang dikirim
+    // layar knitting itu id detail_so PostgreSQL, dan tabel itu punya
+    // urutan id SENDIRI: id 31 di sana dan id 31 di so_det garment dua
+    // baris yang sama sekali tidak berhubungan, jadi menandainya di
+    // so_det berarti mengunci SO garment milik orang lain. Persoalan
+    // yang sama pernah ketemu di SJ knitting - lihat tabel_sj_knitting().
+    //
+    // Penanda knitting dibaca dari sisi AR - lihat
+    // _pi_knitting_terpakai(). Layarnya memang tidak memanggil fungsi
+    // ini untuk knitting; penjaga ini untuk rute yang dipanggil
+    // langsung, atau JS lama yang masih tersimpan di cache browser.
+    if ($this->pi_profit_center($no_pi) === 'NAK') { return TRUE; }
+
     $id = $this->_daftar_id($id_sodet);
     if (!$id) { return FALSE; }
     $db_nag = $this->load->database('db_nag', TRUE);
@@ -2033,6 +2052,9 @@ private function _daftar_id($nilai)
 /** Sama dengan update_pi_sodet(), penandanya saja yang lain. */
 function update_pi_sodet_cbd($id_sodet, $no_pi)
 {
+    // Alasannya sama dengan update_pi_sodet().
+    if ($this->pi_profit_center($no_pi) === 'NAK') { return TRUE; }
+
     $id = $this->_daftar_id($id_sodet);
     if (!$id) { return FALSE; }
     $db_nag = $this->load->database('db_nag', TRUE);
@@ -3321,16 +3343,72 @@ function cancel_duedate($id)
 
     //Proforma Invoice
 
-function get_kode_proforma_invoice($kode_inv)
+/**
+ * Profit center yang diakui layar proforma - cuma dua, dan yang tidak
+ * dikenali jatuh ke garment.
+ *
+ * Satu tempat saja: nomor proforma, penanda SO terpakai, dan penyaring
+ * uang muka lintas profit center semuanya membacanya dari sini - jadi
+ * tidak ada celah "nak" huruf kecil yang lolos di satu jalan saja.
+ */
+private function _pc_pi($pc)
 {
+    return strtoupper(trim((string) $pc)) === 'NAK' ? 'NAK' : 'NAG';
+}
+
+/**
+ * Sudah siap membedakan proforma garment & knitting?
+ *
+ * FALSE berarti migrations/20261112_proforma_knitting.sql belum
+ * dijalankan. Layar MENOLAK menarik SO knitting selama itu: kalau
+ * dipaksa, profit center-nya terbuang diam-diam oleh _saring_kolom() dan
+ * PI knitting tersimpan sebagai garment - salah buku tanpa kelihatan.
+ */
+public function pi_profit_center_siap()
+{
+    return $this->kolom_ada('tbl_invoice_proforma', 'profit_center');
+}
+
+/**
+ * Profit center sebuah proforma yang sudah tersimpan, menurut NOMORnya.
+ *
+ * Yang kosong dibaca 'NAG', sama dengan bawaan di seluruh laporan - jadi
+ * proforma lama (dan database yang belum dimigrasi) tetap terbaca
+ * garment, bukan jadi "bebas milik siapa saja".
+ */
+public function pi_profit_center($no_pi)
+{
+    if (!$this->pi_profit_center_siap()) { return 'NAG'; }
+    $r = $this->db->query(
+        "SELECT profit_center FROM tbl_invoice_proforma
+          WHERE no_proforma_invoice = ? LIMIT 1",
+        array((string) $no_pi)
+    )->row_array();
+    return $this->_pc_pi(isset($r['profit_center']) ? $r['profit_center'] : '');
+}
+
+/**
+ * Nomor proforma berikutnya - bentuknya 0007//E/NAG/1126.
+ *
+ * Nomor urutnya dihitung PER PROFIT CENTER, sama seperti Debit Note
+ * (lihat get_kode_debitnote()): knitting mulai dari 0001 sendiri, tidak
+ * menyambung deret garment. Selama kolom profit_center belum ada -
+ * migrations/20261112 belum dijalankan - penyaringnya dilepas dan
+ * perilakunya sama persis seperti sebelumnya.
+ */
+function get_kode_proforma_invoice($kode_inv, $pc = 'NAG')
+{
+    $pc = $this->_pc_pi($pc);
     // Sesudah DP & CBD ikut di tabel ini (migrations/20261016), barisnya
     // harus dikecualikan: nomor PI dan nomor DP/CBD dua deret terpisah,
     // dan nomor DP/CBD punya pengambilnya sendiri.
     $bukan_dp = $this->_pi_satu_tabel()
         ? " AND IFNULL(type_pi, '') NOT IN ('DP', 'CBD')" : '';
+    $saring_pc = $this->pi_profit_center_siap()
+        ? " AND UPPER(TRIM(IFNULL(NULLIF(TRIM(profit_center), ''), 'NAG'))) = '$pc'" : '';
     $q = $this->db->query("SELECT no_proforma_invoice, MAX(LEFT(no_proforma_invoice, 4)) AS kd_max 
        FROM tbl_invoice_proforma 
-       WHERE YEAR(tgl_proforma_inv) = YEAR(CURRENT_DATE()) AND MONTH(tgl_proforma_inv) = MONTH(CURRENT_DATE()) AND STATUS <> 'CANCEL' $bukan_dp ");
+       WHERE YEAR(tgl_proforma_inv) = YEAR(CURRENT_DATE()) AND MONTH(tgl_proforma_inv) = MONTH(CURRENT_DATE()) AND STATUS <> 'CANCEL' $bukan_dp $saring_pc ");
         //
     $kd = "";
     if ($q->num_rows() > 0) {
@@ -3342,15 +3420,26 @@ function get_kode_proforma_invoice($kode_inv)
         $kd = "0001";
     }
     date_default_timezone_set('Asia/Jakarta');
-    return $kd . "/$kode_inv/NAG/" . date('my');
+    return $kd . "/$kode_inv/$pc/" . date('my');
 }
 
     //ubah september
-function get_kode_proforma_invoice_cbd($kode_inv,$type)
+/**
+ * Sama dengan get_kode_proforma_invoice(), deret DP/CBD-nya sendiri.
+ *
+ * Tabel DP/CBD itu VIEW ke tbl_invoice_proforma sesudah
+ * migrations/20261016, jadi kolom profit_center ikut ada di sini - tapi
+ * baru sesudah view-nya dibuat ulang (LANGKAH 4 di
+ * migrations/20261112). Sebelum itu penyaringnya dilepas sendiri.
+ */
+function get_kode_proforma_invoice_cbd($kode_inv, $type, $pc = 'NAG')
 {
+    $pc = $this->_pc_pi($pc);
+    $saring_pc = $this->kolom_ada('tbl_invoice_proforma_dp_cbd', 'profit_center')
+        ? " AND UPPER(TRIM(IFNULL(NULLIF(TRIM(profit_center), ''), 'NAG'))) = '$pc'" : '';
     $q = $this->db->query("SELECT no_proforma_invoice, MAX(LEFT(no_proforma_invoice, 4)) AS kd_max 
        FROM tbl_invoice_proforma_dp_cbd 
-       WHERE YEAR(tgl_proforma_inv) = YEAR(CURRENT_DATE()) AND MONTH(tgl_proforma_inv) = MONTH(CURRENT_DATE()) AND STATUS <> 'CANCEL' ");
+       WHERE YEAR(tgl_proforma_inv) = YEAR(CURRENT_DATE()) AND MONTH(tgl_proforma_inv) = MONTH(CURRENT_DATE()) AND STATUS <> 'CANCEL' $saring_pc ");
         //
     $kd = "";
     if ($q->num_rows() > 0) {
@@ -3363,11 +3452,11 @@ function get_kode_proforma_invoice_cbd($kode_inv,$type)
     }
     date_default_timezone_set('Asia/Jakarta');
     if($type == 'CBD'){
-       return $kd . "/C/$kode_inv/NAG/" . date('my'); 
+       return $kd . "/C/$kode_inv/$pc/" . date('my'); 
    }elseif($type == 'DP'){
-       return $kd . "/D/$kode_inv/NAG/" . date('my'); 
+       return $kd . "/D/$kode_inv/$pc/" . date('my'); 
    }else{
-    return $kd . "//$kode_inv/NAG/" . date('my');
+    return $kd . "//$kode_inv/$pc/" . date('my');
 }
 }
 
@@ -3491,6 +3580,224 @@ function so_proforma_grup($dt_dari, $dt_sampai, $id_customer, $tipe = '')
     }
 
     return array_values($grup);
+}
+
+/**
+ * Baris SO KNITTING untuk layar Proforma Invoice.
+ *
+ * Kembar dari so_proforma_grup(), sumbernya saja yang lain: SO knitting
+ * ada di database PostgreSQL aplikasi knitting (sales_orders +
+ * detail_so), bukan di MySQL signalbit. Sambungannya sama dengan yang
+ * sudah dipakai Create Invoice - lihat cari_so_knitting().
+ *
+ * BENTUK KEMBALIANNYA SAMA PERSIS dengan so_proforma_grup(), jadi layar
+ * & alur simpannya tidak perlu tahu bedanya.
+ *
+ * Tiga hal yang memang beda, dan sengaja:
+ *
+ *   1. TIDAK ADA WARNA & SIZE. Detail SO knitting itu per KAIN; warna
+ *      baru muncul di barcode waktu barangnya dikirim. Jadi color & size
+ *      diisi '-' dan layar memaksa Group By ke PRODUCT - pilihan per
+ *      warna/size tidak mewakili apa pun di sini.
+ *
+ *   2. STYLENO TIDAK ADA. Garment mengambilnya dari act_costing;
+ *      knitting tidak punya padanannya di tingkat SO (lab_dip ada di
+ *      barcode). Diisi '-'.
+ *
+ *   3. PENANDA "SUDAH DIPAKAI PI" DIBACA DARI SISI AR, bukan dari
+ *      database knitting - lihat _pi_knitting_terpakai().
+ *
+ * Harga 0 dilewati, sama seperti daftar SJ knitting di Create Invoice
+ * ("AND harga <> 0" di cari_sj_knitting): baris tanpa harga tidak bisa
+ * ditagih, dan menawarkannya cuma menghasilkan proforma bernilai nol.
+ *
+ * @param string $tipe 'CBD' = proforma DP/CBD, selain itu PI biasa
+ */
+/**
+ * Kode konsumen knitting milik satu customer - '' kalau belum diisi.
+ *
+ * Customer di layar AR itu customer GARMENT; SO knitting dicari lewat
+ * kode konsumennya, dan pemetaannya satu kolom di master customer. Sama
+ * seperti cari_so_knitting().
+ *
+ * Dipisah jadi penolong sendiri supaya layar bisa membedakan "customer
+ * ini belum punya kode knitting" dari "SO-nya memang tidak ada" - dua
+ * sebab yang sama-sama berakhir tabel kosong, padahal yang pertama
+ * perlu diperbaiki dulu di master customer.
+ */
+public function pi_knitting_kode_konsumen($id_customer)
+{
+    $db_nag = $this->load->database('db_nag', TRUE);
+    $sup = $db_nag->query(
+        "SELECT knitting_code FROM mastersupplier
+          WHERE tipe_sup = 'C' AND Id_Supplier = ? LIMIT 1",
+        array($id_customer)
+    )->row_array();
+    return isset($sup['knitting_code']) ? trim((string) $sup['knitting_code']) : '';
+}
+
+function so_proforma_grup_knitting($dt_dari, $dt_sampai, $id_customer, $tipe = '')
+{
+    $db_pgsql = $this->load->database('db_pgsql', TRUE);
+
+    $kode_konsumen = $this->pi_knitting_kode_konsumen($id_customer);
+    if ($kode_konsumen === '') { return array(); }
+
+    // Satuan SO menentukan ANGKA MANA yang dipakai - aturan yang sama
+    // dengan daftar SJ knitting di cari_sj_knitting().
+    $qty = "CASE WHEN u.nama_unit = 'Meter' THEN e.meter
+                 WHEN u.nama_unit = 'Yard'  THEN e.yard
+                 ELSE e.qty_netto END";
+
+    // Catatan portabilitas: query ini ditulis dengan yang dimengerti
+    // PostgreSQL MAUPUN MySQL - COALESCE bukan IFNULL, tanggalnya tidak
+    // diformat di SQL, dan tidak ada ROUND() atas bilangan pecahan
+    // (PostgreSQL cuma punya round(numeric, int)). Jadi uji otomatisnya
+    // bisa menjalankan fungsi ini apa adanya.
+    //
+    // status_so dibungkus COALESCE: "status_so <> 'cancel'" sendiri
+    // membuang baris yang statusnya NULL, karena NULL <> 'cancel' itu
+    // NULL - bukan TRUE.
+    $baris = $db_pgsql->query("
+        SELECT a.id AS id_so, a.kode_so AS so_no, a.so_date,
+               k.nama_konsumen AS customer,
+               COALESCE(NULLIF(TRIM(a.po_buyer), ''), '-') AS buyerno,
+               a.currency AS curr,
+               f.nama_kain AS product_item,
+               e.id AS id_sodet,
+               COALESCE(u.nama_unit, '-') AS uom,
+               $qty AS qty,
+               e.harga AS price
+          FROM detail_so AS e
+    INNER JOIN sales_orders AS a    ON a.id = e.sales_order_id
+    INNER JOIN master_kain AS f     ON f.id = e.master_kain_id
+    INNER JOIN master_konsumen AS k ON k.id = a.konsumen_id
+     LEFT JOIN master_unit AS u     ON u.id = e.id_unit_sales_order
+         WHERE COALESCE(a.status_so, '') <> 'cancel'
+           AND k.kode_konsumen = ?
+           AND a.so_date BETWEEN ? AND ?
+           AND COALESCE(e.harga, 0) <> 0
+      ORDER BY a.kode_so, f.nama_kain, e.harga, e.id
+    ", array($kode_konsumen, $dt_dari, $dt_sampai))->result_array();
+
+    if (!$baris) { return array(); }
+
+    // Nomor SO-nya dikumpulkan dulu, lalu penandanya dicari SEKALI untuk
+    // nomor-nomor itu saja. Mencari seluruh riwayat PI knitting akan
+    // membengkak seiring waktu; dibatasi SO yang memang sedang ditawarkan.
+    $no_so = array();
+    foreach ($baris as $r) { $no_so[(string) $r['so_no']] = (string) $r['so_no']; }
+    $terpakai = $this->_pi_knitting_terpakai(array_values($no_so), $tipe);
+
+    $grup = array();
+    foreach ($baris as $r) {
+        if (isset($terpakai[(string) $r['id_sodet']])) { continue; }
+
+        // Tanggalnya dipangkas di PHP, bukan di SQL: DATE_FORMAT() cuma
+        // ada di MySQL dan TO_CHAR() cuma ada di PostgreSQL. Kalau
+        // kolomnya ternyata timestamp, jam-nya tidak ikut tersimpan.
+        $so_date = substr((string) $r['so_date'], 0, 10);
+
+        $kunci = $r['id_so'] . '|' . $r['product_item'] . '|-|' . $r['price'];
+
+        if (!isset($grup[$kunci])) {
+            $grup[$kunci] = array(
+                'kunci'        => $kunci,
+                'id_so'        => $r['id_so'],
+                'so_no'        => $r['so_no'],
+                'so_date'      => $so_date,
+                'customer'     => $r['customer'],
+                'buyerno'      => $r['buyerno'],
+                'curr'         => $r['curr'],
+                'product_item' => $r['product_item'],
+                'styleno'      => '-',
+                'uom'          => $r['uom'],
+                'price'        => (float) $r['price'],
+                'qty'          => 0,
+                'total_price'  => 0,
+                'baris'        => array(),
+            );
+        }
+
+        $nilai = (float) $r['qty'] * (float) $r['price'];
+        $grup[$kunci]['qty'] += (float) $r['qty'];
+        $grup[$kunci]['total_price'] += $nilai;
+        $grup[$kunci]['baris'][] = array(
+            'id_sodet'      => $r['id_sodet'],
+            'no_so'         => $r['so_no'],
+            'color'         => '-',
+            'size'          => '-',
+            'uom'           => $r['uom'],
+            'curr'          => $r['curr'],
+            'qty'           => (float) $r['qty'],
+            'price'         => (float) $r['price'],
+            'total_price'   => $nilai,
+            // Yang tercetak di PDF. Knitting tidak punya style, warna,
+            // atau size di tingkat SO - jadi nama kainnya saja, bukan
+            // "KAIN - (-,-)" seperti kalau pola garment dipakai apa adanya.
+            'produk_detail' => (string) $r['product_item'],
+        );
+    }
+
+    return array_values($grup);
+}
+
+/**
+ * Baris detail SO knitting yang SUDAH dipakai sebuah proforma.
+ *
+ * Garment menandainya langsung di sumbernya (so_det.no_pi, lihat
+ * update_pi_sodet()). Untuk knitting itu tidak dilakukan: detail_so di
+ * PostgreSQL tidak punya kolom penanda, dan database aplikasi knitting
+ * sengaja tidak diubah dari AR. Jadi penandanya dibaca dari sisi sini -
+ * baris tbl_invoice_proforma_detail_so milik proforma NAK.
+ *
+ * Satu akibat sampingnya justru lebih bersih daripada cara garment:
+ * Cancel PI membebaskan SO-nya dengan sendirinya, karena yang disaring
+ * statusnya - tidak ada UPDATE lintas database yang bisa gagal separuh.
+ *
+ * Pemilahan tipenya mengikuti garment: PI biasa dan DP/CBD dua penanda
+ * terpisah (garment: no_pi vs no_pi_cbd), jadi satu baris SO boleh
+ * dipakai sekali oleh DP/CBD dan sekali oleh PI penagihannya.
+ *
+ * @param  array  $no_so nomor SO yang sedang ditawarkan layar
+ * @param  string $tipe  'CBD' = penanda DP/CBD, selain itu penanda PI
+ * @return array  id detail_so => TRUE
+ */
+private function _pi_knitting_terpakai($no_so, $tipe = '')
+{
+    $keluar = array();
+    if (!$no_so || !$this->pi_profit_center_siap()) { return $keluar; }
+    if (!$this->db->table_exists('tbl_invoice_proforma_detail_so')) { return $keluar; }
+
+    $cbd = strtoupper(trim((string) $tipe)) === 'CBD';
+    $tipe_pi = $this->_sql_tipe_pi('h');
+    $saring_tipe = $cbd
+        ? "AND $tipe_pi IN ('DP', 'CBD')"
+        : "AND $tipe_pi NOT IN ('DP', 'CBD')";
+
+    // Kolom daftarnya baru ada sesudah migrations/20261015b. Sebelum itu
+    // satu baris cuma mewakili satu detail SO, jadi id tunggalnya cukup.
+    $daftar = $this->kolom_ada('tbl_invoice_proforma_detail_so', 'id_so_det_list')
+        ? "IFNULL(NULLIF(d.id_so_det_list, ''), d.id_so_det)" : 'd.id_so_det';
+
+    $isi = implode(', ', array_fill(0, count($no_so), '?'));
+    $baris = $this->db->query("
+        SELECT $daftar AS id_list
+          FROM tbl_invoice_proforma_detail_so AS d
+    INNER JOIN tbl_invoice_proforma AS h
+            ON h.no_proforma_invoice = d.no_invoice_proforma
+         WHERE UPPER(TRIM(IFNULL(h.profit_center, ''))) = 'NAK'
+           AND IFNULL(h.status, '') NOT LIKE 'CANCEL%'
+           AND d.no_so IN ($isi)
+           $saring_tipe
+    ", $no_so)->result_array();
+
+    foreach ($baris as $r) {
+        foreach ($this->_daftar_id(isset($r['id_list']) ? $r['id_list'] : '') as $v) {
+            $keluar[(string) $v] = TRUE;
+        }
+    }
+    return $keluar;
 }
 
 function cari_so_proforma($dt_dari_so_prof, $dt_sampai_so_prof, $id_customer)
@@ -12385,6 +12692,11 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
         }
         $no = (string) $pi['no_proforma_invoice'];
 
+        // Proforma KNITTING tidak punya penanda di so_det - alasannya sama
+        // dengan di batal_proforma_invoice(). Barisnya dihapus di bawah,
+        // dan itu sudah membebaskan SO-nya.
+        $knitting = $this->pi_profit_center($no) === 'NAK';
+
         // Penanda di so_det dilepas lebih dulu - kalau langkah ini gagal,
         // proformanya belum tersentuh dan tinggal diulang.
         $id_sodet = array();
@@ -12396,7 +12708,7 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
                 $id_sodet[$v] = $v;
             }
         }
-        if ($id_sodet) {
+        if ($id_sodet && !$knitting) {
             $db_nag = $this->load->database('db_nag', TRUE);
             $db_nag->query(
                 "UPDATE so_det SET no_pi = NULL
@@ -12565,8 +12877,19 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
             : '0';
 
         // Profit center uang mukanya - dipakai menolak pemakaian lintas
-        // profit center. Sumbernya sama dengan yang dibaca laporan Sub
-        // Ledger: baris alokasinya, lalu catatan saldo awalnya.
+        // profit center. Urutan sumbernya: KEPALA PROFORMA-nya dulu, lalu
+        // baris alokasinya, lalu catatan saldo awalnya.
+        //
+        // Kepalanya didahulukan sejak migrations/20261112: sebelum itu
+        // kolomnya belum ada, jadi profit center PI hanya bisa DITEBAK
+        // dari alokasi bank masuknya - dan selama alokasinya belum ada,
+        // tebakannya jatuh ke 'NAG'. Akibatnya proforma knitting yang
+        // belum dialokasikan terbaca garment, dan penolakan lintas profit
+        // center di bawah tidak menolak apa pun. Yang tercatat di
+        // kepalanya itu yang dipilih user waktu PI-nya dibuat, jadi dia
+        // yang paling berhak.
+        $pcHdr = $this->pi_profit_center_siap()
+            ? "NULLIF(TRIM(IFNULL(a.profit_center, '')), '')" : 'NULL';
         $pcAlok = $this->kolom_ada('tbl_alokasi_detail', 'profit_center')
             ? "(SELECT NULLIF(TRIM(IFNULL(dp.profit_center, '')), '')
                   FROM tbl_alokasi_detail AS dp
@@ -12582,7 +12905,7 @@ function cancel_duedate_update($id, $doc_number, $user_cancel)
                  WHERE wp.no_dokumen = a.no_proforma_invoice
                    AND TRIM(IFNULL(wp.profit_center, '')) <> '' LIMIT 1)"
             : 'NULL';
-        $pcPI = "UPPER(TRIM(IFNULL(COALESCE($pcAlok, $pcAwalPI), 'NAG')))";
+        $pcPI = "UPPER(TRIM(IFNULL(COALESCE($pcHdr, $pcAlok, $pcAwalPI), 'NAG')))";
 
         // Kotak atas cuma mengurus PI milik customer invoicenya; kotak bawah
         // memang tidak disaring customer - PI punya siapa pun boleh dipanggil,
