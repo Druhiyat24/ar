@@ -3658,7 +3658,15 @@ function so_proforma_grup_knitting($dt_dari, $dt_sampai, $id_customer, $tipe = '
     // status_so dibungkus COALESCE: "status_so <> 'cancel'" sendiri
     // membuang baris yang statusnya NULL, karena NULL <> 'cancel' itu
     // NULL - bukan TRUE.
-    $baris = $db_pgsql->query("
+    // Kegagalan query DILAPORKAN, bukan ditelan. Dengan db_debug menyala,
+    // CodeIgniter mencetak halaman error HTML lalu berhenti - dan layar
+    // yang menunggu JSON cuma bisa bilang "tidak bisa memuat daftar SO",
+    // tanpa pernah menyebut sebabnya. Dimatikan sebentar, lalu pesan
+    // aslinya dilempar ke pemanggil.
+    $debug_lama = $db_pgsql->db_debug;
+    $db_pgsql->db_debug = FALSE;
+
+    $hasil = $db_pgsql->query("
         SELECT a.id AS id_so, a.kode_so AS so_no, a.so_date,
                k.nama_konsumen AS customer,
                COALESCE(NULLIF(TRIM(a.po_buyer), ''), '-') AS buyerno,
@@ -3678,8 +3686,17 @@ function so_proforma_grup_knitting($dt_dari, $dt_sampai, $id_customer, $tipe = '
            AND a.so_date BETWEEN ? AND ?
            AND COALESCE(e.harga, 0) <> 0
       ORDER BY a.kode_so, f.nama_kain, e.harga, e.id
-    ", array($kode_konsumen, $dt_dari, $dt_sampai))->result_array();
+    ", array($kode_konsumen, $dt_dari, $dt_sampai));
 
+    $db_pgsql->db_debug = $debug_lama;
+    if ($hasil === FALSE) {
+        $e = $db_pgsql->error();
+        throw new RuntimeException('Knitting SO query failed: '
+            . (isset($e['message']) && $e['message'] !== ''
+               ? $e['message'] : 'unknown database error'));
+    }
+
+    $baris = $hasil->result_array();
     if (!$baris) { return array(); }
 
     // Nomor SO-nya dikumpulkan dulu, lalu penandanya dicari SEKALI untuk

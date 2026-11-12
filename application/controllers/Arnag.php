@@ -2347,7 +2347,17 @@ public function so_proforma_grup_json($dt_dari = '', $dt_sampai = '', $id_custom
                            . 'can be matched. Please fill Knitting Code on the customer master.'));
             return;
         }
-        $grup = $this->Model_nag->so_proforma_grup_knitting($dt_dari, $dt_sampai, $id_customer, $tipe);
+        // Database knitting itu PostgreSQL di server lain - putus sambungan
+        // dan nama kolom yang tidak cocok itu kegagalan yang WAJAR terjadi.
+        // Sebabnya dikirim apa adanya: tanpa ini layar cuma bisa bilang
+        // "tidak bisa memuat daftar SO" dan tidak ada yang tahu kenapa.
+        try {
+            $grup = $this->Model_nag->so_proforma_grup_knitting($dt_dari, $dt_sampai, $id_customer, $tipe);
+        } catch (Exception $e) {
+            $this->output->set_status_header(200);
+            echo json_encode(array('status' => FALSE, 'message' => $e->getMessage()));
+            return;
+        }
     } else {
         $grup = $this->Model_nag->so_proforma_grup($dt_dari, $dt_sampai, $id_customer, $tipe);
     }
