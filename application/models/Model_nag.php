@@ -3643,12 +3643,12 @@ function so_proforma_grup_knitting($dt_dari, $dt_sampai, $id_customer, $tipe = '
     $kode_konsumen = $this->pi_knitting_kode_konsumen($id_customer);
     if ($kode_konsumen === '') { return array(); }
 
-    // Satuan SO menentukan ANGKA MANA yang dipakai - aturan yang sama
-    // dengan daftar SJ knitting di cari_sj_knitting().
-    $qty = "CASE WHEN u.nama_unit = 'Meter' THEN e.meter
-                 WHEN u.nama_unit = 'Yard'  THEN e.yard
-                 ELSE e.qty_netto END";
-
+    // QTY-nya satu kolom saja: detail_so.qty. Jangan ditiru dari
+    // cari_sj_knitting() - di sana qty dipilih lewat CASE atas tiga kolom
+    // satuan yang ditulis TANPA nama tabel, padahal tujuh tabel di-join;
+    // ketiganya milik tabel barcode, bukan detail_so. Satuan SO di sini
+    // cuma keterangan yang ikut ditampilkan, bukan penentu angkanya.
+    //
     // Catatan portabilitas: query ini ditulis dengan yang dimengerti
     // PostgreSQL MAUPUN MySQL - COALESCE bukan IFNULL, tanggalnya tidak
     // diformat di SQL, dan tidak ada ROUND() atas bilangan pecahan
@@ -3674,7 +3674,7 @@ function so_proforma_grup_knitting($dt_dari, $dt_sampai, $id_customer, $tipe = '
                f.nama_kain AS product_item,
                e.id AS id_sodet,
                COALESCE(u.nama_unit, '-') AS uom,
-               $qty AS qty,
+               e.qty AS qty,
                e.harga AS price
           FROM detail_so AS e
     INNER JOIN sales_orders AS a    ON a.id = e.sales_order_id
