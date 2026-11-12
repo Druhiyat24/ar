@@ -2309,15 +2309,48 @@ public function batal_proforma_invoice_json()
  * Baris SO untuk layar Proforma Invoice, sudah diringkas per SO + produk +
  * harga. Rincian per so_det ikut dibawa di dalam tiap grup - lihat
  * Model_nag::so_proforma_grup().
+ *
+ * Dua sumber, dipilih profit center-nya:
+ *   NAG - SO garment, MySQL signalbit (so + so_det)
+ *   NAK - SO knitting, PostgreSQL aplikasi knitting (sales_orders +
+ *         detail_so). Nomornya seperti SO/NAK/1126/00019.
+ *
+ * $tipe & $pc selalu dikirim berisi ('PI'/'CBD' dan 'NAG'/'NAK'), tidak
+ * pernah kosong: CodeIgniter MEMBUANG ruas URL yang kosong, jadi
+ * ".../2232//NAK" akan mendaratkan NAK di $tipe.
  */
-public function so_proforma_grup_json($dt_dari = '', $dt_sampai = '', $id_customer = '', $tipe = '')
+public function so_proforma_grup_json($dt_dari = '', $dt_sampai = '', $id_customer = '', $tipe = '', $pc = 'NAG')
 {
     if (!$this->session->userdata('username')) {
         echo json_encode(array('status' => FALSE, 'message' => 'Session expired, please log in again.'));
         return;
     }
 
-    $grup = $this->Model_nag->so_proforma_grup($dt_dari, $dt_sampai, $id_customer, $tipe);
+    if (strtoupper(trim((string) $pc)) === 'NAK') {
+        // Tanpa kolom profit_center, proforma knitting akan tersimpan
+        // sebagai garment - profit centernya terbuang diam-diam oleh
+        // Model_nag::_saring_kolom(). Lebih baik ditolak terang-terangan.
+        if (!$this->Model_nag->pi_profit_center_siap()) {
+            echo json_encode(array('status' => FALSE,
+                'message' => 'Knitting proforma is not enabled on this database yet. '
+                           . 'Please run migrations/20261112_proforma_knitting.sql first.'));
+            return;
+        }
+        // Tabel kosong punya dua sebab yang jauh berbeda: SO-nya memang
+        // tidak ada, atau customernya belum dipasangkan ke konsumen
+        // knitting. Yang kedua perlu diperbaiki dulu di master customer,
+        // jadi disebut terang-terangan - bukan dibiarkan terbaca "tidak
+        // ada SO".
+        if ($this->Model_nag->pi_knitting_kode_konsumen($id_customer) === '') {
+            echo json_encode(array('status' => FALSE,
+                'message' => 'This customer has no knitting code yet, so no knitting SO '
+                           . 'can be matched. Please fill Knitting Code on the customer master.'));
+            return;
+        }
+        $grup = $this->Model_nag->so_proforma_grup_knitting($dt_dari, $dt_sampai, $id_customer, $tipe);
+    } else {
+        $grup = $this->Model_nag->so_proforma_grup($dt_dari, $dt_sampai, $id_customer, $tipe);
+    }
 
     $baris = 0;
     foreach ($grup as $g) { $baris += count($g['baris']); }
@@ -3626,17 +3659,17 @@ public function cari_prof_top($id)
     echo json_encode($data);
 }
 
-public function get_kode_proforma_invoice($kode_inv)
+public function get_kode_proforma_invoice($kode_inv, $pc = 'NAG')
 { {
-    $data = $this->Model_nag->get_kode_proforma_invoice($kode_inv);
+    $data = $this->Model_nag->get_kode_proforma_invoice($kode_inv, $pc);
     echo json_encode($data);
 }
 }
 
     //ubah september
-public function get_kode_proforma_invoice_cbd($kode_inv,$type)
+public function get_kode_proforma_invoice_cbd($kode_inv, $type, $pc = 'NAG')
 { {
-    $data = $this->Model_nag->get_kode_proforma_invoice_cbd($kode_inv,$type);
+    $data = $this->Model_nag->get_kode_proforma_invoice_cbd($kode_inv, $type, $pc);
     echo json_encode($data);
 }
 }

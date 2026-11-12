@@ -70,7 +70,11 @@
         var dari = $('#pi-f-from').val();
         var sampai = $('#pi-f-to').val();
         var cust = $('#prof_customer').val();
-        var tipe = $('#pi-tipe-pi').val() || '';
+        // Keduanya SELALU berisi - 'PI'/'CBD' dan 'NAG'/'NAK'. CodeIgniter
+        // MEMBUANG ruas URL yang kosong, jadi ".../2232//NAK" akan
+        // mendaratkan NAK di $tipe dan pencariannya salah tanpa bersuara.
+        var tipe = $('#pi-tipe-pi').val() || 'PI';
+        var pc = piPc();
 
         if (!dari || !sampai) {
             Swal.fire('Date range needed', 'Please pick both dates first.', 'info');
@@ -81,7 +85,7 @@
             + '<i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>');
 
         $.getJSON(URL_AR + 'so_proforma_grup_json/' + ruas(dari) + '/' + ruas(sampai)
-                  + '/' + ruas(cust) + '/' + ruas(tipe))
+                  + '/' + ruas(cust) + '/' + ruas(tipe) + '/' + ruas(pc))
             .done(function (d) {
                 if (!d || !d.status) {
                     $('#pi-so-tbody').html('<tr><td colspan="9" class="text-center text-danger py-4">'
@@ -214,7 +218,8 @@
             $b.html('<tr><td colspan="9" class="text-center text-muted py-4">'
                 + '<i class="fas fa-inbox"></i> '
                 + (grup.length ? 'No SO matches that search.'
-                              : 'No SO found for this customer and date range.')
+                              : ('No ' + (piPc() === 'NAK' ? 'knitting ' : '')
+                                 + 'SO found for this customer and date range.'))
                 + '</td></tr>');
             $('#pi-so-pilih-semua').prop('checked', false);
             segar();
@@ -514,6 +519,100 @@
         return $.trim(String($('#prof_type_pi').val() || 'PI')).toUpperCase();
     }
 
+    /**
+     * Profit center yang sedang dipilih - 'NAG' atau 'NAK'.
+     *
+     * Dia yang menentukan SO mana yang ditarik: NAG dari MySQL signalbit
+     * (so + so_det), NAK dari PostgreSQL aplikasi knitting
+     * (sales_orders + detail_so).
+     */
+    function piPc() {
+        return $.trim(String($('#prof_profit_center').val() || 'NAG')).toUpperCase() === 'NAK'
+            ? 'NAK' : 'NAG';
+    }
+
+    /**
+     * Aturan yang ikut profit center.
+     *
+     * Detail SO knitting itu per KAIN - warna baru muncul di barcode
+     * waktu barangnya dikirim, dan di tingkat SO tidak ada size sama
+     * sekali. Jadi pengelompokan per warna/size tidak mewakili apa pun:
+     * dipatok ke PRODUCT dan dikunci, bukan dibiarkan memilih pilihan
+     * yang hasilnya selalu sama.
+     */
+    function piAturPc() {
+        var knit = piPc() === 'NAK';
+
+        $('#pi-grouping').prop('disabled', knit)
+            .attr('title', knit ? 'Knitting SO lines have no colour or size' : null);
+        if (knit) { $('#pi-grouping').val('PRODUCT'); }
+        $('#pi-grouping').trigger('change.select2');
+
+        // Kelihatan di judul modalnya - supaya tidak ada yang mengira
+        // tabel kosong itu salah, padahal profit centernya yang lain.
+        $('#pi-modal-so .modal-title').html('<i class="fas fa-file-invoice"></i> Add SO'
+            + (knit ? ' &ndash; Knitting' : ''));
+    }
+
+    /**
+     * Ganti profit center sesudah SO-nya dipilih = pilihan itu dilepas.
+     *
+     * Barisnya berasal dari database yang berbeda, dan id-nya pun punya
+     * urutan sendiri-sendiri - membawanya pindah profit center berarti
+     * menyimpan id yang menunjuk ke baris orang lain. Alasan & caranya
+     * sama dengan piGantiTipe().
+     */
+    function piGantiPc() {
+        piAturPc();
+
+        var lanjut = function () {
+            // Nomornya ikut profit center - diambil ulang kalau Shipp-nya
+            // memang sudah dipilih.
+            var sh = $.trim(String($('#prof_shipp').val() || '')).toLowerCase();
+            if (sh === 'local') { piNomor('L'); }
+            else if (sh === 'export') { piNomor('E'); }
+        };
+
+        if (!$('#table-proforma-sodet tbody tr').length) { lanjut(); return; }
+
+        Swal.fire({
+            icon: 'warning',
+            title: 'Start over with this profit center?',
+            html: 'The SO rows you picked belong to the previous profit center, '
+                + 'so they will be cleared.',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, clear them',
+            cancelButtonText: 'Cancel'
+        }).then(function (h) {
+            if (!h.isConfirmed) {
+                $('#prof_profit_center').val(pcTerakhir).trigger('change.select2');
+                piAturPc();
+                return;
+            }
+            pcTerakhir = piPc();
+            $.when(
+                $.get(URL_AR + 'delete_invoice_detail_proforma_temporary/'),
+                $.get(URL_AR + 'delete_so_detail_proforma_temporary/')
+            ).always(function () {
+                if (typeof load_invoice_detail_proforma_temporary === 'function') {
+                    load_invoice_detail_proforma_temporary();
+                }
+                if (typeof load_so_detail_proforma_temporary === 'function') {
+                    load_so_detail_proforma_temporary();
+                }
+                if (typeof sum_grandtotal_proforma === 'function') {
+                    sum_grandtotal_proforma();
+                }
+                lanjut();
+            });
+        });
+    }
+
+    var pcTerakhir = 'NAG';
+
+    /** Dipakai crud-nag.js waktu Save & waktu mengambil nomornya. */
+    window.pi_profit_center = piPc;
+
     /** DP & CBD memakai tabel dan penanda SO-nya sendiri. */
     function piCbd(t) {
         t = t === undefined ? piTipe() : t;
@@ -706,7 +805,10 @@
 
         tipeTerakhir = piTipe();
         piAturTipe();
+        pcTerakhir = piPc();
+        piAturPc();
         $('#prof_type_pi').on('change', piGantiTipe);
+        $('#prof_profit_center').on('change', piGantiPc);
         // Tombol Back ikut tipe juga - kembali ke daftar tempat proforma
         // ini nanti muncul.
         $('#pi-kembali').attr('href', piDaftar());
