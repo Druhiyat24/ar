@@ -5010,6 +5010,32 @@ function load_user_access_reverse($user)
     return $hasil->result_array();
 }
 
+/**
+ * Boleh memakai sebuah tombol berbahaya?
+ *
+ * Hak semacam ini didaftarkan sebagai satu baris di tbl_user_role dengan
+ * menu_status-nya SENDIRI - bukan salah satu kelompok menu sidebar, jadi
+ * barisnya tidak pernah muncul sebagai menu. Dia murni penanda hak akses,
+ * dan langsung bisa dicentang per user di menu Master > User Role.
+ *
+ * Pola yang sama sudah dipakai tombol Refresh Dashboard ('dsb_refresh',
+ * lihat Landingpage.php); ini membuatnya bisa dipakai ulang supaya
+ * query-nya tidak ditulis lagi tiap kali ada tombol yang perlu dikunci.
+ *
+ * FALSE kalau haknya belum diberikan - termasuk kalau barisnya memang
+ * belum ada karena migrasinya belum dijalankan. Menutup tombol itu arah
+ * yang aman: lebih baik ditanyakan daripada terlanjur terpakai.
+ */
+function boleh_akses_menu($user, $menu_status)
+{
+    $r = $this->db->query("SELECT COUNT(*) AS cnt
+           FROM tbl_user_role AS a
+     INNER JOIN tbl_user_access AS b ON b.menu_id = a.id
+          WHERE b.user = ? AND a.menu_status = ? AND a.status = 'Y'",
+        array((string) $user, (string) $menu_status))->row_array();
+    return !empty($r['cnt']);
+}
+
 function cari_usercancel($user)
 {
     $hasil = $this->db->query("SELECT ar_calcelinv as cancel from userpassword where username = '$user' ");

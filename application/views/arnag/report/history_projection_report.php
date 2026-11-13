@@ -395,6 +395,15 @@ var histDT = null;
    perlu disembunyikan dari user. */
 var RV_TOMBOL_TAMPIL = true;
 
+/* HAK AKSES TOMBOL CANCEL.
+   Cancel membuang satu dokumen proyeksi beserta seluruh detailnya dari
+   layar, jadi tombolnya cuma muncul untuk user yang diberi hak
+   "Cancel History Projection" di menu Master > User Role. Ini TAMPILANnya
+   saja - penjaga sebenarnya ada di
+   Report::cancel_history_projection_report(), karena menyembunyikan
+   tombol tidak menutup rutenya. */
+var HIST_BOLEH_CANCEL = <?= !empty($boleh_cancel_history) ? 'true' : 'false'; ?>;
+
 /* ===== Filter diingat selama tab-nya masih terbuka =====
    Membuka laporan realisasi itu berpindah halaman, jadi waktu user kembali
    ke sini halamannya dimuat dari awal - tanpa ini filternya balik ke bawaan
@@ -518,7 +527,9 @@ function _initHistDT(url) {
                         (RV_TOMBOL_TAMPIL
                             ? '<button class="btn btn-success btn-xs" onclick="view_realization(\'' + r.doc_number + '\')"><i class="fa fa-balance-scale"></i> Realization</button> '
                             : '') +
-                        '<button class="btn btn-danger btn-xs" onclick="cancel_history_projection(\'' + r.doc_number + '\')"><i class="fa fa-times"></i> Cancel</button>' +
+                        (HIST_BOLEH_CANCEL
+                            ? '<button class="btn btn-danger btn-xs" onclick="cancel_history_projection(\'' + r.doc_number + '\')"><i class="fa fa-times"></i> Cancel</button>'
+                            : '') +
                         '</span>';
                 }
             }

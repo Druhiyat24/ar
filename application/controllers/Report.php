@@ -676,6 +676,13 @@ public function export_projection_report($id_customer = '', $from = '', $to = ''
         $data['user_access_7']      = $this->Model_nag->load_user_access_7($this->session->userdata('username'));
         $data['user_access_reverse']   = $this->Model_nag->load_user_access_reverse($this->session->userdata('username'));
         $data['user_access_corporate'] = $this->Model_nag->load_user_corporate_report($this->session->userdata('username'));
+        // Tombol Cancel membuang satu dokumen proyeksi beserta seluruh
+        // detailnya dari layar, jadi dia dikunci hak akses. Daftarnya satu
+        // pintu dengan pemeriksaan di cancel_history_projection_report(),
+        // supaya yang kelihatan di layar sama dengan yang benar-benar
+        // boleh dikerjakan.
+        $data['boleh_cancel_history'] = $this->Model_nag->boleh_akses_menu(
+            $this->session->userdata('username'), 'cancel_projection');
 
         $this->load->view('templates/header',   $data);
         $this->load->view('templates/sidebar',  $data);
@@ -691,6 +698,21 @@ public function export_projection_report($id_customer = '', $from = '', $to = ''
 
     public function cancel_history_projection_report()
     {
+        // Penjaganya di SINI, bukan cuma di layar. Menyembunyikan tombol
+        // tidak menutup rutenya - alamat ini bisa ditembak langsung.
+        if (!$this->session->userdata('username')) {
+            echo json_encode(['status' => 'error',
+                'message' => 'Session expired, please log in again.']);
+            return;
+        }
+        if (!$this->Model_nag->boleh_akses_menu(
+                $this->session->userdata('username'), 'cancel_projection')) {
+            echo json_encode(['status' => 'error',
+                'message' => 'Your user is not allowed to cancel a projection history. '
+                           . 'Please ask the admin for the Cancel History Projection access.']);
+            return;
+        }
+
         $doc_number = $this->input->post('doc_number');
         if (!$doc_number) {
             echo json_encode(['status' => 'error', 'message' => 'Doc number tidak valid.']);
