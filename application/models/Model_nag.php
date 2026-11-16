@@ -1281,6 +1281,7 @@ class Model_nag extends CI_Model
             'header'      => $header,
             'kirim'       => $kirim,
             'summary'     => $summary,
+            'po'          => $this->rekap_po_export($id_inv, $header['profit_center']),
             'ada_set'     => $ada_set,
             'sub_qty'     => $qty_sj === NULL ? $sub_qty : $qty_sj,
             // Penanda untuk pratinjau: kalau qty-nya memang dari SJ, baris yang
@@ -1290,6 +1291,88 @@ class Model_nag extends CI_Model
             'vat_persen'  => isset($pot_booking['vat_persen']) ? (float) $pot_booking['vat_persen'] : 0,
             'pot_booking' => $pot_booking,
         );
+    }
+
+    /**
+     * Rekap nilai invoice EXPORT per PO BUYER - tabel kedua di cetakannya.
+     *
+     * Nomor PO tidak punya kolomnya sendiri. Yang dipakai di pabrik adalah
+     * kolom REMARK di SJ-nya (bppb.remark), ditulis bebas oleh yang membuat
+     * SJ - sering berikut tujuannya ("4500337717 USA"). Jadi dicetak apa
+     * adanya, cuma dirapikan spasi depan-belakangnya, dan baris SJ yang
+     * remark-nya kosong dikumpulkan jadi satu baris "-" supaya nilainya
+     * tetap ikut terjumlah.
+     *
+     * Sambungannya lewat ID baris SJ (id_bppb), BUKAN nomornya: satu nomor
+     * SJ memuat banyak baris bppb, jadi menyambung lewat nomor akan
+     * menggandakan qty-nya berlipat-lipat.
+     *
+     * KNITTING tidak ikut. id_bppb invoice knitting menunjuk tabel SJ
+     * knitting di PostgreSQL yang nomor id-nya jalan sendiri - kalau
+     * disambungkan ke bppb, yang ketemu justru SJ garment milik invoice
+     * lain yang kebetulan ber-id sama. Cetakan export ini memang tidak
+     * dipakai knitting (lihat Arnag::_cetak_export()).
+     *
+     * Qty & nilainya dari baris SJ - sumber yang sama dengan Sub Total
+     * cetakannya, jadi jumlah seluruh baris PO pasti sama dengan Sub Total.
+     *
+     * @return array baris {po, qty, price, total}, PO tanpa nama di urutan
+     *               terakhir. Kosong kalau invoicenya memang tidak punya
+     *               baris SJ (mis. invoice yang dibuat dari WS saja).
+     */
+    private function rekap_po_export($id_inv, $pc)
+    {
+        if (strtoupper(trim((string) $pc)) === 'NAK'
+            || !$this->db->table_exists('tbl_book_invoice_exim_det')
+            || !$this->db->table_exists('bppb')) {
+            return array();
+        }
+
+        // Dikelompokkan sampai ke HARGA-nya, bukan cuma PO: satu PO bisa
+        // memuat beberapa harga, dan harga mana yang dicetak baru bisa
+        // diputuskan sesudah tahu ada berapa.
+        $baris = $this->db->query("
+            SELECT TRIM(COALESCE(b.remark, '')) AS po, d.unit_price AS price,
+                   SUM(d.qty) AS qty, SUM(d.total_price) AS total
+              FROM tbl_book_invoice_exim_det AS d
+         LEFT JOIN bppb AS b ON b.id = d.id_bppb
+             WHERE d.id_book_invoice = ?
+          GROUP BY TRIM(COALESCE(b.remark, '')), d.unit_price
+        ", array((int) $id_inv))->result_array();
+
+        $kelompok = array();
+        foreach ($baris as $r) {
+            $po = trim((string) $r['po']);
+            if ($po === '') { $po = '-'; }
+            if (!isset($kelompok[$po])) {
+                $kelompok[$po] = array('qty' => 0.0, 'total' => 0.0, 'harga' => array());
+            }
+            $kelompok[$po]['qty'] += (float) $r['qty'];
+            $kelompok[$po]['total'] += (float) $r['total'];
+            $kelompok[$po]['harga'][(string) (float) $r['price']] = (float) $r['price'];
+        }
+
+        $hasil = array();
+        foreach ($kelompok as $nama => $k) {
+            // Satu harga - itu yang dicetak. Lebih dari satu (beberapa style
+            // dalam satu PO) tidak bisa disebut sekaligus dalam satu baris,
+            // jadi dipakai harga rata-ratanya: total / qty. Nilai totalnya
+            // tetap angka aslinya, tidak ikut dihitung ulang dari situ.
+            $harga = count($k['harga']) === 1 ? reset($k['harga'])
+                : ($k['qty'] != 0 ? $k['total'] / $k['qty'] : 0.0);
+            $hasil[] = array('po' => (string) $nama, 'qty' => $k['qty'],
+                'price' => $harga, 'total' => $k['total']);
+        }
+
+        // PO yang tidak tertulis di SJ-nya ditaruh paling bawah - yang dicari
+        // pembaca adalah nomor PO-nya, bukan sisanya.
+        usort($hasil, function ($a, $b) {
+            if (($a['po'] === '-') !== ($b['po'] === '-')) {
+                return $a['po'] === '-' ? 1 : -1;
+            }
+            return strcmp($a['po'], $b['po']);
+        });
+        return $hasil;
     }
 
     /**

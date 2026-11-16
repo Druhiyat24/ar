@@ -47,16 +47,20 @@
 <!-- /.navbar -->
 
 <style>
-/* ── Modern Sidebar ── */
+/* ── Sidebar NDS: navy + emas, sama dengan navbar ap_dev (module/css/app-navbar.css) ── */
 .main-sidebar {
-    background: linear-gradient(180deg, #1a1f3c 0%, #16213e 60%, #0f3460 100%) !important;
-    box-shadow: 4px 0 15px rgba(0,0,0,0.35) !important;
+    background: #0b1d4a !important;
+    box-shadow: inset -2px 0 0 rgba(229,169,19,.9), 4px 0 15px rgba(5,15,40,.45) !important;   /* garis emas di tepi kanan */
 }
 
 .brand-link {
-    background: linear-gradient(135deg, #0d1b4b 0%, #1a237e 60%, #283593 100%) !important;
-    border-bottom: 2px solid rgba(100,130,255,0.35) !important;
-    padding: 16px 14px 14px !important;
+    background: #0b1d4a !important;
+    border-bottom: 1px solid rgba(255,255,255,.06) !important;
+    padding: 0 12px !important;
+    height: 50px;                      /* = tinggi navbar atas (header.php), supaya garis bawahnya sejajar */
+    box-sizing: border-box;
+    display: flex !important;
+    align-items: center;
     transition: background .25s;
     position: relative;
     overflow: hidden;
@@ -66,39 +70,44 @@
     position: absolute;
     bottom: 0; left: 0; right: 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, #5c6bc0, #42a5f5, #5c6bc0, transparent);
+    background: linear-gradient(90deg, transparent, #e5a913, transparent);   /* garis emas di bawah brand */
 }
-.brand-link:hover { background: linear-gradient(135deg, #1a237e 0%, #283593 60%, #3949ab 100%) !important; }
+.brand-link:hover { background: #10265e !important; }
 
-/* Logo ring glow */
+/* Logo NDS: ikon di kotak putih membulat (sama dgn navbar ap_dev) */
 .brand-link .brand-image {
-    border: 2px solid rgba(100,149,255,0.5) !important;
-    box-shadow: 0 0 10px rgba(66,165,245,0.4), 0 0 0 3px rgba(66,165,245,0.1) !important;
-    width: 38px !important;
-    height: 38px !important;
+    background: #fff;
+    border: 0 !important;
+    border-radius: 8px !important;
+    padding: 3px;
+    object-fit: contain;
+    box-shadow: 0 2px 8px rgba(0,0,0,.28) !important;
+    width: 34px !important;
+    height: 34px !important;
+    max-height: none !important;
     margin-top: 0 !important;
     transition: box-shadow .25s;
 }
 .brand-link:hover .brand-image {
-    box-shadow: 0 0 16px rgba(66,165,245,0.65), 0 0 0 4px rgba(66,165,245,0.15) !important;
+    box-shadow: 0 0 14px rgba(229,169,19,.55) !important;
 }
 
 /* Brand text block */
 .brand-text {
     display: inline-flex !important;
     flex-direction: column !important;
-    line-height: 1.2 !important;
+    line-height: 1.1 !important;
     vertical-align: middle !important;
 }
 .brand-name {
     color: #ffffff !important;
-    font-size: 14px !important;
-    font-weight: 700 !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
     letter-spacing: 1.5px !important;
     text-transform: uppercase;
 }
 .brand-sub {
-    color: #7986cb !important;
+    color: rgba(255,255,255,.6) !important;
     font-size: 9.5px !important;
     font-weight: 400 !important;
     letter-spacing: .8px !important;
@@ -108,59 +117,89 @@
 
 /* Nav header */
 .nav-header {
-    color: #7986cb !important;
+    color: #e5a913 !important;
     font-size: 10px !important;
     font-weight: 700 !important;
     letter-spacing: 1.5px !important;
     text-transform: uppercase !important;
-    padding: 12px 16px 4px !important;
+    padding: 10px 16px 4px !important;
 }
+/* MAIN MENU dibungkus tautan ke ERP -> padding tautannya dibuang supaya tidak dobel */
+.nav-sidebar > a.nav-link { padding: 0 !important; margin: 0 6px !important; }
+.nav-sidebar > a.nav-link:hover { background: transparent !important; }
+.nav-sidebar > a.nav-link:hover .nav-header { color: #f6c445 !important; }
+.sidebar nav.mt-2 { margin-top: 2px !important; }
 
 /* Nav link */
 .nav-sidebar .nav-link {
     border-radius: 6px !important;
     margin: 1px 6px !important;
     padding: 7px 10px !important;
-    color: #b0bec5 !important;
+    color: rgba(255,255,255,.86) !important;
     transition: all .18s ease !important;
     font-size: 14px !important;
 }
 .nav-sidebar .nav-link:hover {
-    background: rgba(255,255,255,0.09) !important;
+    background: rgba(255,255,255,.12) !important;
     color: #fff !important;
 }
+/* menu aktif: latar putih tipis + garis emas di kiri (navbar ap_dev: garis emas di bawah) */
 .nav-sidebar .nav-link.active,
 .nav-sidebar .nav-item > .nav-link.active {
-    background: linear-gradient(90deg, #3949ab, #1e88e5) !important;
+    background: rgba(255,255,255,.12) !important;
     color: #fff !important;
-    box-shadow: 0 2px 8px rgba(57,73,171,0.4) !important;
+    box-shadow: inset 3px 0 0 #e5a913 !important;
 }
+/* submenu = panel navy, makin dalam makin terang (seperti dropdown navbar ap_dev) */
+.nav-sidebar .nav-treeview { background: #10265e; border-radius: 8px; margin: 2px 6px 4px; padding: 3px 0; }
+.nav-sidebar .nav-treeview .nav-treeview { background: #15306f; }
+.nav-sidebar .nav-treeview .nav-treeview .nav-treeview { background: #1a3a80; }
 
 /* Icon warna */
-.nav-sidebar .nav-icon { color: #7986cb !important; }
+.nav-sidebar .nav-icon { color: rgba(255,255,255,.72) !important; }
 .nav-sidebar .nav-link:hover .nav-icon,
 .nav-sidebar .nav-link.active .nav-icon { color: #fff !important; }
 
 /* Treeview arrow */
-.nav-sidebar .nav-link > .right { color: #546e7a !important; transition: transform .2s; }
+.nav-sidebar .nav-link > .right { color: rgba(255,255,255,.45) !important; transition: transform .2s; }
+.nav-sidebar .nav-link:hover > .right, .nav-sidebar .menu-open > .nav-link > .right { color: #e5a913 !important; }
 
-/* Search box */
+/* Search box: kotak membulat navy, bercahaya emas saat diketik */
 .sidebar .form-inline .input-group {
-    background: rgba(255,255,255,0.07) !important;
-    border-radius: 20px !important;
-    border: 1px solid rgba(255,255,255,0.1) !important;
+    background: rgba(255,255,255,.06) !important;
+    border-radius: 10px !important;
+    border: 1px solid rgba(255,255,255,.14) !important;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.25);
     overflow: hidden !important;
-    margin: 10px 10px 6px !important;
-    width: calc(100% - 20px) !important;
+    margin: 12px 12px 4px !important;
+    width: calc(100% - 24px) !important;
+    transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.sidebar .form-inline .input-group:focus-within {
+    background: rgba(255,255,255,.1) !important;
+    border-color: rgba(229,169,19,.85) !important;
+    box-shadow: 0 0 0 3px rgba(229,169,19,.18);
 }
 .form-control-sidebar {
     background: transparent !important;
     border: none !important;
-    color: #e0e6ff !important;
-    font-size: 12px !important;
+    color: #fff !important;
+    font-size: 13px !important;
+    height: 36px !important;
+    padding-left: 12px !important;
 }
-.form-control-sidebar::placeholder { color: #78909c !important; }
-.btn-sidebar { background: transparent !important; color: #7986cb !important; }
+.form-control-sidebar:focus { box-shadow: none !important; }
+.form-control-sidebar::placeholder { color: rgba(255,255,255,.45) !important; }
+.btn-sidebar { background: transparent !important; color: rgba(255,255,255,.6) !important; height: 36px; border: 0 !important; }
+.sidebar .form-inline .input-group:focus-within .btn-sidebar { color: #e5a913 !important; }
+
+/* Sidebar TETAP di tempat & selalu setinggi layar (PC/laptop): dulu navy-nya bisa berhenti
+   sebelum footer di halaman panjang. Isi menu yang lebih panjang dari layar digulir di dalam sidebar.
+   Di HP (< 992px) sidebar memakai perilaku geser bawaan AdminLTE. */
+@media (min-width: 992px) {
+    .main-sidebar { position: fixed !important; top: 0; bottom: 0; height: 100vh !important; min-height: 0 !important; }
+    .main-sidebar .sidebar { height: calc(100vh - 50px) !important; overflow-y: auto; overflow-x: hidden; }
+}
 
 /* Scrollbar tipis */
 .sidebar::-webkit-scrollbar { width: 4px; }
@@ -168,18 +207,29 @@
 .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
 
 /* ── Sidebar Search Results ── */
+.sidebar-search-results .list-group {
+    left: 12px !important; right: 12px !important; width: auto !important;
+    margin-top: 4px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(229,169,19,.35);
+    box-shadow: 0 14px 30px -8px rgba(0,0,0,.65);
+}
 .sidebar-search-results {
-    background: #0f1535 !important;
-    border: 1px solid rgba(92,107,192,0.35) !important;
+    background: #10265e !important;
+    border: 1px solid rgba(255,255,255,.08) !important;
     box-shadow: 0 6px 20px rgba(0,0,0,0.6) !important;
 }
 .sidebar-search-results .list-group-item {
-    background: #0f1535 !important;
-    color: #cfd8e3 !important;
-    border-color: rgba(92,107,192,0.15) !important;
+    background: #10265e !important;
+    color: rgba(255,255,255,.86) !important;
+    border-color: rgba(255,255,255,.06) !important;
 }
-.sidebar-search-results .list-group-item:hover {
-    background: rgba(57,73,171,0.4) !important;
+.sidebar-search-results .list-group-item { padding: 8px 12px !important; }
+.sidebar-search-results .list-group-item:hover,
+.sidebar-search-results .list-group-item:focus {
+    background: #1d3c8a !important;      /* PADAT, bukan transparan */
+    box-shadow: inset 3px 0 0 #e5a913;
     color: #fff !important;
 }
 .sidebar-search-results .list-group-item .search-title {
@@ -188,7 +238,7 @@
     font-size: 13px !important;
 }
 .sidebar-search-results .list-group-item .search-path {
-    color: #5c6bc0 !important;
+    color: #e5a913 !important;
     font-size: 11px !important;
 }
 </style>
@@ -197,10 +247,10 @@
 <aside class="main-sidebar elevation-4">
     <!-- Brand Logo -->
     <a href="#" class="brand-link">
-        <img src="<?= base_url('assets/') ?>dist/img/nag_logo.png" alt="Nag-Logo" class="brand-image img-circle elevation-3">
+        <img src="<?= base_url('assets/nds/icon-64.png?v=2') ?>" alt="NDS" class="brand-image">
         <span class="brand-text ml-2">
-            <span class="brand-name">Nirwana Alabare</span>
-            <span class="brand-sub">AR Management System</span>
+            <span class="brand-name">NDS</span>
+            <span class="brand-sub">Account Receivable</span>
         </span>
     </a>
 
@@ -211,7 +261,7 @@
         <!-- SidebarSearch Form -->
         <div class="form-inline">
             <div class="input-group" data-widget="sidebar-search">
-                <input class="form-control form-control-sidebar" type="search" placeholder="Search" aria-label="Search">
+                <input class="form-control form-control-sidebar" type="search" placeholder="Search menu..." aria-label="Search menu">
                 <div class="input-group-append">
                     <button class="btn btn-sidebar">
                         <i class="fas fa-search fa-fw"></i>

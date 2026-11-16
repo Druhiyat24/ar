@@ -33,6 +33,18 @@ $sub_qty = isset($data_cetak['sub_qty']) ? (float) $data_cetak['sub_qty'] : 0;
 $sub_total = isset($data_cetak['sub_total']) ? (float) $data_cetak['sub_total'] : 0;
 $vat_persen = isset($data_cetak['vat_persen']) ? (float) $data_cetak['vat_persen'] : 0;
 
+/* --------------------------- summary per PO --------------------------
+   Tabel kedua di bawah Invoice Summary: nilai yang sama, cuma dilihat dari
+   sisi PO buyer. Barisnya sudah dirangkum Model_nag::rekap_po_export();
+   jumlahnya dihitung di sini supaya barisnya tinggal dicetak. */
+$po = isset($data_cetak['po']) ? (array) $data_cetak['po'] : array();
+$po_qty = 0;
+$po_total = 0;
+foreach ($po as $r) {
+    $po_qty += (float) $r['qty'];
+    $po_total += (float) $r['total'];
+}
+
 $ambil = function ($sumber, $kunci, $bawaan = '') {
     return isset($sumber[$kunci]) && trim((string) $sumber[$kunci]) !== '' ? $sumber[$kunci] : $bawaan;
 };
@@ -174,6 +186,56 @@ $alamat_pabrik = array_values(array_filter(array_map('trim',
 if (count($alamat_pabrik) > 2) {
     $alamat_pabrik = array($alamat_pabrik[0], implode(' ', array_slice($alamat_pabrik, 1)));
 }
+
+/* --------------------- baris tabel yang bisa panjang -------------------
+   Dua tabel di bawah (Invoice Summary & Summary per PO) sama-sama dipecah
+   jadi tabel pembuka (judul + kepala kolom + baris pertama, dijaga satu
+   napas) dan tabel lanjutan. Barisnya dibentuk di sini supaya markup-nya
+   tidak ditulis dua kali dan dua tabel itu pasti sama persis.
+
+   Lebar tiap kolom ikut ditulis di SETIAP baris: tabel lanjutannya tidak
+   punya kepala kolom, dan tanpa lebar yang disebut sendiri mPDF akan
+   menghitung lebarnya dari isi baris - kolomnya jadi tidak lurus dengan
+   tabel di atasnya.
+
+   $tanpa_atas mematikan garis atas baris pertama tabel lanjutan, supaya
+   sambungan antar tabelnya tidak terlihat dobel. */
+$baris_warna = function ($r, $tanpa_atas = FALSE)
+        use ($esc, $bulat, $unit, $uang, $simbol, $ada_set) {
+    $a = $tanpa_atas ? ' tanpa-atas' : '';
+    $sel = function ($kelas, $lebar, $isi) use ($a) {
+        return '<td class="' . trim($kelas . $a) . '" style="width:' . $lebar . '%">'
+            . $isi . '</td>';
+    };
+    $html = '<tr>'
+        . $sel('kiri', 12, $esc($r['color_code']))
+        . $sel('kiri', $ada_set ? 17 : 27, $esc($r['color_name']));
+    if ($ada_set) {
+        $html .= $sel('', 20,
+            $r['satuan'] === 'SET' && $r['total_pieces'] ? $esc($bulat($r['total_pieces'])) : '');
+    }
+    return $html
+        . $sel('', $ada_set ? 20 : 30, $esc($bulat($r['qty'])))
+        . $sel('', 10, $esc($unit($r['unit_cost'])))
+        . $sel('simbol', 4, $esc($simbol))
+        . $sel('nilai', 17, $esc($uang($r['extended'])))
+        . '</tr>';
+};
+
+$baris_po = function ($r, $tanpa_atas = FALSE) use ($esc, $bulat, $unit, $uang, $simbol) {
+    $a = $tanpa_atas ? ' tanpa-atas' : '';
+    $sel = function ($kelas, $lebar, $isi) use ($a) {
+        return '<td class="' . trim($kelas . $a) . '" style="width:' . $lebar . '%">'
+            . $isi . '</td>';
+    };
+    return '<tr>'
+        . $sel('kiri', 49, $esc($r['po']))
+        . $sel('', 20, $esc($bulat($r['qty'])))
+        . $sel('', 10, $esc($unit($r['price'])))
+        . $sel('simbol', 4, $esc($simbol))
+        . $sel('nilai', 17, $esc($uang($r['total'])))
+        . '</tr>';
+};
 
 /* ------------------------------- rekap ------------------------------- */
 // Cuma baris yang memang ada isinya yang ditulis. Cetakan EXIM menyediakan
@@ -421,41 +483,48 @@ $kop = array(
         </table>
     <?php endforeach; ?>
 
-    <!-- ===== Invoice Summary ===== -->
+    <!-- ===== Invoice Summary =====
+         Judulnya, kepala kolomnya, dan baris PERTAMA satu tabel sendiri yang
+         dijaga tidak terpotong: kalau yang muat di sisa halaman tinggal
+         kepalanya saja, ketiganya pindah utuh ke halaman berikutnya. Kepala
+         kolom sendirian di kaki halaman - barisnya semua baru di halaman
+         sesudahnya - memang tidak enak dilihat.
+
+         Baris sisanya di tabel lanjutan di bawahnya, boleh terpotong seperti
+         biasa karena di situ selalu ada baris yang menemani kepalanya. -->
     <div class="jarak"></div>
-    <table class="blok">
-        <tr>
-            <td class="garis merah"></td>
-            <td class="judul-blok">Invoice Summary</td>
-        </tr>
-    </table>
-    <table class="grid ringkas" style="margin-top: 6px">
-        <!-- Kolom Total Pieces cuma dicetak kalau ada baris SET: untuk satuan
-             asli angkanya sama persis dengan Quantity Invoiced. -->
-        <tr>
-            <th style="width:12%">Color Code</th>
-            <th style="width:<?= $ada_set ? 17 : 27; ?>%">Color Name</th>
-            <?php if ($ada_set) : ?>
-                <th style="width:20%">Total Pieces (SET)</th>
-            <?php endif; ?>
-            <th style="width:<?= $ada_set ? 20 : 30; ?>%">Quantity Invoiced (Each)</th>
-            <th style="width:10%">Unit Cost</th>
-            <th style="width:21%" colspan="2">Extended Line Total</th>
-        </tr>
-        <?php foreach ($summary as $r) : ?>
+    <div style="page-break-inside: avoid">
+        <table class="blok">
             <tr>
-                <td class="kiri"><?= $esc($r['color_code']); ?></td>
-                <td class="kiri"><?= $esc($r['color_name']); ?></td>
-                <?php if ($ada_set) : ?>
-                    <td><?= $r['satuan'] === 'SET' && $r['total_pieces'] ? $esc($bulat($r['total_pieces'])) : ''; ?></td>
-                <?php endif; ?>
-                <td><?= $esc($bulat($r['qty'])); ?></td>
-                <td><?= $esc($unit($r['unit_cost'])); ?></td>
-                <td class="simbol" style="width:4%"><?= $esc($simbol); ?></td>
-                <td class="nilai" style="width:17%"><?= $esc($uang($r['extended'])); ?></td>
+                <td class="garis merah"></td>
+                <td class="judul-blok">Invoice Summary</td>
             </tr>
-        <?php endforeach; ?>
-    </table>
+        </table>
+        <table class="grid ringkas" style="margin-top: 6px">
+            <!-- Kolom Total Pieces cuma dicetak kalau ada baris SET: untuk satuan
+                 asli angkanya sama persis dengan Quantity Invoiced. -->
+            <tr>
+                <th style="width:12%">Color Code</th>
+                <th style="width:<?= $ada_set ? 17 : 27; ?>%">Color Name</th>
+                <?php if ($ada_set) : ?>
+                    <th style="width:20%">Total Pieces (SET)</th>
+                <?php endif; ?>
+                <th style="width:<?= $ada_set ? 20 : 30; ?>%">Quantity Invoiced (Each)</th>
+                <th style="width:10%">Unit Cost</th>
+                <th style="width:21%" colspan="2">Extended Line Total</th>
+            </tr>
+            <?php if ($summary) : ?>
+                <?= $baris_warna($summary[0]); ?>
+            <?php endif; ?>
+        </table>
+    </div>
+    <?php if (count($summary) > 1) : ?>
+        <table class="grid ringkas">
+            <?php foreach (array_slice($summary, 1) as $i => $r) : ?>
+                <?= $baris_warna($r, $i === 0); ?>
+            <?php endforeach; ?>
+        </table>
+    <?php endif; ?>
 
     <!-- Rekap: tabel sendiri, dijaga utuh & tanpa kepala kolom. Lebar kolomnya
          sama dengan tabel di atas. autosize="1" supaya mPDF tidak mengecilkan
@@ -480,6 +549,47 @@ $kop = array(
             <td class="nilai total-nilai"><?= $esc($uang($angka_rekap('grand'))); ?></td>
         </tr>
     </table>
+
+    <?php if ($po) : ?>
+        <!-- ===== Summary per PO =====
+             Angkanya sama dengan Invoice Summary di atas, cuma dikelompokkan
+             per PO buyer. Nomor PO-nya tidak punya kolom sendiri - diambilkan
+             dari kolom remark SJ-nya; lihat Model_nag::rekap_po_export().
+
+             Dipecah dengan cara yang sama: judul + kepala kolom + baris
+             pertama dijaga satu napas, sisanya menyusul di tabel lanjutan
+             berikut baris Total-nya. -->
+        <div class="jarak"></div>
+        <div style="page-break-inside: avoid">
+            <table class="blok">
+                <tr>
+                    <td class="garis merah"></td>
+                    <td class="judul-blok">Summary per PO</td>
+                </tr>
+            </table>
+            <table class="grid ringkas" style="margin-top: 6px">
+                <tr>
+                    <th style="width:49%">PO No</th>
+                    <th style="width:20%">Quantity</th>
+                    <th style="width:10%">Price</th>
+                    <th style="width:21%" colspan="2">Total</th>
+                </tr>
+                <?= $baris_po($po[0]); ?>
+            </table>
+        </div>
+        <table class="grid ringkas" style="page-break-inside: avoid" autosize="1">
+            <?php foreach (array_slice($po, 1) as $i => $r) : ?>
+                <?= $baris_po($r, $i === 0); ?>
+            <?php endforeach; ?>
+            <tr>
+                <td class="kiri tebal<?= count($po) > 1 ? '' : ' tanpa-atas'; ?>" style="width:49%">Total</td>
+                <td class="tebal<?= count($po) > 1 ? '' : ' tanpa-atas'; ?>" style="width:20%"><?= $esc($bulat($po_qty)); ?></td>
+                <td class="<?= count($po) > 1 ? '' : 'tanpa-atas'; ?>" style="width:10%"></td>
+                <td class="simbol total-nilai<?= count($po) > 1 ? '' : ' tanpa-atas'; ?>" style="width:4%"><?= $esc($simbol); ?></td>
+                <td class="nilai total-nilai<?= count($po) > 1 ? '' : ' tanpa-atas'; ?>" style="width:17%"><?= $esc($uang($po_total)); ?></td>
+            </tr>
+        </table>
+    <?php endif; ?>
 
     <!-- ===== Penutup: kiri Invoice Notes + Manufacturer Information + REFF,
                        kanan pernyataan lalu stempel =====

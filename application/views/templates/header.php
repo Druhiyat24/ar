@@ -4,7 +4,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><?= $title; ?></title>
+  <?php
+  // judul tab = nama menu saja (seperti ap_dev); judul dashboard yang panjang
+  // ("DASHBOARD PT. NIRWANA ALABARE GARMENT") cukup "Dashboard" di tab.
+  // $title di isi halaman tidak diubah.
+  $judul_tab = (stripos((string) $title, 'dashboard') === 0) ? 'Dashboard' : $title;
+  ?>
+  <title><?= $judul_tab; ?></title>
+  <!-- ikon tab NDS (dulu ikon bawaan XAMPP) -->
+  <link rel="icon" type="image/png" sizes="32x32" href="<?= base_url('assets/nds/icon-32.png?v=2') ?>">
+  <link rel="icon" type="image/png" sizes="16x16" href="<?= base_url('assets/nds/icon-16.png?v=2') ?>">
+  <link rel="shortcut icon" href="<?= base_url('assets/nds/favicon.ico?v=2') ?>">
+  <link rel="apple-touch-icon" href="<?= base_url('assets/nds/icon-180.png?v=2') ?>">
 
   <?php
   // ===== Font Source Sans Pro (font tema AdminLTE), dilayani server sendiri =====
@@ -78,6 +89,9 @@
         box-shadow: 0 2px 12px rgba(0,0,0,0.08) !important;
         border-bottom: none !important;
         padding: 0 16px !important;
+        min-height: 50px;          /* = tinggi brand NDS di sidebar, supaya garis bawahnya sejajar */
+        position: sticky !important;   /* tetap di atas saat halaman digulir, sejajar dgn sidebar yang juga tetap */
+        top: 0;
     }
     .main-header .nav-link { color: #4a5568 !important; transition: color .18s; }
     .main-header .nav-link:hover { color: #3949ab !important; }

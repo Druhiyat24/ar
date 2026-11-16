@@ -12,8 +12,10 @@ class Auth extends CI_Controller
 
     public function index()
     {
+        // ?next= = halaman yang dibuka saat sesi habis (lihat helpers/MY_url_helper.php)
+        $next = auth_next_aman($this->input->get_post('next'));
         if ($this->session->userdata('username')) {
-            redirect('landingpage');
+            redirect($next !== '' ? $next : 'landingpage');
         }
 
         $this->form_validation->set_rules('username', 'Username', 'trim|required');
@@ -50,7 +52,9 @@ class Auth extends CI_Controller
                 'password'  => $userpass['password']
             ];
             $this->session->set_userdata($data);
-            redirect('landingpage');
+            // kembali ke halaman terakhir kalau sesi tadi habis; kalau tidak, ke Dashboard
+            $next = auth_next_aman($this->input->post('next'));
+            redirect($next !== '' ? $next : 'landingpage');
         } else {
             $this->session->set_flashdata('message', '<div class="alert alert-danger" role="alert">
             Wrong username or password!</div>');

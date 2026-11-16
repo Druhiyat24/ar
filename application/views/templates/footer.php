@@ -1,9 +1,16 @@
   <!-- Main Footer -->
+  <!-- footer NDS: tahun mengikuti tahun berjalan (dulu tertulis 2021), nama sesuai login & sidebar -->
+  <style>
+    .main-footer { color: #64748b; font-size: 13.5px; }
+    .main-footer .nds-merek { color: #0b1d4a; font-weight: 800; letter-spacing: .04em; }
+    .main-footer .nds-titik { color: #e5a913; margin: 0 4px; }
+    .main-footer .nds-user { color: #0b1d4a; font-weight: 600; }
+    .main-footer .nds-user i { color: #e5a913; margin-right: 5px; }
+  </style>
   <footer class="main-footer">
-    <strong>Copyright &copy; 2021 <a href="#">NIRWANA GROUP</a>.</strong>
-    All rights reserved.
+    Copyright &copy; <?= date('Y') ?> <span class="nds-merek">NDS</span><span class="nds-titik">&ndash;</span>Nirwana Digital Solution. All rights reserved.
     <div class="float-right d-none d-sm-inline-block">
-      <b>User : </b><?= $user['username']; ?>
+      <span class="nds-user"><i class="fas fa-user-circle" aria-hidden="true"></i>User: <?= $user['username']; ?></span>
     </div>
   </footer>
 </div>
