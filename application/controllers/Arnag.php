@@ -3046,6 +3046,36 @@ public function print_invoice_knitting_v2($id)
 
 public function report_invoice_v2($id)
 {
+    $this->_cetak_invoice_v2($id, FALSE);
+}
+
+/**
+ * Cetakan "Invoice (Summary PO)".
+ *
+ * Dokumennya sama persis dengan Invoice di atasnya, ditambah satu tabel di
+ * bawah Invoice Summary: rekap nilai per PO buyer (lihat
+ * Model_nag::rekap_po_export()).
+ *
+ * Dibuat sebagai cetakan TERSENDIRI, bukan menambah isi cetakan yang sudah
+ * ada. Commercial Invoice export itu dokumen yang dikirim ke buyer, dan
+ * invoice yang sudah beredar harus bisa dicetak ulang persis seperti waktu
+ * dikirim - jadi alamat lamanya (report_invoice_v2) tidak berubah sama
+ * sekali, dan rekap PO-nya cuma keluar kalau cetakan ini yang dipilih.
+ *
+ * Cuma berarti untuk booking EXPORT; untuk yang lain hasilnya sama dengan
+ * cetakan biasa, karena rekap per PO memang tidak ada di situ. Menunya pun
+ * cuma ditawarkan di invoice export (lihat inv_list_aksi() di crud-nag.js).
+ */
+public function report_invoice_summary_po($id)
+{
+    $this->_cetak_invoice_v2($id, TRUE);
+}
+
+/**
+ * Isi kedua cetakan di atas - bedanya cuma $dengan_po.
+ */
+private function _cetak_invoice_v2($id, $dengan_po)
+{
     if (!$this->session->userdata('username')) {
         redirect('auth');
     }
@@ -3061,9 +3091,13 @@ public function report_invoice_v2($id)
             'rekap' => $this->_rekap_export($cetak_export, $this->Model_nag->report_invoice_pot($id)),
             // Stempel APPROVED - sama aturannya dengan cetakan invoice lokal.
             'status_invoice' => $cetak_export['header']['status'],
+            'summary_po' => $dengan_po,
         ), true));
+        // Nama berkasnya dibedakan supaya dua cetakan itu tidak saling
+        // menimpa di folder unduhan.
         $this->_inv_cetak($mpdf, $id, 'INV_' . preg_replace('/[^A-Za-z0-9._-]/', '_',
-            (string) $cetak_export['header']['no_invoice']) . '.pdf',
+            (string) $cetak_export['header']['no_invoice'])
+            . ($dengan_po ? '_SUMMARY_PO' : '') . '.pdf',
             (string) $cetak_export['header']['no_invoice']);
         return;
     }

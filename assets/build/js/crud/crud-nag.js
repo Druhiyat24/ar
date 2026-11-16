@@ -3066,6 +3066,10 @@ function inv_list_aksi(item) {
 	var post = String(item.status || '').trim().toUpperCase() === 'POST';
 	// Cetakan "Invoice Knitting" hanya ada di NAK.
 	var nak = String(item.profit_center || '').trim().toUpperCase() === 'NAK';
+	// Rekap per PO cuma ada di dokumen Commercial Invoice export - knitting
+	// memakai bentuk invoice lokal walaupun shipment-nya export, jadi ikut
+	// dikecualikan. Lihat Arnag::_cetak_export().
+	var ekspor = String(item.shipp || '').trim().toUpperCase() === 'EXPORT';
 
 	var pilihan = function (aksi, ikon, judul, ket) {
 		return '<a class="dropdown-item" href="#" onclick="' + aksi + ' return false;">'
@@ -3079,6 +3083,9 @@ function inv_list_aksi(item) {
 		+ '<i class="fa fa-print"></i></button>'
 		+ '<div class="dropdown-menu inv-menu">'
 		+ pilihan('print_invoice_v2(' + id + ');', 'fa-file-invoice', 'Invoice', 'New layout, same as Debit Note')
+		+ (ekspor && !nak
+			? pilihan('print_invoice_summary_po(' + id + ');', 'fa-file-pdf', 'Invoice (Summary PO)', 'New layout plus summary per PO')
+			: '')
 		+ pilihan('print_invoice(' + id + ');', 'fa-file-alt', 'Invoice (Classic)', 'Previous layout')
 		+ (nak
 			? pilihan('print_invoice_knitting_v2(' + id + ');', 'fa-scroll', 'Invoice Knitting', 'New layout, knitting format (NAK)')
@@ -5978,6 +5985,16 @@ function cek_tgl_sj($tgl){
 function print_invoice_v2(id) {
 
 	window.open(".../../report_invoice_v2/" + id + "/" );
+
+}
+
+// Cetakan "Invoice (Summary PO)" - dokumennya sama dengan Invoice di atas,
+// ditambah rekap nilai per PO buyer di bawah Invoice Summary. Alamatnya
+// sendiri, bukan menumpang cetakan invoice yang sudah ada: invoice yang
+// sudah dikirim ke buyer harus bisa dicetak ulang persis seperti semula.
+function print_invoice_summary_po(id) {
+
+	window.open(".../../report_invoice_summary_po/" + id + "/" );
 
 }
 

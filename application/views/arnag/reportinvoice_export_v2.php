@@ -36,8 +36,15 @@ $vat_persen = isset($data_cetak['vat_persen']) ? (float) $data_cetak['vat_persen
 /* --------------------------- summary per PO --------------------------
    Tabel kedua di bawah Invoice Summary: nilai yang sama, cuma dilihat dari
    sisi PO buyer. Barisnya sudah dirangkum Model_nag::rekap_po_export();
-   jumlahnya dihitung di sini supaya barisnya tinggal dicetak. */
-$po = isset($data_cetak['po']) ? (array) $data_cetak['po'] : array();
+   jumlahnya dihitung di sini supaya barisnya tinggal dicetak.
+
+   HANYA ikut di cetakan "Invoice (Summary PO)" - pemanggilnya yang
+   menyalakan $summary_po. Commercial Invoice yang dikirim ke buyer sengaja
+   dibiarkan persis seperti semula: nomor PO itu catatan SJ-nya sendiri, dan
+   invoice yang sudah beredar harus bisa dicetak ulang sama seperti waktu
+   dikirim. Lihat Arnag::report_invoice_summary_po(). */
+$po = !empty($summary_po) && isset($data_cetak['po'])
+    ? (array) $data_cetak['po'] : array();
 $po_qty = 0;
 $po_total = 0;
 foreach ($po as $r) {
