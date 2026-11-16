@@ -6013,8 +6013,12 @@ function cari_invoice_alo($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer, $rat
     // Proforma Invoice (DP / CBD / PI NON SO) ikut sebagai tagihan yang
     // dilunasi. Baris DP/CBD dari union lama digantikan versi ini supaya
     // nilainya seragam & Equivalent IDR-nya ikut kurs, seperti invoice.
+    // Yang boleh digantikan HANYA nomor DP/CBD lama - nomor PI NON SO
+    // bentuknya sama dengan nomor invoice, dan invoice-nya tidak boleh ikut
+    // terbuang gara-gara itu.
     return $this->_gabung_pi_alokasi($hasil->result_array(),
-        $this->pi_untuk_alokasi($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer, $rate));
+        $this->pi_untuk_alokasi($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer, $rate),
+        'no_invoice', $this->_nomor_dp_cbd_lama());
 }
 
 
@@ -6108,8 +6112,16 @@ function _lengkapi_coa_baris_alokasi($baris)
  * Baris lama yang nomornya sama DIGANTI - bukan ditambah - supaya DP/CBD
  * yang dulu sudah punya jalurnya sendiri tidak muncul dua kali, dan
  * nilainya seragam dengan PI NON SO yang sekarang ikut.
+ *
+ * $boleh_ganti membatasi nomor mana yang boleh digantikan. Yang digandakan
+ * cuma DP/CBD - barisnya datang dua kali, dari tabel PI lama dan dari tabel
+ * PI yang sekarang. Di luar itu nomor yang sama BUKAN dokumen yang sama:
+ * nomor PI NON SO bentuknya persis nomor invoice, jadi tanpa batas ini
+ * invoice sungguhan bisa terbuang dari daftar oleh proforma yang kebetulan
+ * bernomor sama. NULL = tanpa batas (pemanggil yang memang cuma punya satu
+ * jenis dokumen).
  */
-private function _gabung_pi_alokasi($lama, $pi, $kunci = 'no_invoice')
+private function _gabung_pi_alokasi($lama, $pi, $kunci = 'no_invoice', $boleh_ganti = NULL)
 {
     $pi = (array) $pi;
     if (!$pi) {
@@ -6119,13 +6131,38 @@ private function _gabung_pi_alokasi($lama, $pi, $kunci = 'no_invoice')
     foreach ($pi as $r) {
         if (isset($r[$kunci])) { $nomor[trim((string) $r[$kunci])] = TRUE; }
     }
+    $batas = NULL;
+    if (is_array($boleh_ganti)) {
+        $batas = array();
+        foreach ($boleh_ganti as $n) { $batas[trim((string) $n)] = TRUE; }
+    }
     $sisa = array();
     foreach ((array) $lama as $r) {
         $no = isset($r[$kunci]) ? trim((string) $r[$kunci]) : '';
-        if ($no !== '' && isset($nomor[$no])) { continue; }
+        if ($no !== '' && isset($nomor[$no])
+            && ($batas === NULL || isset($batas[$no]))) { continue; }
         $sisa[] = $r;
     }
     return array_merge($sisa, $pi);
+}
+
+/**
+ * Nomor DP/CBD di tabel PI yang lama.
+ *
+ * Cuma nomor-nomor inilah yang benar-benar muncul dua kali di daftar
+ * referensi Alokasi - lihat _gabung_pi_alokasi().
+ */
+private function _nomor_dp_cbd_lama()
+{
+    if (!$this->db->table_exists('tbl_invoice_proforma_dp_cbd')) {
+        return array();
+    }
+    $nomor = array();
+    foreach ($this->db->query("SELECT DISTINCT no_proforma_invoice
+                                 FROM tbl_invoice_proforma_dp_cbd")->result_array() as $r) {
+        $nomor[] = $r['no_proforma_invoice'];
+    }
+    return $nomor;
 }
 
 /**
@@ -7130,6 +7167,14 @@ function pi_untuk_alokasi($dt_dari, $dt_sampai, $id_customer, $rate = 1)
  * Selain COA uang muka DP/CBD, tiap baris membawa COA PPN & porsi DPP-nya:
  * yang dilunasi tagihan penuh, tapi di jurnal cuma DPP yang masuk uang muka,
  * PPN-nya ke VAT OUT.
+ *
+ * Saringannya DISAMAKAN dengan pi_untuk_alokasi() - yang menawarkan barisnya
+ * di layar. Nomor PI biasa dan PI NON SO bentuknya persis nomor invoice
+ * (0001/E/NAG/1026) dan deretnya jalan sendiri-sendiri, jadi satu nomor bisa
+ * dipakai dua dokumen sekaligus. Tanpa saringan yang sama, invoice sungguhan
+ * yang nomornya kebetulan dipakai sebuah proforma ikut dibaca sebagai PI:
+ * di layar bertanda "PI", dan - yang lebih berbahaya - COA-nya ikut berubah
+ * jadi COA uang muka, sehingga jurnal alokasinya salah akun.
  */
 function pi_baris_alokasi()
 {
@@ -7161,7 +7206,10 @@ function pi_baris_alokasi()
      -- VAT OUT sama untuk Local maupun Export, jadi sengaja tidak disaring
      -- shipp_tipe seperti COA uang mukanya.
      LEFT JOIN mastercoa_v2 ppn ON ppn.inv_type LIKE '%PPN INV%'
+         WHERE IFNULL(a.status, '') LIKE '%APPROVED%'
+           AND IFNULL(a.status, '') NOT LIKE 'CANCEL%'
       GROUP BY t.ref_number
+        HAVING type_pi IN ('DP', 'CBD', 'PI NON SO')
     ")->result_array();
 }
 function load_invoice_detail_alo()
