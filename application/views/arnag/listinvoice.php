@@ -284,6 +284,10 @@
               <thead>
                 <tr>
                   <th>Inv Number</th>
+                  <!-- Nomor invoice versi EXIM (no_invoice_2): penomoran sendiri
+                       yang dipakai buyer, itu yang tercetak di PDF. Sering
+                       kosong - barisnya diberi garis, bukan dibiarkan melompong. -->
+                  <th>Inv Number 2</th>
                   <th>Inv Date</th>
                   <th>Type</th>
                   <th>Customer</th>

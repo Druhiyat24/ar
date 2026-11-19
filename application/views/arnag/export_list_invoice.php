@@ -108,6 +108,9 @@ CSS HEADER
                 Inv Number
             </th>
             <th>
+                Inv Number 2
+            </th>
+            <th>
                 Customer
             </th>
             <th>
@@ -152,6 +155,9 @@ CSS HEADER
             <tr>
                 <td align="center">
                     <?= $dli['no_invoice']; ?>
+                </td>
+                <td align="center">
+                    <?= isset($dli['no_invoice_2']) ? $dli['no_invoice_2'] : ''; ?>
                 </td>
                 <td align="center">
                     <?= $dli['customer']; ?>

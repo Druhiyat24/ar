@@ -2270,7 +2270,19 @@ function cari_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer, $status)
         $where2 = "";
     }
 
-    $hasil = $this->db->query("SELECT distinct a.no_invoice AS no_invoice, UPPER(b.supplier) AS customer, a.shipp, a.doc_type, a.doc_number,
+    // Nomor invoice kedua: penomoran sendiri yang diisi tim EXIM lewat modul
+    // Invoice Export - itu yang tercetak di PDF invoice export (lihat
+    // reportinvoice_export_v2.php, $no_cetak). Tabelnya baru ada setelah modul
+    // itu dipasang, jadi keberadaan kolomnya dicek dulu - tanpa itu daftarnya
+    // ikut mati. Kaitannya satu-satu (id_book_invoice UNIK), jadi LEFT JOIN-nya
+    // tidak menggandakan baris.
+    $ada_inv2 = $this->kolom_ada('tbl_book_invoice_exim_export_h', 'no_invoice_2');
+    $kol_inv2 = $ada_inv2 ? 'h.no_invoice_2' : "'' AS no_invoice_2";
+    $join_inv2 = $ada_inv2
+        ? 'LEFT JOIN tbl_book_invoice_exim_export_h AS h ON h.id_book_invoice = a.id'
+        : '';
+
+    $hasil = $this->db->query("SELECT distinct a.no_invoice AS no_invoice, $kol_inv2, UPPER(b.supplier) AS customer, a.shipp, a.doc_type, a.doc_number,
       DATE_FORMAT(e.sj_date, '%Y-%m-%d') AS inv_date,DATE_FORMAT(a.tgl_inv, '%Y-%m-%d') AS tgl_inv, c.type,  a.status, a.id, c.id_type, b.Id_Supplier AS id_customer,
       a.profit_center,
       FORMAT((d.grand_total), 2) AS amount, a.first_approve_by, a.first_approve_date, a.second_approve_by, a.second_approve_date,
@@ -2280,6 +2292,7 @@ function cari_invoice($dt_dari_inv, $dt_sampai_inv, $id_customer, $status)
       tbl_type AS c ON a.id_type = c.id_type INNER JOIN
       tbl_invoice_pot AS d ON a.id = d.id_book_invoice  INNER JOIN
       tbl_invoice_detail as e on a.id=e.id_book_invoice
+      $join_inv2
       WHERE e.sj_date BETWEEN '$dt_dari_inv' AND '$dt_sampai_inv' $where $where2
       ORDER BY a.id ");
     // jml_dokumen dipakai penanda "No attachment" di List Invoice

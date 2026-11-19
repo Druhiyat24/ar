@@ -3204,12 +3204,13 @@ function inv_list_dt(lebar) {
 		stateDuration: -1,
 		pageLength: 10,
 		lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
-		order: [[1, 'desc']],
+		order: [[2, 'desc']],
 		// Susunan kolom pernah berubah (Inv Date pindah ke depan, Create Date
-		// jadi Created By, Status & Amount ditukar). Tanpa penanda ini, urutan
-		// tersimpan dari susunan lama akan dipakai di kolom yang salah.
-		stateSaveParams: function (s, data) { data.invKolom = 2; },
-		stateLoadParams: function (s, data) { if (data.invKolom !== 2) { return false; } },
+		// jadi Created By, Status & Amount ditukar, lalu Inv Number 2 disisipkan
+		// jadi kolom ke-2). Tanpa penanda ini, urutan tersimpan dari susunan
+		// lama akan dipakai di kolom yang salah.
+		stateSaveParams: function (s, data) { data.invKolom = 3; },
+		stateLoadParams: function (s, data) { if (data.invKolom !== 3) { return false; } },
 		columnDefs: [
 			// Sel nomor invoice berisi tautan + penanda lampiran; yang dipakai
 			// mengurutkan & mencari cuma nomornya.
@@ -3220,23 +3221,26 @@ function inv_list_dt(lebar) {
 					return $('<div>').html(data).find('.dn-no-link').text() || data;
 				}
 			},
+			// Inv Number 2 sering kosong - selnya berisi garis, jadi yang dicari
+			// & diurutkan harus teksnya, bukan tagnya. Sama seperti Doc Number.
+			{ targets: 1, type: 'html' },
 			// Doc Number bisa berisi garis (kosong) - 'html' bikin DataTables
 			// mengurutkan & mencari berdasarkan teksnya, bukan tagnya.
-			{ targets: 6, type: 'html' },
+			{ targets: 7, type: 'html' },
 			// Created By berisi nama + waktu; dicari & diurutkan pakai teksnya saja.
 			{
-				targets: 7,
+				targets: 8,
 				render: function (data, type) {
 					if (type === 'display' || type === 'export') { return data; }
 					return $('<div>').html(data).text() || data;
 				}
 			},
-			{ targets: 8, className: 'dn-angka' },
-			{ targets: 9, type: 'html', className: 'dn-tengah' },
-			{ targets: 10, orderable: false, searchable: false, className: 'dn-tengah' + (hp ? ' all' : '') },
+			{ targets: 9, className: 'dn-angka' },
+			{ targets: 10, type: 'html', className: 'dn-tengah' },
+			{ targets: 11, orderable: false, searchable: false, className: 'dn-tengah' + (hp ? ' all' : '') },
 			// Mode HP: kolom yang dilipat ditentukan di sini (sel tabelnya nowrap,
 			// jadi Responsive tidak bisa menghitungnya sendiri).
-			{ targets: hp ? [2, 3, 4, 5, 6, 7, 8, 9] : [], className: 'none' }
+			{ targets: hp ? [1, 3, 4, 5, 6, 7, 8, 9, 10] : [], className: 'none' }
 		],
 		language: {
 			search: '',
@@ -3316,6 +3320,7 @@ function cari_invoice() {
 				// Urutan kolom = urutan <th> di listinvoice.php
 				baris.push([
 					inv_list_nomor(item),
+					inv_list_isi(item.no_invoice_2),
 					inv_list_teks(item.inv_date),
 					inv_list_teks(item.type),
 					inv_list_teks(item.customer),
