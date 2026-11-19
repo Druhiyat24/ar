@@ -26,6 +26,7 @@ $asal_baris = function ($row) {
 // Value & Rate boleh dibetulkan, kolom lain diambil ulang server dari
 // database. Baris dari Memo sekarang bebas seluruh kolomnya; aturan yang
 // sama ada di Model_nag::dn_baris_terkunci.
+// Kecualinya kolom Supplier Invoice - lihat $kolom_supp_inv di bawah.
 $baris_terkunci = function ($row) use ($asal_baris) {
   return $asal_baris($row) === 'Request';
 };
@@ -37,6 +38,16 @@ $nama_header = array();
 for ($i = 1; $i <= 5; $i++) {
   $nama_header[$i] = $is_edit ? (string) $dnv('header' . $i) : '';
 }
+// Supplier Invoice BUKAN data dari Request: kolomnya datang kosong waktu
+// barisnya ditarik (lihat getdata_reqdn) lalu diketik sendiri tim AR. Jadi
+// kolom itu tetap bisa dibetulkan walau barisnya terkunci. Namanya ikut
+// dicek supaya yang terbuka memang kolom Supplier Invoice, bukan Header 2
+// yang dipakai untuk hal lain. Aturan yang sama ada di
+// Model_nag::update_debitnote dan di dn_kolom_supplier_invoice() (JS).
+$kolom_supp_inv = function ($no) use ($nama_header) {
+  return (int) $no === 2
+    && strtolower(trim((string) $nama_header[2])) === 'supplier invoice';
+};
 ?>
 <!-- Content Wrapper. Contains page content -->
 <style type="text/css">
@@ -1250,11 +1261,17 @@ for ($i = 1; $i <= 5; $i++) {
                                 $asal = $asal_baris($row);
                                 $kunci = $baris_terkunci($row);
                                 $ro = $kunci ? 'readonly' : '';
+                                $bisa = 'only Description, '
+                                  . ($kolom_supp_inv(2) ? 'Supplier Invoice, ' : '')
+                                  . 'Value &amp; Rate can be changed';
                               ?>
-                                <tr data-id="<?= (int) $row['id']; ?>" data-sumber="<?= $esc($asal); ?>" data-kunci="<?= $kunci ? '1' : '0'; ?>" data-supplier="<?= $esc($row['supplier']); ?>" data-supplier-invoice="<?= $esc($row['supplier_invoice']); ?>" <?= $asal !== '' ? 'title="From ' . $esc($asal) . ' - ' . ($kunci ? 'only Description, Value &amp; Rate can be changed' : 'can be edited') . ', and the row cannot be deleted"' : ''; ?>>
+                                <tr data-id="<?= (int) $row['id']; ?>" data-sumber="<?= $esc($asal); ?>" data-kunci="<?= $kunci ? '1' : '0'; ?>" data-supplier="<?= $esc($row['supplier']); ?>" data-supplier-invoice="<?= $esc($row['supplier_invoice']); ?>" <?= $asal !== '' ? 'title="From ' . $esc($asal) . ' - ' . ($kunci ? $bisa : 'can be edited') . ', and the row cannot be deleted"' : ''; ?>>
                                   <td><input style="width: 300px;" type="text" class="form-control" name="inputan0" value="<?= $esc($row['deskripsi']); ?>" autocomplete="off"></td>
-                                  <?php for ($no_h = 1; $no_h <= 5; $no_h++) : ?>
-                                    <td><input style="width: 200px" type="text" class="form-control" name="inputan<?= $no_h + 2; ?>" value="<?= $esc(isset($row['header' . $no_h]) ? $row['header' . $no_h] : ''); ?>" autocomplete="off" <?= $ro; ?>></td>
+                                  <?php for ($no_h = 1; $no_h <= 5; $no_h++) :
+                                    // Kolom Supplier Invoice tetap terbuka di baris terkunci.
+                                    $ro_h = ($kunci && !$kolom_supp_inv($no_h)) ? 'readonly' : '';
+                                  ?>
+                                    <td><input style="width: 200px" type="text" class="form-control" name="inputan<?= $no_h + 2; ?>" value="<?= $esc(isset($row['header' . $no_h]) ? $row['header' . $no_h] : ''); ?>" autocomplete="off" <?= $ro_h; ?>></td>
                                   <?php endfor; ?>
                                   <td><input type="text" class="form-control" name="amt" value="<?= $esc($row['value']); ?>" style="text-align:right; width: 150px;" oninput="modal_input_amt_dn(value)" autocomplete="off"></td>
                                   <td><input type="text" class="form-control" name="amt_rate" value="<?= $esc($row['rate']); ?>" style="text-align:right; width: 150px;" onkeypress="javascript:return isNumber(event)" oninput="modal_input_rate_dn(value)" autocomplete="off"></td>
@@ -2101,6 +2118,15 @@ for ($i = 1; $i <= 5; $i++) {
              return baru;
            }
 
+           // Kolom Supplier Invoice tidak ikut terkunci di baris dari Request:
+           // isinya tidak datang dari Request - dikosongkan waktu barisnya ditarik
+           // lalu diketik sendiri tim AR, jadi tetap bisa dibetulkan waktu DN-nya
+           // diedit. Namanya ikut dicek supaya yang terbuka memang kolom itu.
+           // Aturan yang sama dipakai server (Model_nag::update_debitnote).
+           function dn_kolom_supplier_invoice(no) {
+             return Number(no) === 2 && dn_header_bernama(2, 'supplier invoice');
+           }
+
            // Input dikunci lewat readonly, select lewat disabled.
            function dn_kunci(el, terkunci) {
              if (el.tagName === 'SELECT') { el.disabled = terkunci; } else { el.readOnly = terkunci; }
@@ -2113,8 +2139,10 @@ for ($i = 1; $i <= 5; $i++) {
              var mauSelect = dn_header_supplier(no);
              if (mauSelect !== (el.tagName === 'SELECT')) { el = dn_ganti_field(el, mauSelect); }
              if (mauSelect) { dn_select2_supplier(el); }
-             // Baris dari Request (edit) selalu terkunci.
-             dn_kunci(el, row.getAttribute('data-kunci') === '1' || !dn_header_aktif(no));
+             // Baris dari Request (edit) terkunci - kecuali kolom Supplier Invoice.
+             var baris_dikunci = row.getAttribute('data-kunci') === '1'
+               && !dn_kolom_supplier_invoice(no);
+             dn_kunci(el, baris_dikunci || !dn_header_aktif(no));
              return el;
            }
 

@@ -10300,8 +10300,9 @@ public function dn_baris_dari_sumber($row)
 }
 
 // Baris yang isinya tidak boleh diubah: yang datang dari No Request. Cuma
-// Deskripsi, Value & Rate yang boleh dibetulkan - kolom lain diambil ulang
-// dari database. Baris dari Memo TIDAK termasuk: itu bebas diubah.
+// Deskripsi, Value & Rate - dan kolom Supplier Invoice, yang isinya memang
+// bukan dari Request - yang boleh dibetulkan; kolom lain diambil ulang dari
+// database. Baris dari Memo TIDAK termasuk: itu bebas diubah.
 public function dn_baris_terkunci($row)
 {
     return trim((string) $row['id_memo_det']) === ''
@@ -10312,8 +10313,8 @@ public function dn_baris_terkunci($row)
 // detail dihapus dulu lewat request terpisah - kalau simpan barunya gagal,
 // detailnya hilang).
 // - Baris yang sudah tersimpan dikenali dari id-nya. Yang dari Request cuma
-//   boleh berubah Deskripsi / Value / Rate / Amount-nya - kolom lain diambil
-//   ulang dari database. Yang dari Memo & baris manual seluruh isinya dari
+//   boleh berubah Deskripsi / Value / Rate / Amount - dan kolom Supplier
+//   Invoice - kolom lain diambil ulang dari database. Yang dari Memo & baris manual seluruh isinya dari
 //   kiriman client. Kaitan ke sumbernya (nm_memo, id_memo_det, customer,
 //   Invoice Export) selalu dari database, jadi tidak bisa diutak-atik.
 // - Baris dari Memo / Request WAJIB ada di kiriman (tidak boleh dihapus).
@@ -10340,6 +10341,18 @@ public function update_debitnote($id_dn, $header, $baris)
     }
 
     $kolom_manual = array('deskripsi', 'supplier', 'supplier_invoice', 'header1', 'header2', 'header3', 'header4', 'header5', 'value', 'rate', 'amount', 'no_coa');
+    // Supplier Invoice tidak datang dari Request: kolomnya kosong waktu
+    // barisnya ditarik ke DN, lalu diketik sendiri tim AR. Jadi kolom itu
+    // tetap boleh dibetulkan walau barisnya terkunci. Nama kolomnya ikut
+    // dicek supaya yang terbuka memang Supplier Invoice, bukan Header 2 yang
+    // dipakai untuk hal lain - layarnya memakai aturan yang sama.
+    $nama_h2 = (isset($header['header2']) && is_scalar($header['header2']))
+        ? strtolower(trim((string) $header['header2'])) : '';
+    $kolom_terkunci = array('deskripsi', 'value', 'rate', 'amount');
+    if ($nama_h2 === 'supplier invoice') {
+        $kolom_terkunci[] = 'header2';
+        $kolom_terkunci[] = 'supplier_invoice';
+    }
     $final = array();
     $dipakai = array();
     foreach ((array) $baris as $b) {
@@ -10356,13 +10369,12 @@ public function update_debitnote($id_dn, $header, $baris)
             unset($r['id']);
             // Baris dari Request: cuma Deskripsi & Value / Rate / Amount yang
             // boleh dibetulkan (kurs sering baru ketahuan salah setelah DN
-            // dibuat), kolom lain tetap dari database. Baris dari Memo & baris
-            // manual: seluruh kolom isian diambil dari layar. Kaitan ke
+            // dibuat) - ditambah kolom Supplier Invoice, isinya memang bukan
+            // dari Request; kolom lain tetap dari database. Baris dari Memo &
+            // baris manual: seluruh kolom isian diambil dari layar. Kaitan ke
             // sumbernya tidak pernah ikut ditulis ulang, jadi asal barisnya
             // tidak bisa diutak-atik.
-            $boleh = $this->dn_baris_terkunci($r)
-                ? array('deskripsi', 'value', 'rate', 'amount')
-                : $kolom_manual;
+            $boleh = $this->dn_baris_terkunci($r) ? $kolom_terkunci : $kolom_manual;
             foreach ($boleh as $kolom_isi) {
                 if (isset($b[$kolom_isi]) && is_scalar($b[$kolom_isi])) {
                     $r[$kolom_isi] = (string) $b[$kolom_isi];
