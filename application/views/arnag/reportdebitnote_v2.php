@@ -109,6 +109,67 @@ foreach ($data_debit_note_det as $baris_det) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Jumlah kolom Qty di baris Grand Total.
+//
+// DN yang barisnya ditarik dari Invoice Export membawa kolom Qty - namanya
+// diisikan otomatis "Qty Inv" waktu barisnya ditarik (dn_inv_exim_nama_header()
+// di crud-nag.js). Tim AR minta kolom itu ada jumlahnya, seperti kolom nilai.
+//
+// Totalnya cuma dicetak kalau memang bisa dipertanggungjawabkan:
+//   a. ada kolom tambahan yang namanya menyebut Qty;
+//   b. SELURUH isi kolom itu angka utuh. Satu saja berupa kalimat ("684 PCS",
+//      "4 dus"), jumlahnya tidak lagi mewakili kolomnya - lebih baik tidak
+//      dicetak sama sekali daripada mencetak angka yang salah;
+//   c. SELURUH isinya datang dari baris Invoice Export. DN dari memo / request
+//      / isian tangan boleh saja punya kolom bernama Qty, tapi isinya bukan qty
+//      invoice dan tidak diminta dijumlah.
+// Kalau salah satu tidak terpenuhi, baris Grand Total tetap seperti semula.
+//
+// Dihitung dari nilai MENTAH ($data_debit_note_det), bukan dari $isi_header -
+// isi $isi_header sudah di-escape & spasinya diganti &nbsp;.
+$kolom_qty = null;
+foreach ($kolom_header as $h => $nama_kolom) {
+    // Qty sebagai kata utuh: "Qty", "Qty Inv", "Total Qty", "Qty/Pcs" ikut -
+    // pemisahnya tidak harus spasi, asal bukan huruf.
+    if (preg_match('/(^|[^a-z])qty([^a-z]|$)/i', $nama_kolom)) {
+        $kolom_qty = $h;
+        break;
+    }
+}
+
+$total_qty = null;    // null = baris Grand Total tidak berubah
+$desimal_qty = 0;
+if ($kolom_qty !== null) {
+    $jumlah = 0;
+    $ada_isinya = false;
+    $boleh = true;
+    foreach ($data_debit_note_det as $baris_det) {
+        $nilai = isset($baris_det['header' . $kolom_qty])
+            ? trim((string) $baris_det['header' . $kolom_qty]) : '';
+        if ($nilai === '') {
+            continue;
+        }
+        $dari_invoice = isset($baris_det['no_invoice_exim'])
+            && trim((string) $baris_det['no_invoice_exim']) !== '';
+        if (!$dari_invoice || !preg_match('/^-?[0-9]+(\.[0-9]+)?$/', $nilai)) {
+            $boleh = false;
+            break;
+        }
+        // Desimalnya ikut isi kolomnya: yang ditarik dari invoice selalu 2
+        // angka di belakang koma, tapi yang diketik ulang bisa bulat.
+        $titik = strpos($nilai, '.');
+        if ($titik !== false) {
+            $desimal_qty = max($desimal_qty, min(4, strlen($nilai) - $titik - 1));
+        }
+        $jumlah += (float) $nilai;
+        $ada_isinya = true;
+    }
+    if ($boleh && $ada_isinya) {
+        $total_qty = $jumlah;
+    }
+}
+
 // Tanda "APPROVED" hanya dicetak kalau DN-nya sudah lolos second approval.
 $sudah_second_approve = strtoupper(trim((string) (isset($dn['status']) ? $dn['status'] : ''))) === 'SECOND APPROVED';
 // Kolom Supplier & Supplier Invoice bawaan tidak dipakai lagi - isinya sudah
@@ -212,11 +273,25 @@ foreach ($baris_rincian as $i => $baris) {
            Nomor tetap aman tanpa nowrap: mPDF cuma memutus baris di SPASI,
            jadi "26100876/TWN-FCL/IMP" tidak mungkin terbelah, dan angka yang
            pemisah ribuannya spasi sudah diganti spasi-tanpa-putus di atas. */
+        /* Kolom Qty dirata-kanan: isinya angka, dan ada jumlahnya di baris
+           Grand Total - rata kiri bikin angkanya tidak sejajar dengan totalnya.
+           Menggantikan .kolom-header di kolom itu, bukan ditumpuk di atasnya:
+           satu sel cuma bisa jadi salah satu, jadi satu nama kelas sudah cukup.
+           Seperti .kolom-header, kelas ini TIDAK boleh white-space: nowrap -
+           sebabnya ada di keterangan tepat di atas.
+           Dipakai cuma kalau kolomnya memang terbukti angka & dari invoice;
+           selama tidak, selnya tetap .kolom-header (rata kiri). */
+        .rincian .kolom-qty { text-align: right; }
+
         /* Sel Description yang disambung dengan baris di atas/bawahnya. */
         .rincian td.sambung-atas { border-top: none; }
         .rincian td.sambung-bawah { border-bottom: none; }
         .rincian .total-label { text-align: center; font-weight: bold; }
         .rincian .total-nilai { text-align: right; font-weight: bold; background: #fdeef0; }
+        /* Jumlah kolom Qty. Aturannya kebetulan sama dengan .total-nilai, tapi
+           kelasnya dipisah supaya warna / perataan yang satu bisa diubah tanpa
+           ikut mengubah yang lain. */
+        .rincian .total-qty { text-align: right; font-weight: bold; background: #fdeef0; }
 
         /* ---- Pembayaran & tanda approve ---- */
         .bayar { width: 100%; margin-top: 30px; }
@@ -318,8 +393,13 @@ foreach ($baris_rincian as $i => $baris) {
             ?>
                 <tr>
                     <td<?= $kelas_ket !== '' ? ' class="' . $kelas_ket . '"' : ''; ?>><?= $lanjutan[$i] ? '' : $esc($beri_titik_putus($baris['deskripsi'])); ?></td>
-                    <?php foreach ($kolom_header as $h => $nama_kolom) : ?>
-                        <td class="kolom-header"><?= isset($isi_header[$baris['id_det']][$h]) ? implode('<br>', $isi_header[$baris['id_det']][$h]) : ''; ?></td>
+                    <?php foreach ($kolom_header as $h => $nama_kolom) :
+                        // Rata-kanan menumpang pada syarat yang sama dengan total
+                        // Qty-nya: selama kolomnya belum terbukti angka & dari
+                        // invoice, isinya diperlakukan seperti kolom tambahan biasa.
+                        $kelas_h = ($total_qty !== null && $h === $kolom_qty) ? 'kolom-qty' : 'kolom-header';
+                    ?>
+                        <td class="<?= $kelas_h; ?>"><?= isset($isi_header[$baris['id_det']][$h]) ? implode('<br>', $isi_header[$baris['id_det']][$h]) : ''; ?></td>
                     <?php endforeach; ?>
                     <td class="angka"><?= $esc($baris['amount']); ?></td>
                     <td class="angka"><?= $esc($baris['rate']); ?></td>
@@ -327,8 +407,21 @@ foreach ($baris_rincian as $i => $baris) {
                 </tr>
             <?php endforeach; ?>
             <tr>
-                <td class="total-label" colspan="<?= $jml_kolom - 1; ?>">Grand Total</td>
-                <td class="total-nilai"><?= $esc($dn['eqv_curr']); ?></td>
+                <?php if ($total_qty !== null) :
+                    // Baris Grand Total dipecah supaya jumlah Qty jatuh TEPAT di
+                    // bawah kolomnya. Urutan kolomnya: Description, lalu kolom
+                    // tambahan sesuai urutannya, lalu Value / Rate / Value - jadi
+                    // kolom Qty ada di urutan ke-(letak header-nya + 2).
+                    $urut_qty = array_search($kolom_qty, array_keys($kolom_header), true) + 2;
+                ?>
+                    <td class="total-label" colspan="<?= $urut_qty - 1; ?>">Grand Total</td>
+                    <td class="total-qty"><?= $esc(number_format($total_qty, $desimal_qty)); ?></td>
+                    <td colspan="<?= $jml_kolom - $urut_qty - 1; ?>"></td>
+                    <td class="total-nilai"><?= $esc($dn['eqv_curr']); ?></td>
+                <?php else : ?>
+                    <td class="total-label" colspan="<?= $jml_kolom - 1; ?>">Grand Total</td>
+                    <td class="total-nilai"><?= $esc($dn['eqv_curr']); ?></td>
+                <?php endif; ?>
             </tr>
         </tbody>
     </table>

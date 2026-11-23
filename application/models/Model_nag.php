@@ -4510,6 +4510,14 @@ function report_debit_note_det($id)
     $pecah_header = implode(",\n            ", $pecahan) . ',';
     $ada_isi = implode(' OR ', $syarat_isi);
 
+    // Penanda baris yang ditarik dari Invoice Export. Dipakai cetakan untuk
+    // tahu kolom Qty boleh dijumlah atau tidak - lihat reportdebitnote_v2.php.
+    // Kolomnya baru ada setelah migrations/20260925_debitnote_invoice_exim.sql
+    // dijalankan; sebelum itu dipalsukan kosong supaya querynya tetap jalan.
+    $kolom_inv_exim = $this->kolom_ada('tbl_debitnote_det', 'no_invoice_exim')
+        ? "IFNULL(a.no_invoice_exim, '')"
+        : "''";
+
     $hasil = $this->db->query("SELECT *
         FROM (
             SELECT 
@@ -4518,6 +4526,7 @@ function report_debit_note_det($id)
             a.deskripsi,
             a.supplier,
             a.supplier_invoice,
+            " . $kolom_inv_exim . " AS no_invoice_exim,
             " . $pecah_header . "
             FORMAT(a.value, 2) AS amount,
             FORMAT(a.rate, 2) AS rate,
