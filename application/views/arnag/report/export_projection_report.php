@@ -315,7 +315,13 @@ foreach ($period as $dt) {
          Dua belas kolom keterangan di depan disatukan jadi label TOTAL -
          Invoice Amount & Rate sengaja TIDAK dijumlahkan: isinya campur mata
          uang asli (IDR dan USD), jadi jumlahnya tidak berarti apa pun.
-         Yang dijumlahkan hanya kolom yang sudah dalam IDR. -->
+         Yang dijumlahkan hanya kolom yang sudah dalam IDR.
+
+         Warna selnya DITULIS LANGSUNG di style, bukan lewat kelas kedua:
+         Excel mengabaikan class yang isinya dua nama kelas sekaligus
+         (class="bg-header number"), jadi sel angka di baris ini sempat keluar
+         putih sementara sel TOTAL di sebelahnya - yang kelasnya cuma satu -
+         tetap berwarna. Satu kelas saja per sel, sisanya inline. -->
     <tfoot>
 
         <tr>
@@ -336,7 +342,8 @@ foreach ($period as $dt) {
             ?>
 
             <?php foreach($jml as $v): ?>
-                <td class="bg-header number" style="font-weight:bold;">
+                <td class="number"
+                    style="background-color:#FFE4C4; font-weight:bold;">
                     <?= number_format($v, 2); ?>
                 </td>
             <?php endforeach; ?>
@@ -351,8 +358,8 @@ foreach ($period as $dt) {
                 }
                 ?>
 
-                <td class="bg-projection number"
-                    style="font-weight:bold;">
+                <td class="number"
+                    style="background-color:#90EE90; font-weight:bold;">
                     <?= number_format($subtotal, 2); ?>
                 </td>
 

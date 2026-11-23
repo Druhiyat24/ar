@@ -134,7 +134,13 @@ $netAmount = function ($r) {
          susunannya sama dengan baris TOTAL di modal Detail.
 
          Invoice Amount & Rate sengaja TIDAK dijumlahkan: isinya campur mata
-         uang asli, jadi jumlahnya tidak berarti apa pun. -->
+         uang asli, jadi jumlahnya tidak berarti apa pun.
+
+         Warna selnya DITULIS LANGSUNG di style, bukan lewat kelas kedua:
+         Excel mengabaikan class yang isinya dua nama kelas sekaligus
+         (class="bg-header number"), jadi sel angka di baris ini sempat keluar
+         putih sementara sel TOTAL di sebelahnya - yang kelasnya cuma satu -
+         tetap berwarna. Satu kelas saja per sel, sisanya inline. -->
     <tfoot>
         <tr>
             <td class="bg-header" colspan="12" style="text-align:center; font-weight:bold;">TOTAL</td>
@@ -146,7 +152,7 @@ $netAmount = function ($r) {
             }
             ?>
             <?php foreach ($jml as $v): ?>
-            <td class="bg-header number" style="font-weight:bold;"><?= number_format($v, 2); ?></td>
+            <td class="number" style="background-color:#FFE4C4; font-weight:bold;"><?= number_format($v, 2); ?></td>
             <?php endforeach; ?>
             <?php foreach ($dates as $dt):
                 $sub = 0;
@@ -154,7 +160,7 @@ $netAmount = function ($r) {
                     if ($r['duedate_update'] === $dt) $sub += $netAmount($r);
                 }
             ?>
-            <td class="bg-proj number" style="font-weight:bold;"><?= number_format($sub, 2); ?></td>
+            <td class="number" style="background-color:#90EE90; font-weight:bold;"><?= number_format($sub, 2); ?></td>
             <?php endforeach; ?>
             <td class="bg-header"></td>
             <td class="bg-header"></td>
