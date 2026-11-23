@@ -2786,6 +2786,35 @@ function approve_debitnote($id)
     const NAMA_SELISIH_KURS = 'LABA / (RUGI) SELISIH KURS SUDAH TEREALISASI';
 
     /**
+     * Cost center baris selisih kurs. 8.52.01 akun laba / rugi, dan tiap akun
+     * laba rugi WAJIB punya cost center - tanpa itu bebannya tidak terbagi ke
+     * departemen mana pun. Selisih kurs ditanggung Finance:
+     *
+     *   NAG -> DEP06SUB001    FINANCE, ACCOUNTING & TAX
+     *   NAK -> DEPNK09SUB001  FINANCE, ACCOUNTING & TAX
+     *
+     * Susunannya sama dengan cost_center_beban() untuk komisi penjualan,
+     * departemennya saja yang berbeda (komisi ke Marketing).
+     */
+    const CC_SELISIH_KURS_NAG = 'DEP06SUB001';
+    const CC_SELISIH_KURS_NAK = 'DEPNK09SUB001';
+    const NAMA_CC_SELISIH_KURS = 'FINANCE, ACCOUNTING & TAX';
+
+    /**
+     * Potongan SQL cost center baris selisih kurs - no_cc & nama_cc sekaligus.
+     *
+     * Dipilih di dalam SQL, bukan dibaca dulu lewat PHP, supaya nilainya ikut
+     * profit center baris yang sedang ditulis tanpa query tambahan sekadar
+     * untuk tahu NAG atau NAK.
+     */
+    private function _sql_cc_selisih_kurs()
+    {
+        return "IF(UPPER(TRIM(a.profit_center)) = 'NAK', '" . self::CC_SELISIH_KURS_NAK
+             . "', '" . self::CC_SELISIH_KURS_NAG . "') no_cc, '"
+             . self::NAMA_CC_SELISIH_KURS . "' nama_cc";
+    }
+
+    /**
      * Nilai RUPIAH uang muka yang dipakai sebuah invoice, menurut kurs BM-nya.
      *
      * Uang muka valas masuk ke buku dengan kurs tanggal BM / GM-nya, dan nilai
@@ -2893,6 +2922,9 @@ function approve_debitnote($id)
          *      invoice - supaya saldo COA uang mukanya benar-benar nol lagi;
          *   b. bedanya ditaruh di 8.52.01, laba di kredit & rugi di debit.
          *
+         * 8.52.01 akun laba rugi, jadi barisnya WAJIB bercost center -
+         * lihat _sql_cc_selisih_kurs().
+         *
          *   selisih = uang muka x kurs BM  -  uang muka x kurs invoice
          *
          * Barisnya ditulis dalam RUPIAH (kurs 1): selisih kurs memang tidak
@@ -2917,12 +2949,12 @@ function approve_debitnote($id)
             $laba = 'GREATEST(' . $selisih . ', 0)';
             $rugi = 'GREATEST(-1 * ' . $selisih . ', 0)';
             $blok_kurs = str_replace(
-                array("'Invoice' type_journal, no_coa, nama_coa, '-' no_cc",
+                array("'Invoice' type_journal, no_coa, nama_coa, '-' no_cc, '-' nama_cc",
                       'a.curr, ' . $kurs_um . ' rate,',
                       $nilai_baru . ', 0 credit_idr',
                       "'APPROVED' status, a.keterangan,"),
                 array("'Invoice' type_journal, '" . self::COA_SELISIH_KURS . "' no_coa, '"
-                      . self::NAMA_SELISIH_KURS . "' nama_coa, '-' no_cc",
+                      . self::NAMA_SELISIH_KURS . "' nama_coa, " . $this->_sql_cc_selisih_kurs(),
                       "'IDR' curr, 1 rate,",
                       "$rugi debit, $laba credit, $rugi debit_idr, $laba credit_idr",
                       "'APPROVED' status, CONCAT('SELISIH KURS UANG MUKA ', a.no_invoice),"),
