@@ -5929,6 +5929,24 @@ function cari_invoice_alo($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer, $rat
     // tetap native currency invoice masing-masing supaya sisa outstanding invoice ke
     // depannya tetap konsisten dihitung; konversi ke currency pembayaran (bagi/kali rate)
     // dilakukan di JS (cari_data_invoic() & modal_get_amount()), bukan di sini.
+
+    // Proforma Invoice ikut terbaca lewat BILLED TO-nya, bukan cuma lewat
+    // pemilik SO-nya. Yang membayar uang mukanya pihak yang DITAGIH: kalau
+    // Billed To-nya berbeda - mis. PI milik UNIFORM yang ditagihkan ke
+    // INDONESIA MOROWALI INDUSTRIAL PARK - alokasi atas nama penagihnya dulu
+    // tidak pernah bisa menemukan PI-nya, padahal uangnya dari situ.
+    //
+    // Nama yang dipajang di daftar tetap nama CUSTOMER-nya (b.supplier lewat
+    // id_customer), supaya operator tahu PI itu sebenarnya milik siapa.
+    //
+    // tbl_invoice_proforma_dp_cbd itu VIEW ke tbl_invoice_proforma, dan kolom
+    // billed_to-nya baru ikut sesudah
+    // migrations/20261102_proforma_dp_cbd_view_billed_to.sql dijalankan.
+    // Selama belum, saringannya persis seperti semula - bukan error.
+    $pihakPI = $this->kolom_ada('tbl_invoice_proforma_dp_cbd', 'billed_to')
+        ? "(a.id_customer = '$id_customer' OR a.billed_to = '$id_customer')"
+        : "a.id_customer = '$id_customer'";
+
     $hasil = $this->db->query("
 (SELECT DISTINCT a.no_proforma_invoice AS no_invoice, DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date, f.top, if(g.kontrabon_date is null, DATE_ADD(DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d'), INTERVAL f.top DAY) ,DATE_ADD(DATE_FORMAT(g.kontrabon_date, '%Y-%m-%d'), INTERVAL f.top DAY)) AS duedate, UPPER(b.supplier) AS customer, e.curr,
           a.status, a.id, if(h.amount is null,format(IF(a.value_dp = '0',a.total,a.value_dp), 0), format(((IF(a.value_dp = '0',a.total,a.value_dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) AS amount, if(h.amount is null,round((IF(a.value_dp = '0',a.total,a.value_dp)), 0),round(((IF(a.value_dp = '0',a.total,a.value_dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) as amountrate, if(h.amount is null,format((IF(a.value_dp = '0',a.total,a.value_dp)), 0),format(((IF(a.value_dp = '0',a.total,a.value_dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) as amountrate1, if(h.amount is null,round(IF(a.value_dp = '0',a.total,a.value_dp), 0), round(((IF(a.value_dp = '0',a.total,a.value_dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) AS amount1
@@ -5940,7 +5958,7 @@ function cari_invoice_alo($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer, $rat
           tbl_duedate AS g ON a.id = g.id_invoice left join
           tbl_alokasi_detail as h on a.no_proforma_invoice = h.no_ref left join
           tbl_alokasi as i on h.no_alk = i.no_alk 
-          WHERE a.tgl_proforma_inv BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.id_customer = '$id_customer' and a.status like '%APPROVED%' and if(h.amount is null,round(IF(a.value_dp = '0',a.total,a.value_dp), 0), round(((IF(a.value_dp = '0',a.total,a.value_dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) != '0' and e.curr = 'IDR' ORDER BY a.id) union
+          WHERE a.tgl_proforma_inv BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND $pihakPI and a.status like '%APPROVED%' and if(h.amount is null,round(IF(a.value_dp = '0',a.total,a.value_dp), 0), round(((IF(a.value_dp = '0',a.total,a.value_dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) != '0' and e.curr = 'IDR' ORDER BY a.id) union
           (SELECT DISTINCT a.no_dn AS no_invoice, DATE_FORMAT(a.tgl_dn, '%Y-%m-%d') AS inv_date, DATEDIFF(a.due_date,a.tgl_dn) as top, a.due_date AS duedate, UPPER(b.supplier) AS customer, a.to_curr, a.status, a.id, if(h.amount is null,format(a.eqv_curr, 0), format(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) AS amount, if(h.amount is null,round((a.eqv_curr), 0),round(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) as amountrate, if(h.amount is null,format((a.eqv_curr), 0),format(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) as amountrate1, if(h.amount is null,round(a.eqv_curr, 0), round(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 0)) AS amount1
           FROM  tbl_debitnote_h AS a INNER JOIN 
           mastersupplier AS b ON a.customer = b.id_supplier left JOIN 
@@ -6006,7 +6024,7 @@ function cari_invoice_alo($dt_dari_invkwt, $dt_sampai_invkwt, $id_customer, $rat
       tbl_duedate AS g ON a.id = g.id_invoice left join
       tbl_alokasi_detail as h on a.no_proforma_invoice = h.no_ref left join
       tbl_alokasi as i on h.no_alk = i.no_alk 
-      WHERE a.tgl_proforma_inv BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND a.id_customer = '$id_customer' and a.status like '%APPROVED%' and if(h.amount is null,round(IF(a.dp = '0',a.total,a.dp), 0), round(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) != '0' and e.curr = 'USD' ORDER BY a.id) union
+      WHERE a.tgl_proforma_inv BETWEEN '$dt_dari_invkwt' AND '$dt_sampai_invkwt' AND $pihakPI and a.status like '%APPROVED%' and if(h.amount is null,round(IF(a.dp = '0',a.total,a.dp), 0), round(((IF(a.dp = '0',a.total,a.dp)) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_proforma_invoice)), 0)) != '0' and e.curr = 'USD' ORDER BY a.id) union
       (SELECT DISTINCT a.no_dn AS no_invoice, DATE_FORMAT(a.tgl_dn, '%Y-%m-%d') AS inv_date, DATEDIFF(a.due_date,a.tgl_dn) as top, a.due_date AS duedate, UPPER(b.supplier) AS customer, a.to_curr, a.status, a.id, if(h.amount is null,format(a.eqv_curr, 2), format(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 2)) AS amount, if(h.amount is null,round((a.eqv_curr * '$rate'), 2),round(((a.eqv_curr * '$rate') - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j where no_ref = a.no_dn)), 2)) as amountrate, if(h.amount is null,format((a.eqv_curr * '$rate'), 2),format(((a.eqv_curr * '$rate') - (select sum(j.amount) * '$rate' from tbl_alokasi_detail j where no_ref = a.no_dn)), 2)) as amountrate1, if(h.amount is null,round(a.eqv_curr, 2), round(((a.eqv_curr) - (select sum(j.amount) from tbl_alokasi_detail j where no_ref = a.no_dn)), 2)) AS amount1
       FROM  tbl_debitnote_h AS a INNER JOIN 
       mastersupplier AS b ON a.customer = b.id_supplier left JOIN 
@@ -7190,6 +7208,23 @@ function pi_untuk_alokasi($dt_dari, $dt_sampai, $id_customer, $rate = 1)
                           WHERE k.no_ref = a.no_proforma_invoice), 0)";
     $sisa = "ROUND(($nilai) - $terpakai, 2)";
 
+    // Ikut terbaca lewat BILLED TO-nya, bukan cuma lewat pemilik SO-nya.
+    // Yang membayar uang mukanya pihak yang DITAGIH, jadi alokasinya juga
+    // dibuat atas nama itu - mis. PI milik UNIFORM yang ditagihkan ke
+    // INDONESIA MOROWALI INDUSTRIAL PARK. Dulu PI begitu tidak pernah
+    // ketemu, padahal uangnya persis dari situ.
+    //
+    // Nama yang dipajang tetap nama CUSTOMER-nya (b.supplier lewat
+    // id_customer), supaya kelihatan PI itu sebenarnya milik siapa.
+    //
+    // Kolom billed_to baru ada sesudah migrations/20261019b - selama belum,
+    // saringannya seperti semula.
+    $adaBilled = $this->kolom_ada('tbl_invoice_proforma', 'billed_to');
+    $pihak = $adaBilled ? '(a.id_customer = ? OR a.billed_to = ?)' : 'a.id_customer = ?';
+    $bind  = $adaBilled
+        ? array($id_customer, $id_customer, $dt_dari, $dt_sampai)
+        : array($id_customer, $dt_dari, $dt_sampai);
+
     return $this->db->query("
         SELECT a.no_proforma_invoice AS no_invoice,
                DATE_FORMAT(a.tgl_proforma_inv, '%Y-%m-%d') AS inv_date,
@@ -7206,13 +7241,13 @@ function pi_untuk_alokasi($dt_dari, $dt_sampai, $id_customer, $rate = 1)
                $tipe AS type_pi
           FROM tbl_invoice_proforma AS a
      LEFT JOIN mastersupplier AS b ON b.Id_Supplier = a.id_customer
-         WHERE a.id_customer = ?
+         WHERE $pihak
            AND a.tgl_proforma_inv BETWEEN ? AND ?
            AND IFNULL(a.status, '') LIKE '%APPROVED%'
            AND IFNULL(a.status, '') NOT LIKE 'CANCEL%'
         HAVING type_pi IN ('DP', 'CBD', 'PI NON SO') AND amount1 > 0
       ORDER BY a.tgl_proforma_inv DESC, a.no_proforma_invoice DESC
-    ", array($id_customer, $dt_dari, $dt_sampai))->result_array();
+    ", $bind)->result_array();
 }
 
 /**
